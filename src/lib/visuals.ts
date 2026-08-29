@@ -16,4 +16,4 @@ export function exerciseAnimation(exercise: ExerciseSummary) {
  * so that black becomes exactly the surrounding surface color.
  */
 export const EXERCISE_ANIMATION_FILTER =
-  "url(#exercise-gif-sharpen) invert(1) hue-rotate(180deg)"
+  "url(#exercise-gif-sharpen) invert(1) hue-rotate(180deg) saturate(1.75)"

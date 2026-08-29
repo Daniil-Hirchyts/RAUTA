@@ -255,7 +255,6 @@ export function App() {
                   )}
                 </output>
               </div>
-              {stage === 2 && <EquipmentPresets />}
             </header>
 
             <div className="t-page-slide min-h-0 flex-1" data-page={stage}>
@@ -281,6 +280,7 @@ export function App() {
                 data-page-id="2"
                 inert={stage !== 2}
               >
+                <EquipmentPresets />
                 <div className="grid grid-cols-2 gap-3">
                   {EQUIPMENT_OPTIONS.map((equipment) => {
                     const checked = selectedEquipment.includes(equipment)
@@ -300,7 +300,7 @@ export function App() {
                         <span className="relative block aspect-[1.18] overflow-hidden bg-[#161618]">
                           <img
                             alt=""
-                            className="h-full w-full object-cover transition-transform duration-250 ease-[var(--ease-smooth-out)] group-hover:scale-[1.025]"
+                            className="h-full w-full object-cover saturate-[1.65] transition-transform duration-250 ease-[var(--ease-smooth-out)] group-hover:scale-[1.025]"
                             draggable={false}
                             loading="lazy"
                             src={equipmentImage(equipment)}

@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 .wrangler
+.vercel
 
 # Python (upscale scripts)
 __pycache__/
