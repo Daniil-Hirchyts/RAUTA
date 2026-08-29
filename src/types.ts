@@ -27,4 +27,5 @@ export type ExerciseSummary = {
   equipment: string
   primaryMuscle: MuscleId | null
   muscles: MuscleId[]
+  instructions: string[]
 }

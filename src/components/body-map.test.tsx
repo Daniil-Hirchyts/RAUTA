@@ -21,9 +21,12 @@ describe("BodyMap", () => {
     expect(onToggle).toHaveBeenCalledWith("chest")
   })
 
-  it("supports keyboard toggling and exposes selection state", () => {
+  it("flips to the back view and supports keyboard toggling", () => {
     const onToggle = vi.fn()
     render(<BodyMap onToggle={onToggle} selectedMuscles={["upper-back"]} />)
+
+    fireEvent.click(screen.getByRole("button", { name: "Show back view" }))
+
     const upperBack = screen.getByRole("button", { name: "Back Upper back" })
     expect(upperBack).toHaveAttribute("aria-pressed", "true")
     fireEvent.keyDown(upperBack, { key: "Enter" })

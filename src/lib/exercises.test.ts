@@ -10,6 +10,7 @@ const fixture: ExerciseSummary[] = [
     equipment: "barbell",
     primaryMuscle: "chest",
     muscles: ["chest", "triceps"],
+    instructions: [],
   },
   {
     id: "2",
@@ -17,6 +18,7 @@ const fixture: ExerciseSummary[] = [
     equipment: "dumbbell",
     primaryMuscle: "biceps",
     muscles: ["biceps", "forearm"],
+    instructions: [],
   },
   {
     id: "3",
@@ -24,6 +26,7 @@ const fixture: ExerciseSummary[] = [
     equipment: "dumbbell",
     primaryMuscle: "chest",
     muscles: ["chest", "triceps"],
+    instructions: [],
   },
 ]
 

@@ -16,7 +16,6 @@ import { EQUIPMENT_OPTIONS } from "@/lib/exercises"
 import { useFilters } from "@/store/use-filters"
 
 const STARTER_PRESETS = [
-  { id: "starter-bodyweight", name: "Bodyweight", equipment: ["body weight"] },
   {
     id: "starter-home",
     name: "Home kit",
@@ -55,92 +54,84 @@ export function EquipmentPresets() {
   }
 
   return (
-    <div className="mb-3">
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
-          Presets
-        </p>
-        <Dialog onOpenChange={setOpen} open={open}>
-          <DialogTrigger
-            disabled={selectedEquipment.length === 0}
-            render={
+    <div className="sticky top-0 z-10 -mx-5 -mt-5 mb-7 flex gap-2 overflow-x-auto px-5 pt-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <Dialog onOpenChange={setOpen} open={open}>
+        <DialogTrigger
+          aria-label="Save current selection as a preset"
+          disabled={selectedEquipment.length === 0}
+          render={
+            <button
+              className="grid size-10 shrink-0 place-items-center rounded-full border border-border bg-card/70 text-foreground backdrop-blur-md transition-transform duration-150 active:scale-90 disabled:opacity-40 disabled:backdrop-blur-md"
+              type="button"
+            />
+          }
+        >
+          <Plus className="size-4.5" />
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save equipment preset</DialogTitle>
+            <DialogDescription>
+              {selectedEquipment.length} selected item
+              {selectedEquipment.length === 1 ? "" : "s"}
+            </DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={submit}>
+            <Input
+              aria-label="Preset name"
+              autoFocus
+              maxLength={30}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Preset name"
+              value={name}
+            />
+            <DialogFooter>
               <Button
-                className="h-8 rounded-full px-3 text-xs"
-                size="sm"
-                variant="ghost"
-              />
-            }
-          >
-            <Plus data-icon="inline-start" />
-            Save preset
-          </DialogTrigger>
-          <DialogContent className="max-w-[398px] gap-5">
-            <DialogHeader>
-              <DialogTitle>Save equipment preset</DialogTitle>
-              <DialogDescription>
-                {selectedEquipment.length} selected item
-                {selectedEquipment.length === 1 ? "" : "s"}
-              </DialogDescription>
-            </DialogHeader>
-            <form className="space-y-4" onSubmit={submit}>
-              <Input
-                aria-label="Preset name"
-                autoFocus
-                maxLength={30}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Preset name"
-                value={name}
-              />
-              <DialogFooter>
-                <Button
-                  className="w-full"
-                  disabled={!name.trim()}
-                  type="submit"
-                >
-                  Save preset
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+                className="h-12 w-full rounded-2xl text-base font-semibold"
+                disabled={!name.trim()}
+                type="submit"
+              >
+                Save preset
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-      <div className="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 pb-1 [&::-webkit-scrollbar]:hidden">
-        {STARTER_PRESETS.map((preset) => (
+      {STARTER_PRESETS.map((preset) => (
+        <button
+          aria-pressed={sameSelection(selectedEquipment, preset.equipment)}
+          className="preset-chip shrink-0"
+          key={preset.id}
+          onClick={() => setEquipment([...preset.equipment])}
+          type="button"
+        >
+          {preset.name}
+        </button>
+      ))}
+      {presets.map((preset) => (
+        <div
+          className="flex shrink-0 items-center rounded-full bg-card/80 ring-1 ring-border backdrop-blur-md"
+          key={preset.id}
+        >
           <button
             aria-pressed={sameSelection(selectedEquipment, preset.equipment)}
-            className="preset-chip shrink-0"
-            key={preset.id}
+            className="preset-chip border-0 pr-2 ring-0"
             onClick={() => setEquipment([...preset.equipment])}
             type="button"
           >
             {preset.name}
           </button>
-        ))}
-        {presets.map((preset) => (
-          <div
-            className="flex shrink-0 items-center rounded-full bg-card ring-1 ring-border"
-            key={preset.id}
+          <button
+            aria-label={`Delete ${preset.name} preset`}
+            className="mr-1 grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground transition-transform duration-150 hover:bg-muted hover:text-foreground active:scale-90"
+            onClick={() => deletePreset(preset.id)}
+            type="button"
           >
-            <button
-              aria-pressed={sameSelection(selectedEquipment, preset.equipment)}
-              className="preset-chip border-0 pr-2 ring-0"
-              onClick={() => setEquipment([...preset.equipment])}
-              type="button"
-            >
-              {preset.name}
-            </button>
-            <button
-              aria-label={`Delete ${preset.name} preset`}
-              className="mr-1 grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-              onClick={() => deletePreset(preset.id)}
-              type="button"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
-          </div>
-        ))}
-      </div>
+            <Trash2 className="size-4" />
+          </button>
+        </div>
+      ))}
     </div>
   )
 }
