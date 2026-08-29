@@ -1,7 +1,7 @@
 import { Check, Heart } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { EXERCISE_GIF_FILTER, exerciseGif } from "@/lib/visuals"
+import { EXERCISE_ANIMATION_FILTER, exerciseAnimation } from "@/lib/visuals"
 import { useFavorites } from "@/store/use-favorites"
 import type { ExerciseSummary } from "@/types"
 
@@ -59,8 +59,8 @@ export function ExerciseCard({
             draggable={false}
             fetchPriority="low"
             loading="lazy"
-            src={exerciseGif(exercise)}
-            style={{ filter: EXERCISE_GIF_FILTER }}
+            src={exerciseAnimation(exercise)}
+            style={{ filter: EXERCISE_ANIMATION_FILTER }}
           />
         </div>
         {/* Fixed height (not content-driven) so every card is identical
