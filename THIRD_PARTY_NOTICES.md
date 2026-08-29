@@ -8,9 +8,10 @@ reviewed at commit `7455efae41b330c265e7cd4b78dfa848e7ce5ebd`. Text and data
 fields (name, equipment, target/secondary muscles) are included under that
 repository's MIT license.
 
-Gym Lib also includes the per-exercise animation GIFs from the same dataset
-(`public/assets/exercises/gifs/{id}.gif`, 1,324 files, copied via
-`scripts/copy-exercise-gifs.mjs`). That media is **not** covered by the
+Gym Lib also includes the per-exercise animations from the same dataset
+(`public/assets/exercises/webp/{id}.webp`, 1,324 files). They were copied via
+`scripts/copy-exercise-gifs.mjs`, upscaled to 360×360, and encoded as animated
+WebP for on-demand mobile delivery. That media is **not** covered by the
 dataset's MIT license — it is © Gym visual (https://gymvisual.com/) and
 redistributed by `hasaneyldrm/exercises-dataset` under permission that does
 not automatically extend downstream (their `NOTICE.md` states "cloning this
@@ -18,10 +19,10 @@ repo is not a license"). Including these GIFs here assumes the maintainer of
 this repository has independently reviewed and holds any license required by
 Gym visual's Terms & Conditions
 (https://gymvisual.com/content/3-terms-and-conditions-of-use) for this use.
-Anyone redistributing this repository or its `public/assets/exercises/gifs`
+Anyone redistributing this repository or its `public/assets/exercises/webp`
 directory further should do the same. The required copyright notice, "© Gym
-visual — https://gymvisual.com/", is preserved in-app wherever the GIFs are
-shown.
+visual — https://gymvisual.com/", is preserved in-app wherever the animations
+are shown.
 
 The GIFs were additionally upscaled from their originally distributed
 180×180 resolution to 360×360 via `scripts/upscale_exercise_gifs.py` (see

@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-import { EXERCISE_GIF_FILTER, exerciseGif } from "@/lib/visuals"
+import { EXERCISE_ANIMATION_FILTER, exerciseAnimation } from "@/lib/visuals"
 import { useFavorites } from "@/store/use-favorites"
 import type { ExerciseSummary } from "@/types"
 
@@ -40,8 +40,8 @@ export function ExerciseDetailDialog({
             decoding="async"
             draggable={false}
             fetchPriority="high"
-            src={exerciseGif(exercise)}
-            style={{ filter: EXERCISE_GIF_FILTER }}
+            src={exerciseAnimation(exercise)}
+            style={{ filter: EXERCISE_ANIMATION_FILTER }}
           />
         </div>
 

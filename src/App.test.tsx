@@ -75,7 +75,7 @@ describe("App", () => {
     )
     const results = screen.getByTestId("exercise-results")
     expect(results.querySelectorAll("article")).toHaveLength(expected.length)
-    const image = results.querySelector("img[src^='/assets/exercises/']")
+    const image = results.querySelector("img[src$='.webp']")
     expect(image).toHaveAttribute("loading", "lazy")
     expect(image).toHaveAttribute("decoding", "async")
     expect(image).toHaveAttribute("fetchpriority", "low")

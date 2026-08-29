@@ -1,7 +1,8 @@
 /**
  * Hidden SVG filter defs, mounted once. `feConvolveMatrix` applies a gentle
  * unsharp-mask kernel live in the browser — it never touches the stored GIF
- * files, it just renders them crisper. Referenced via `EXERCISE_GIF_FILTER`
+ * files, it just renders them crisper. Referenced via
+ * `EXERCISE_ANIMATION_FILTER`
  * in `@/lib/visuals`.
  */
 export function SvgFilterDefs() {
