@@ -3,9 +3,22 @@ import type { ExerciseSummary, MuscleId } from "@/types"
 
 export const EXERCISES = generatedExercises as ExerciseSummary[]
 
+export const EXERCISES_BY_ID = new Map(
+  EXERCISES.map((exercise) => [exercise.id, exercise])
+)
+
 export const EQUIPMENT_OPTIONS = [
   ...new Set(EXERCISES.map((exercise) => exercise.equipment)),
 ].sort((left, right) => left.localeCompare(right))
+
+export function orderedMuscles(exercise: ExerciseSummary) {
+  const muscles: MuscleId[] = []
+  if (exercise.primaryMuscle) muscles.push(exercise.primaryMuscle)
+  exercise.muscles.forEach((muscle) => {
+    if (!muscles.includes(muscle)) muscles.push(muscle)
+  })
+  return muscles
+}
 
 export function filterExercises(
   exercises: ExerciseSummary[],

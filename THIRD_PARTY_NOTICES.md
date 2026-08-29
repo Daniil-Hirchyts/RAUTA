@@ -4,7 +4,42 @@
 
 Gym Lib includes a compact snapshot of the English exercise records from
 [`hasaneyldrm/exercises-dataset`](https://github.com/hasaneyldrm/exercises-dataset),
-reviewed at commit `7455efae41b330c265e7cd4b78dfa848e7ce5ebd`. Only text and data fields are included. The repository's exercise images and videos are not included because its media notice does not grant downstream reuse rights.
+reviewed at commit `7455efae41b330c265e7cd4b78dfa848e7ce5ebd`. Text and data
+fields (name, equipment, target/secondary muscles) are included under that
+repository's MIT license.
+
+Gym Lib also includes the per-exercise animation GIFs from the same dataset
+(`public/assets/exercises/gifs/{id}.gif`, 1,324 files, copied via
+`scripts/copy-exercise-gifs.mjs`). That media is **not** covered by the
+dataset's MIT license — it is © Gym visual (https://gymvisual.com/) and
+redistributed by `hasaneyldrm/exercises-dataset` under permission that does
+not automatically extend downstream (their `NOTICE.md` states "cloning this
+repo is not a license"). Including these GIFs here assumes the maintainer of
+this repository has independently reviewed and holds any license required by
+Gym visual's Terms & Conditions
+(https://gymvisual.com/content/3-terms-and-conditions-of-use) for this use.
+Anyone redistributing this repository or its `public/assets/exercises/gifs`
+directory further should do the same. The required copyright notice, "© Gym
+visual — https://gymvisual.com/", is preserved in-app wherever the GIFs are
+shown.
+
+The GIFs were additionally upscaled from their originally distributed
+180×180 resolution to 360×360 via `scripts/upscale_exercise_gifs.py` (see
+"ESPCN" below). Gym visual's `NOTICE.md` states media "must be shared only at
+180×180 resolution only" — this upscale is a further, explicit deviation from
+that distribution term, on top of the general licensing assumption above, and
+is the maintainer's decision and responsibility, not a use permitted by the
+dataset's stated terms.
+
+## ESPCN
+
+The GIF upscaling in `scripts/upscale_exercise_gifs.py` uses the ESPCN x2
+super-resolution model (`scripts/models/ESPCN_x2.pb`) from
+[`fannymonori/TF-ESPCN`](https://github.com/fannymonori/TF-ESPCN), reviewed
+at the `master` branch, `export/ESPCN_x2.pb`.
+
+Apache License 2.0 — see https://www.apache.org/licenses/LICENSE-2.0 for the
+full text.
 
 MIT License
 

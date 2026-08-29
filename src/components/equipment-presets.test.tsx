@@ -19,15 +19,23 @@ describe("EquipmentPresets", () => {
     const user = userEvent.setup()
     render(<EquipmentPresets />)
 
-    await user.click(screen.getByRole("button", { name: "Bodyweight" }))
-    expect(useFilters.getState().selectedEquipment).toEqual(["body weight"])
+    await user.click(screen.getByRole("button", { name: "Home kit" }))
+    expect(useFilters.getState().selectedEquipment).toEqual([
+      "body weight",
+      "band",
+      "resistance band",
+      "dumbbell",
+      "kettlebell",
+    ])
   })
 
   it("creates and reuses a custom preset", async () => {
     const user = userEvent.setup()
     render(<EquipmentPresets />)
 
-    await user.click(screen.getByRole("button", { name: /save preset/i }))
+    await user.click(
+      screen.getByRole("button", { name: "Save current selection as a preset" })
+    )
     await user.type(screen.getByLabelText("Preset name"), "Travel")
     await user.click(screen.getByRole("button", { name: "Save preset" }))
 

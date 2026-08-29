@@ -1,3 +1,6 @@
+import { useRef, useState, type PointerEvent } from "react"
+import { FlipHorizontal2 } from "lucide-react"
+
 import bodyPathData from "@/data/body-paths.generated.json"
 import { isMuscleId, MUSCLE_LABELS } from "@/lib/muscles"
 import { cn } from "@/lib/utils"
@@ -18,6 +21,10 @@ type BodyMapProps = {
   onToggle: (muscle: MuscleId) => void
 }
 
+type Side = "front" | "back"
+
+const SWIPE_THRESHOLD = 45
+
 const body = bodyPathData as { front: BodyView; back: BodyView }
 
 function BodyFigure({
@@ -26,13 +33,16 @@ function BodyFigure({
   selectedMuscles,
   view,
 }: BodyMapProps & { label: "Front" | "Back"; view: BodyView }) {
+  const [, , widthAttr, heightAttr] = view.viewBox.split(" ")
+
   return (
-    <figure className="min-w-0">
+    <div className="flex h-full min-h-0 w-full items-center justify-center">
       <svg
         aria-label={`${label} muscle map`}
-        className="block h-[294px] w-full overflow-visible"
+        className="block h-full max-w-full overflow-visible"
         preserveAspectRatio="xMidYMid meet"
         role="img"
+        style={{ aspectRatio: `${widthAttr} / ${heightAttr}` }}
         viewBox={view.viewBox}
       >
         {view.parts.map((part) => {
@@ -76,18 +86,78 @@ function BodyFigure({
           )
         })}
       </svg>
-      <figcaption className="mt-1 text-center text-[10px] font-medium tracking-[0.12em] text-muted-foreground uppercase">
-        {label}
-      </figcaption>
-    </figure>
+    </div>
   )
 }
 
 export function BodyMap(props: BodyMapProps) {
+  const [side, setSide] = useState<Side>("front")
+  const label = side === "front" ? "Front" : "Back"
+  const view = side === "front" ? body.front : body.back
+
+  // Lets a horizontal swipe flip the figure, same as the button — a swipe
+  // still ends with a pointerup (and browser-synthesized click) on whatever
+  // muscle region happens to be underneath, so we briefly suppress toggling
+  // a muscle right after a swipe is detected.
+  const swipeStartX = useRef<number | null>(null)
+  const suppressClick = useRef(false)
+
+  const flipSide = () =>
+    setSide((current) => (current === "front" ? "back" : "front"))
+
+  const handleToggle = (muscle: MuscleId) => {
+    if (suppressClick.current) return
+    props.onToggle(muscle)
+  }
+
+  const onPointerDown = (event: PointerEvent) => {
+    swipeStartX.current = event.clientX
+  }
+
+  const endSwipe = (event: PointerEvent) => {
+    if (swipeStartX.current === null) return
+    const dx = event.clientX - swipeStartX.current
+    swipeStartX.current = null
+    if (Math.abs(dx) > SWIPE_THRESHOLD) {
+      suppressClick.current = true
+      flipSide()
+      requestAnimationFrame(() => {
+        suppressClick.current = false
+      })
+    }
+  }
+
   return (
-    <div className="grid grid-cols-2 gap-1">
-      <BodyFigure {...props} label="Front" view={body.front} />
-      <BodyFigure {...props} label="Back" view={body.back} />
+    <div className="flex h-full min-h-0 w-full flex-col">
+      <div className="mb-3 flex shrink-0 items-center justify-between">
+        <p className="text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase">
+          {label} view
+        </p>
+        <button
+          aria-label={`Show ${side === "front" ? "back" : "front"} view`}
+          className="grid size-10 place-items-center rounded-full border border-border bg-card/70 text-foreground backdrop-blur-sm transition-transform duration-150 active:scale-90"
+          onClick={flipSide}
+          type="button"
+        >
+          <FlipHorizontal2 className="size-4.5" />
+        </button>
+      </div>
+      <div
+        className="t-flip min-h-0 w-full flex-1 touch-pan-y"
+        key={side}
+        onPointerCancel={() => {
+          swipeStartX.current = null
+        }}
+        onPointerDown={onPointerDown}
+        onPointerUp={endSwipe}
+      >
+        <BodyFigure
+          {...props}
+          label={label}
+          onToggle={handleToggle}
+          view={view}
+        />
+      </div>
     </div>
   )
 }

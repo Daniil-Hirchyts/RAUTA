@@ -13,6 +13,12 @@ dist-ssr
 *.local
 .wrangler
 
+# Python (upscale scripts)
+__pycache__/
+*.pyc
+.venv
+venv
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

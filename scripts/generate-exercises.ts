@@ -11,6 +11,7 @@ type SourceExercise = {
   target?: string
   muscle_group?: string
   secondary_muscles?: string[]
+  instruction_steps?: { en?: string[] }
 }
 
 const [, , inputArg, outputArg] = process.argv
@@ -35,6 +36,7 @@ const compact: ExerciseSummary[] = source
       muscleGroup: exercise.muscle_group,
       secondaryMuscles: exercise.secondary_muscles,
     }),
+    instructions: exercise.instruction_steps?.en ?? [],
   }))
   .sort(
     (left, right) =>
