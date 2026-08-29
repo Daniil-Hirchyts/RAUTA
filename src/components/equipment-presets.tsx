@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { EQUIPMENT_OPTIONS } from "@/lib/exercises"
+import { triggerHaptic } from "@/lib/haptics"
 import { useFilters } from "@/store/use-filters"
 
 const STARTER_PRESETS = [
@@ -49,12 +50,13 @@ export function EquipmentPresets() {
     event.preventDefault()
     if (!name.trim() || selectedEquipment.length === 0) return
     savePreset(name)
+    triggerHaptic("success")
     setName("")
     setOpen(false)
   }
 
   return (
-    <div className="sticky top-0 z-20 mb-6 flex [scrollbar-width:none] gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
+    <div className="sticky top-0 z-20 mb-4 flex [scrollbar-width:none] gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
       <Dialog onOpenChange={setOpen} open={open}>
         <DialogTrigger
           aria-label="Save current selection as a preset"
@@ -103,7 +105,10 @@ export function EquipmentPresets() {
           aria-pressed={sameSelection(selectedEquipment, preset.equipment)}
           className="preset-chip shrink-0"
           key={preset.id}
-          onClick={() => setEquipment([...preset.equipment])}
+          onClick={() => {
+            triggerHaptic("selection")
+            setEquipment([...preset.equipment])
+          }}
           type="button"
         >
           {preset.name}
@@ -117,7 +122,10 @@ export function EquipmentPresets() {
           <button
             aria-pressed={sameSelection(selectedEquipment, preset.equipment)}
             className="preset-chip border-0 pr-2 ring-0"
-            onClick={() => setEquipment([...preset.equipment])}
+            onClick={() => {
+              triggerHaptic("selection")
+              setEquipment([...preset.equipment])
+            }}
             type="button"
           >
             {preset.name}
@@ -125,7 +133,10 @@ export function EquipmentPresets() {
           <button
             aria-label={`Delete ${preset.name} preset`}
             className="mr-1 grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground transition-transform duration-150 hover:bg-muted hover:text-foreground active:scale-90"
-            onClick={() => deletePreset(preset.id)}
+            onClick={() => {
+              triggerHaptic("warning")
+              deletePreset(preset.id)
+            }}
             type="button"
           >
             <Trash2 className="size-4" />

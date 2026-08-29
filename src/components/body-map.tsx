@@ -2,6 +2,7 @@ import { useRef, useState, type PointerEvent } from "react"
 import { FlipHorizontal2 } from "lucide-react"
 
 import bodyPathData from "@/data/body-paths.generated.json"
+import { triggerHaptic } from "@/lib/haptics"
 import { isMuscleId, MUSCLE_LABELS } from "@/lib/muscles"
 import { cn } from "@/lib/utils"
 import type { MuscleId } from "@/types"
@@ -102,8 +103,10 @@ export function BodyMap(props: BodyMapProps) {
   const swipeStartX = useRef<number | null>(null)
   const suppressClick = useRef(false)
 
-  const flipSide = () =>
+  const flipSide = () => {
+    triggerHaptic("selection")
     setSide((current) => (current === "front" ? "back" : "front"))
+  }
 
   const handleToggle = (muscle: MuscleId) => {
     if (suppressClick.current) return

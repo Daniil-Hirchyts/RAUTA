@@ -27,6 +27,7 @@ describe("BodyMap", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Show back view" }))
 
+    expect(navigator.vibrate).toHaveBeenCalled()
     const upperBack = screen.getByRole("button", { name: "Back Upper back" })
     expect(upperBack).toHaveAttribute("aria-pressed", "true")
     fireEvent.keyDown(upperBack, { key: "Enter" })
