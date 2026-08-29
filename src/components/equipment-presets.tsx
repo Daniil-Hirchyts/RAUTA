@@ -61,7 +61,7 @@ export function EquipmentPresets() {
           disabled={selectedEquipment.length === 0}
           render={
             <button
-              className="grid size-10 shrink-0 place-items-center rounded-full border border-border bg-card/70 text-foreground backdrop-blur-md transition-transform duration-150 active:scale-90 disabled:opacity-40 disabled:backdrop-blur-md"
+              className="grid size-10 shrink-0 place-items-center rounded-full border border-border bg-card/70 text-foreground backdrop-blur-md transition-transform duration-150 active:scale-90 disabled:bg-card/25 disabled:text-foreground/35"
               type="button"
             />
           }
