@@ -28,6 +28,11 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+## transitions.dev
+
+The staged page motion, animated counters, selection checks, and staggered reveals use copy-ready CSS transition patterns and semantic motion tokens from
+[`Jakubantalik/transitions.dev`](https://github.com/Jakubantalik/transitions.dev), reviewed at commit `be0489a3ca29a533485a61153f9179d66d840b10`.
+
 ## MuscleMap
 
 Gym Lib's local React anatomy path data was converted from the Swift geometry in

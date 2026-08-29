@@ -5,7 +5,11 @@ import { useFilters } from "@/store/use-filters"
 describe("filter store", () => {
   beforeEach(() => {
     localStorage.clear()
-    useFilters.setState({ selectedMuscles: [], selectedEquipment: [] })
+    useFilters.setState({
+      selectedMuscles: [],
+      selectedEquipment: [],
+      equipmentPresets: [],
+    })
   })
 
   it("toggles and resets selections", () => {
@@ -29,7 +33,36 @@ describe("filter store", () => {
     expect(stored.state).toEqual({
       selectedMuscles: ["biceps"],
       selectedEquipment: ["dumbbell"],
+      equipmentPresets: [],
     })
+  })
+
+  it("creates, applies, updates, and deletes equipment presets", () => {
+    useFilters.getState().setEquipment(["dumbbell", "band"])
+    useFilters.getState().saveEquipmentPreset("Home")
+
+    const preset = useFilters.getState().equipmentPresets[0]
+    expect(preset).toMatchObject({
+      name: "Home",
+      equipment: ["dumbbell", "band"],
+    })
+
+    useFilters.getState().setEquipment(["barbell"])
+    useFilters.getState().applyEquipmentPreset(preset.id)
+    expect(useFilters.getState().selectedEquipment).toEqual([
+      "dumbbell",
+      "band",
+    ])
+
+    useFilters.getState().setEquipment(["kettlebell"])
+    useFilters.getState().saveEquipmentPreset("home")
+    expect(useFilters.getState().equipmentPresets).toHaveLength(1)
+    expect(useFilters.getState().equipmentPresets[0].equipment).toEqual([
+      "kettlebell",
+    ])
+
+    useFilters.getState().deleteEquipmentPreset(preset.id)
+    expect(useFilters.getState().equipmentPresets).toEqual([])
   })
 
   it("rehydrates stored selections", async () => {
@@ -39,6 +72,9 @@ describe("filter store", () => {
         state: {
           selectedMuscles: ["chest"],
           selectedEquipment: ["barbell"],
+          equipmentPresets: [
+            { id: "gym", name: "Gym", equipment: ["barbell"] },
+          ],
         },
         version: 0,
       })
@@ -47,5 +83,8 @@ describe("filter store", () => {
     await useFilters.persist.rehydrate()
     expect(useFilters.getState().selectedMuscles).toEqual(["chest"])
     expect(useFilters.getState().selectedEquipment).toEqual(["barbell"])
+    expect(useFilters.getState().equipmentPresets).toEqual([
+      { id: "gym", name: "Gym", equipment: ["barbell"] },
+    ])
   })
 })
