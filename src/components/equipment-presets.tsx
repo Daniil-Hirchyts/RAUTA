@@ -54,7 +54,7 @@ export function EquipmentPresets() {
   }
 
   return (
-    <div className="sticky top-3 z-20 mb-4 flex [scrollbar-width:none] gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
+    <div className="sticky top-0 z-20 mb-6 flex [scrollbar-width:none] gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
       <Dialog onOpenChange={setOpen} open={open}>
         <DialogTrigger
           aria-label="Save current selection as a preset"
