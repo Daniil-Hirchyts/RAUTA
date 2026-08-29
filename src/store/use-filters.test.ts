@@ -87,4 +87,34 @@ describe("filter store", () => {
       { id: "gym", name: "Gym", equipment: ["barbell"] },
     ])
   })
+
+  it("migrates and removes invalid persisted filter values", async () => {
+    localStorage.setItem(
+      "gym-lib-filters",
+      JSON.stringify({
+        state: {
+          selectedMuscles: ["chest", "not-a-muscle", "chest"],
+          selectedEquipment: ["barbell", "not-equipment", "barbell"],
+          equipmentPresets: [
+            {
+              id: "valid",
+              name: "  Garage  ",
+              equipment: ["dumbbell", "not-equipment"],
+            },
+            { id: "invalid", name: "Empty", equipment: ["unknown"] },
+          ],
+        },
+        version: 0,
+      })
+    )
+
+    await useFilters.persist.rehydrate()
+
+    expect(useFilters.persist.getOptions().version).toBe(1)
+    expect(useFilters.getState().selectedMuscles).toEqual(["chest"])
+    expect(useFilters.getState().selectedEquipment).toEqual(["barbell"])
+    expect(useFilters.getState().equipmentPresets).toEqual([
+      { id: "valid", name: "Garage", equipment: ["dumbbell"] },
+    ])
+  })
 })

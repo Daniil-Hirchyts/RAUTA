@@ -1,6 +1,9 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
+import { EQUIPMENT_OPTIONS } from "@/lib/exercises"
+import { isMuscleId } from "@/lib/muscles"
+import { isRecord, validUniqueStrings } from "@/store/persistence"
 import type { MuscleId } from "@/types"
 
 export type EquipmentPreset = {
@@ -22,6 +25,45 @@ export type FilterState = {
   reset: () => void
 }
 
+type PersistedFilterState = Pick<
+  FilterState,
+  "selectedMuscles" | "selectedEquipment" | "equipmentPresets"
+>
+
+const equipmentSet = new Set(EQUIPMENT_OPTIONS)
+
+function validEquipment(value: string) {
+  return equipmentSet.has(value)
+}
+
+function sanitizeFilterState(value: unknown): PersistedFilterState {
+  const state = isRecord(value) ? value : {}
+  const rawPresets = Array.isArray(state.equipmentPresets)
+    ? state.equipmentPresets
+    : []
+
+  const equipmentPresets = rawPresets.flatMap((value) => {
+    if (!isRecord(value)) return []
+    const id = typeof value.id === "string" ? value.id : ""
+    const name = typeof value.name === "string" ? value.name.trim() : ""
+    const equipment = validUniqueStrings(value.equipment, validEquipment)
+
+    return id && name && equipment.length > 0 ? [{ id, name, equipment }] : []
+  })
+
+  return {
+    selectedMuscles: validUniqueStrings(
+      state.selectedMuscles,
+      isMuscleId
+    ) as MuscleId[],
+    selectedEquipment: validUniqueStrings(
+      state.selectedEquipment,
+      validEquipment
+    ),
+    equipmentPresets,
+  }
+}
+
 function toggleValue<T>(values: T[], value: T) {
   return values.includes(value)
     ? values.filter((current) => current !== value)
@@ -29,7 +71,7 @@ function toggleValue<T>(values: T[], value: T) {
 }
 
 export const useFilters = create<FilterState>()(
-  persist(
+  persist<FilterState, [], [], PersistedFilterState>(
     (set) => ({
       selectedMuscles: [],
       selectedEquipment: [],
@@ -39,11 +81,18 @@ export const useFilters = create<FilterState>()(
           selectedMuscles: toggleValue(state.selectedMuscles, muscle),
         })),
       toggleEquipment: (equipment) =>
-        set((state) => ({
-          selectedEquipment: toggleValue(state.selectedEquipment, equipment),
-        })),
+        validEquipment(equipment)
+          ? set((state) => ({
+              selectedEquipment: toggleValue(
+                state.selectedEquipment,
+                equipment
+              ),
+            }))
+          : undefined,
       setEquipment: (equipment) =>
-        set({ selectedEquipment: [...new Set(equipment)] }),
+        set({
+          selectedEquipment: validUniqueStrings(equipment, validEquipment),
+        }),
       saveEquipmentPreset: (name) =>
         set((state) => {
           const normalizedName = name.trim()
@@ -90,6 +139,12 @@ export const useFilters = create<FilterState>()(
     }),
     {
       name: "gym-lib-filters",
+      version: 1,
+      migrate: (persistedState) => sanitizeFilterState(persistedState),
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...sanitizeFilterState(persistedState),
+      }),
       partialize: ({
         selectedMuscles,
         selectedEquipment,

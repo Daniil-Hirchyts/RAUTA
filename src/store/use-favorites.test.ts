@@ -20,9 +20,22 @@ describe("favorites store", () => {
 
   it("persists favorites to local storage", () => {
     useFavorites.getState().toggleFavorite("0002")
-    const stored = JSON.parse(
-      localStorage.getItem("gym-lib-favorites") ?? "{}"
-    )
+    const stored = JSON.parse(localStorage.getItem("gym-lib-favorites") ?? "{}")
     expect(stored.state.favoriteIds).toEqual(["0002"])
+  })
+
+  it("migrates and removes invalid persisted favorites", async () => {
+    localStorage.setItem(
+      "gym-lib-favorites",
+      JSON.stringify({
+        state: { favoriteIds: ["0001", "missing", "0001", 42] },
+        version: 0,
+      })
+    )
+
+    await useFavorites.persist.rehydrate()
+
+    expect(useFavorites.persist.getOptions().version).toBe(1)
+    expect(useFavorites.getState().favoriteIds).toEqual(["0001"])
   })
 })

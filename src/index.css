@@ -299,6 +299,11 @@
   will-change: transform, opacity, filter;
 }
 
+.exercise-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 224px;
+}
+
 .t-stagger-line--2 {
   transition-delay: var(--stagger-stagger);
 }
@@ -325,8 +330,11 @@
   border-radius: 999px;
   border: 1px solid var(--border);
   background: color-mix(in oklab, var(--card) 80%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* A strong blur smooths low-contrast backdrops (e.g. the dark equipment
+     photos) into flat color — visually identical to no blur at all. A
+     lighter radius actually reads as a frosted blur. */
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   padding-inline: 1.125rem;
   color: var(--muted-foreground);
   font-size: 0.9375rem;

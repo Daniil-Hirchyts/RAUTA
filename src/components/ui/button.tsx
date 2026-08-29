@@ -8,12 +8,19 @@ import { cn } from "@/lib/utils"
 // background is translucent — an opaque `bg-primary`/`bg-secondary` paints
 // completely over the blurred backdrop, hiding it regardless of how much
 // blur is applied. Every variant below keeps its background at partial
-// alpha (never fully solid) specifically so `backdrop-blur-md` actually
-// shows through, and disabled state lowers that alpha further rather than
+// alpha (never fully solid) specifically so the blur actually shows
+// through, and disabled state lowers that alpha further rather than
 // relying on the blanket `opacity` utility, which would just fade the
 // already-invisible blur along with everything else.
+//
+// Blur radius matters too: over small pill buttons sitting on top of low-
+// contrast photos (e.g. the dark equipment product shots), a strong blur
+// (12px/md) smooths thin details into the same flat tone as everything
+// around them — technically blurring, but visually indistinguishable from
+// no blur at all. A lighter radius (4px/sm) reads as an actual frosted
+// blur instead of erasing the backdrop — confirmed by direct A/B testing.
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-4xl border border-transparent bg-clip-padding text-sm font-semibold whitespace-nowrap backdrop-blur-md transition-all duration-150 outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 active:not-aria-[haspopup]:translate-y-px active:not-aria-[haspopup]:scale-[0.97] disabled:pointer-events-none aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-4xl border border-transparent bg-clip-padding text-sm font-semibold whitespace-nowrap backdrop-blur-sm transition-all duration-150 outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 active:not-aria-[haspopup]:translate-y-px active:not-aria-[haspopup]:scale-[0.97] disabled:pointer-events-none aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {

@@ -30,12 +30,14 @@ export function ExerciseCard({
 
   return (
     <article
-      className="t-stagger-line relative overflow-hidden rounded-[22px] border border-border bg-card/90 shadow-sm shadow-black/10 backdrop-blur-sm transition-transform duration-150 active:scale-[0.98]"
+      className="exercise-card t-stagger-line relative overflow-hidden rounded-[22px] border border-border bg-card/90 shadow-sm shadow-black/10 backdrop-blur-sm transition-transform duration-150 active:scale-[0.98]"
       style={{ transitionDelay: `${Math.min(index, 6) * 40}ms` }}
     >
       <div
         aria-label={
-          selectMode ? `Select ${exercise.name}` : `View ${exercise.name} details`
+          selectMode
+            ? `Select ${exercise.name}`
+            : `View ${exercise.name} details`
         }
         aria-pressed={selectMode ? selected : undefined}
         className="block w-full cursor-pointer text-left"
@@ -53,7 +55,9 @@ export function ExerciseCard({
           <img
             alt={`${exercise.name} demonstration`}
             className="h-full w-full object-contain mix-blend-screen"
+            decoding="async"
             draggable={false}
+            fetchPriority="low"
             loading="lazy"
             src={exerciseGif(exercise)}
             style={{ filter: EXERCISE_GIF_FILTER }}
@@ -75,7 +79,7 @@ export function ExerciseCard({
             : `Add ${exercise.name} to favorites`
         }
         aria-pressed={isFavorite}
-        className="absolute top-2.5 right-2.5 grid size-8 place-items-center rounded-full border border-white/10 bg-black/55 text-white backdrop-blur-md transition-transform duration-150 active:scale-90"
+        className="absolute top-2.5 right-2.5 grid size-8 place-items-center rounded-full border border-white/10 bg-black/55 text-white backdrop-blur-sm transition-transform duration-150 active:scale-90"
         onClick={(event) => {
           event.stopPropagation()
           toggleFavorite(exercise.id)
@@ -94,7 +98,7 @@ export function ExerciseCard({
         <div
           aria-hidden="true"
           className={cn(
-            "absolute top-2.5 left-2.5 grid size-8 place-items-center rounded-full border backdrop-blur-md transition-colors",
+            "absolute top-2.5 left-2.5 grid size-8 place-items-center rounded-full border backdrop-blur-sm transition-colors",
             selected
               ? "border-primary bg-primary text-primary-foreground"
               : "border-white/20 bg-black/55 text-transparent"
