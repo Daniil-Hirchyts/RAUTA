@@ -306,7 +306,7 @@ export function App() {
                             src={equipmentImage(equipment)}
                           />
                         </span>
-                        <span className="flex min-h-13 items-center px-3.5 py-3 text-base leading-tight font-semibold">
+                        <span className="flex min-h-13 items-center justify-center px-3.5 py-3 text-center text-base leading-tight font-semibold">
                           {titleCase(equipment)}
                         </span>
                         <span className="absolute top-2.5 right-2.5 grid size-7 place-items-center rounded-full border border-white/10 bg-black/55 text-primary backdrop-blur-sm">
@@ -325,30 +325,33 @@ export function App() {
                 data-page-id="3"
                 inert={stage !== 3}
               >
-                <div
-                  className="t-stagger is-shown grid grid-cols-2 gap-3.5"
-                  data-testid="exercise-results"
-                >
-                  {visibleExercises.map((exercise, index) => (
-                    <ExerciseCard
-                      exercise={exercise}
-                      index={index}
-                      key={exercise.id}
-                      onOpenDetail={openDetail}
-                      onToggleSelect={toggleSelected}
-                      selectMode={selectMode}
-                      selected={selectedIds.includes(exercise.id)}
-                    />
-                  ))}
-                  {visibleExercises.length === 0 && (
-                    <div className="col-span-2 flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/70 px-4 py-12 text-center backdrop-blur-sm">
-                      <SearchX className="size-6 text-muted-foreground/60" />
-                      <p className="text-base text-muted-foreground">
-                        0 exercises
-                      </p>
-                    </div>
-                  )}
-                </div>
+                {visibleExercises.length === 0 ? (
+                  <div className="flex h-full min-h-[20rem] flex-col items-center justify-center gap-3 text-center">
+                    <SearchX className="size-7 text-muted-foreground/60" />
+                    <p className="max-w-[16rem] text-base text-muted-foreground">
+                      {favoritesOnly
+                        ? "No favorites yet. Tap the heart on an exercise to save it here."
+                        : "0 exercises"}
+                    </p>
+                  </div>
+                ) : (
+                  <div
+                    className="t-stagger is-shown grid grid-cols-2 gap-3.5"
+                    data-testid="exercise-results"
+                  >
+                    {visibleExercises.map((exercise, index) => (
+                      <ExerciseCard
+                        exercise={exercise}
+                        index={index}
+                        key={exercise.id}
+                        onOpenDetail={openDetail}
+                        onToggleSelect={toggleSelected}
+                        selectMode={selectMode}
+                        selected={selectedIds.includes(exercise.id)}
+                      />
+                    ))}
+                  </div>
+                )}
                 {visibleExercises.length > 0 && (
                   <p className="mt-4 text-center text-xs text-muted-foreground/70">
                     Exercise animations © Gym visual —{" "}
@@ -391,23 +394,22 @@ export function App() {
                 ) : (
                   <>
                     {stage > 1 && (
-                      <Button
+                      <button
                         aria-label={
                           stage === 3 && favoritesOnly
                             ? "Back to all exercises"
                             : "Previous stage"
                         }
-                        className="size-[3.25rem] shrink-0 rounded-[26px]"
+                        className="grid size-[3.25rem] shrink-0 place-items-center rounded-[26px] border border-border bg-card/70 text-muted-foreground backdrop-blur-sm transition-transform duration-150 active:scale-95"
                         onClick={() =>
                           stage === 3 && favoritesOnly
                             ? setFavoritesOnly(false)
                             : goBack()
                         }
-                        size="icon"
-                        variant="secondary"
+                        type="button"
                       >
-                        <ChevronLeft />
-                      </Button>
+                        <ChevronLeft className="size-5" />
+                      </button>
                     )}
                     {stage === 3 && (
                       <button

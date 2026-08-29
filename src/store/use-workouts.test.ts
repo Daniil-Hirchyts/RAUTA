@@ -61,9 +61,7 @@ describe("workouts store", () => {
     expect(copyId).not.toBe(id)
     expect(useWorkouts.getState().workouts).toHaveLength(2)
 
-    const copy = useWorkouts
-      .getState()
-      .workouts.find((w) => w.id === copyId)
+    const copy = useWorkouts.getState().workouts.find((w) => w.id === copyId)
     expect(copy?.name).toBe("Push day copy")
     expect(copy?.exerciseIds).toEqual(["0001", "0002"])
     expect(copy?.date).toBe("2026-09-01")
@@ -71,5 +69,41 @@ describe("workouts store", () => {
 
   it("returns null when duplicating a missing workout", () => {
     expect(useWorkouts.getState().duplicateWorkout("missing")).toBeNull()
+  })
+
+  it("migrates and sanitizes persisted workouts", async () => {
+    localStorage.setItem(
+      "gym-lib-workouts",
+      JSON.stringify({
+        state: {
+          workouts: [
+            {
+              id: "valid",
+              name: "  Training  ",
+              date: "2026-09-01",
+              exerciseIds: ["0001", "missing", "0001"],
+              createdAt: "2026-08-01T00:00:00.000Z",
+              updatedAt: "2026-08-01T00:00:00.000Z",
+            },
+            { id: "missing-date", exerciseIds: ["0001"] },
+          ],
+        },
+        version: 0,
+      })
+    )
+
+    await useWorkouts.persist.rehydrate()
+
+    expect(useWorkouts.persist.getOptions().version).toBe(1)
+    expect(useWorkouts.getState().workouts).toEqual([
+      {
+        id: "valid",
+        name: "Training",
+        date: "2026-09-01",
+        exerciseIds: ["0001"],
+        createdAt: "2026-08-01T00:00:00.000Z",
+        updatedAt: "2026-08-01T00:00:00.000Z",
+      },
+    ])
   })
 })

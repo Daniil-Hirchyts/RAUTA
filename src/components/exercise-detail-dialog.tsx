@@ -37,7 +37,9 @@ export function ExerciseDetailDialog({
           <img
             alt={`${exercise.name} demonstration`}
             className="h-full w-full object-contain mix-blend-screen"
+            decoding="async"
             draggable={false}
+            fetchPriority="high"
             src={exerciseGif(exercise)}
             style={{ filter: EXERCISE_GIF_FILTER }}
           />

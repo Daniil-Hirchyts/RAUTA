@@ -1,6 +1,9 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
+import { EXERCISES_BY_ID } from "@/lib/exercises"
+import { isRecord, validString, validUniqueStrings } from "@/store/persistence"
+
 export type Workout = {
   id: string
   name: string
@@ -25,12 +28,42 @@ export type WorkoutsState = {
   duplicateWorkout: (id: string) => string | null
 }
 
+type PersistedWorkoutsState = Pick<WorkoutsState, "workouts">
+
+function sanitizeWorkoutsState(value: unknown): PersistedWorkoutsState {
+  const state = isRecord(value) ? value : {}
+  const rawWorkouts = Array.isArray(state.workouts) ? state.workouts : []
+
+  return {
+    workouts: rawWorkouts.flatMap((value) => {
+      if (!isRecord(value)) return []
+
+      const id = validString(value.id)
+      const date = validString(value.date)
+      if (!id || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return []
+
+      return [
+        {
+          id,
+          name: validString(value.name, "Workout").trim() || "Workout",
+          date,
+          exerciseIds: validUniqueStrings(value.exerciseIds, (exerciseId) =>
+            EXERCISES_BY_ID.has(exerciseId)
+          ),
+          createdAt: validString(value.createdAt),
+          updatedAt: validString(value.updatedAt),
+        },
+      ]
+    }),
+  }
+}
+
 function makeId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
 export const useWorkouts = create<WorkoutsState>()(
-  persist(
+  persist<WorkoutsState, [], [], PersistedWorkoutsState>(
     (set, get) => ({
       workouts: [],
       createWorkout: ({ name, date, exerciseIds }) => {
@@ -80,6 +113,15 @@ export const useWorkouts = create<WorkoutsState>()(
         return newId
       },
     }),
-    { name: "gym-lib-workouts" }
+    {
+      name: "gym-lib-workouts",
+      version: 1,
+      migrate: (persistedState) => sanitizeWorkoutsState(persistedState),
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...sanitizeWorkoutsState(persistedState),
+      }),
+      partialize: ({ workouts }) => ({ workouts }),
+    }
   )
 )

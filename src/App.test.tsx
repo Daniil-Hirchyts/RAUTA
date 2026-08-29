@@ -75,7 +75,10 @@ describe("App", () => {
     )
     const results = screen.getByTestId("exercise-results")
     expect(results.querySelectorAll("article")).toHaveLength(expected.length)
-    expect(results.querySelector("img[src^='/assets/exercises/']")).toBeTruthy()
+    const image = results.querySelector("img[src^='/assets/exercises/']")
+    expect(image).toHaveAttribute("loading", "lazy")
+    expect(image).toHaveAttribute("decoding", "async")
+    expect(image).toHaveAttribute("fetchpriority", "low")
   })
 
   it("renders the zero-results state", async () => {

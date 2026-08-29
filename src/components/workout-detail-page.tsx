@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { ChevronLeft, Copy, Pencil, Trash2 } from "lucide-react"
 
 import { ExerciseCard } from "@/components/exercise-card"
@@ -28,8 +29,11 @@ export function WorkoutDetailPage({
   const duplicateWorkout = useWorkouts((state) => state.duplicateWorkout)
   const deleteWorkout = useWorkouts((state) => state.deleteWorkout)
 
+  useEffect(() => {
+    if (!workout) onBack()
+  }, [onBack, workout])
+
   if (!workout) {
-    onBack()
     return null
   }
 

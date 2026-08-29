@@ -61,7 +61,7 @@ export function EquipmentPresets() {
           disabled={selectedEquipment.length === 0}
           render={
             <button
-              className="grid size-10 shrink-0 place-items-center rounded-full border border-border bg-card/70 text-foreground backdrop-blur-md transition-transform duration-150 active:scale-90 disabled:bg-card/25 disabled:text-foreground/35"
+              className="grid size-10 shrink-0 place-items-center rounded-full border border-border bg-card/70 text-foreground backdrop-blur-sm transition-transform duration-150 active:scale-90 disabled:bg-card/25 disabled:text-foreground/35"
               type="button"
             />
           }
@@ -111,7 +111,7 @@ export function EquipmentPresets() {
       ))}
       {presets.map((preset) => (
         <div
-          className="flex shrink-0 items-center rounded-full bg-card/80 ring-1 ring-border backdrop-blur-md"
+          className="flex shrink-0 items-center rounded-full bg-card/80 ring-1 ring-border backdrop-blur-sm"
           key={preset.id}
         >
           <button
