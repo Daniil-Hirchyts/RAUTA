@@ -54,14 +54,14 @@ export function EquipmentPresets() {
   }
 
   return (
-    <div className="sticky top-0 z-10 -mx-5 -mt-5 mb-7 flex gap-2 overflow-x-auto px-5 pt-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="-mx-5 mt-3 flex [scrollbar-width:none] gap-2 overflow-x-auto px-5 pb-1 [&::-webkit-scrollbar]:hidden">
       <Dialog onOpenChange={setOpen} open={open}>
         <DialogTrigger
           aria-label="Save current selection as a preset"
           disabled={selectedEquipment.length === 0}
           render={
             <button
-              className="grid size-10 shrink-0 place-items-center rounded-full border border-border bg-card/70 text-foreground backdrop-blur-sm transition-transform duration-150 active:scale-90 disabled:bg-card/25 disabled:text-foreground/35"
+              className="grid size-10 shrink-0 place-items-center rounded-full border border-white/10 bg-card/50 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl transition-transform duration-150 active:scale-90 disabled:bg-card/25 disabled:text-foreground/35"
               type="button"
             />
           }
@@ -111,7 +111,7 @@ export function EquipmentPresets() {
       ))}
       {presets.map((preset) => (
         <div
-          className="flex shrink-0 items-center rounded-full bg-card/80 ring-1 ring-border backdrop-blur-sm"
+          className="flex shrink-0 items-center rounded-full bg-card/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] ring-1 ring-white/10 backdrop-blur-xl"
           key={preset.id}
         >
           <button

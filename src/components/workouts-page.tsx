@@ -35,9 +35,9 @@ export function WorkoutsPage({
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-5 pt-5 pb-5">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5">
         {sorted.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
             <CalendarDays className="size-7 text-muted-foreground/60" />
             <p className="max-w-[24rem] text-base text-muted-foreground">
               No workouts yet. Select exercises on the Exercises step and tap

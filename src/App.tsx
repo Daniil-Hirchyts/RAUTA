@@ -4,9 +4,9 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Eraser,
   Heart,
   ListPlus,
-  RotateCcw,
   SearchX,
   X,
 } from "lucide-react"
@@ -209,22 +209,22 @@ export function App() {
                 <div className="flex items-center gap-1.5">
                   <Button
                     aria-label="My workouts"
-                    className="rounded-full text-muted-foreground hover:text-foreground"
+                    className="rounded-full bg-card/35 text-muted-foreground backdrop-blur-xl hover:text-foreground"
                     onClick={() => setView({ type: "workouts" })}
-                    size="icon"
+                    size="icon-lg"
                     variant="ghost"
                   >
-                    <CalendarDays />
+                    <CalendarDays className="size-5.5" />
                   </Button>
                   {hasFilters && (
                     <Button
                       aria-label="Reset selections"
-                      className="rounded-full text-muted-foreground hover:text-foreground"
+                      className="rounded-full bg-card/35 text-muted-foreground backdrop-blur-xl hover:text-foreground"
                       onClick={resetFlow}
-                      size="icon"
+                      size="icon-lg"
                       variant="ghost"
                     >
-                      <RotateCcw />
+                      <Eraser className="size-5.5" />
                     </Button>
                   )}
                 </div>
@@ -255,6 +255,7 @@ export function App() {
                   )}
                 </output>
               </div>
+              {stage === 2 && <EquipmentPresets />}
             </header>
 
             <div className="t-page-slide min-h-0 flex-1" data-page={stage}>
@@ -280,7 +281,6 @@ export function App() {
                 data-page-id="2"
                 inert={stage !== 2}
               >
-                <EquipmentPresets />
                 <div className="grid grid-cols-2 gap-3">
                   {EQUIPMENT_OPTIONS.map((equipment) => {
                     const checked = selectedEquipment.includes(equipment)
@@ -428,7 +428,9 @@ export function App() {
                         type="button"
                       >
                         <Heart
-                          className={favoritesOnly ? "size-5 fill-primary" : "size-5"}
+                          className={
+                            favoritesOnly ? "size-5 fill-primary" : "size-5"
+                          }
                         />
                       </button>
                     )}
