@@ -30,3 +30,4 @@ venv
 *.njsproj
 *.sln
 *.sw?
+.env*
