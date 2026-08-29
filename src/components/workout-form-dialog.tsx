@@ -3,13 +3,19 @@ import { CalendarDays, Trash2, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
-import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { EXERCISES_BY_ID } from "@/lib/exercises"
+import { triggerHaptic } from "@/lib/haptics"
 import { formatDateLong, toISODate } from "@/lib/date"
 import { useWorkouts, type Workout } from "@/store/use-workouts"
 
@@ -67,6 +73,7 @@ function WorkoutForm({
       const id = createWorkout({ name: "", date, exerciseIds })
       onSaved?.(id)
     }
+    triggerHaptic("success")
     onOpenChange(false)
   }
 
@@ -140,6 +147,7 @@ function WorkoutForm({
             <Button
               className="h-12 w-full rounded-2xl text-base"
               onClick={() => {
+                triggerHaptic("warning")
                 deleteWorkout(workout.id)
                 onOpenChange(false)
               }}

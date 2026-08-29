@@ -22,12 +22,13 @@ import { WorkoutDetailPage } from "@/components/workout-detail-page"
 import { WorkoutFormDialog } from "@/components/workout-form-dialog"
 import { WorkoutsPage } from "@/components/workouts-page"
 import { EQUIPMENT_OPTIONS, EXERCISES, filterExercises } from "@/lib/exercises"
+import { triggerHaptic } from "@/lib/haptics"
 import { titleCase } from "@/lib/text"
 import { equipmentImage } from "@/lib/visuals"
 import { useFavorites } from "@/store/use-favorites"
 import { useFilters } from "@/store/use-filters"
 import type { Workout } from "@/store/use-workouts"
-import type { ExerciseSummary } from "@/types"
+import type { ExerciseSummary, MuscleId } from "@/types"
 
 type Stage = 1 | 2 | 3
 
@@ -112,25 +113,45 @@ export function App() {
     stage === 1 ? selectedMuscles.length > 0 : selectedEquipment.length > 0
   const hasFilters = selectedMuscles.length > 0 || selectedEquipment.length > 0
 
-  const goForward = () =>
+  const goForward = () => {
+    triggerHaptic("medium")
     setStage((current) => Math.min(3, current + 1) as Stage)
-  const goBack = () => setStage((current) => Math.max(1, current - 1) as Stage)
+  }
+  const goBack = () => {
+    triggerHaptic("medium")
+    setStage((current) => Math.max(1, current - 1) as Stage)
+  }
   const resetFlow = () => {
+    triggerHaptic("warning")
     reset()
     setStage(1)
   }
 
+  const toggleMuscleWithHaptic = (muscle: MuscleId) => {
+    triggerHaptic("selection")
+    toggleMuscle(muscle)
+  }
+
+  const toggleEquipmentWithHaptic = (equipment: string) => {
+    triggerHaptic("selection")
+    toggleEquipment(equipment)
+  }
+
   const openDetail = (exercise: ExerciseSummary) => {
+    triggerHaptic("light")
     setDetailExercise(exercise)
     setDetailOpen(true)
   }
 
-  const toggleSelected = (id: string) =>
+  const toggleSelected = (id: string) => {
+    triggerHaptic("selection")
     setSelectedIds((ids) =>
       ids.includes(id) ? ids.filter((current) => current !== id) : [...ids, id]
     )
+  }
 
   const cancelSelectMode = () => {
+    triggerHaptic("selection")
     setSelectMode(false)
     setSelectedIds([])
   }
@@ -155,6 +176,15 @@ export function App() {
   }
 
   const editWorkout = (workout: Workout) => openWorkoutForm({ workout })
+
+  const goBackOrCloseFavorites = () => {
+    if (stage === 3 && favoritesOnly) {
+      triggerHaptic("selection")
+      setFavoritesOnly(false)
+      return
+    }
+    goBack()
+  }
 
   return (
     <div className="min-h-svh bg-[#0e0e0f] text-foreground">
@@ -210,7 +240,10 @@ export function App() {
                   <Button
                     aria-label="My workouts"
                     className="rounded-full bg-card/35 text-muted-foreground backdrop-blur-xl hover:text-foreground"
-                    onClick={() => setView({ type: "workouts" })}
+                    onClick={() => {
+                      triggerHaptic("medium")
+                      setView({ type: "workouts" })
+                    }}
                     size="icon-lg"
                     variant="ghost"
                   >
@@ -267,7 +300,7 @@ export function App() {
               >
                 <div className="h-full min-h-0 rounded-[28px] border border-border bg-card/60 px-4 pt-5 pb-4 shadow-[0_18px_40px_rgba(0,0,0,0.16)] backdrop-blur-xl">
                   <BodyMap
-                    onToggle={toggleMuscle}
+                    onToggle={toggleMuscleWithHaptic}
                     selectedMuscles={selectedMuscles}
                   />
                 </div>
@@ -293,7 +326,7 @@ export function App() {
                             : "border-border bg-card/70 backdrop-blur-sm"
                         }`}
                         key={equipment}
-                        onClick={() => toggleEquipment(equipment)}
+                        onClick={() => toggleEquipmentWithHaptic(equipment)}
                         role="checkbox"
                         type="button"
                       >
@@ -401,11 +434,7 @@ export function App() {
                             : "Previous stage"
                         }
                         className="grid size-[3.25rem] shrink-0 place-items-center rounded-[26px] border border-border bg-card/70 text-muted-foreground backdrop-blur-sm transition-transform duration-150 active:scale-95"
-                        onClick={() =>
-                          stage === 3 && favoritesOnly
-                            ? setFavoritesOnly(false)
-                            : goBack()
-                        }
+                        onClick={goBackOrCloseFavorites}
                         type="button"
                       >
                         <ChevronLeft className="size-5" />
@@ -424,7 +453,10 @@ export function App() {
                             ? "border-primary/70 bg-primary/10 text-primary"
                             : "border-border bg-card/70 text-muted-foreground"
                         }`}
-                        onClick={() => setFavoritesOnly((value) => !value)}
+                        onClick={() => {
+                          triggerHaptic("selection")
+                          setFavoritesOnly((value) => !value)
+                        }}
                         type="button"
                       >
                         <Heart
@@ -446,7 +478,10 @@ export function App() {
                     ) : (
                       <Button
                         className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
-                        onClick={() => setSelectMode(true)}
+                        onClick={() => {
+                          triggerHaptic("medium")
+                          setSelectMode(true)
+                        }}
                       >
                         Select
                       </Button>

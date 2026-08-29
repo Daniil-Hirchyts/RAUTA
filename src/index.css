@@ -243,7 +243,8 @@
   opacity: 1;
   pointer-events: auto;
   transform: translateX(0);
-  filter: blur(0);
+  filter: none;
+  will-change: opacity, transform;
   transition-delay: var(--page-stagger);
 }
 

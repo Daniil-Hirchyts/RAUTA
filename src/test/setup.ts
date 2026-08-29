@@ -1,8 +1,16 @@
 import "@testing-library/jest-dom/vitest"
 import { cleanup } from "@testing-library/react"
-import { afterEach } from "vitest"
+import { afterEach, vi } from "vitest"
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  vi.clearAllMocks()
+})
+
+Object.defineProperty(navigator, "vibrate", {
+  configurable: true,
+  value: vi.fn(() => true),
+})
 
 const storage = new Map<string, string>()
 const localStorageStub: Storage = {

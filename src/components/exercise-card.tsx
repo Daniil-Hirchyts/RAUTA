@@ -1,5 +1,6 @@
 import { Check, Heart } from "lucide-react"
 
+import { triggerHaptic } from "@/lib/haptics"
 import { cn } from "@/lib/utils"
 import { EXERCISE_ANIMATION_FILTER, exerciseAnimation } from "@/lib/visuals"
 import { useFavorites } from "@/store/use-favorites"
@@ -82,6 +83,7 @@ export function ExerciseCard({
         className="absolute top-2.5 right-2.5 grid size-8 place-items-center rounded-full border border-white/10 bg-black/55 text-white backdrop-blur-sm transition-transform duration-150 active:scale-90"
         onClick={(event) => {
           event.stopPropagation()
+          triggerHaptic("selection")
           toggleFavorite(exercise.id)
         }}
         type="button"
