@@ -276,7 +276,7 @@ export function App() {
               <section
                 aria-hidden={stage !== 2}
                 aria-label="Choose equipment"
-                className="t-page overflow-y-auto px-5 pt-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
+                className="t-page overflow-y-auto px-5 pt-2 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
                 data-page-id="2"
                 inert={stage !== 2}
               >
