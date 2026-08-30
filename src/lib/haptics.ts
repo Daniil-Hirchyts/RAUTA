@@ -48,7 +48,16 @@ export function installDirectTouchTarget(
   switchInput.setAttribute("aria-hidden", "true")
   switchInput.tabIndex = -1
   switchInput.style.pointerEvents = "auto"
-  switchInput.style.touchAction = "pan-y"
+  // Keep "manipulation" (ios-haptics' own default, which we'd otherwise be
+  // overriding): it permits scrolling in both axes while telling Safari
+  // there's no double-tap-to-zoom to wait for, so a tap fires its click
+  // immediately. A narrower value like "pan-y" reintroduces that
+  // ambiguity — Safari then waits to see whether the gesture becomes a
+  // scroll before committing to a click, and on this full-figure overlay
+  // (which swallows every touch under it) that wait routinely eats the tap
+  // outright, so muscles stop responding to touch while mouse clicks on
+  // desktop are unaffected.
+  switchInput.style.touchAction = "manipulation"
 
   const handleClick = (event: MouseEvent) => {
     event.stopPropagation()
