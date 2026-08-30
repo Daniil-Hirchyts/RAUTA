@@ -1,0 +1,17 @@
+{
+  "name": "Gym Lib — Exercise Finder",
+  "short_name": "Gym Lib",
+  "description": "Choose muscles and equipment. Find matching exercises.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#171718",
+  "theme_color": "#171718",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

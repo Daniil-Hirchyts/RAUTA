@@ -7,9 +7,50 @@ export const EXERCISES_BY_ID = new Map(
   EXERCISES.map((exercise) => [exercise.id, exercise])
 )
 
+// A deliberately editorial popularity order for a general gym audience.
+// This is product logic, not analytics: common, versatile equipment appears
+// first and specialist/cardio accessories progressively follow.
+const EQUIPMENT_POPULARITY = [
+  "body weight",
+  "dumbbell",
+  "barbell",
+  "cable",
+  "kettlebell",
+  "resistance band",
+  "band",
+  "smith machine",
+  "leverage machine",
+  "assisted",
+  "stability ball",
+  "medicine ball",
+  "ez barbell",
+  "olympic barbell",
+  "weighted",
+  "rope",
+  "sled machine",
+  "stationary bike",
+  "elliptical machine",
+  "stepmill machine",
+  "skierg machine",
+  "trap bar",
+  "bosu ball",
+  "roller",
+  "wheel roller",
+  "tire",
+  "hammer",
+  "upper body ergometer",
+] as const
+
+const availableEquipment = new Set(
+  EXERCISES.map((exercise) => exercise.equipment)
+)
+
 export const EQUIPMENT_OPTIONS = [
-  ...new Set(EXERCISES.map((exercise) => exercise.equipment)),
-].sort((left, right) => left.localeCompare(right))
+  ...EQUIPMENT_POPULARITY.filter((equipment) =>
+    availableEquipment.delete(equipment)
+  ),
+  ...[...availableEquipment].sort((left, right) => left.localeCompare(right)),
+]
 
 export function orderedMuscles(exercise: ExerciseSummary) {
   const muscles: MuscleId[] = []

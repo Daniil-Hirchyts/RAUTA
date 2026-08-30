@@ -1,10 +1,12 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { ChevronLeft, Copy, Pencil, Trash2 } from "lucide-react"
 
+import { DeleteWorkoutConfirmation } from "@/components/delete-workout-confirmation"
 import { ExerciseCard } from "@/components/exercise-card"
 import { Button } from "@/components/ui/button"
 import { EXERCISES_BY_ID } from "@/lib/exercises"
 import { formatDateLong } from "@/lib/date"
+import { triggerHaptic } from "@/lib/haptics"
 import { useWorkouts, type Workout } from "@/store/use-workouts"
 import type { ExerciseSummary } from "@/types"
 
@@ -28,6 +30,7 @@ export function WorkoutDetailPage({
   )
   const duplicateWorkout = useWorkouts((state) => state.duplicateWorkout)
   const deleteWorkout = useWorkouts((state) => state.deleteWorkout)
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   useEffect(() => {
     if (!workout) onBack()
@@ -78,8 +81,8 @@ export function WorkoutDetailPage({
               aria-label="Delete workout"
               className="text-destructive hover:text-destructive"
               onClick={() => {
-                deleteWorkout(workout.id)
-                onDeleted()
+                triggerHaptic("warning")
+                setDeleteOpen(true)
               }}
               size="icon"
               variant="ghost"
@@ -116,6 +119,15 @@ export function WorkoutDetailPage({
           </div>
         )}
       </div>
+
+      <DeleteWorkoutConfirmation
+        onConfirm={() => {
+          deleteWorkout(workout.id)
+          onDeleted()
+        }}
+        onOpenChange={setDeleteOpen}
+        open={deleteOpen}
+      />
     </>
   )
 }

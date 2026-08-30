@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { EXERCISES, filterExercises } from "@/lib/exercises"
+import { EQUIPMENT_OPTIONS, EXERCISES, filterExercises } from "@/lib/exercises"
 import type { ExerciseSummary } from "@/types"
 
 const fixture: ExerciseSummary[] = [
@@ -45,6 +45,17 @@ describe("exercise data", () => {
         left.name.localeCompare(right.name) || left.id.localeCompare(right.id)
     )
     expect(EXERCISES).toEqual(sorted)
+  })
+
+  it("orders equipment by editorial popularity", () => {
+    expect(EQUIPMENT_OPTIONS.slice(0, 5)).toEqual([
+      "body weight",
+      "dumbbell",
+      "barbell",
+      "cable",
+      "kettlebell",
+    ])
+    expect(new Set(EQUIPMENT_OPTIONS).size).toBe(EQUIPMENT_OPTIONS.length)
   })
 })
 

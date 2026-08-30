@@ -134,11 +134,11 @@ export function BodyMap(props: BodyMapProps) {
     <div className="flex h-full min-h-0 w-full flex-col">
       <div className="mb-3 flex shrink-0 items-center justify-between">
         <p className="text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase">
-          {label} view
+          {label}
         </p>
         <button
-          aria-label={`Show ${side === "front" ? "back" : "front"} view`}
-          className="grid size-10 place-items-center rounded-full border border-border bg-card/70 text-foreground backdrop-blur-sm transition-transform duration-150 active:scale-90"
+          aria-label={`Show ${side === "front" ? "back" : "front"}`}
+          className="grid size-10 place-items-center rounded-full border border-border bg-card text-foreground transition-colors duration-150 hover:bg-muted active:bg-muted"
           onClick={flipSide}
           type="button"
         >
@@ -147,6 +147,7 @@ export function BodyMap(props: BodyMapProps) {
       </div>
       <div
         className="t-flip min-h-0 w-full flex-1 touch-pan-y"
+        data-swipe-ignore
         key={side}
         onPointerCancel={() => {
           swipeStartX.current = null

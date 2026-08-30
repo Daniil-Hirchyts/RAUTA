@@ -36,6 +36,12 @@ describe("EquipmentPresets", () => {
     await user.click(
       screen.getByRole("button", { name: "Save current selection as a preset" })
     )
+    expect(
+      document.querySelector("[data-slot='drawer-swipe-handle']")
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "Close drawer" })
+    ).toBeInTheDocument()
     await user.type(screen.getByLabelText("Preset name"), "Travel")
     await user.click(screen.getByRole("button", { name: "Save preset" }))
 

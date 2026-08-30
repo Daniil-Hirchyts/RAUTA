@@ -1,26 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
   CalendarDays,
-  Check,
   ChevronLeft,
-  ChevronRight,
   Eraser,
-  Heart,
-  ListPlus,
   SearchX,
   X,
 } from "lucide-react"
 
 import { AnimatedNumber } from "@/components/animated-number"
+import { AnimatedCheck } from "@/components/animated-check"
 import { BodyMap } from "@/components/body-map"
 import { EquipmentPresets } from "@/components/equipment-presets"
 import { ExerciseCard } from "@/components/exercise-card"
-import { ExerciseDetailDialog } from "@/components/exercise-detail-dialog"
+import { ExerciseDetailDrawer } from "@/components/exercise-detail-drawer"
+import { HapticLayer } from "@/components/haptic-layer"
+import { LikeButton } from "@/components/like-button"
 import { SvgFilterDefs } from "@/components/svg-filters"
 import { Button } from "@/components/ui/button"
+import { DotPattern } from "@/components/ui/dot-pattern"
+import { ProgressiveBlur } from "@/components/ui/progressive-blur"
 import { WorkoutDetailPage } from "@/components/workout-detail-page"
-import { WorkoutFormDialog } from "@/components/workout-form-dialog"
+import { WorkoutFormDrawer } from "@/components/workout-form-drawer"
 import { WorkoutsPage } from "@/components/workouts-page"
+import { useSwipeNavigation } from "@/hooks/use-swipe-navigation"
 import { EQUIPMENT_OPTIONS, EXERCISES, filterExercises } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
 import { titleCase } from "@/lib/text"
@@ -44,24 +46,47 @@ const STAGE_LABELS: Record<Stage, string> = {
 }
 
 function StageHeading({ stage }: { stage: Stage }) {
-  const ref = useRef<HTMLDivElement>(null)
+  const [initialStage] = useState(stage)
+  const elementRef = useRef<HTMLDivElement>(null)
+  const displayedStage = useRef(stage)
 
   useEffect(() => {
-    const element = ref.current
+    if (stage === displayedStage.current) return
+    const element = elementRef.current
     if (!element) return
-    element.classList.remove("is-shown")
-    void element.offsetHeight
-    const frame = requestAnimationFrame(() => element.classList.add("is-shown"))
-    return () => cancelAnimationFrame(frame)
+    const step = element.querySelector<HTMLElement>("[data-stage-step]")
+    const title = element.querySelector<HTMLElement>("[data-stage-title]")
+    if (!step || !title) return
+
+    element.classList.add("is-exit")
+    const reduceMotion = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)"
+    ).matches
+    const timeout = window.setTimeout(() => {
+      displayedStage.current = stage
+      step.textContent = `${stage} / 3`
+      title.textContent = STAGE_LABELS[stage]
+      element.classList.remove("is-exit")
+      element.classList.add("is-enter-start")
+      void element.offsetHeight
+      element.classList.remove("is-enter-start")
+    }, reduceMotion ? 0 : 150)
+    return () => window.clearTimeout(timeout)
   }, [stage])
 
   return (
-    <div className="t-stagger" ref={ref}>
-      <p className="t-stagger-line t-stagger-line--1 text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase">
-        {stage} / 3
+    <div className="t-text-swap" ref={elementRef}>
+      <p
+        className="text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase"
+        data-stage-step
+      >
+        {initialStage} / 3
       </p>
-      <h1 className="t-stagger-line t-stagger-line--2 mt-0.5 bg-gradient-to-r from-foreground to-foreground/75 bg-clip-text text-[32px] leading-[1.05] font-black tracking-[-0.03em] text-transparent">
-        {STAGE_LABELS[stage]}
+      <h1
+        className="mt-0.5 text-[32px] leading-[1.05] font-black tracking-[-0.03em] text-foreground"
+        data-stage-title
+      >
+        {STAGE_LABELS[initialStage]}
       </h1>
     </div>
   )
@@ -71,6 +96,7 @@ export function App() {
   const [view, setView] = useState<View>({ type: "flow" })
   const [stage, setStage] = useState<Stage>(1)
   const selectedMuscles = useFilters((state) => state.selectedMuscles)
+  const muscleDotIntensity = Math.min(selectedMuscles.length / 6, 1)
   const selectedEquipment = useFilters((state) => state.selectedEquipment)
   const toggleMuscle = useFilters((state) => state.toggleMuscle)
   const toggleEquipment = useFilters((state) => state.toggleEquipment)
@@ -87,9 +113,9 @@ export function App() {
   const [detailOpen, setDetailOpen] = useState(false)
 
   const [workoutFormOpen, setWorkoutFormOpen] = useState(false)
-  // Bumped on every "open the workout form" action so the dialog remounts
+  // Bumped on every "open the workout form" action so the drawer remounts
   // with clean local state instead of reusing whatever was left over from
-  // the previous time it was open (see WorkoutFormDialog).
+  // the previous time it was open (see WorkoutFormDrawer).
   const [workoutFormGeneration, setWorkoutFormGeneration] = useState(0)
   const [workoutFormSeed, setWorkoutFormSeed] = useState<{
     workout?: Workout | null
@@ -177,19 +203,37 @@ export function App() {
 
   const editWorkout = (workout: Workout) => openWorkoutForm({ workout })
 
-  const goBackOrCloseFavorites = () => {
-    if (stage === 3 && favoritesOnly) {
-      triggerHaptic("selection")
-      setFavoritesOnly(false)
+  const swipeNavigation = useSwipeNavigation((direction) => {
+    if (direction === "right") {
+      if (view.type === "workout-detail") {
+        triggerHaptic("medium")
+        setView({ type: "workouts" })
+        return
+      }
+      if (view.type === "workouts") {
+        triggerHaptic("medium")
+        setView({ type: "flow" })
+        return
+      }
+      if (selectMode) {
+        cancelSelectMode()
+        return
+      }
+      if (stage > 1) goBack()
       return
     }
-    goBack()
-  }
+
+    if (view.type === "flow" && stage < 3 && canContinue) goForward()
+  })
 
   return (
     <div className="min-h-svh bg-[#0e0e0f] text-foreground">
+      <HapticLayer />
       <SvgFilterDefs />
-      <main className="relative mx-auto flex h-svh w-full max-w-[430px] flex-col overflow-hidden border-x border-white/[0.04] bg-background pt-[env(safe-area-inset-top)] shadow-2xl shadow-black/40">
+      <main
+        className="relative mx-auto flex h-svh w-full max-w-[430px] touch-pan-y flex-col overflow-hidden border-x border-white/[0.04] bg-background pt-[env(safe-area-inset-top)] shadow-2xl shadow-black/40"
+        {...swipeNavigation}
+      >
         {view.type === "workouts" && (
           <WorkoutsPage
             onBack={() => setView({ type: "flow" })}
@@ -239,7 +283,7 @@ export function App() {
                 <div className="flex items-center gap-1.5">
                   <Button
                     aria-label="My workouts"
-                    className="rounded-full bg-card/35 text-muted-foreground backdrop-blur-xl hover:text-foreground"
+                    className="rounded-full bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
                     onClick={() => {
                       triggerHaptic("medium")
                       setView({ type: "workouts" })
@@ -252,7 +296,7 @@ export function App() {
                   {hasFilters && (
                     <Button
                       aria-label="Reset selections"
-                      className="rounded-full bg-card/35 text-muted-foreground backdrop-blur-xl hover:text-foreground"
+                      className="rounded-full bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
                       onClick={resetFlow}
                       size="icon-lg"
                       variant="ghost"
@@ -298,11 +342,23 @@ export function App() {
                 data-page-id="1"
                 inert={stage !== 1}
               >
-                <div className="h-full min-h-0 rounded-[28px] border border-border bg-card/60 px-4 pt-5 pb-4 shadow-[0_18px_40px_rgba(0,0,0,0.16)] backdrop-blur-xl">
-                  <BodyMap
-                    onToggle={toggleMuscleWithHaptic}
-                    selectedMuscles={selectedMuscles}
+                <div className="relative h-full min-h-0 overflow-hidden rounded-[28px] border border-border bg-card/60 px-4 pt-5 pb-4 shadow-[0_18px_40px_rgba(0,0,0,0.16)] backdrop-blur-xl">
+                  <DotPattern
+                    className="[mask-image:radial-gradient(ellipse_at_center,black_15%,transparent_72%)] transition-[fill,fill-opacity] duration-500 ease-[var(--ease-smooth-out)]"
+                    cr={1}
+                    height={18}
+                    style={{
+                      fill: `color-mix(in oklch, var(--muted-foreground), var(--primary) ${25 + muscleDotIntensity * 55}%)`,
+                      fillOpacity: 0.3 + muscleDotIntensity * 0.3,
+                    }}
+                    width={18}
                   />
+                  <div className="relative z-10 h-full">
+                    <BodyMap
+                      onToggle={toggleMuscleWithHaptic}
+                      selectedMuscles={selectedMuscles}
+                    />
+                  </div>
                 </div>
               </section>
 
@@ -320,10 +376,10 @@ export function App() {
                     return (
                       <button
                         aria-checked={checked}
-                        className={`t-check group relative overflow-hidden rounded-[22px] border text-left transition-transform duration-150 active:scale-[0.97] ${
+                        className={`t-check group relative overflow-hidden rounded-[22px] border bg-card text-left transition-[border-color,box-shadow] duration-300 ease-[var(--ease-smooth-out)] ${
                           checked
-                            ? "border-primary/70 bg-primary/10 shadow-[0_0_0_1px_rgba(255,102,51,0.12)] backdrop-blur-sm"
-                            : "border-border bg-card/70 backdrop-blur-sm"
+                            ? "border-primary shadow-[0_0_0_1px_var(--primary)]"
+                            : "border-border"
                         }`}
                         key={equipment}
                         onClick={() => toggleEquipmentWithHaptic(equipment)}
@@ -342,9 +398,10 @@ export function App() {
                         <span className="flex min-h-13 items-center justify-center px-3.5 py-3 text-center text-base leading-tight font-semibold">
                           {titleCase(equipment)}
                         </span>
-                        <span className="absolute top-2.5 right-2.5 grid size-7 place-items-center rounded-full border border-white/10 bg-black/55 text-primary backdrop-blur-sm">
-                          <Check className="size-4" />
-                        </span>
+                        <AnimatedCheck
+                          checked={checked}
+                          className="absolute top-2.5 right-2.5 size-7"
+                        />
                       </button>
                     )
                   })}
@@ -360,7 +417,7 @@ export function App() {
               >
                 {visibleExercises.length === 0 ? (
                   <div className="flex h-full min-h-[20rem] flex-col items-center justify-center gap-3 text-center">
-                    <SearchX className="size-7 text-muted-foreground/60" />
+                    <SearchX className="size-7 text-[color-mix(in_oklch,var(--muted-foreground),var(--background)_35%)]" />
                     <p className="max-w-[16rem] text-base text-muted-foreground">
                       {favoritesOnly
                         ? "No favorites yet. Tap the heart on an exercise to save it here."
@@ -385,108 +442,85 @@ export function App() {
                     ))}
                   </div>
                 )}
-                {visibleExercises.length > 0 && (
-                  <p className="mt-4 text-center text-xs text-muted-foreground/70">
-                    Exercise animations © Gym visual —{" "}
-                    <a
-                      className="underline underline-offset-2"
-                      href="https://gymvisual.com/"
-                      rel="noreferrer"
-                      target="_blank"
-                    >
-                      gymvisual.com
-                    </a>
-                  </p>
-                )}
               </section>
             </div>
 
             <footer className="absolute inset-x-0 bottom-0 z-20 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-              <div className="flex gap-2.5">
-                {stage === 3 && selectMode ? (
-                  <>
-                    <Button
-                      aria-label="Cancel selection"
-                      className="size-[3.25rem] shrink-0 rounded-[26px]"
-                      onClick={cancelSelectMode}
-                      size="icon"
-                      variant="secondary"
-                    >
-                      <X />
-                    </Button>
-                    <Button
-                      className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
-                      disabled={selectedIds.length === 0}
-                      onClick={addSelectionToWorkout}
-                    >
-                      <ListPlus data-icon="inline-start" />
-                      Add to workout
-                      {selectedIds.length > 0 && ` (${selectedIds.length})`}
-                    </Button>
-                  </>
+              <ProgressiveBlur
+                className="absolute inset-x-0 -top-6 bottom-0"
+                direction="bottom"
+              />
+              <div className="relative flex gap-2.5">
+                {stage > 1 && !selectMode && (
+                  <Button
+                    aria-label="Previous stage"
+                    className="size-[3.25rem] shrink-0 rounded-[26px]"
+                    onClick={goBack}
+                    size="icon"
+                    variant="secondary"
+                  >
+                    <ChevronLeft className="size-5" />
+                  </Button>
+                )}
+                {stage === 3 && selectMode && (
+                  <Button
+                    aria-label="Cancel selection"
+                    className="size-[3.25rem] shrink-0 rounded-[26px]"
+                    onClick={cancelSelectMode}
+                    size="icon"
+                    variant="secondary"
+                  >
+                    <X />
+                  </Button>
+                )}
+                {stage === 3 && (
+                  <LikeButton
+                    animated={false}
+                    aria-label={
+                      favoritesOnly
+                        ? "Show all exercises"
+                        : "Show favorites only"
+                    }
+                    className={`grid size-[3.25rem] shrink-0 place-items-center rounded-[26px] border transition-colors duration-150 ${
+                      favoritesOnly
+                        ? "border-primary bg-[color-mix(in_oklch,var(--card),var(--primary)_16%)] text-primary"
+                        : "border-border bg-card text-muted-foreground hover:bg-muted"
+                    }`}
+                    iconClassName="size-5"
+                    liked={favoritesOnly}
+                    onClick={() => {
+                      triggerHaptic("selection")
+                      setFavoritesOnly((value) => !value)
+                    }}
+                  />
+                )}
+                {stage < 3 ? (
+                  <Button
+                    className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
+                    disabled={!canContinue}
+                    onClick={goForward}
+                  >
+                    {stage === 1 ? "Choose equipment" : "Show exercises"}
+                  </Button>
+                ) : selectMode ? (
+                  <Button
+                    className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
+                    disabled={selectedIds.length === 0}
+                    onClick={addSelectionToWorkout}
+                  >
+                    Add to workout
+                    {selectedIds.length > 0 && ` (${selectedIds.length})`}
+                  </Button>
                 ) : (
-                  <>
-                    {stage > 1 && (
-                      <button
-                        aria-label={
-                          stage === 3 && favoritesOnly
-                            ? "Back to all exercises"
-                            : "Previous stage"
-                        }
-                        className="grid size-[3.25rem] shrink-0 place-items-center rounded-[26px] border border-border bg-card/70 text-muted-foreground backdrop-blur-sm transition-transform duration-150 active:scale-95"
-                        onClick={goBackOrCloseFavorites}
-                        type="button"
-                      >
-                        <ChevronLeft className="size-5" />
-                      </button>
-                    )}
-                    {stage === 3 && (
-                      <button
-                        aria-label={
-                          favoritesOnly
-                            ? "Show all exercises"
-                            : "Show favorites only"
-                        }
-                        aria-pressed={favoritesOnly}
-                        className={`grid size-[3.25rem] shrink-0 place-items-center rounded-[26px] border backdrop-blur-sm transition-transform duration-150 active:scale-95 ${
-                          favoritesOnly
-                            ? "border-primary/70 bg-primary/10 text-primary"
-                            : "border-border bg-card/70 text-muted-foreground"
-                        }`}
-                        onClick={() => {
-                          triggerHaptic("selection")
-                          setFavoritesOnly((value) => !value)
-                        }}
-                        type="button"
-                      >
-                        <Heart
-                          className={
-                            favoritesOnly ? "size-5 fill-primary" : "size-5"
-                          }
-                        />
-                      </button>
-                    )}
-                    {stage < 3 ? (
-                      <Button
-                        className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
-                        disabled={!canContinue}
-                        onClick={goForward}
-                      >
-                        {stage === 1 ? "Choose equipment" : "Show exercises"}
-                        <ChevronRight data-icon="inline-end" />
-                      </Button>
-                    ) : (
-                      <Button
-                        className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
-                        onClick={() => {
-                          triggerHaptic("medium")
-                          setSelectMode(true)
-                        }}
-                      >
-                        Select
-                      </Button>
-                    )}
-                  </>
+                  <Button
+                    className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
+                    onClick={() => {
+                      triggerHaptic("medium")
+                      setSelectMode(true)
+                    }}
+                  >
+                    Select
+                  </Button>
                 )}
               </div>
             </footer>
@@ -494,14 +528,14 @@ export function App() {
         )}
       </main>
 
-      <ExerciseDetailDialog
+      <ExerciseDetailDrawer
         exercise={detailExercise}
         onAddToWorkout={addExerciseToWorkout}
         onOpenChange={setDetailOpen}
         open={detailOpen}
       />
 
-      <WorkoutFormDialog
+      <WorkoutFormDrawer
         initialExerciseIds={workoutFormSeed.exerciseIds}
         key={workoutFormGeneration}
         onOpenChange={setWorkoutFormOpen}
