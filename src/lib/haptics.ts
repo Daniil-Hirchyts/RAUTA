@@ -23,8 +23,9 @@ export function triggerHaptic(input: HapticInput) {
 }
 
 const HAPTIC_TARGETS = "button:not([data-haptics=off])"
+const DRAWER_SURFACE = '[data-slot="drawer-popup"]'
 const UNSAFE_GESTURE_SURFACE =
-  '[data-slot="drawer-popup"], [data-swipe-ignore], [draggable="true"]'
+  `${DRAWER_SURFACE}, [data-swipe-ignore], [draggable="true"]`
 const SCROLLABLE_OVERFLOW = new Set(["auto", "scroll"])
 
 function isIOS() {
@@ -33,6 +34,27 @@ function isIOS() {
     /iP(?:hone|ad|od)/.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
   )
+}
+
+function hasOpenDrawer() {
+  return document.querySelector(DRAWER_SURFACE) !== null
+}
+
+function getSwitchInput(button: HTMLButtonElement) {
+  return button.querySelector<HTMLInputElement>(
+    ":scope > input[type='checkbox'][switch]"
+  )
+}
+
+function removeButtonHaptics(button: HTMLButtonElement) {
+  getSwitchInput(button)?.remove()
+  delete button.dataset.hapticReady
+}
+
+function suspendAllDirectTouchHaptics() {
+  document
+    .querySelectorAll<HTMLButtonElement>('button[data-haptic-ready="true"]')
+    .forEach(removeButtonHaptics)
 }
 
 /**
@@ -62,6 +84,7 @@ function isDirectTouchSafe(button: HTMLButtonElement) {
 function enhanceButton(button: HTMLButtonElement) {
   if (!isIOS()) return
   if (button.disabled) return
+  if (hasOpenDrawer()) return
   if (!isDirectTouchSafe(button)) return
   if (button.dataset.hapticReady === "true") return
   button.dataset.hapticReady = "true"
@@ -74,9 +97,7 @@ function enhanceButton(button: HTMLButtonElement) {
   hapticTrigger(button)
   if (!wasStaticallyPositioned) button.style.position = originalInlinePosition
 
-  const switchInput = button.querySelector<HTMLInputElement>(
-    ":scope > input[type='checkbox'][switch]"
-  )
+  const switchInput = getSwitchInput(button)
   if (!switchInput) return
   switchInput.dataset.hapticTrigger = ""
   switchInput.setAttribute("aria-hidden", "true")
@@ -92,10 +113,13 @@ function enhanceButton(button: HTMLButtonElement) {
 }
 
 function syncButton(button: HTMLButtonElement) {
+  if (!button.matches(HAPTIC_TARGETS) || !isDirectTouchSafe(button)) {
+    removeButtonHaptics(button)
+    return
+  }
+
   enhanceButton(button)
-  const switchInput = button.querySelector<HTMLInputElement>(
-    ":scope > input[type='checkbox'][switch]"
-  )
+  const switchInput = getSwitchInput(button)
   if (switchInput) switchInput.disabled = button.disabled
 }
 
@@ -103,39 +127,61 @@ function enhanceTree(root: ParentNode) {
   root.querySelectorAll<HTMLButtonElement>(HAPTIC_TARGETS).forEach(syncButton)
 }
 
+function reconcileDirectTouchHaptics() {
+  if (!isIOS()) return
+
+  // Base UI drawers are controlled gesture surfaces. Even a haptic switch on
+  // an underlying page button can participate in the same iOS touch sequence
+  // and make a drawer action close and immediately reopen. While any drawer is
+  // mounted, remove all direct-touch switches. Normal drawer buttons and swipe
+  // dismissal then operate without synthetic clicks. Stable-button haptics are
+  // restored automatically after the drawer unmounts.
+  if (hasOpenDrawer()) {
+    suspendAllDirectTouchHaptics()
+    return
+  }
+
+  document
+    .querySelectorAll<HTMLButtonElement>('button[data-haptic-ready="true"]')
+    .forEach((button) => {
+      if (!button.matches(HAPTIC_TARGETS) || !isDirectTouchSafe(button)) {
+        removeButtonHaptics(button)
+      }
+    })
+
+  enhanceTree(document)
+}
+
 /**
- * Installs direct-touch iOS haptics on current and future stable buttons,
- * including content rendered through portals. Scrollable, draggable, and
- * swipeable interaction surfaces are deliberately left untouched.
+ * Installs direct-touch iOS haptics on current and future stable buttons.
+ * Scrollable, draggable, swipeable, and drawer interaction surfaces are
+ * deliberately left untouched.
  */
 export function installDirectTouchHaptics() {
   if (typeof document === "undefined") return () => undefined
 
-  enhanceTree(document)
+  reconcileDirectTouchHaptics()
 
-  const observer = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      if (
-        mutation.type === "attributes" &&
-        mutation.target instanceof HTMLButtonElement
-      ) {
-        syncButton(mutation.target)
-      }
-      mutation.addedNodes.forEach((node) => {
-        if (!(node instanceof HTMLElement)) return
-        if (node.matches(HAPTIC_TARGETS) && node instanceof HTMLButtonElement) {
-          syncButton(node)
-        }
-        enhanceTree(node)
-      })
-    }
-  })
+  let reconcileQueued = false
+  const queueReconcile = () => {
+    if (reconcileQueued) return
+    reconcileQueued = true
+    queueMicrotask(() => {
+      reconcileQueued = false
+      reconcileDirectTouchHaptics()
+    })
+  }
 
+  const observer = new MutationObserver(queueReconcile)
   observer.observe(document.body, {
-    attributeFilter: ["disabled"],
+    attributeFilter: ["disabled", "data-haptics"],
     attributes: true,
     childList: true,
     subtree: true,
   })
-  return () => observer.disconnect()
+
+  return () => {
+    observer.disconnect()
+    suspendAllDirectTouchHaptics()
+  }
 }
