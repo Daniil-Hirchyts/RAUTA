@@ -14,10 +14,58 @@ describe("BodyMap", () => {
     expect(MUSCLE_IDS.every((muscle) => available.has(muscle))).toBe(true)
   })
 
-  it("toggles a muscle by touch/click", () => {
+  it("toggles a muscle from a touch pointer without a synthesized click", () => {
     const onToggle = vi.fn()
     render(<BodyMap onToggle={onToggle} selectedMuscles={[]} />)
-    fireEvent.click(screen.getByRole("button", { name: "Front Chest" }))
+    const chest = screen.getByRole("button", { name: "Front Chest" })
+
+    fireEvent.pointerDown(chest, {
+      clientX: 120,
+      clientY: 220,
+      pointerId: 1,
+      pointerType: "touch",
+    })
+    fireEvent.pointerUp(chest, {
+      clientX: 123,
+      clientY: 221,
+      pointerId: 1,
+      pointerType: "touch",
+    })
+
+    expect(onToggle).toHaveBeenCalledOnce()
+    expect(onToggle).toHaveBeenCalledWith("chest")
+  })
+
+  it("does not toggle a muscle when the pointer gesture is a swipe", () => {
+    const onToggle = vi.fn()
+    render(<BodyMap onToggle={onToggle} selectedMuscles={[]} />)
+    const chest = screen.getByRole("button", { name: "Front Chest" })
+
+    fireEvent.pointerDown(chest, {
+      clientX: 280,
+      clientY: 220,
+      pointerId: 1,
+      pointerType: "touch",
+    })
+    fireEvent.pointerUp(chest, {
+      clientX: 120,
+      clientY: 220,
+      pointerId: 1,
+      pointerType: "touch",
+    })
+
+    expect(onToggle).not.toHaveBeenCalled()
+    expect(screen.getByText("Back")).toBeInTheDocument()
+  })
+
+  it("supports zero-detail click activation for accessibility", () => {
+    const onToggle = vi.fn()
+    render(<BodyMap onToggle={onToggle} selectedMuscles={[]} />)
+
+    fireEvent.click(screen.getByRole("button", { name: "Front Chest" }), {
+      detail: 0,
+    })
+
     expect(onToggle).toHaveBeenCalledWith("chest")
   })
 
