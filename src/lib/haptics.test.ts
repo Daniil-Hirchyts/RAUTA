@@ -1,18 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import {
-  installDirectTouchHaptics,
-  installDirectTouchTarget,
-  triggerHaptic,
-} from "@/lib/haptics"
+import { installDirectTouchHaptics, triggerHaptic } from "@/lib/haptics"
 
 const originalUserAgent = navigator.userAgent
+
+function mockIOS() {
+  Object.defineProperty(navigator, "userAgent", {
+    configurable: true,
+    value: "Mozilla/5.0 (iPhone; CPU iPhone OS 26_5 like Mac OS X)",
+  })
+}
 
 afterEach(() => {
   Object.defineProperty(navigator, "userAgent", {
     configurable: true,
     value: originalUserAgent,
   })
+  document.body.replaceChildren()
 })
 
 describe("haptics", () => {
@@ -21,11 +25,8 @@ describe("haptics", () => {
     expect(navigator.vibrate).toHaveBeenCalledWith([12, 35, 18])
   })
 
-  it("routes a direct iOS switch tap to its button action", async () => {
-    Object.defineProperty(navigator, "userAgent", {
-      configurable: true,
-      value: "Mozilla/5.0 (iPhone; CPU iPhone OS 26_5 like Mac OS X)",
-    })
+  it("routes a direct iOS switch tap to a stable button action", async () => {
+    mockIOS()
 
     const button = document.createElement("button")
     const onClick = vi.fn()
@@ -43,30 +44,50 @@ describe("haptics", () => {
     expect(onClick).toHaveBeenCalledOnce()
 
     stop()
-    button.remove()
   })
 
-  it("preserves the touch coordinates for a custom iOS haptic target", () => {
-    Object.defineProperty(navigator, "userAgent", {
-      configurable: true,
-      value: "Mozilla/5.0 (iPhone; CPU iPhone OS 26_5 like Mac OS X)",
-    })
+  it("does not overlay buttons inside a scrollable surface", () => {
+    mockIOS()
 
-    const target = document.createElement("div")
-    const onTouch = vi.fn()
-    document.body.append(target)
+    const scroller = document.createElement("div")
+    scroller.style.overflowY = "auto"
+    const button = document.createElement("button")
+    scroller.append(button)
+    document.body.append(scroller)
 
-    const stop = installDirectTouchTarget(target, onTouch)
-    const switchInput = target.querySelector<HTMLInputElement>(
-      "input[type='checkbox'][switch]"
-    )
-    switchInput?.dispatchEvent(
-      new MouseEvent("click", { bubbles: true, clientX: 42, clientY: 84 })
-    )
+    const stop = installDirectTouchHaptics()
 
-    expect(onTouch).toHaveBeenCalledWith({ clientX: 42, clientY: 84 })
+    expect(
+      button.querySelector("input[type='checkbox'][switch]")
+    ).not.toBeInTheDocument()
+
     stop()
-    expect(switchInput).not.toBeInTheDocument()
-    target.remove()
+  })
+
+  it("does not overlay buttons inside swipe or drawer surfaces", () => {
+    mockIOS()
+
+    const swipeSurface = document.createElement("div")
+    swipeSurface.dataset.swipeIgnore = ""
+    const swipeButton = document.createElement("button")
+    swipeSurface.append(swipeButton)
+
+    const drawer = document.createElement("div")
+    drawer.dataset.slot = "drawer-popup"
+    const drawerButton = document.createElement("button")
+    drawer.append(drawerButton)
+
+    document.body.append(swipeSurface, drawer)
+
+    const stop = installDirectTouchHaptics()
+
+    expect(
+      swipeButton.querySelector("input[type='checkbox'][switch]")
+    ).not.toBeInTheDocument()
+    expect(
+      drawerButton.querySelector("input[type='checkbox'][switch]")
+    ).not.toBeInTheDocument()
+
+    stop()
   })
 })
