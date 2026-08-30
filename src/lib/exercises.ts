@@ -3,6 +3,13 @@ import type { ExerciseSummary, MuscleId } from "@/types"
 
 export const EXERCISES = generatedExercises as ExerciseSummary[]
 
+// Any grid/list of exercises can realistically be asked to show hundreds
+// at once (broad muscle selections, a bulk-added workout) — each card
+// stacks a CSS filter chain and a blended image, expensive enough at scale
+// to crash mobile Safari's renderer. Every such list renders in bounded
+// batches of this size instead (see useLoadMoreOnScroll).
+export const EXERCISE_PAGE_SIZE = 40
+
 export const EXERCISES_BY_ID = new Map(
   EXERCISES.map((exercise) => [exercise.id, exercise])
 )
@@ -58,6 +65,21 @@ export function orderedMuscles(exercise: ExerciseSummary) {
   exercise.muscles.forEach((muscle) => {
     if (!muscles.includes(muscle)) muscles.push(muscle)
   })
+  return muscles
+}
+
+export function musclesForExerciseIds(ids: string[]) {
+  const muscles: MuscleId[] = []
+
+  ids.forEach((id) => {
+    const exercise = EXERCISES_BY_ID.get(id)
+    if (!exercise) return
+
+    orderedMuscles(exercise).forEach((muscle) => {
+      if (!muscles.includes(muscle)) muscles.push(muscle)
+    })
+  })
+
   return muscles
 }
 

@@ -6,21 +6,22 @@ import {
   DrawerFooter,
   DrawerTitle,
 } from "@/components/ui/drawer"
-import { ProgressiveBlur } from "@/components/ui/progressive-blur"
 import { EXERCISE_ANIMATION_FILTER, exerciseAnimation } from "@/lib/visuals"
 import { useFavorites } from "@/store/use-favorites"
 import type { ExerciseSummary } from "@/types"
 
 export function ExerciseDetailDrawer({
   exercise,
-  onAddToWorkout,
+  onSelectExercise,
   onOpenChange,
   open,
+  selected,
 }: {
   exercise: ExerciseSummary | null
-  onAddToWorkout: (exercise: ExerciseSummary) => void
+  onSelectExercise: (exercise: ExerciseSummary) => void
   onOpenChange: (open: boolean) => void
   open: boolean
+  selected: boolean
 }) {
   const isFavorite = useFavorites((state) =>
     exercise ? state.favoriteIds.includes(exercise.id) : false
@@ -39,6 +40,7 @@ export function ExerciseDetailDrawer({
               : `Add ${exercise.name} to favorites`
           }
           className="absolute top-3 right-3 z-30 grid size-11 shrink-0 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-lg shadow-black/20 transition-[transform,color,background-color] duration-250 hover:bg-muted active:scale-90"
+          data-haptics="off"
           iconClassName="size-5"
           liked={isFavorite}
           onClick={() => toggleFavorite(exercise.id)}
@@ -72,16 +74,13 @@ export function ExerciseDetailDrawer({
           )}
         </div>
 
-        <DrawerFooter className="absolute inset-x-0 bottom-0 z-20 bg-transparent pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-          <ProgressiveBlur
-            className="absolute inset-x-0 -top-6 bottom-0 rounded-b-[inherit]"
-            direction="bottom"
-          />
+        <DrawerFooter className="bottom-controls-scrim absolute inset-x-0 bottom-0 z-20 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] [--bottom-controls-color:var(--popover)]">
           <Button
             className="relative h-12 w-full rounded-2xl text-base font-semibold"
-            onClick={() => onAddToWorkout(exercise)}
+            disabled={selected}
+            onClick={() => onSelectExercise(exercise)}
           >
-            Select
+            {selected ? "Selected" : "Select"}
           </Button>
         </DrawerFooter>
       </DrawerContent>

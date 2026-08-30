@@ -1,8 +1,14 @@
-import { useRef, useState, type PointerEvent } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent,
+} from "react"
 import { FlipHorizontal2 } from "lucide-react"
 
 import bodyPathData from "@/data/body-paths.generated.json"
-import { triggerHaptic } from "@/lib/haptics"
+import { installDirectTouchTarget, triggerHaptic } from "@/lib/haptics"
 import { isMuscleId, MUSCLE_LABELS } from "@/lib/muscles"
 import { cn } from "@/lib/utils"
 import type { MuscleId } from "@/types"
@@ -28,6 +34,74 @@ const SWIPE_THRESHOLD = 45
 
 const body = bodyPathData as { front: BodyView; back: BodyView }
 
+function PreviewFigure({
+  selectedMuscles,
+  view,
+}: {
+  selectedMuscles: MuscleId[]
+  view: BodyView
+}) {
+  const [, , widthAttr, heightAttr] = view.viewBox.split(" ")
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="block h-full min-w-0 flex-1 overflow-visible"
+      preserveAspectRatio="xMidYMid meet"
+      style={{ aspectRatio: `${widthAttr} / ${heightAttr}` }}
+      viewBox={view.viewBox}
+    >
+      {view.parts.map((part) => {
+        const muscle = isMuscleId(part.slug) ? part.slug : null
+        const selected = muscle ? selectedMuscles.includes(muscle) : false
+
+        return (
+          <g
+            className={
+              muscle
+                ? cn("muscle-region", selected && "is-selected")
+                : "body-silhouette"
+            }
+            data-muscle={muscle ?? undefined}
+            key={part.slug}
+          >
+            {part.paths.map((path, index) => (
+              <path d={path} key={`${part.slug}-${index}`} />
+            ))}
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+export function BodyPreview({
+  className,
+  selectedMuscles,
+}: {
+  className?: string
+  selectedMuscles: MuscleId[]
+}) {
+  const selectedLabels = selectedMuscles
+    .map((muscle) => MUSCLE_LABELS[muscle])
+    .join(", ")
+
+  return (
+    <div
+      aria-label={
+        selectedLabels
+          ? `Target muscles: ${selectedLabels}`
+          : "No target muscles"
+      }
+      className={cn("flex h-16 w-24 items-center gap-0.5", className)}
+      role="img"
+    >
+      <PreviewFigure selectedMuscles={selectedMuscles} view={body.front} />
+      <PreviewFigure selectedMuscles={selectedMuscles} view={body.back} />
+    </div>
+  )
+}
+
 function BodyFigure({
   label,
   onToggle,
@@ -35,12 +109,26 @@ function BodyFigure({
   view,
 }: BodyMapProps & { label: "Front" | "Back"; view: BodyView }) {
   const [, , widthAttr, heightAttr] = view.viewBox.split(" ")
+  const hapticTargetRef = useRef<HTMLDivElement>(null)
+
+  useEffect(
+    () =>
+      installDirectTouchTarget(hapticTargetRef.current, (point) => {
+        const muscleRegion = document
+          .elementsFromPoint(point.clientX, point.clientY)
+          .map((element) => element.closest<SVGElement>("[data-muscle]"))
+          .find(Boolean)
+        const muscle = muscleRegion?.dataset.muscle
+        if (muscle && isMuscleId(muscle)) onToggle(muscle)
+      }),
+    [onToggle]
+  )
 
   return (
-    <div className="flex h-full min-h-0 w-full items-center justify-center">
+    <div className="relative flex h-full min-h-0 w-full items-center justify-center">
       <svg
         aria-label={`${label} muscle map`}
-        className="block h-full max-w-full overflow-visible"
+        className="block h-full max-h-full max-w-full overflow-visible"
         preserveAspectRatio="xMidYMid meet"
         role="img"
         style={{ aspectRatio: `${widthAttr} / ${heightAttr}` }}
@@ -87,11 +175,17 @@ function BodyFigure({
           )
         })}
       </svg>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-20"
+        data-haptics="off"
+        ref={hapticTargetRef}
+      />
     </div>
   )
 }
 
-export function BodyMap(props: BodyMapProps) {
+export function BodyMap({ onToggle, selectedMuscles }: BodyMapProps) {
   const [side, setSide] = useState<Side>("front")
   const label = side === "front" ? "Front" : "Back"
   const view = side === "front" ? body.front : body.back
@@ -108,10 +202,13 @@ export function BodyMap(props: BodyMapProps) {
     setSide((current) => (current === "front" ? "back" : "front"))
   }
 
-  const handleToggle = (muscle: MuscleId) => {
-    if (suppressClick.current) return
-    props.onToggle(muscle)
-  }
+  const handleToggle = useCallback(
+    (muscle: MuscleId) => {
+      if (suppressClick.current) return
+      onToggle(muscle)
+    },
+    [onToggle]
+  )
 
   const onPointerDown = (event: PointerEvent) => {
     swipeStartX.current = event.clientX
@@ -132,7 +229,7 @@ export function BodyMap(props: BodyMapProps) {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
-      <div className="mb-3 flex shrink-0 items-center justify-between">
+      <div className="mb-1 flex shrink-0 items-center justify-between">
         <p className="text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase">
           {label}
         </p>
@@ -156,9 +253,9 @@ export function BodyMap(props: BodyMapProps) {
         onPointerUp={endSwipe}
       >
         <BodyFigure
-          {...props}
           label={label}
           onToggle={handleToggle}
+          selectedMuscles={selectedMuscles}
           view={view}
         />
       </div>

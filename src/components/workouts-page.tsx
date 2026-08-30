@@ -1,10 +1,12 @@
 import { useState } from "react"
 import { CalendarDays, ChevronLeft, ChevronRight, Trash2 } from "lucide-react"
 
+import { BodyPreview } from "@/components/body-map"
 import { DeleteWorkoutConfirmation } from "@/components/delete-workout-confirmation"
 import { SwipeableRow } from "@/components/swipeable-row"
 import { Button } from "@/components/ui/button"
 import { formatDateShort } from "@/lib/date"
+import { musclesForExerciseIds } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
 import { useWorkouts, type Workout } from "@/store/use-workouts"
 
@@ -56,13 +58,16 @@ export function WorkoutsPage({
           <ul className="space-y-3">
             {sorted.map((workout) => {
               const isOpen = openRowId === workout.id
+              const targetMuscles = musclesForExerciseIds(workout.exerciseIds)
               return (
                 <li key={workout.id}>
                   <SwipeableRow
+                    actionInset={20}
                     action={
                       <button
                         aria-label={`Delete ${formatDateShort(workout.date)} workout`}
-                        className="grid size-14 shrink-0 place-items-center rounded-full bg-destructive text-destructive-foreground shadow-lg shadow-black/20 transition-transform duration-150 active:scale-90"
+                        className="text-destructive-foreground grid size-14 shrink-0 place-items-center rounded-full bg-destructive shadow-lg shadow-black/20 transition-transform duration-150 active:scale-90"
+                        data-haptics="off"
                         onClick={() => {
                           triggerHaptic("warning")
                           setOpenRowId(null)
@@ -80,7 +85,8 @@ export function WorkoutsPage({
                     }}
                   >
                     <button
-                      className="ml-5 flex w-[calc(100%-1.25rem)] items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 text-left transition-colors duration-150 hover:bg-muted active:bg-muted"
+                      className="mx-5 flex w-[calc(100%-2.5rem)] items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 text-left transition-colors duration-150 hover:bg-muted active:bg-muted"
+                      data-haptics="off"
                       onClick={() => {
                         if (isOpen) {
                           setOpenRowId(null)
@@ -99,6 +105,10 @@ export function WorkoutsPage({
                           {workout.exerciseIds.length === 1 ? "" : "s"}
                         </p>
                       </div>
+                      <BodyPreview
+                        className="h-16 w-24 shrink-0"
+                        selectedMuscles={targetMuscles}
+                      />
                       <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
                     </button>
                   </SwipeableRow>

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Blue puzzle pattern</title>
+  <desc id="desc">A deep blue square with a subtle grid and two translucent white jigsaw pieces.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#18398e"/>
+      <stop offset="1" stop-color="#0d286f"/>
+    </linearGradient>
+    <linearGradient id="piece" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#eef3ff" stop-opacity=".92"/>
+      <stop offset="1" stop-color="#9daed8" stop-opacity=".72"/>
+    </linearGradient>
+    <pattern id="grid" width="12" height="12" patternUnits="userSpaceOnUse">
+      <path d="M12 0H0V12" fill="none" stroke="#e4ebff" stroke-opacity=".075" stroke-width="1"/>
+    </pattern>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#06174b" flood-opacity=".5"/>
+    </filter>
+    <path id="puzzle" d="M34 0H78c-5 19 22 28 29 10 2-4 2-7 1-10h42c-4 18 20 29 30 13 3-5 4-9 2-13h40v39c-19-5-29 21-12 30 4 3 8 3 12 2v39c-19-4-28 22-11 31 4 2 7 3 11 2v40h-40c5-19-22-29-31-12-2 4-3 8-2 12H108c5-19-22-28-30-11-2 4-3 7-2 11H34c4-19-22-28-30-11-2 4-3 7-2 11H0v-40c19 5 29-21 12-30-4-3-8-3-12-2V73c19 4 28-22 11-31-4-2-7-3-11-2V0h34z"/>
+  </defs>
+
+  <rect x="4" y="4" width="504" height="504" rx="18" fill="url(#bg)" stroke="#dbe3f3" stroke-width="4"/>
+  <rect x="6" y="6" width="500" height="500" rx="17" fill="url(#grid)"/>
+
+  <g fill="none" stroke="#b9c8f1" stroke-opacity=".43" stroke-width="3">
+    <path d="M15 15l43 43M4 168l54-54M58 105l176 176M18 352l41 41M4 461l58-58M93 490l-43-43"/>
+    <path d="M130 4l-58 58M283 4l120 120M508 24l-57 57M506 135l-31-31M508 359l-73 73M470 470l39 39"/>
+    <path d="M289 289l121 121M414 476l-31 31"/>
+  </g>
+  <g fill="#071d62" fill-opacity=".32">
+    <path d="M73 67c8 0 13 7 11 14 7-4 15 1 15 9 0 4-2 7-5 9l-20 20-21-21c-8-8 1-21 11-17-3-8 2-14 9-14z"/>
+    <path d="M433 420c8 0 13 7 11 14 7-4 15 1 15 9 0 4-2 7-5 9l-20 20-21-21c-8-8 1-21 11-17-3-8 2-14 9-14z"/>
+  </g>
+
+  <g filter="url(#shadow)" stroke="#f5f7ff" stroke-opacity=".46" stroke-width="9" stroke-linejoin="round">
+    <g transform="translate(226 38) rotate(44 111 76)">
+      <use href="#puzzle" fill="url(#piece)"/>
+      <use href="#puzzle" fill="url(#grid)" opacity=".5" stroke="none"/>
+    </g>
+    <g transform="translate(46 258) rotate(-46 111 76)">
+      <use href="#puzzle" fill="url(#piece)"/>
+      <use href="#puzzle" fill="url(#grid)" opacity=".5" stroke="none"/>
+    </g>
+  </g>
+  <rect x="5" y="5" width="502" height="502" rx="17" fill="none" stroke="#d7dfef" stroke-opacity=".75" stroke-width="2"/>
+</svg>

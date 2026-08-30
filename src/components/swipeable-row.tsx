@@ -13,12 +13,15 @@ const DRAG_LOCK_DISTANCE = 8
  */
 export function SwipeableRow({
   action,
+  actionInset = 0,
   children,
   className,
   isOpen,
   onOpenChange,
 }: {
   action: ReactNode
+  /** The card's right-side margin, included in the exposed delete area. */
+  actionInset?: number
   children: ReactNode
   className?: string
   isOpen: boolean
@@ -34,6 +37,7 @@ export function SwipeableRow({
 
   const settledX = isOpen ? -SWIPE_REVEAL_WIDTH : 0
   const x = dragX ?? settledX
+  const actionIsVisible = x < 0
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     start.current = { x: event.clientX, y: event.clientY }
@@ -80,10 +84,22 @@ export function SwipeableRow({
   }
 
   return (
-    <div className={cn("relative overflow-hidden", className)}>
+    <div
+      className={cn("relative overflow-hidden", className)}
+      // Base UI's Drawer arbitrates swipe-to-dismiss vs. scrolling with its
+      // own document-level touch listener, entirely separate from React's
+      // pointer events — stopPropagation() above does nothing to it. This
+      // is Base UI's own documented opt-out, so a row's own drag/swipe
+      // gesture (inside a drawer's exercise list) doesn't fight the
+      // drawer's dismiss gesture too. Harmless outside a Drawer.
+      data-base-ui-swipe-ignore=""
+    >
       <div
-        className="absolute inset-y-0 right-0 flex items-center justify-center pl-4"
-        style={{ width: SWIPE_REVEAL_WIDTH }}
+        className={cn(
+          "absolute inset-y-0 right-0 flex items-center justify-center transition-opacity duration-150",
+          actionIsVisible ? "opacity-100" : "pointer-events-none opacity-0"
+        )}
+        style={{ width: SWIPE_REVEAL_WIDTH + actionInset }}
       >
         {action}
       </div>
