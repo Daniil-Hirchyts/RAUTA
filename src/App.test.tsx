@@ -39,23 +39,66 @@ describe("App", () => {
     render(<App />)
 
     expect(screen.getByRole("heading", { name: "Muscles" })).toBeInTheDocument()
-    expect(
-      screen.getByRole("button", { name: /choose equipment/i })
-    ).toBeDisabled()
+    const chooseEquipment = screen.getByRole("button", {
+      name: /choose equipment/i,
+    })
+    expect(chooseEquipment).toBeDisabled()
+    expect(chooseEquipment.querySelector("svg")).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole("button", { name: "Front Chest" }))
     await user.click(screen.getByRole("button", { name: /choose equipment/i }))
 
     expect(
-      screen.getByRole("heading", { name: "Equipment" })
+      await screen.findByRole("heading", { name: "Equipment" })
     ).toBeInTheDocument()
     await user.click(screen.getByRole("checkbox", { name: "Body Weight" }))
-    await user.click(screen.getByRole("button", { name: /show exercises/i }))
+    const showExercises = screen.getByRole("button", {
+      name: /show exercises/i,
+    })
+    expect(showExercises.querySelector("svg")).not.toBeInTheDocument()
+    await user.click(showExercises)
 
     expect(
-      screen.getByRole("heading", { name: "Exercises" })
+      await screen.findByRole("heading", { name: "Exercises" })
     ).toBeInTheDocument()
     expect(screen.getByTestId("exercise-results")).toBeInTheDocument()
+  })
+
+  it("moves forward and back between stages with horizontal swipes", async () => {
+    useFilters.setState({
+      selectedMuscles: ["chest"],
+      selectedEquipment: ["body weight"],
+    })
+    render(<App />)
+    const main = document.querySelector("main") as HTMLElement
+
+    fireEvent.pointerDown(main, {
+      clientX: 330,
+      clientY: 400,
+      pointerType: "touch",
+    })
+    fireEvent.pointerUp(main, {
+      clientX: 120,
+      clientY: 405,
+      pointerType: "touch",
+    })
+    expect(
+      await screen.findByRole("heading", { name: "Equipment" })
+    ).toBeVisible()
+
+    fireEvent.pointerDown(main, {
+      clientX: 80,
+      clientY: 400,
+      pointerType: "touch",
+    })
+    fireEvent.pointerUp(main, {
+      clientX: 300,
+      clientY: 405,
+      pointerType: "touch",
+    })
+    expect(
+      await screen.findByRole("heading", { name: "Muscles" })
+    ).toBeVisible()
   })
 
   it("renders the matching result count and visual cards", async () => {
@@ -95,7 +138,7 @@ describe("App", () => {
     expect(screen.getByText("0 exercises")).toBeInTheDocument()
   })
 
-  it("opens an exercise detail dialog on click", async () => {
+  it("opens an exercise detail drawer on click", async () => {
     const user = userEvent.setup()
     const [first] = filterExercises(EXERCISES, ["chest"], ["body weight"])
     render(<App />)
@@ -105,10 +148,19 @@ describe("App", () => {
       screen.getByRole("button", { name: `View ${first.name} details` })
     )
 
-    const dialog = await screen.findByRole("dialog")
+    const drawer = await screen.findByRole("dialog")
     expect(
-      within(dialog).getByRole("heading", { name: first.name })
+      within(drawer).getByRole("heading", { name: first.name })
     ).toBeInTheDocument()
+    expect(
+      within(drawer).getByRole("button", { name: "Select" })
+    ).toBeInTheDocument()
+    expect(
+      within(drawer).getByRole("button", { name: "Close drawer" })
+    ).toBeInTheDocument()
+    expect(
+      document.querySelector("[data-slot='drawer-swipe-handle']")
+    ).not.toBeInTheDocument()
   })
 
   it("toggles favorites and filters the list to favorites only", async () => {
@@ -135,6 +187,34 @@ describe("App", () => {
     ).toBeInTheDocument()
   })
 
+  it("keeps the favorites filter available while selecting exercises", async () => {
+    const user = userEvent.setup()
+    const matches = filterExercises(EXERCISES, ["chest"], ["body weight"])
+    const [first] = matches
+    render(<App />)
+    await goToExercises(user, ["chest"], ["body weight"])
+
+    await user.click(
+      screen.getByRole("button", { name: `Add ${first.name} to favorites` })
+    )
+    await user.click(
+      screen.getByRole("button", { name: "Show favorites only" })
+    )
+    await user.click(screen.getByRole("button", { name: "Select" }))
+
+    const clearFilter = screen.getByRole("button", {
+      name: "Show all exercises",
+    })
+    expect(clearFilter).toBeInTheDocument()
+    await user.click(clearFilter)
+
+    expect(screen.getByTestId("exercise-results").querySelectorAll("article"))
+      .toHaveLength(matches.length)
+    expect(
+      screen.getByRole("button", { name: /add to workout/i })
+    ).toBeDisabled()
+  })
+
   it("composes a workout from selected exercises and shows it in My workouts", async () => {
     const user = userEvent.setup()
     const matches = filterExercises(EXERCISES, ["chest"], ["body weight"])
@@ -150,21 +230,23 @@ describe("App", () => {
       screen.getByRole("button", { name: `Select ${second.name}` })
     )
 
-    await user.click(
-      screen.getByRole("button", { name: /add to workout \(2\)/i })
-    )
+    const addToWorkout = screen.getByRole("button", {
+      name: /add to workout \(2\)/i,
+    })
+    expect(addToWorkout.querySelector("svg")).not.toBeInTheDocument()
+    await user.click(addToWorkout)
 
     // The date picker trigger defaults to today — it doubles as the
     // workout's title, so there's no separate name field to fill in.
-    const formDialog = await screen.findByRole("dialog")
+    const formDrawer = await screen.findByRole("dialog")
     const today = toISODate(new Date())
-    const trigger = within(formDialog).getByRole("button", {
+    const trigger = within(formDrawer).getByRole("button", {
       name: formatDateLong(today),
     })
     expect(trigger).toBeInTheDocument()
 
     await user.click(
-      within(formDialog).getByRole("button", { name: "Create workout" })
+      within(formDrawer).getByRole("button", { name: "Create workout" })
     )
 
     expect(useWorkouts.getState().workouts).toHaveLength(1)
@@ -178,7 +260,7 @@ describe("App", () => {
       screen.queryByRole("button", { name: /add to workout/i })
     ).not.toBeInTheDocument()
 
-    // "My workouts" is a full page, not a dialog — navigating there should
+    // "My workouts" is a full page, not a drawer — navigating there should
     // list the new workout by its date (there's no separate name field).
     await user.click(screen.getByRole("button", { name: "My workouts" }))
     expect(
@@ -192,5 +274,16 @@ describe("App", () => {
     await user.click(screen.getByText(dateLabel))
     expect(screen.getByText(first.name)).toBeInTheDocument()
     expect(screen.getByText(second.name)).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Edit workout" }))
+    const editDrawer = await screen.findByRole("dialog")
+    expect(
+      within(editDrawer).getByRole("button", { name: "Save changes" })
+    ).toBeInTheDocument()
+    expect(
+      within(editDrawer).getByRole("img", {
+        name: `${first.name} demonstration`,
+      })
+    ).toBeInTheDocument()
   })
 })

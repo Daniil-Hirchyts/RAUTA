@@ -1,7 +1,9 @@
 import type { ExerciseSummary } from "@/types"
 
 export function equipmentImage(equipment: string) {
-  return `/assets/equipment/${equipment.replaceAll(" ", "-")}.jpg`
+  const revision =
+    equipment === "assisted" || equipment === "rope" ? "?v=2" : ""
+  return `/assets/equipment/${equipment.replaceAll(" ", "-")}.jpg${revision}`
 }
 
 export function exerciseAnimation(exercise: ExerciseSummary) {
@@ -16,4 +18,4 @@ export function exerciseAnimation(exercise: ExerciseSummary) {
  * so that black becomes exactly the surrounding surface color.
  */
 export const EXERCISE_ANIMATION_FILTER =
-  "url(#exercise-gif-sharpen) invert(1) hue-rotate(180deg) saturate(1.75)"
+  "url(#exercise-gif-sharpen) invert(1) hue-rotate(180deg) saturate(3.25) contrast(1.06)"

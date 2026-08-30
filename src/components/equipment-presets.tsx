@@ -3,14 +3,14 @@ import { Plus, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer"
 import { Input } from "@/components/ui/input"
 import { EQUIPMENT_OPTIONS } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
@@ -56,29 +56,34 @@ export function EquipmentPresets() {
   }
 
   return (
-    <div className="sticky top-0 z-20 mb-4 flex [scrollbar-width:none] gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
-      <Dialog onOpenChange={setOpen} open={open}>
-        <DialogTrigger
+    <div
+      className="sticky top-0 z-20 mb-3 flex [scrollbar-width:none] gap-2 pb-1 [&::-webkit-scrollbar]:hidden"
+      data-swipe-ignore
+    >
+      <Drawer onOpenChange={setOpen} open={open} swipeDirection="down">
+        <DrawerTrigger
           aria-label="Save current selection as a preset"
           disabled={selectedEquipment.length === 0}
           render={
             <button
-              className="grid size-10 shrink-0 place-items-center rounded-full border border-white/10 bg-card/50 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl transition-transform duration-150 active:scale-90 disabled:bg-card/25 disabled:text-foreground/35"
+              className="grid size-10 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground shadow-sm transition-colors duration-200 hover:bg-muted active:bg-muted disabled:bg-muted disabled:text-muted-foreground"
               type="button"
             />
           }
         >
           <Plus className="size-4.5" />
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Save equipment preset</DialogTitle>
-            <DialogDescription>
+        </DrawerTrigger>
+        <DrawerContent className="mx-auto max-w-[430px]">
+          <DrawerHeader className="px-5 pt-16 text-left">
+            <DrawerTitle className="text-xl font-bold">
+              Save equipment preset
+            </DrawerTitle>
+            <DrawerDescription>
               {selectedEquipment.length} selected item
               {selectedEquipment.length === 1 ? "" : "s"}
-            </DialogDescription>
-          </DialogHeader>
-          <form className="space-y-4" onSubmit={submit}>
+            </DrawerDescription>
+          </DrawerHeader>
+          <form className="space-y-4 px-5 pt-4" onSubmit={submit}>
             <Input
               aria-label="Preset name"
               autoFocus
@@ -87,7 +92,7 @@ export function EquipmentPresets() {
               placeholder="Preset name"
               value={name}
             />
-            <DialogFooter>
+            <DrawerFooter className="px-0 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
               <Button
                 className="h-12 w-full rounded-2xl text-base font-semibold"
                 disabled={!name.trim()}
@@ -95,10 +100,10 @@ export function EquipmentPresets() {
               >
                 Save preset
               </Button>
-            </DialogFooter>
+            </DrawerFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
 
       {STARTER_PRESETS.map((preset) => (
         <button
@@ -116,7 +121,7 @@ export function EquipmentPresets() {
       ))}
       {presets.map((preset) => (
         <div
-          className="flex shrink-0 items-center rounded-full bg-card/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] ring-1 ring-white/10 backdrop-blur-xl"
+          className="flex shrink-0 items-center rounded-full bg-card shadow-sm ring-1 ring-border"
           key={preset.id}
         >
           <button

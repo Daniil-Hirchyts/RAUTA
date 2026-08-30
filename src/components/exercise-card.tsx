@@ -1,5 +1,5 @@
-import { Check, Heart } from "lucide-react"
-
+import { AnimatedCheck } from "@/components/animated-check"
+import { LikeButton } from "@/components/like-button"
 import { triggerHaptic } from "@/lib/haptics"
 import { cn } from "@/lib/utils"
 import { EXERCISE_ANIMATION_FILTER, exerciseAnimation } from "@/lib/visuals"
@@ -31,7 +31,12 @@ export function ExerciseCard({
 
   return (
     <article
-      className="exercise-card t-stagger-line relative overflow-hidden rounded-[22px] border border-border bg-card/90 shadow-sm shadow-black/10 backdrop-blur-sm transition-transform duration-150 active:scale-[0.98]"
+      className={cn(
+        "exercise-card t-stagger-line relative overflow-hidden rounded-[22px] border bg-card shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-300 ease-[var(--ease-smooth-out)]",
+        selectMode && selected
+          ? "border-primary/70 shadow-[0_0_0_1px_rgba(255,102,51,0.14)]"
+          : "border-border"
+      )}
       style={{ transitionDelay: `${Math.min(index, 6) * 40}ms` }}
     >
       <div
@@ -73,41 +78,27 @@ export function ExerciseCard({
         </div>
       </div>
 
-      <button
+      <LikeButton
         aria-label={
           isFavorite
             ? `Remove ${exercise.name} from favorites`
             : `Add ${exercise.name} to favorites`
         }
-        aria-pressed={isFavorite}
-        className="absolute top-2.5 right-2.5 grid size-8 place-items-center rounded-full border border-white/10 bg-black/55 text-white backdrop-blur-sm transition-transform duration-150 active:scale-90"
+        className="absolute top-2.5 right-2.5 grid size-8 place-items-center rounded-full border border-border bg-background text-white transition-colors duration-150 hover:bg-muted active:bg-muted"
+        iconClassName="size-4"
+        liked={isFavorite}
         onClick={(event) => {
           event.stopPropagation()
           triggerHaptic("selection")
           toggleFavorite(exercise.id)
         }}
-        type="button"
-      >
-        <Heart
-          className={cn(
-            "size-4 transition-transform",
-            isFavorite && "fill-primary text-primary"
-          )}
-        />
-      </button>
+      />
 
       {selectMode && (
-        <div
-          aria-hidden="true"
-          className={cn(
-            "absolute top-2.5 left-2.5 grid size-8 place-items-center rounded-full border backdrop-blur-sm transition-colors",
-            selected
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-white/20 bg-black/55 text-transparent"
-          )}
-        >
-          <Check className="size-4.5" strokeWidth={3} />
-        </div>
+        <AnimatedCheck
+          checked={selected}
+          className="absolute top-2.5 left-2.5 size-8"
+        />
       )}
     </article>
   )

@@ -25,7 +25,7 @@ describe("BodyMap", () => {
     const onToggle = vi.fn()
     render(<BodyMap onToggle={onToggle} selectedMuscles={["upper-back"]} />)
 
-    fireEvent.click(screen.getByRole("button", { name: "Show back view" }))
+    fireEvent.click(screen.getByRole("button", { name: "Show back" }))
 
     expect(navigator.vibrate).toHaveBeenCalled()
     const upperBack = screen.getByRole("button", { name: "Back Upper back" })
