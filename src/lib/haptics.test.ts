@@ -11,6 +11,11 @@ function mockIOS() {
   })
 }
 
+async function flushHapticObserver() {
+  await Promise.resolve()
+  await Promise.resolve()
+}
+
 afterEach(() => {
   Object.defineProperty(navigator, "userAgent", {
     configurable: true,
@@ -87,6 +92,41 @@ describe("haptics", () => {
     expect(
       drawerButton.querySelector("input[type='checkbox'][switch]")
     ).not.toBeInTheDocument()
+
+    stop()
+  })
+
+  it("suspends existing page haptics while a drawer is mounted", async () => {
+    mockIOS()
+
+    const stableButton = document.createElement("button")
+    document.body.append(stableButton)
+
+    const stop = installDirectTouchHaptics()
+    expect(
+      stableButton.querySelector("input[type='checkbox'][switch]")
+    ).toBeInTheDocument()
+
+    const drawer = document.createElement("div")
+    drawer.dataset.slot = "drawer-popup"
+    const drawerButton = document.createElement("button")
+    drawer.append(drawerButton)
+    document.body.append(drawer)
+    await flushHapticObserver()
+
+    expect(
+      stableButton.querySelector("input[type='checkbox'][switch]")
+    ).not.toBeInTheDocument()
+    expect(
+      drawerButton.querySelector("input[type='checkbox'][switch]")
+    ).not.toBeInTheDocument()
+
+    drawer.remove()
+    await flushHapticObserver()
+
+    expect(
+      stableButton.querySelector("input[type='checkbox'][switch]")
+    ).toBeInTheDocument()
 
     stop()
   })
