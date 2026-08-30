@@ -110,14 +110,26 @@ function BodyFigure({
 }: BodyMapProps & { label: "Front" | "Back"; view: BodyView }) {
   const [, , widthAttr, heightAttr] = view.viewBox.split(" ")
   const hapticTargetRef = useRef<HTMLDivElement>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
 
   useEffect(
     () =>
       installDirectTouchTarget(hapticTargetRef.current, (point) => {
+        const overlay = hapticTargetRef.current
+        const svg = svgRef.current
+        if (!overlay || !svg) return
+
+        // The iOS haptic switch has to sit above the SVG to receive a real
+        // finger tap. Temporarily remove that overlay from hit-testing so we
+        // can resolve the irregular SVG muscle region directly underneath it.
+        const previousPointerEvents = overlay.style.pointerEvents
+        overlay.style.pointerEvents = "none"
         const muscleRegion = document
           .elementsFromPoint(point.clientX, point.clientY)
           .map((element) => element.closest<SVGElement>("[data-muscle]"))
-          .find(Boolean)
+          .find((element) => element && svg.contains(element))
+        overlay.style.pointerEvents = previousPointerEvents
+
         const muscle = muscleRegion?.dataset.muscle
         if (muscle && isMuscleId(muscle)) onToggle(muscle)
       }),
@@ -130,6 +142,7 @@ function BodyFigure({
         aria-label={`${label} muscle map`}
         className="block h-full max-h-full max-w-full overflow-visible"
         preserveAspectRatio="xMidYMid meet"
+        ref={svgRef}
         role="img"
         style={{ aspectRatio: `${widthAttr} / ${heightAttr}` }}
         viewBox={view.viewBox}
@@ -177,7 +190,7 @@ function BodyFigure({
       </svg>
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-20"
+        className="absolute inset-0 z-20"
         data-haptics="off"
         ref={hapticTargetRef}
       />
