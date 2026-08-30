@@ -14,7 +14,7 @@ const VIBRATION_PATTERNS: Record<HapticInput, number | number[]> = {
 
 /**
  * Android and other compatible browsers expose the Vibration API. iOS does
- * not, so direct-tap native switch overlays are installed separately by
+ * not, so stable HTML buttons are enhanced separately by
  * installDirectTouchHaptics().
  */
 export function triggerHaptic(input: HapticInput) {
@@ -22,56 +22,10 @@ export function triggerHaptic(input: HapticInput) {
   navigator.vibrate(VIBRATION_PATTERNS[input])
 }
 
-/**
- * Adds an iOS native switch directly over a custom visual hit target. This is
- * used for the SVG muscle map, where separate HTML buttons cannot follow the
- * irregular muscle shapes. The callback receives the original touch point so
- * the map can resolve the SVG region underneath the transparent switch.
- */
-export function installDirectTouchTarget(
-  element: HTMLElement | null,
-  onTouch: (point: { clientX: number; clientY: number }) => void
-) {
-  if (!element || !isIOS()) return () => undefined
-
-  const originalInlinePosition = element.style.position
-  const wasStaticallyPositioned =
-    getComputedStyle(element).position === "static"
-  hapticTrigger(element)
-  if (!wasStaticallyPositioned) element.style.position = originalInlinePosition
-
-  const switchInput = element.querySelector<HTMLInputElement>(
-    ":scope > input[type='checkbox'][switch]"
-  )
-  if (!switchInput) return () => undefined
-  switchInput.dataset.hapticTrigger = ""
-  switchInput.setAttribute("aria-hidden", "true")
-  switchInput.tabIndex = -1
-  switchInput.style.pointerEvents = "auto"
-  // Keep "manipulation" (ios-haptics' own default, which we'd otherwise be
-  // overriding): it permits scrolling in both axes while telling Safari
-  // there's no double-tap-to-zoom to wait for, so a tap fires its click
-  // immediately. A narrower value like "pan-y" reintroduces that
-  // ambiguity — Safari then waits to see whether the gesture becomes a
-  // scroll before committing to a click, and on this full-figure overlay
-  // (which swallows every touch under it) that wait routinely eats the tap
-  // outright, so muscles stop responding to touch while mouse clicks on
-  // desktop are unaffected.
-  switchInput.style.touchAction = "manipulation"
-
-  const handleClick = (event: MouseEvent) => {
-    event.stopPropagation()
-    onTouch({ clientX: event.clientX, clientY: event.clientY })
-  }
-  switchInput.addEventListener("click", handleClick)
-
-  return () => {
-    switchInput.removeEventListener("click", handleClick)
-    switchInput.remove()
-  }
-}
-
 const HAPTIC_TARGETS = "button:not([data-haptics=off])"
+const UNSAFE_GESTURE_SURFACE =
+  '[data-slot="drawer-popup"], [data-swipe-ignore], [draggable="true"]'
+const SCROLLABLE_OVERFLOW = new Set(["auto", "scroll"])
 
 function isIOS() {
   if (typeof navigator === "undefined") return false
@@ -81,15 +35,40 @@ function isIOS() {
   )
 }
 
+/**
+ * ios-haptics works by placing a transparent native switch directly above a
+ * button. That is fine for a tap-only control, but the switch becomes the
+ * gesture target and can interfere with scrolling, dragging, and swiping.
+ * Never install it on controls that live in those interaction surfaces.
+ */
+function isDirectTouchSafe(button: HTMLButtonElement) {
+  if (button.closest(UNSAFE_GESTURE_SURFACE)) return false
+
+  let element: HTMLElement | null = button.parentElement
+  while (element && element !== document.body) {
+    const style = getComputedStyle(element)
+    if (
+      SCROLLABLE_OVERFLOW.has(style.overflowX) ||
+      SCROLLABLE_OVERFLOW.has(style.overflowY)
+    ) {
+      return false
+    }
+    element = element.parentElement
+  }
+
+  return true
+}
+
 function enhanceButton(button: HTMLButtonElement) {
   if (!isIOS()) return
   if (button.disabled) return
+  if (!isDirectTouchSafe(button)) return
   if (button.dataset.hapticReady === "true") return
   button.dataset.hapticReady = "true"
 
-  // ios-haptics 3 renders a real, transparent input[switch] over the button.
-  // That direct finger contact is required on iOS 26.5+, where a
-  // programmatically clicked hidden switch no longer produces feedback.
+  // ios-haptics renders a real, transparent input[switch] over the button.
+  // Restrict this to stable tap-only controls; gesture surfaces are handled by
+  // their normal pointer/touch events without an overlay.
   const originalInlinePosition = button.style.position
   const wasStaticallyPositioned = getComputedStyle(button).position === "static"
   hapticTrigger(button)
@@ -125,8 +104,9 @@ function enhanceTree(root: ParentNode) {
 }
 
 /**
- * Installs direct-touch iOS haptics on current and future buttons, including
- * drawer content rendered through portals. Returns a cleanup function.
+ * Installs direct-touch iOS haptics on current and future stable buttons,
+ * including content rendered through portals. Scrollable, draggable, and
+ * swipeable interaction surfaces are deliberately left untouched.
  */
 export function installDirectTouchHaptics() {
   if (typeof document === "undefined") return () => undefined
