@@ -109,6 +109,7 @@ export function EquipmentPresets() {
         <button
           aria-pressed={sameSelection(selectedEquipment, preset.equipment)}
           className="preset-chip shrink-0"
+          data-haptics="off"
           key={preset.id}
           onClick={() => {
             triggerHaptic("selection")
@@ -127,6 +128,7 @@ export function EquipmentPresets() {
           <button
             aria-pressed={sameSelection(selectedEquipment, preset.equipment)}
             className="preset-chip border-0 pr-2 ring-0"
+            data-haptics="off"
             onClick={() => {
               triggerHaptic("selection")
               setEquipment([...preset.equipment])
@@ -138,6 +140,7 @@ export function EquipmentPresets() {
           <button
             aria-label={`Delete ${preset.name} preset`}
             className="mr-1 grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground transition-transform duration-150 hover:bg-muted hover:text-foreground active:scale-90"
+            data-haptics="off"
             onClick={() => {
               triggerHaptic("warning")
               deletePreset(preset.id)

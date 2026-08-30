@@ -22,6 +22,46 @@ export function triggerHaptic(input: HapticInput) {
   navigator.vibrate(VIBRATION_PATTERNS[input])
 }
 
+/**
+ * Adds an iOS native switch directly over a custom visual hit target. This is
+ * used for the SVG muscle map, where separate HTML buttons cannot follow the
+ * irregular muscle shapes. The callback receives the original touch point so
+ * the map can resolve the SVG region underneath the transparent switch.
+ */
+export function installDirectTouchTarget(
+  element: HTMLElement | null,
+  onTouch: (point: { clientX: number; clientY: number }) => void
+) {
+  if (!element || !isIOS()) return () => undefined
+
+  const originalInlinePosition = element.style.position
+  const wasStaticallyPositioned =
+    getComputedStyle(element).position === "static"
+  hapticTrigger(element)
+  if (!wasStaticallyPositioned) element.style.position = originalInlinePosition
+
+  const switchInput = element.querySelector<HTMLInputElement>(
+    ":scope > input[type='checkbox'][switch]"
+  )
+  if (!switchInput) return () => undefined
+  switchInput.dataset.hapticTrigger = ""
+  switchInput.setAttribute("aria-hidden", "true")
+  switchInput.tabIndex = -1
+  switchInput.style.pointerEvents = "auto"
+  switchInput.style.touchAction = "pan-y"
+
+  const handleClick = (event: MouseEvent) => {
+    event.stopPropagation()
+    onTouch({ clientX: event.clientX, clientY: event.clientY })
+  }
+  switchInput.addEventListener("click", handleClick)
+
+  return () => {
+    switchInput.removeEventListener("click", handleClick)
+    switchInput.remove()
+  }
+}
+
 const HAPTIC_TARGETS = "button:not([data-haptics=off])"
 
 function isIOS() {

@@ -1,11 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react"
-import {
-  CalendarDays,
-  ChevronLeft,
-  Eraser,
-  SearchX,
-  X,
-} from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { CalendarDays, ChevronLeft, Eraser, SearchX, X } from "lucide-react"
 
 import { AnimatedNumber } from "@/components/animated-number"
 import { AnimatedCheck } from "@/components/animated-check"
@@ -18,26 +12,30 @@ import { LikeButton } from "@/components/like-button"
 import { SvgFilterDefs } from "@/components/svg-filters"
 import { Button } from "@/components/ui/button"
 import { DotPattern } from "@/components/ui/dot-pattern"
-import { ProgressiveBlur } from "@/components/ui/progressive-blur"
 import { WorkoutDetailPage } from "@/components/workout-detail-page"
 import { WorkoutFormDrawer } from "@/components/workout-form-drawer"
 import { WorkoutsPage } from "@/components/workouts-page"
-import { useSwipeNavigation } from "@/hooks/use-swipe-navigation"
-import { EQUIPMENT_OPTIONS, EXERCISES, filterExercises } from "@/lib/exercises"
+import { useLoadMoreOnScroll } from "@/hooks/use-load-more-on-scroll"
+import {
+  EQUIPMENT_OPTIONS,
+  EXERCISE_PAGE_SIZE,
+  EXERCISES,
+  EXERCISES_BY_ID,
+  filterExercises,
+} from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
 import { titleCase } from "@/lib/text"
 import { equipmentImage } from "@/lib/visuals"
 import { useFavorites } from "@/store/use-favorites"
 import { useFilters } from "@/store/use-filters"
-import type { Workout } from "@/store/use-workouts"
+import {
+  readAppSession,
+  writeAppSession,
+  type AppStage as Stage,
+  type AppView as View,
+} from "@/store/app-session"
+import { useWorkouts, type Workout } from "@/store/use-workouts"
 import type { ExerciseSummary, MuscleId } from "@/types"
-
-type Stage = 1 | 2 | 3
-
-type View =
-  | { type: "flow" }
-  | { type: "workouts" }
-  | { type: "workout-detail"; workoutId: string }
 
 const STAGE_LABELS: Record<Stage, string> = {
   1: "Muscles",
@@ -51,8 +49,15 @@ function StageHeading({ stage }: { stage: Stage }) {
   const displayedStage = useRef(stage)
 
   useEffect(() => {
-    if (stage === displayedStage.current) return
     const element = elementRef.current
+    if (stage === displayedStage.current) {
+      // A fast back-then-forward (or forward-then-back) tap can land here
+      // after the effect below already added "is-exit" for the stage
+      // change that just got reverted, cancelling the timeout that would
+      // have cleared it — without this, the header stays invisible.
+      element?.classList.remove("is-exit", "is-enter-start")
+      return
+    }
     if (!element) return
     const step = element.querySelector<HTMLElement>("[data-stage-step]")
     const title = element.querySelector<HTMLElement>("[data-stage-title]")
@@ -62,15 +67,18 @@ function StageHeading({ stage }: { stage: Stage }) {
     const reduceMotion = window.matchMedia?.(
       "(prefers-reduced-motion: reduce)"
     ).matches
-    const timeout = window.setTimeout(() => {
-      displayedStage.current = stage
-      step.textContent = `${stage} / 3`
-      title.textContent = STAGE_LABELS[stage]
-      element.classList.remove("is-exit")
-      element.classList.add("is-enter-start")
-      void element.offsetHeight
-      element.classList.remove("is-enter-start")
-    }, reduceMotion ? 0 : 150)
+    const timeout = window.setTimeout(
+      () => {
+        displayedStage.current = stage
+        step.textContent = `${stage} / 3`
+        title.textContent = STAGE_LABELS[stage]
+        element.classList.remove("is-exit")
+        element.classList.add("is-enter-start")
+        void element.offsetHeight
+        element.classList.remove("is-enter-start")
+      },
+      reduceMotion ? 0 : 150
+    )
     return () => window.clearTimeout(timeout)
   }, [stage])
 
@@ -93,8 +101,9 @@ function StageHeading({ stage }: { stage: Stage }) {
 }
 
 export function App() {
-  const [view, setView] = useState<View>({ type: "flow" })
-  const [stage, setStage] = useState<Stage>(1)
+  const [initialSession] = useState(readAppSession)
+  const [view, setView] = useState<View>(initialSession.view)
+  const [stage, setStage] = useState<Stage>(initialSession.stage)
   const selectedMuscles = useFilters((state) => state.selectedMuscles)
   const muscleDotIntensity = Math.min(selectedMuscles.length / 6, 1)
   const selectedEquipment = useFilters((state) => state.selectedEquipment)
@@ -103,16 +112,24 @@ export function App() {
   const reset = useFilters((state) => state.reset)
   const favoriteIds = useFavorites((state) => state.favoriteIds)
 
-  const [favoritesOnly, setFavoritesOnly] = useState(false)
-  const [selectMode, setSelectMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [favoritesOnly, setFavoritesOnly] = useState(
+    initialSession.favoritesOnly
+  )
+  const [selectMode, setSelectMode] = useState(initialSession.selectMode)
+  const [selectedIds, setSelectedIds] = useState<string[]>(
+    initialSession.selectedIds
+  )
 
   const [detailExercise, setDetailExercise] = useState<ExerciseSummary | null>(
-    null
+    initialSession.detailExerciseId
+      ? (EXERCISES_BY_ID.get(initialSession.detailExerciseId) ?? null)
+      : null
   )
-  const [detailOpen, setDetailOpen] = useState(false)
+  const [detailOpen, setDetailOpen] = useState(initialSession.detailOpen)
 
-  const [workoutFormOpen, setWorkoutFormOpen] = useState(false)
+  const [workoutFormOpen, setWorkoutFormOpen] = useState(
+    initialSession.workoutFormOpen
+  )
   // Bumped on every "open the workout form" action so the drawer remounts
   // with clean local state instead of reusing whatever was left over from
   // the previous time it was open (see WorkoutFormDrawer).
@@ -120,7 +137,55 @@ export function App() {
   const [workoutFormSeed, setWorkoutFormSeed] = useState<{
     workout?: Workout | null
     exerciseIds?: string[]
-  }>({})
+  }>(() => ({
+    exerciseIds: initialSession.workoutFormExerciseIds,
+    workout: initialSession.workoutFormWorkoutId
+      ? (useWorkouts
+          .getState()
+          .workouts.find(
+            (workout) => workout.id === initialSession.workoutFormWorkoutId
+          ) ?? null)
+      : null,
+  }))
+
+  const appSession = useMemo(
+    () => ({
+      detailExerciseId: detailExercise?.id ?? null,
+      detailOpen,
+      favoritesOnly,
+      selectedIds,
+      selectMode,
+      stage,
+      view,
+      workoutFormExerciseIds: workoutFormSeed.exerciseIds ?? [],
+      workoutFormOpen,
+      workoutFormWorkoutId: workoutFormSeed.workout?.id ?? null,
+    }),
+    [
+      detailExercise?.id,
+      detailOpen,
+      favoritesOnly,
+      selectedIds,
+      selectMode,
+      stage,
+      view,
+      workoutFormOpen,
+      workoutFormSeed.exerciseIds,
+      workoutFormSeed.workout?.id,
+    ]
+  )
+
+  useEffect(() => {
+    writeAppSession(appSession)
+
+    const saveBeforeSuspending = () => writeAppSession(appSession)
+    window.addEventListener("pagehide", saveBeforeSuspending)
+    document.addEventListener("visibilitychange", saveBeforeSuspending)
+    return () => {
+      window.removeEventListener("pagehide", saveBeforeSuspending)
+      document.removeEventListener("visibilitychange", saveBeforeSuspending)
+    }
+  }, [appSession])
 
   const exercises = useMemo(
     () => filterExercises(EXERCISES, selectedMuscles, selectedEquipment),
@@ -134,6 +199,14 @@ export function App() {
         : exercises,
     [exercises, favoritesOnly, favoriteIds]
   )
+
+  const {
+    hasMore: hasMoreExercises,
+    rootRef: exercisesScrollRef,
+    sentinelRef: loadMoreSentinelRef,
+    visibleCount,
+  } = useLoadMoreOnScroll(visibleExercises.length, EXERCISE_PAGE_SIZE)
+  const pagedExercises = visibleExercises.slice(0, visibleCount)
 
   const canContinue =
     stage === 1 ? selectedMuscles.length > 0 : selectedEquipment.length > 0
@@ -153,10 +226,13 @@ export function App() {
     setStage(1)
   }
 
-  const toggleMuscleWithHaptic = (muscle: MuscleId) => {
-    triggerHaptic("selection")
-    toggleMuscle(muscle)
-  }
+  const toggleMuscleWithHaptic = useCallback(
+    (muscle: MuscleId) => {
+      triggerHaptic("selection")
+      toggleMuscle(muscle)
+    },
+    [toggleMuscle]
+  )
 
   const toggleEquipmentWithHaptic = (equipment: string) => {
     triggerHaptic("selection")
@@ -196,44 +272,22 @@ export function App() {
     openWorkoutForm({ exerciseIds: selectedIds })
   }
 
-  const addExerciseToWorkout = (exercise: ExerciseSummary) => {
+  const selectExerciseFromDetail = (exercise: ExerciseSummary) => {
+    triggerHaptic("selection")
+    setSelectedIds((ids) =>
+      ids.includes(exercise.id) ? ids : [...ids, exercise.id]
+    )
+    setSelectMode(true)
     setDetailOpen(false)
-    openWorkoutForm({ exerciseIds: [exercise.id] })
   }
 
   const editWorkout = (workout: Workout) => openWorkoutForm({ workout })
 
-  const swipeNavigation = useSwipeNavigation((direction) => {
-    if (direction === "right") {
-      if (view.type === "workout-detail") {
-        triggerHaptic("medium")
-        setView({ type: "workouts" })
-        return
-      }
-      if (view.type === "workouts") {
-        triggerHaptic("medium")
-        setView({ type: "flow" })
-        return
-      }
-      if (selectMode) {
-        cancelSelectMode()
-        return
-      }
-      if (stage > 1) goBack()
-      return
-    }
-
-    if (view.type === "flow" && stage < 3 && canContinue) goForward()
-  })
-
   return (
-    <div className="min-h-svh bg-[#0e0e0f] text-foreground">
+    <div className="min-h-(--app-viewport-height) bg-[#0e0e0f] text-foreground">
       <HapticLayer />
       <SvgFilterDefs />
-      <main
-        className="relative mx-auto flex h-svh w-full max-w-[430px] touch-pan-y flex-col overflow-hidden border-x border-white/[0.04] bg-background pt-[env(safe-area-inset-top)] shadow-2xl shadow-black/40"
-        {...swipeNavigation}
-      >
+      <main className="relative mx-auto flex min-h-(--app-viewport-height) w-full max-w-[430px] touch-pan-y flex-col overflow-hidden border-x border-white/[0.04] bg-background pt-[env(safe-area-inset-top)] shadow-2xl shadow-black/40">
         {view.type === "workouts" && (
           <WorkoutsPage
             onBack={() => setView({ type: "flow" })}
@@ -338,11 +392,11 @@ export function App() {
               <section
                 aria-hidden={stage !== 1}
                 aria-label="Choose muscles"
-                className="t-page px-5 pt-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
+                className="t-page px-[clamp(0.75rem,4vw,1.25rem)] pt-[clamp(0.75rem,2vh,1.25rem)] pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
                 data-page-id="1"
                 inert={stage !== 1}
               >
-                <div className="relative h-full min-h-0 overflow-hidden rounded-[28px] border border-border bg-card/60 px-4 pt-5 pb-4 shadow-[0_18px_40px_rgba(0,0,0,0.16)] backdrop-blur-xl">
+                <div className="relative h-full min-h-0 overflow-hidden rounded-[28px] border border-border bg-card/60 px-[clamp(0.5rem,2vw,0.75rem)] pt-4 pb-2 shadow-[0_18px_40px_rgba(0,0,0,0.16)] backdrop-blur-xl">
                   <DotPattern
                     className="[mask-image:radial-gradient(ellipse_at_center,black_15%,transparent_72%)] transition-[fill,fill-opacity] duration-500 ease-[var(--ease-smooth-out)]"
                     cr={1}
@@ -414,6 +468,7 @@ export function App() {
                 className="t-page overflow-y-auto px-5 pt-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
                 data-page-id="3"
                 inert={stage !== 3}
+                ref={exercisesScrollRef}
               >
                 {visibleExercises.length === 0 ? (
                   <div className="flex h-full min-h-[20rem] flex-col items-center justify-center gap-3 text-center">
@@ -425,31 +480,37 @@ export function App() {
                     </p>
                   </div>
                 ) : (
-                  <div
-                    className="t-stagger is-shown grid grid-cols-2 gap-3.5"
-                    data-testid="exercise-results"
-                  >
-                    {visibleExercises.map((exercise, index) => (
-                      <ExerciseCard
-                        exercise={exercise}
-                        index={index}
-                        key={exercise.id}
-                        onOpenDetail={openDetail}
-                        onToggleSelect={toggleSelected}
-                        selectMode={selectMode}
-                        selected={selectedIds.includes(exercise.id)}
+                  <>
+                    <div
+                      className="t-stagger is-shown grid grid-cols-2 gap-3.5"
+                      data-testid="exercise-results"
+                    >
+                      {pagedExercises.map((exercise, index) => (
+                        <ExerciseCard
+                          exercise={exercise}
+                          index={index}
+                          key={exercise.id}
+                          onOpenDetail={openDetail}
+                          onToggleSelect={toggleSelected}
+                          selectMode={selectMode}
+                          selected={selectedIds.includes(exercise.id)}
+                        />
+                      ))}
+                    </div>
+                    {hasMoreExercises && (
+                      <div
+                        aria-hidden="true"
+                        className="h-1"
+                        data-testid="load-more-sentinel"
+                        ref={loadMoreSentinelRef}
                       />
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
               </section>
             </div>
 
-            <footer className="absolute inset-x-0 bottom-0 z-20 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-              <ProgressiveBlur
-                className="absolute inset-x-0 -top-6 bottom-0"
-                direction="bottom"
-              />
+            <footer className="bottom-controls-scrim absolute inset-x-0 bottom-0 z-20 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
               <div className="relative flex gap-2.5">
                 {stage > 1 && !selectMode && (
                   <Button
@@ -530,9 +591,12 @@ export function App() {
 
       <ExerciseDetailDrawer
         exercise={detailExercise}
-        onAddToWorkout={addExerciseToWorkout}
+        onSelectExercise={selectExerciseFromDetail}
         onOpenChange={setDetailOpen}
         open={detailOpen}
+        selected={
+          detailExercise ? selectedIds.includes(detailExercise.id) : false
+        }
       />
 
       <WorkoutFormDrawer

@@ -1,13 +1,20 @@
-import { fireEvent, render, screen, within } from "@testing-library/react"
+import { act, fireEvent, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it } from "vitest"
 
 import { App } from "@/App"
 import { formatDateLong, formatDateShort, toISODate } from "@/lib/date"
-import { EXERCISES, filterExercises } from "@/lib/exercises"
+import {
+  EQUIPMENT_OPTIONS,
+  EXERCISE_PAGE_SIZE,
+  EXERCISES,
+  filterExercises,
+} from "@/lib/exercises"
 import { useFavorites } from "@/store/use-favorites"
 import { useFilters } from "@/store/use-filters"
 import { useWorkouts } from "@/store/use-workouts"
+import { triggerIntersection } from "@/test/setup"
+import { MUSCLE_IDS } from "@/types"
 
 async function goToExercises(
   user: ReturnType<typeof userEvent.setup>,
@@ -64,41 +71,32 @@ describe("App", () => {
     expect(screen.getByTestId("exercise-results")).toBeInTheDocument()
   })
 
-  it("moves forward and back between stages with horizontal swipes", async () => {
-    useFilters.setState({
-      selectedMuscles: ["chest"],
-      selectedEquipment: ["body weight"],
-    })
+  it("restores the in-progress flow after the app remounts", async () => {
+    const user = userEvent.setup()
+    const [exercise] = filterExercises(EXERCISES, ["chest"], ["body weight"])
+    const firstRender = render(<App />)
+
+    fireEvent.click(screen.getByRole("button", { name: "Front Chest" }))
+    await user.click(screen.getByRole("button", { name: /choose equipment/i }))
+    await user.click(screen.getByRole("checkbox", { name: "Body Weight" }))
+    await user.click(screen.getByRole("button", { name: /show exercises/i }))
+    await user.click(screen.getByRole("button", { name: "Select" }))
+    await user.click(
+      screen.getByRole("button", { name: `Select ${exercise.name}` })
+    )
+
+    firstRender.unmount()
     render(<App />)
-    const main = document.querySelector("main") as HTMLElement
 
-    fireEvent.pointerDown(main, {
-      clientX: 330,
-      clientY: 400,
-      pointerType: "touch",
-    })
-    fireEvent.pointerUp(main, {
-      clientX: 120,
-      clientY: 405,
-      pointerType: "touch",
-    })
     expect(
-      await screen.findByRole("heading", { name: "Equipment" })
-    ).toBeVisible()
-
-    fireEvent.pointerDown(main, {
-      clientX: 80,
-      clientY: 400,
-      pointerType: "touch",
-    })
-    fireEvent.pointerUp(main, {
-      clientX: 300,
-      clientY: 405,
-      pointerType: "touch",
-    })
+      screen.getByRole("heading", { name: "Exercises" })
+    ).toBeInTheDocument()
     expect(
-      await screen.findByRole("heading", { name: "Muscles" })
-    ).toBeVisible()
+      screen.getByRole("button", { name: "Add to workout (1)" })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: `Select ${exercise.name}` })
+    ).toHaveAttribute("aria-pressed", "true")
   })
 
   it("renders the matching result count and visual cards", async () => {
@@ -117,11 +115,44 @@ describe("App", () => {
       `${expected.length} exercises`
     )
     const results = screen.getByTestId("exercise-results")
-    expect(results.querySelectorAll("article")).toHaveLength(expected.length)
+    expect(results.querySelectorAll("article")).toHaveLength(
+      Math.min(expected.length, EXERCISE_PAGE_SIZE)
+    )
     const image = results.querySelector("img[src$='.webp']")
     expect(image).toHaveAttribute("loading", "lazy")
     expect(image).toHaveAttribute("decoding", "async")
     expect(image).toHaveAttribute("fetchpriority", "low")
+  })
+
+  it("paginates a large result set instead of mounting every card at once", async () => {
+    const user = userEvent.setup()
+    const expected = filterExercises(
+      EXERCISES,
+      [...MUSCLE_IDS],
+      [...EQUIPMENT_OPTIONS]
+    )
+    expect(expected.length).toBeGreaterThan(EXERCISE_PAGE_SIZE * 2)
+    useFilters.setState({
+      selectedMuscles: [...MUSCLE_IDS],
+      selectedEquipment: [...EQUIPMENT_OPTIONS],
+    })
+    render(<App />)
+
+    await user.click(screen.getByRole("button", { name: /choose equipment/i }))
+    await user.click(screen.getByRole("button", { name: /show exercises/i }))
+
+    const results = screen.getByTestId("exercise-results")
+    expect(results.querySelectorAll("article")).toHaveLength(EXERCISE_PAGE_SIZE)
+
+    // The next batch loads automatically once the sentinel below the grid
+    // scrolls into view — simulate that (jsdom does no real layout, so
+    // there's no geometry to trigger it for real).
+    act(() => {
+      triggerIntersection(screen.getByTestId("load-more-sentinel"))
+    })
+    expect(results.querySelectorAll("article")).toHaveLength(
+      EXERCISE_PAGE_SIZE * 2
+    )
   })
 
   it("renders the zero-results state", async () => {
@@ -208,11 +239,38 @@ describe("App", () => {
     expect(clearFilter).toBeInTheDocument()
     await user.click(clearFilter)
 
-    expect(screen.getByTestId("exercise-results").querySelectorAll("article"))
-      .toHaveLength(matches.length)
+    expect(
+      screen.getByTestId("exercise-results").querySelectorAll("article")
+    ).toHaveLength(Math.min(matches.length, EXERCISE_PAGE_SIZE))
     expect(
       screen.getByRole("button", { name: /add to workout/i })
     ).toBeDisabled()
+  })
+
+  it("selects an exercise from its detail drawer without opening workout creation", async () => {
+    const user = userEvent.setup()
+    const [exercise] = filterExercises(EXERCISES, ["chest"], ["body weight"])
+    render(<App />)
+    await goToExercises(user, ["chest"], ["body weight"])
+
+    await user.click(
+      screen.getByRole("button", {
+        name: `View ${exercise.name} details`,
+      })
+    )
+
+    const detailDrawer = await screen.findByRole("dialog")
+    await user.click(
+      within(detailDrawer).getByRole("button", { name: "Select" })
+    )
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "Add to workout (1)" })
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "Create workout" })
+    ).not.toBeInTheDocument()
   })
 
   it("composes a workout from selected exercises and shows it in My workouts", async () => {
@@ -284,6 +342,32 @@ describe("App", () => {
       within(editDrawer).getByRole("img", {
         name: `${first.name} demonstration`,
       })
+    ).toBeInTheDocument()
+
+    // The calendar is intentionally rendered inside the drawer instead of
+    // through a portal. A portaled popup can be reported as an outside press
+    // by iOS Safari, which used to dismiss the entire workout editor.
+    const editDateTrigger = within(editDrawer).getByRole("button", {
+      name: formatDateLong(today),
+    })
+    await user.click(editDateTrigger)
+
+    const calendar = within(editDrawer).getByRole("dialog", {
+      name: "Choose workout date",
+    })
+    const alternateDay = calendar.querySelector<HTMLButtonElement>(
+      'button[data-day]:not([data-selected-single="true"])'
+    )
+    expect(alternateDay).not.toBeNull()
+    await user.click(alternateDay!)
+
+    expect(
+      within(editDrawer).queryByRole("dialog", {
+        name: "Choose workout date",
+      })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole("dialog", { name: "Edit workout" })
     ).toBeInTheDocument()
   })
 })

@@ -58,7 +58,7 @@ export function LikeButton({
       <span className="t-like-icon grid place-items-center">
         <Heart className={cn("t-like-heart", iconClassName)} />
       </span>
-      {animated && (
+      {animated && bursting && (
         <span aria-hidden="true" className="t-like-particles">
           {PARTICLES.map((particle, index) => (
             <i

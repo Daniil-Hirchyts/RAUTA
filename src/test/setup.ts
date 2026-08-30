@@ -39,10 +39,45 @@ class ResizeObserverStub {
   disconnect() {}
 }
 
+// Real observers so tests can simulate "the sentinel scrolled into view" —
+// jsdom does no layout, so there's no geometry to trigger this for real.
+const intersectionObservers: {
+  callback: IntersectionObserverCallback
+  elements: Set<Element>
+}[] = []
+
 class IntersectionObserverStub {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
+  callback: IntersectionObserverCallback
+  elements = new Set<Element>()
+
+  constructor(callback: IntersectionObserverCallback) {
+    this.callback = callback
+    intersectionObservers.push(this)
+  }
+
+  observe(element: Element) {
+    this.elements.add(element)
+  }
+
+  unobserve(element: Element) {
+    this.elements.delete(element)
+  }
+
+  disconnect() {
+    this.elements.clear()
+  }
+}
+
+/** Fires every IntersectionObserver currently watching `element` as if it
+ *  had just scrolled into view. */
+export function triggerIntersection(element: Element) {
+  for (const observer of intersectionObservers) {
+    if (!observer.elements.has(element)) continue
+    observer.callback(
+      [{ isIntersecting: true, target: element } as IntersectionObserverEntry],
+      observer as unknown as IntersectionObserver
+    )
+  }
 }
 
 Object.defineProperty(window, "ResizeObserver", {

@@ -2,7 +2,10 @@ import { AnimatedCheck } from "@/components/animated-check"
 import { LikeButton } from "@/components/like-button"
 import { triggerHaptic } from "@/lib/haptics"
 import { cn } from "@/lib/utils"
-import { EXERCISE_ANIMATION_FILTER, exerciseAnimation } from "@/lib/visuals"
+import {
+  EXERCISE_ANIMATION_FILTER_LIGHT,
+  exerciseAnimation,
+} from "@/lib/visuals"
 import { useFavorites } from "@/store/use-favorites"
 import type { ExerciseSummary } from "@/types"
 
@@ -39,7 +42,7 @@ export function ExerciseCard({
       )}
       style={{ transitionDelay: `${Math.min(index, 6) * 40}ms` }}
     >
-      <div
+      <button
         aria-label={
           selectMode
             ? `Select ${exercise.name}`
@@ -48,14 +51,7 @@ export function ExerciseCard({
         aria-pressed={selectMode ? selected : undefined}
         className="block w-full cursor-pointer text-left"
         onClick={activate}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault()
-            activate()
-          }
-        }}
-        role="button"
-        tabIndex={0}
+        type="button"
       >
         <div className="isolate aspect-square overflow-hidden bg-[#111113]">
           <img
@@ -66,7 +62,7 @@ export function ExerciseCard({
             fetchPriority="low"
             loading="lazy"
             src={exerciseAnimation(exercise)}
-            style={{ filter: EXERCISE_ANIMATION_FILTER }}
+            style={{ filter: EXERCISE_ANIMATION_FILTER_LIGHT }}
           />
         </div>
         {/* Fixed height (not content-driven) so every card is identical
@@ -76,7 +72,7 @@ export function ExerciseCard({
             {exercise.name}
           </h3>
         </div>
-      </div>
+      </button>
 
       <LikeButton
         aria-label={

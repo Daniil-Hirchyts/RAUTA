@@ -38,6 +38,11 @@
 :root,
 .dark {
   color-scheme: dark;
+  /* Safari's dynamic viewport can stay pinned to the shorter, toolbar-visible
+     height even after the browser chrome collapses. The app is an edge-to-edge
+     shell, so size it from the large viewport instead. Older browsers fall
+     back to the long-established 100vh behavior. */
+  --app-viewport-height: 100vh;
   --background: oklch(0.16 0 0);
   --foreground: oklch(0.96 0 0);
   --card: oklch(0.205 0 0);
@@ -97,6 +102,13 @@
   --stagger-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+@supports (height: 100lvh) {
+  :root,
+  .dark {
+    --app-viewport-height: 100lvh;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -104,10 +116,10 @@
 
   html {
     @apply bg-[#0e0e0f] font-sans antialiased;
-    height: 100%;
+    min-height: var(--app-viewport-height);
     min-width: 320px;
-    overflow: hidden;
-    overscroll-behavior: none;
+    overflow-x: hidden;
+    overflow-y: auto;
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
@@ -116,19 +128,16 @@
 
   body {
     @apply m-0 min-w-[320px] bg-[#0e0e0f] text-foreground;
-    position: fixed;
-    inset: 0;
     width: 100%;
-    height: 100%;
-    overflow: hidden;
-    overscroll-behavior: none;
+    min-height: var(--app-viewport-height);
+    overflow-x: hidden;
+    overflow-y: auto;
     -webkit-tap-highlight-color: transparent;
   }
 
   #root {
     width: 100%;
-    height: 100%;
-    overflow: hidden;
+    min-height: var(--app-viewport-height);
   }
 
   button:not(:disabled),
@@ -158,6 +167,24 @@
   ::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* A plain color scrim keeps fixed bottom actions readable over scrolling
+   content. It intentionally uses no backdrop filter or progressive blur. */
+.bottom-controls-scrim {
+  --bottom-controls-color: var(--background);
+  isolation: isolate;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 15%,
+    color-mix(in oklch, var(--bottom-controls-color) 55%, transparent) 45%,
+    var(--bottom-controls-color) 100%
+  );
+}
+
+.bottom-controls-scrim::before {
+  content: none;
 }
 
 .body-silhouette path {
@@ -385,8 +412,7 @@
   }
   100% {
     opacity: 0;
-    transform: translate(var(--px), var(--py))
-      scale(var(--p-end-scale, 0.6));
+    transform: translate(var(--px), var(--py)) scale(var(--p-end-scale, 0.6));
   }
 }
 
@@ -503,19 +529,11 @@
 
 @keyframes drawer-enter-from-bottom {
   from {
-    transform: translate3d(
-      0,
-      calc(100% + var(--drawer-inset, 0px) + 2px),
-      0
-    );
+    transform: translate3d(0, calc(100% + var(--drawer-inset, 0px) + 2px), 0);
   }
 
   to {
-    transform: translate3d(
-        var(--translate-x, 0px),
-        var(--translate-y, 0px),
-        0
-      )
+    transform: translate3d(var(--translate-x, 0px), var(--translate-y, 0px), 0)
       scale(var(--stack-scale, 1));
   }
 }
@@ -532,7 +550,9 @@
   }
 }
 
-.workout-exercise-card {
+/* Resting rows can skip offscreen rendering, but the dragged row must stay
+   fully painted while its transform moves beyond its original layout box. */
+.workout-exercise-card:not(.is-dragging) {
   content-visibility: auto;
   contain-intrinsic-size: auto 96px;
 }
