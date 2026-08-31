@@ -1,4 +1,7 @@
+import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics"
 import { hapticTrigger } from "ios-haptics"
+
+import { isNative } from "@/lib/native"
 
 export type HapticInput =
   "selection" | "light" | "medium" | "heavy" | "success" | "warning"
@@ -13,11 +16,45 @@ const VIBRATION_PATTERNS: Record<HapticInput, number | number[]> = {
 }
 
 /**
- * Android and other compatible browsers expose the Vibration API. iOS does
- * not, so stable HTML buttons are enhanced separately by
- * installDirectTouchHaptics().
+ * Inside the native shell each input maps onto the real UIKit feedback
+ * generator it was named for, which the web build cannot reach.
+ */
+const NATIVE_HAPTICS: Record<HapticInput, () => Promise<void>> = {
+  selection: () => selectionTick(),
+  light: () => Haptics.impact({ style: ImpactStyle.Light }),
+  medium: () => Haptics.impact({ style: ImpactStyle.Medium }),
+  heavy: () => Haptics.impact({ style: ImpactStyle.Heavy }),
+  success: () => Haptics.notification({ type: NotificationType.Success }),
+  warning: () => Haptics.notification({ type: NotificationType.Warning }),
+}
+
+let selectionGeneratorReady: Promise<void> | null = null
+
+/**
+ * UISelectionFeedbackGenerator only fires once it exists, and the plugin
+ * creates it in selectionStart(). Without that first call selectionChanged()
+ * is silently dropped, so prepare it once and keep it alive — a prepared
+ * generator is also what keeps the tick latency low.
+ */
+function selectionTick() {
+  selectionGeneratorReady ??= Haptics.selectionStart()
+  return selectionGeneratorReady.then(() => Haptics.selectionChanged())
+}
+
+/**
+ * Android and other compatible browsers expose the Vibration API. iOS Safari
+ * does not, so stable HTML buttons are enhanced separately by
+ * installDirectTouchHaptics(). The native shell needs neither and calls
+ * straight into UIKit.
  */
 export function triggerHaptic(input: HapticInput) {
+  if (isNative()) {
+    // Fire and forget: a dropped haptic must never surface as an unhandled
+    // rejection or block the interaction that asked for it.
+    void NATIVE_HAPTICS[input]().catch(() => undefined)
+    return
+  }
+
   if (typeof navigator === "undefined" || !("vibrate" in navigator)) return
   navigator.vibrate(VIBRATION_PATTERNS[input])
 }
@@ -156,8 +193,13 @@ function reconcileDirectTouchHaptics() {
  * Installs direct-touch iOS haptics on current and future stable buttons.
  * Scrollable, draggable, swipeable, and drawer interaction surfaces are
  * deliberately left untouched.
+ *
+ * The native shell has no use for any of this: triggerHaptic() reaches UIKit
+ * directly, so the transparent switch overlay would add its gesture-target
+ * hazards back for no benefit.
  */
 export function installDirectTouchHaptics() {
+  if (isNative()) return () => undefined
   if (typeof document === "undefined") return () => undefined
 
   reconcileDirectTouchHaptics()

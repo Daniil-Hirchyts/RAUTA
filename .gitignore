@@ -31,3 +31,6 @@ venv
 *.sln
 *.sw?
 .env*
+
+# Native release artifacts
+build
