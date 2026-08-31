@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { CalendarDays, ChevronLeft, Eraser, SearchX, X } from "lucide-react"
 
 import { AnimatedNumber } from "@/components/animated-number"
@@ -25,6 +32,7 @@ import {
   EXERCISES,
   EXERCISES_BY_ID,
   filterExercises,
+  supportingFromIndex,
 } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
 import { titleCase } from "@/lib/text"
@@ -215,6 +223,16 @@ export function App() {
     visibleCount,
   } = useLoadMoreOnScroll(visibleExercises.length, EXERCISE_PAGE_SIZE)
   const pagedExercises = visibleExercises.slice(0, visibleCount)
+
+  // Results are ordered by how much of an exercise actually goes into the
+  // picked muscles, so everything past this index still involves them but is
+  // built around something else. Labelling the seam beats silently hiding the
+  // tail: the exercises stay reachable, they just stop pretending to be the
+  // answer.
+  const supportingIndex = useMemo(
+    () => supportingFromIndex(visibleExercises, selectedMuscles),
+    [visibleExercises, selectedMuscles]
+  )
 
   const canContinue =
     stage === 1 ? selectedMuscles.length > 0 : selectedEquipment.length > 0
@@ -538,15 +556,23 @@ export function App() {
                       data-testid="exercise-results"
                     >
                       {pagedExercises.map((exercise, index) => (
-                        <ExerciseCard
-                          exercise={exercise}
-                          index={index}
-                          key={exercise.id}
-                          onOpenDetail={openDetail}
-                          onToggleSelect={toggleSelected}
-                          selectMode={selectMode}
-                          selected={selectedIds.includes(exercise.id)}
-                        />
+                        <Fragment key={exercise.id}>
+                          {index === supportingIndex && (
+                            <h2 className="col-span-2 flex items-center gap-3 pt-3 pb-0.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                              <span className="h-px flex-1 bg-border" />
+                              Also works these muscles
+                              <span className="h-px flex-1 bg-border" />
+                            </h2>
+                          )}
+                          <ExerciseCard
+                            exercise={exercise}
+                            index={index}
+                            onOpenDetail={openDetail}
+                            onToggleSelect={toggleSelected}
+                            selectMode={selectMode}
+                            selected={selectedIds.includes(exercise.id)}
+                          />
+                        </Fragment>
                       ))}
                     </div>
                     {hasMoreExercises && (

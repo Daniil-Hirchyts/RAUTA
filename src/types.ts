@@ -26,6 +26,10 @@ export type ExerciseSummary = {
   name: string
   equipment: string
   primaryMuscle: MuscleId | null
+  // Muscles ordered strongest-involvement first, with `muscleWeights[i]`
+  // holding how much of the exercise's effort lands on `muscles[i]`
+  // (1 = the muscle the movement is built around).
   muscles: MuscleId[]
+  muscleWeights: number[]
   instructions: string[]
 }
