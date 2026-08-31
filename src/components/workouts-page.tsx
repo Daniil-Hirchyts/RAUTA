@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { CalendarDays, ChevronLeft, ChevronRight, Trash2 } from "lucide-react"
+import { CalendarDays, ChevronRight, Copy, Trash2 } from "lucide-react"
 
 import { BodyPreview } from "@/components/body-map"
 import { DeleteWorkoutConfirmation } from "@/components/delete-workout-confirmation"
@@ -11,16 +11,17 @@ import { triggerHaptic } from "@/lib/haptics"
 import { useWorkouts, type Workout } from "@/store/use-workouts"
 
 export function WorkoutsPage({
-  onBack,
+  onCreate,
   onSelect,
 }: {
-  onBack: () => void
+  onCreate: () => void
   onSelect: (workout: Workout) => void
 }) {
   const workouts = useWorkouts((state) => state.workouts)
   const deleteWorkout = useWorkouts((state) => state.deleteWorkout)
+  const duplicateWorkout = useWorkouts((state) => state.duplicateWorkout)
   const sorted = [...workouts].sort((left, right) =>
-    left.date.localeCompare(right.date)
+    right.date.localeCompare(left.date)
   )
 
   const [openRowId, setOpenRowId] = useState<string | null>(null)
@@ -29,29 +30,23 @@ export function WorkoutsPage({
   return (
     <>
       <header className="shrink-0 border-b border-white/[0.05] bg-background/80 px-5 pt-4 pb-4 backdrop-blur-xl">
-        <div className="flex items-center gap-3">
-          <Button
-            aria-label="Back"
-            className="shrink-0 rounded-full"
-            onClick={onBack}
-            size="icon"
-            variant="secondary"
-          >
-            <ChevronLeft />
-          </Button>
-          <h1 className="bg-gradient-to-r from-foreground to-foreground/75 bg-clip-text text-[26px] font-black tracking-[-0.03em] text-transparent">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="bg-gradient-to-r from-foreground to-foreground/75 bg-clip-text text-[30px] font-black tracking-[-0.03em] text-transparent">
             My workouts
           </h1>
         </div>
+        <p className="mt-1 text-sm font-medium text-muted-foreground">
+          Your next session starts here.
+        </p>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-5">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pt-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
         {sorted.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 px-5 text-center">
             <CalendarDays className="size-7 text-[color-mix(in_oklch,var(--muted-foreground),var(--background)_35%)]" />
             <p className="max-w-[24rem] text-base text-muted-foreground">
-              No workouts yet. Select exercises on the Exercises step and tap
-              "Add to workout".
+              No workouts yet. Create one, choose muscles, and add your first
+              exercises.
             </p>
           </div>
         ) : (
@@ -63,20 +58,36 @@ export function WorkoutsPage({
                 <li key={workout.id}>
                   <SwipeableRow
                     actionInset={20}
+                    revealWidth={148}
                     action={
-                      <button
-                        aria-label={`Delete ${formatDateShort(workout.date)} workout`}
-                        className="text-destructive-foreground grid size-14 shrink-0 place-items-center rounded-full bg-destructive shadow-lg shadow-black/20 transition-transform duration-150 active:scale-90"
-                        data-haptics="off"
-                        onClick={() => {
-                          triggerHaptic("warning")
-                          setOpenRowId(null)
-                          setPendingDelete(workout)
-                        }}
-                        type="button"
-                      >
-                        <Trash2 className="size-5" />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          aria-label={`Duplicate ${formatDateShort(workout.date)} workout`}
+                          className="grid size-14 shrink-0 place-items-center rounded-full bg-secondary text-secondary-foreground shadow-lg shadow-black/20 transition-transform duration-150 active:scale-90"
+                          data-haptics="off"
+                          onClick={() => {
+                            duplicateWorkout(workout.id)
+                            triggerHaptic("success")
+                            setOpenRowId(null)
+                          }}
+                          type="button"
+                        >
+                          <Copy className="size-5" />
+                        </button>
+                        <button
+                          aria-label={`Delete ${formatDateShort(workout.date)} workout`}
+                          className="text-destructive-foreground grid size-14 shrink-0 place-items-center rounded-full bg-destructive shadow-lg shadow-black/20 transition-transform duration-150 active:scale-90"
+                          data-haptics="off"
+                          onClick={() => {
+                            triggerHaptic("warning")
+                            setOpenRowId(null)
+                            setPendingDelete(workout)
+                          }}
+                          type="button"
+                        >
+                          <Trash2 className="size-5" />
+                        </button>
+                      </div>
                     }
                     isOpen={isOpen}
                     onOpenChange={(open) => {
@@ -118,6 +129,15 @@ export function WorkoutsPage({
           </ul>
         )}
       </div>
+
+      <footer className="bottom-controls-scrim absolute inset-x-0 bottom-0 z-20 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <Button
+          className="h-[3.25rem] w-full rounded-[26px] text-base font-semibold shadow-xl shadow-black/25"
+          onClick={onCreate}
+        >
+          Add workout
+        </Button>
+      </footer>
 
       <DeleteWorkoutConfirmation
         onConfirm={() => {

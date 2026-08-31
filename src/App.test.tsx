@@ -13,6 +13,7 @@ import {
 import { useFavorites } from "@/store/use-favorites"
 import { useFilters } from "@/store/use-filters"
 import { useWorkouts } from "@/store/use-workouts"
+import { DEFAULT_APP_SESSION, writeAppSession } from "@/store/app-session"
 import { triggerIntersection } from "@/test/setup"
 import { MUSCLE_IDS } from "@/types"
 
@@ -39,6 +40,19 @@ describe("App", () => {
     })
     useFavorites.setState({ favoriteIds: [] })
     useWorkouts.setState({ workouts: [] })
+    writeAppSession({ ...DEFAULT_APP_SESSION, view: { type: "flow" } })
+  })
+
+  it("opens on My workouts and starts creation from there", async () => {
+    localStorage.clear()
+    const user = userEvent.setup()
+    render(<App />)
+
+    expect(
+      screen.getByRole("heading", { name: "My workouts" })
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Add workout" }))
+    expect(screen.getByRole("heading", { name: "Muscles" })).toBeInTheDocument()
   })
 
   it("moves through separate muscle, equipment, and exercise stages", async () => {
@@ -301,6 +315,38 @@ describe("App", () => {
     expect(cardButton).toHaveAttribute("aria-pressed", "false")
   })
 
+  it("adds selected exercises to an existing workout", async () => {
+    const user = userEvent.setup()
+    const [exercise] = filterExercises(EXERCISES, ["chest"], ["body weight"])
+    const workoutId = useWorkouts.getState().createWorkout({
+      name: "Workout",
+      date: "2026-09-08",
+      exerciseIds: [],
+    })
+    render(<App />)
+    await goToExercises(user, ["chest"], ["body weight"])
+
+    await user.click(screen.getByRole("button", { name: "Select" }))
+    await user.click(
+      screen.getByRole("button", { name: `Select ${exercise.name}` })
+    )
+    await user.click(screen.getByRole("button", { name: "Add to workout (1)" }))
+
+    const destination = await screen.findByRole("dialog")
+    await user.click(
+      within(destination).getByRole("button", { name: /tue, sep 8/i })
+    )
+
+    expect(
+      useWorkouts
+        .getState()
+        .workouts.find((workout) => workout.id === workoutId)?.exerciseIds
+    ).toEqual([exercise.id])
+    expect(
+      screen.getByRole("button", { name: "Add exercise" })
+    ).toBeInTheDocument()
+  })
+
   it("composes a workout from selected exercises and shows it in My workouts", async () => {
     const user = userEvent.setup()
     const matches = filterExercises(EXERCISES, ["chest"], ["body weight"])
@@ -322,9 +368,22 @@ describe("App", () => {
     expect(addToWorkout.querySelector("svg")).not.toBeInTheDocument()
     await user.click(addToWorkout)
 
+    const destinationDrawer = await screen.findByRole("dialog")
+    expect(
+      within(destinationDrawer).getByRole("heading", {
+        name: "Add 2 exercises",
+      })
+    ).toBeInTheDocument()
+    await user.click(
+      within(destinationDrawer).getByRole("button", { name: /new workout/i })
+    )
+
     // The date picker trigger defaults to today — it doubles as the
     // workout's title, so there's no separate name field to fill in.
-    const formDrawer = await screen.findByRole("dialog")
+    const formHeading = await screen.findByRole("heading", {
+      name: "New workout",
+    })
+    const formDrawer = formHeading.closest<HTMLElement>("[role='dialog']")!
     const today = toISODate(new Date())
     const trigger = within(formDrawer).getByRole("button", {
       name: formatDateLong(today),
@@ -346,56 +405,24 @@ describe("App", () => {
       screen.queryByRole("button", { name: /add to workout/i })
     ).not.toBeInTheDocument()
 
-    // "My workouts" is a full page, not a drawer — navigating there should
-    // list the new workout by its date (there's no separate name field).
-    await user.click(screen.getByRole("button", { name: "My workouts" }))
+    // Saving opens the direct-manipulation detail view.
+    expect(screen.getByText(first.name)).toBeInTheDocument()
+    expect(screen.getByText(second.name)).toBeInTheDocument()
+    expect(screen.getByText("01")).toBeInTheDocument()
+    expect(screen.getByText("02")).toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "Edit workout" })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "Add exercise" })
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Back to workouts" }))
     expect(
       screen.getByRole("heading", { name: "My workouts" })
     ).toBeInTheDocument()
     const dateLabel = formatDateShort(today)
     expect(screen.getByText(dateLabel)).toBeInTheDocument()
     expect(screen.getByText("2 exercises")).toBeInTheDocument()
-
-    // Clicking through shows the workout detail page with its exercises.
-    await user.click(screen.getByText(dateLabel))
-    expect(screen.getByText(first.name)).toBeInTheDocument()
-    expect(screen.getByText(second.name)).toBeInTheDocument()
-
-    await user.click(screen.getByRole("button", { name: "Edit workout" }))
-    const editDrawer = await screen.findByRole("dialog")
-    expect(
-      within(editDrawer).getByRole("button", { name: "Save changes" })
-    ).toBeInTheDocument()
-    expect(
-      within(editDrawer).getByRole("img", {
-        name: `${first.name} demonstration`,
-      })
-    ).toBeInTheDocument()
-
-    // The calendar is intentionally rendered inside the drawer instead of
-    // through a portal. A portaled popup can be reported as an outside press
-    // by iOS Safari, which used to dismiss the entire workout editor.
-    const editDateTrigger = within(editDrawer).getByRole("button", {
-      name: formatDateLong(today),
-    })
-    await user.click(editDateTrigger)
-
-    const calendar = within(editDrawer).getByRole("dialog", {
-      name: "Choose workout date",
-    })
-    const alternateDay = calendar.querySelector<HTMLButtonElement>(
-      'button[data-day]:not([data-selected-single="true"])'
-    )
-    expect(alternateDay).not.toBeNull()
-    await user.click(alternateDay!)
-
-    expect(
-      within(editDrawer).queryByRole("dialog", {
-        name: "Choose workout date",
-      })
-    ).not.toBeInTheDocument()
-    expect(
-      screen.getByRole("dialog", { name: "Edit workout" })
-    ).toBeInTheDocument()
   })
 })

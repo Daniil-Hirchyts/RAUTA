@@ -22,6 +22,7 @@ import { SwipeBackPage } from "@/components/swipe-back-page"
 import { Button } from "@/components/ui/button"
 import { DotPattern } from "@/components/ui/dot-pattern"
 import { WorkoutDetailPage } from "@/components/workout-detail-page"
+import { WorkoutDestinationDrawer } from "@/components/workout-destination-drawer"
 import { WorkoutFormDrawer } from "@/components/workout-form-drawer"
 import { WorkoutsPage } from "@/components/workouts-page"
 import { useEdgeSwipe } from "@/hooks/use-edge-swipe"
@@ -140,6 +141,10 @@ export function App() {
 
   const [workoutFormOpen, setWorkoutFormOpen] = useState(
     initialSession.workoutFormOpen
+  )
+  const [workoutDestinationOpen, setWorkoutDestinationOpen] = useState(false)
+  const [preferredWorkoutId, setPreferredWorkoutId] = useState<string | null>(
+    null
   )
   // Bumped on every "open the workout form" action so the drawer remounts
   // with clean local state instead of reusing whatever was left over from
@@ -296,7 +301,8 @@ export function App() {
 
   const addSelectionToWorkout = () => {
     if (selectedIds.length === 0) return
-    openWorkoutForm({ exerciseIds: selectedIds })
+    triggerHaptic("medium")
+    setWorkoutDestinationOpen(true)
   }
 
   const selectExerciseFromDetail = (exercise: ExerciseSummary) => {
@@ -308,7 +314,16 @@ export function App() {
     setDetailOpen(false)
   }
 
-  const editWorkout = (workout: Workout) => openWorkoutForm({ workout })
+  const startExerciseFlow = (workoutId?: string) => {
+    triggerHaptic("medium")
+    reset()
+    setSearch("")
+    setStage(1)
+    setSelectMode(false)
+    setSelectedIds([])
+    setPreferredWorkoutId(workoutId ?? null)
+    setView({ type: "flow" })
+  }
 
   const {
     containerRef: swipeContainerRef,
@@ -333,23 +348,20 @@ export function App() {
       <SvgFilterDefs />
       <main className="relative mx-auto flex h-(--app-viewport-height) w-full max-w-[430px] touch-pan-y flex-col overflow-hidden border-x border-white/[0.04] bg-background pt-[env(safe-area-inset-top)] shadow-2xl shadow-black/40">
         {view.type === "workouts" && (
-          <SwipeBackPage onBack={() => setView({ type: "flow" })}>
-            <WorkoutsPage
-              onBack={() => setView({ type: "flow" })}
-              onSelect={(workout) =>
-                setView({ type: "workout-detail", workoutId: workout.id })
-              }
-            />
-          </SwipeBackPage>
+          <WorkoutsPage
+            onCreate={() => startExerciseFlow()}
+            onSelect={(workout) =>
+              setView({ type: "workout-detail", workoutId: workout.id })
+            }
+          />
         )}
 
         {view.type === "workout-detail" && (
           <SwipeBackPage onBack={() => setView({ type: "workouts" })}>
             <WorkoutDetailPage
+              onAddExercise={() => startExerciseFlow(view.workoutId)}
               onBack={() => setView({ type: "workouts" })}
               onDeleted={() => setView({ type: "workouts" })}
-              onDuplicated={() => setView({ type: "workouts" })}
-              onEdit={editWorkout}
               onOpenExercise={openDetail}
               workoutId={view.workoutId}
             />
@@ -683,9 +695,37 @@ export function App() {
         initialExerciseIds={workoutFormSeed.exerciseIds}
         key={workoutFormGeneration}
         onOpenChange={setWorkoutFormOpen}
-        onSaved={cancelSelectMode}
+        onSaved={(workoutId) => {
+          cancelSelectMode()
+          setPreferredWorkoutId(null)
+          setView({ type: "workout-detail", workoutId })
+        }}
         open={workoutFormOpen}
         workout={workoutFormSeed.workout}
+      />
+
+      <WorkoutDestinationDrawer
+        exerciseIds={selectedIds}
+        onAddToExisting={(workoutId) => {
+          const workout = useWorkouts
+            .getState()
+            .workouts.find((item) => item.id === workoutId)
+          if (!workout) return
+          useWorkouts.getState().updateWorkout(workoutId, {
+            exerciseIds: [...new Set([...workout.exerciseIds, ...selectedIds])],
+          })
+          setWorkoutDestinationOpen(false)
+          cancelSelectMode()
+          setPreferredWorkoutId(null)
+          setView({ type: "workout-detail", workoutId })
+        }}
+        onCreateNew={() => {
+          setWorkoutDestinationOpen(false)
+          openWorkoutForm({ exerciseIds: selectedIds })
+        }}
+        onOpenChange={setWorkoutDestinationOpen}
+        open={workoutDestinationOpen}
+        preferredWorkoutId={preferredWorkoutId}
       />
     </div>
   )

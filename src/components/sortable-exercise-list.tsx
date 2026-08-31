@@ -36,13 +36,13 @@ function SortableExerciseRow({
 
   const row = (
     <div
-      className={`mx-4 flex h-24 w-[calc(100%-2rem)] overflow-hidden rounded-[20px] border bg-card shadow-sm shadow-black/10 transition-[border-color,box-shadow,opacity] ${
+      className={`mx-4 flex h-32 w-[calc(100%-2rem)] overflow-hidden rounded-[22px] border bg-card shadow-sm shadow-black/10 transition-[border-color,box-shadow,opacity] ${
         isDragSource
           ? "border-primary/70 opacity-90 shadow-xl shadow-black/30"
           : "border-border"
       }`}
     >
-      <div className="grid w-11 shrink-0 place-items-center border-r border-border bg-muted/35 text-sm font-black tabular-nums text-primary">
+      <div className="grid w-12 shrink-0 place-items-center border-r border-border bg-muted/35 text-base font-black text-primary tabular-nums">
         {String(index + 1).padStart(2, "0")}
       </div>
       <button
@@ -52,7 +52,7 @@ function SortableExerciseRow({
         onClick={() => onOpen?.(exercise)}
         type="button"
       >
-        <div className="isolate aspect-square h-24 shrink-0 bg-[#111113]">
+        <div className="isolate aspect-square h-32 shrink-0 bg-[#111113]">
           <img
             alt={`${exercise.name} demonstration`}
             className="h-full w-full object-contain mix-blend-screen"
@@ -63,24 +63,24 @@ function SortableExerciseRow({
             style={{ filter: EXERCISE_ANIMATION_FILTER_LIGHT }}
           />
         </div>
-        <div className="min-w-0 flex-1 px-3 py-2">
-          <p className="line-clamp-2 text-sm leading-snug font-semibold capitalize">
+        <div className="min-w-0 flex-1 px-3 py-3">
+          <p className="line-clamp-3 text-base leading-snug font-semibold capitalize">
             {exercise.name}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1.5 text-sm text-muted-foreground">
             {titleCase(exercise.equipment)}
           </p>
         </div>
       </button>
       <button
         aria-label={`Reorder ${exercise.name}`}
-        className="grid w-11 shrink-0 touch-none place-items-center text-muted-foreground transition-colors active:text-foreground"
+        className="grid w-12 shrink-0 touch-none place-items-center text-muted-foreground transition-colors active:text-foreground"
         data-base-ui-swipe-ignore=""
         data-haptics="off"
         ref={handleRef as Ref<HTMLButtonElement>}
         type="button"
       >
-        <GripVertical className="size-5" />
+        <GripVertical className="size-6" />
       </button>
     </div>
   )

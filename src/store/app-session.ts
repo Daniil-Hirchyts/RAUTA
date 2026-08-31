@@ -22,7 +22,7 @@ export type AppSession = {
 }
 
 const APP_SESSION_KEY = "gym-lib-app-session"
-const APP_SESSION_VERSION = 1
+const APP_SESSION_VERSION = 2
 
 export const DEFAULT_APP_SESSION: AppSession = {
   detailExerciseId: null,
@@ -31,7 +31,7 @@ export const DEFAULT_APP_SESSION: AppSession = {
   selectedIds: [],
   selectMode: false,
   stage: 1,
-  view: { type: "flow" },
+  view: { type: "workouts" },
   workoutFormExerciseIds: [],
   workoutFormOpen: false,
   workoutFormWorkoutId: null,

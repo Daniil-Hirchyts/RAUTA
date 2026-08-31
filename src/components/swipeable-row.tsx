@@ -3,7 +3,6 @@ import { useRef, useState, type PointerEvent, type ReactNode } from "react"
 import { cn } from "@/lib/utils"
 
 export const SWIPE_REVEAL_WIDTH = 92
-const OPEN_THRESHOLD = SWIPE_REVEAL_WIDTH / 2
 const DRAG_LOCK_DISTANCE = 8
 
 /**
@@ -18,6 +17,7 @@ export function SwipeableRow({
   className,
   isOpen,
   onOpenChange,
+  revealWidth = SWIPE_REVEAL_WIDTH,
 }: {
   action: ReactNode
   /** The card's right-side margin, included in the exposed delete area. */
@@ -26,6 +26,7 @@ export function SwipeableRow({
   className?: string
   isOpen: boolean
   onOpenChange: (open: boolean) => void
+  revealWidth?: number
 }) {
   const [dragX, setDragX] = useState<number | null>(null)
   // Drives the transition style, so it has to be state (render can't read
@@ -35,7 +36,7 @@ export function SwipeableRow({
   const start = useRef<{ x: number; y: number } | null>(null)
   const locked = useRef(false)
 
-  const settledX = isOpen ? -SWIPE_REVEAL_WIDTH : 0
+  const settledX = isOpen ? -revealWidth : 0
   const x = dragX ?? settledX
   const actionIsVisible = x < 0
 
@@ -69,13 +70,13 @@ export function SwipeableRow({
     }
 
     event.preventDefault()
-    setDragX(Math.min(0, Math.max(-SWIPE_REVEAL_WIDTH, settledX + dx)))
+    setDragX(Math.min(0, Math.max(-revealWidth, settledX + dx)))
   }
 
   const endDrag = () => {
     if (locked.current) {
       const finalX = dragX ?? settledX
-      onOpenChange(finalX <= -OPEN_THRESHOLD)
+      onOpenChange(finalX <= -revealWidth / 2)
     }
     start.current = null
     locked.current = false
@@ -99,7 +100,7 @@ export function SwipeableRow({
           "absolute inset-y-0 right-0 flex items-center justify-center transition-opacity duration-150",
           actionIsVisible ? "opacity-100" : "pointer-events-none opacity-0"
         )}
-        style={{ width: SWIPE_REVEAL_WIDTH + actionInset }}
+        style={{ width: revealWidth + actionInset }}
       >
         {action}
       </div>

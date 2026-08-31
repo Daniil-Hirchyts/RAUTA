@@ -1,35 +1,31 @@
 import { useEffect, useState } from "react"
-import { ChevronLeft, Copy, Trash2 } from "lucide-react"
+import { ChevronLeft, Plus, Trash2 } from "lucide-react"
 
 import { DeleteWorkoutConfirmation } from "@/components/delete-workout-confirmation"
-import { ExerciseCard } from "@/components/exercise-card"
+import { SortableExerciseList } from "@/components/sortable-exercise-list"
 import { Button } from "@/components/ui/button"
-import { useLoadMoreOnScroll } from "@/hooks/use-load-more-on-scroll"
-import { EXERCISE_PAGE_SIZE, EXERCISES_BY_ID } from "@/lib/exercises"
 import { formatDateLong } from "@/lib/date"
 import { triggerHaptic } from "@/lib/haptics"
-import { useWorkouts, type Workout } from "@/store/use-workouts"
+import { useWorkouts } from "@/store/use-workouts"
 import type { ExerciseSummary } from "@/types"
 
 export function WorkoutDetailPage({
+  onAddExercise,
   onBack,
   onDeleted,
-  onDuplicated,
-  onEdit,
   onOpenExercise,
   workoutId,
 }: {
+  onAddExercise: () => void
   onBack: () => void
   onDeleted: () => void
-  onDuplicated: () => void
-  onEdit: (workout: Workout) => void
   onOpenExercise: (exercise: ExerciseSummary) => void
   workoutId: string
 }) {
   const workout = useWorkouts((state) =>
     state.workouts.find((item) => item.id === workoutId)
   )
-  const duplicateWorkout = useWorkouts((state) => state.duplicateWorkout)
+  const updateWorkout = useWorkouts((state) => state.updateWorkout)
   const deleteWorkout = useWorkouts((state) => state.deleteWorkout)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
@@ -37,24 +33,10 @@ export function WorkoutDetailPage({
     if (!workout) onBack()
   }, [onBack, workout])
 
-  // exercises/the hook below must run before the early return — hooks
-  // can't follow a conditional return without breaking React's rule that
-  // the same hooks run in the same order on every render.
-  const exercises = (workout?.exerciseIds ?? [])
-    .map((id) => EXERCISES_BY_ID.get(id))
-    .filter((exercise): exercise is ExerciseSummary => Boolean(exercise))
+  if (!workout) return null
 
-  const {
-    hasMore,
-    rootRef: scrollRef,
-    sentinelRef,
-    visibleCount,
-  } = useLoadMoreOnScroll<HTMLDivElement>(exercises.length, EXERCISE_PAGE_SIZE)
-  const pagedExercises = exercises.slice(0, visibleCount)
-
-  if (!workout) {
-    return null
-  }
+  const setExerciseIds = (exerciseIds: string[]) =>
+    updateWorkout(workout.id, { exerciseIds })
 
   return (
     <>
@@ -74,36 +56,30 @@ export function WorkoutDetailPage({
           {formatDateLong(workout.date)}
         </h1>
         <p className="mt-1 text-sm font-medium text-muted-foreground">
-          {exercises.length} exercise{exercises.length === 1 ? "" : "s"}
+          {workout.exerciseIds.length} exercise
+          {workout.exerciseIds.length === 1 ? "" : "s"}
         </p>
       </header>
 
-      <div
-        className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
-        ref={scrollRef}
-      >
-        {exercises.length === 0 ? (
-          <p className="py-12 text-center text-base text-muted-foreground">
-            No exercises in this workout.
-          </p>
+      <div className="min-h-0 flex-1 overflow-y-auto pt-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
+        {workout.exerciseIds.length === 0 ? (
+          <div className="flex min-h-[18rem] flex-col items-center justify-center gap-3 px-8 text-center">
+            <p className="text-base text-muted-foreground">
+              This workout is empty. Add an exercise to start building it.
+            </p>
+          </div>
         ) : (
-          <>
-            <div className="t-stagger is-shown grid grid-cols-2 gap-3.5">
-              {pagedExercises.map((exercise, index) => (
-                <ExerciseCard
-                  exercise={exercise}
-                  index={index}
-                  key={exercise.id}
-                  onOpenDetail={onOpenExercise}
-                  onToggleSelect={() => {}}
-                  selectMode={false}
-                />
-              ))}
-            </div>
-            {hasMore && (
-              <div aria-hidden="true" className="h-1" ref={sentinelRef} />
-            )}
-          </>
+          <SortableExerciseList
+            exerciseIds={workout.exerciseIds}
+            onOpenExercise={onOpenExercise}
+            onRemove={(id) => {
+              triggerHaptic("warning")
+              setExerciseIds(
+                workout.exerciseIds.filter((exerciseId) => exerciseId !== id)
+              )
+            }}
+            onReorder={setExerciseIds}
+          />
         )}
       </div>
 
@@ -122,23 +98,11 @@ export function WorkoutDetailPage({
             <Trash2 />
           </Button>
           <Button
-            aria-label="Duplicate workout"
-            className="size-[3.25rem] rounded-[26px]"
-            onClick={() => {
-              duplicateWorkout(workout.id)
-              onDuplicated()
-            }}
-            size="icon"
-            variant="secondary"
-          >
-            <Copy />
-          </Button>
-          <Button
-            aria-label="Edit workout"
             className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
-            onClick={() => onEdit(workout)}
+            onClick={onAddExercise}
           >
-            Edit
+            <Plus className="size-5" />
+            Add exercise
           </Button>
         </div>
       </footer>

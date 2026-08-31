@@ -13,10 +13,9 @@ function MissingWorkoutHarness() {
 
   return (
     <WorkoutDetailPage
+      onAddExercise={() => {}}
       onBack={() => setShowDetail(false)}
       onDeleted={() => {}}
-      onDuplicated={() => {}}
-      onEdit={() => {}}
       onOpenExercise={() => {}}
       workoutId="missing"
     />
@@ -54,10 +53,9 @@ describe("WorkoutDetailPage", () => {
 
     render(
       <WorkoutDetailPage
+        onAddExercise={() => {}}
         onBack={() => {}}
         onDeleted={onDeleted}
-        onDuplicated={() => {}}
-        onEdit={() => {}}
         onOpenExercise={() => {}}
         workoutId={workoutId}
       />
