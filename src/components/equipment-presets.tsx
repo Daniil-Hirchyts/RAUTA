@@ -46,6 +46,15 @@ export function EquipmentPresets() {
   const savePreset = useFilters((state) => state.saveEquipmentPreset)
   const deletePreset = useFilters((state) => state.deleteEquipmentPreset)
 
+  const togglePreset = (equipment: readonly string[]) => {
+    triggerHaptic("selection")
+    if (sameSelection(selectedEquipment, equipment)) {
+      setEquipment([])
+    } else {
+      setEquipment([...equipment])
+    }
+  }
+
   const submit = (event: FormEvent) => {
     event.preventDefault()
     if (!name.trim() || selectedEquipment.length === 0) return
@@ -57,7 +66,7 @@ export function EquipmentPresets() {
 
   return (
     <div
-      className="sticky top-0 z-20 mb-3 flex [scrollbar-width:none] gap-2 pb-1 [&::-webkit-scrollbar]:hidden"
+      className="sticky top-0 z-20 mb-1 flex -mx-5 overflow-x-auto px-5 pt-2 pb-4 [scrollbar-width:none] gap-2 [&::-webkit-scrollbar]:hidden"
       data-swipe-ignore
     >
       <Drawer onOpenChange={setOpen} open={open} swipeDirection="down">
@@ -66,7 +75,7 @@ export function EquipmentPresets() {
           disabled={selectedEquipment.length === 0}
           render={
             <button
-              className="grid size-10 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground shadow-sm transition-colors duration-200 active:bg-muted disabled:bg-muted disabled:text-muted-foreground"
+              className="grid size-10 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground shadow-[0_8px_24px_rgb(0_0_0/0.18)] transition-colors duration-200 active:bg-muted disabled:bg-muted disabled:text-muted-foreground"
               type="button"
             />
           }
@@ -111,46 +120,44 @@ export function EquipmentPresets() {
           className="preset-chip shrink-0"
           data-haptics="off"
           key={preset.id}
-          onClick={() => {
-            triggerHaptic("selection")
-            setEquipment([...preset.equipment])
-          }}
+          onClick={() => togglePreset(preset.equipment)}
           type="button"
         >
           {preset.name}
         </button>
       ))}
-      {presets.map((preset) => (
-        <div
-          className="flex shrink-0 items-center rounded-full bg-card shadow-sm ring-1 ring-border"
-          key={preset.id}
-        >
-          <button
-            aria-pressed={sameSelection(selectedEquipment, preset.equipment)}
-            className="preset-chip border-0 pr-2 ring-0"
-            data-haptics="off"
-            onClick={() => {
-              triggerHaptic("selection")
-              setEquipment([...preset.equipment])
-            }}
-            type="button"
+      {presets.map((preset) => {
+        const isSelected = sameSelection(selectedEquipment, preset.equipment)
+        return (
+          <div
+            className="preset-chip preset-chip--custom flex shrink-0 items-center"
+            data-pressed={isSelected ? "true" : undefined}
+            key={preset.id}
           >
-            {preset.name}
-          </button>
-          <button
-            aria-label={`Delete ${preset.name} preset`}
-            className="mr-1 grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground transition-transform duration-150 active:bg-muted active:text-foreground active:scale-90"
-            data-haptics="off"
-            onClick={() => {
-              triggerHaptic("warning")
-              deletePreset(preset.id)
-            }}
-            type="button"
-          >
-            <Trash2 className="size-4" />
-          </button>
-        </div>
-      ))}
+            <button
+              aria-pressed={isSelected}
+              className="flex h-full items-center font-semibold text-inherit outline-none"
+              data-haptics="off"
+              onClick={() => togglePreset(preset.equipment)}
+              type="button"
+            >
+              {preset.name}
+            </button>
+            <button
+              aria-label={`Delete ${preset.name} preset`}
+              className="ml-1.5 grid size-8 shrink-0 place-items-center rounded-full text-inherit opacity-65 transition-all duration-150 hover:opacity-100 active:scale-90"
+              data-haptics="off"
+              onClick={() => {
+                triggerHaptic("warning")
+                deletePreset(preset.id)
+              }}
+              type="button"
+            >
+              <Trash2 className="size-4" />
+            </button>
+          </div>
+        )
+      })}
     </div>
   )
 }
