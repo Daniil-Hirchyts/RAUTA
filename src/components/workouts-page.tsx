@@ -85,7 +85,7 @@ export function WorkoutsPage({
                     }}
                   >
                     <button
-                      className="mx-5 flex w-[calc(100%-2.5rem)] items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 text-left transition-colors duration-150 hover:bg-muted active:bg-muted"
+                      className="mx-5 flex w-[calc(100%-2.5rem)] items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 text-left transition-colors duration-150 active:bg-muted"
                       data-haptics="off"
                       onClick={() => {
                         if (isOpen) {

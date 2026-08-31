@@ -10,16 +10,16 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "border-primary bg-primary text-primary-foreground hover:bg-[color-mix(in_oklch,var(--primary),black_10%)] disabled:border-border disabled:bg-muted disabled:text-muted-foreground",
+          "border-primary bg-primary text-primary-foreground active:bg-[color-mix(in_oklch,var(--primary),black_10%)] disabled:border-border disabled:bg-muted disabled:text-muted-foreground",
         outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground disabled:bg-muted disabled:text-muted-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
+          "border-border bg-background active:bg-muted active:text-foreground disabled:bg-muted disabled:text-muted-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
         secondary:
-          "border-border bg-secondary text-secondary-foreground hover:bg-muted disabled:bg-muted disabled:text-muted-foreground aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "border-border bg-secondary text-secondary-foreground active:bg-muted disabled:bg-muted disabled:text-muted-foreground aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
-          "border-border bg-card hover:bg-muted hover:text-foreground disabled:bg-muted disabled:text-muted-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
+          "border-border bg-card active:bg-muted active:text-foreground disabled:bg-muted disabled:text-muted-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
         destructive:
-          "border-primary bg-card text-primary hover:bg-[color-mix(in_oklch,var(--card),var(--primary)_12%)] focus-visible:border-primary focus-visible:ring-primary/30 disabled:border-border disabled:bg-muted disabled:text-muted-foreground",
-        link: "text-primary underline-offset-4 hover:underline disabled:text-primary/40",
+          "border-primary bg-card text-primary active:bg-[color-mix(in_oklch,var(--card),var(--primary)_12%)] focus-visible:border-primary focus-visible:ring-primary/30 disabled:border-border disabled:bg-muted disabled:text-muted-foreground",
+        link: "text-primary underline-offset-4 active:underline disabled:text-primary/40",
       },
       size: {
         default:

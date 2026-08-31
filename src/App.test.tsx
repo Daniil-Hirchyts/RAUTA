@@ -273,6 +273,34 @@ describe("App", () => {
     ).not.toBeInTheDocument()
   })
 
+  it("opens the detail drawer on long tap in selection mode without toggling selection", async () => {
+    const user = userEvent.setup()
+    const [exercise] = filterExercises(EXERCISES, ["chest"], ["body weight"])
+    render(<App />)
+    await goToExercises(user, ["chest"], ["body weight"])
+
+    await user.click(screen.getByRole("button", { name: "Select" }))
+    const cardButton = screen.getByRole("button", {
+      name: `Select ${exercise.name}`,
+    })
+    expect(cardButton).toHaveAttribute("aria-pressed", "false")
+
+    fireEvent.pointerDown(cardButton, { button: 0, clientX: 100, clientY: 100 })
+    act(() => {
+      new Promise((resolve) => setTimeout(resolve, 550))
+    })
+    // Wait for the timer
+    await new Promise((resolve) => setTimeout(resolve, 550))
+    fireEvent.pointerUp(cardButton)
+    fireEvent.click(cardButton)
+
+    const detailDrawer = await screen.findByRole("dialog")
+    expect(
+      within(detailDrawer).getByRole("heading", { name: exercise.name })
+    ).toBeInTheDocument()
+    expect(cardButton).toHaveAttribute("aria-pressed", "false")
+  })
+
   it("composes a workout from selected exercises and shows it in My workouts", async () => {
     const user = userEvent.setup()
     const matches = filterExercises(EXERCISES, ["chest"], ["body weight"])

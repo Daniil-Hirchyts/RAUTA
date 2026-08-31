@@ -203,22 +203,23 @@ export function BodyMap({ onToggle, selectedMuscles }: BodyMapProps) {
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col">
-      <div className="mb-1 flex shrink-0 items-center justify-between">
-        <p className="text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase">
+    <div className="relative flex h-full min-h-0 w-full flex-col">
+      <p className="pointer-events-auto absolute top-3.5 left-3.5 z-20 text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase sm:top-4 sm:left-4">
+        <span className="t-text-swap" key={label}>
           {label}
-        </p>
-        <button
-          aria-label={`Show ${side === "front" ? "back" : "front"}`}
-          className="grid size-10 place-items-center rounded-full border border-border bg-card text-foreground transition-colors duration-150 hover:bg-muted active:bg-muted"
-          onClick={flipSide}
-          type="button"
-        >
-          <FlipHorizontal2 className="size-4.5" />
-        </button>
-      </div>
+        </span>
+      </p>
+
+      <button
+        aria-label={`Show ${side === "front" ? "back" : "front"}`}
+        className="pointer-events-auto absolute right-3.5 bottom-3.5 z-20 grid size-10 place-items-center rounded-full border border-border bg-card/90 text-foreground shadow-sm backdrop-blur-md transition-colors duration-150 active:bg-muted sm:right-4 sm:bottom-4"
+        onClick={flipSide}
+        type="button"
+      >
+        <FlipHorizontal2 className="size-4.5" />
+      </button>
       <div
-        className="t-flip min-h-0 w-full flex-1 touch-pan-y"
+        className="t-flip min-h-0 w-full flex-1 touch-pan-y p-3.5 sm:p-4"
         data-swipe-ignore
         key={side}
         onPointerCancel={() => {
@@ -237,3 +238,4 @@ export function BodyMap({ onToggle, selectedMuscles }: BodyMapProps) {
     </div>
   )
 }
+

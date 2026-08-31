@@ -37,6 +37,7 @@ function useDrawer() {
 
 function Drawer({
   modal = true,
+  onOpenChange,
   showSwipeHandle = false,
   snapPoints,
   swipeDirection = "down",
@@ -49,12 +50,46 @@ function Drawer({
     () => ({ hasSnapPoints, modal, showSwipeHandle, swipeDirection }),
     [hasSnapPoints, modal, showSwipeHandle, swipeDirection]
   )
+  const handleOpenChange = React.useCallback<
+    NonNullable<DrawerPrimitive.Root.Props["onOpenChange"]>
+  >(
+    (open, eventDetails) => {
+      const eventTarget = eventDetails.event.target
+      const target =
+        eventTarget instanceof Element
+          ? eventTarget
+          : eventTarget instanceof Node
+            ? eventTarget.parentElement
+            : null
+      const interactiveControl = target?.closest(DRAWER_INTERACTIVE_SELECTOR)
+      const isInteractiveDismiss =
+        !open &&
+        (eventDetails.reason === "swipe" ||
+          eventDetails.reason === "outside-press") &&
+        interactiveControl?.closest('[data-slot="drawer-popup"]') != null
+
+      if (isInteractiveDismiss) {
+        // Base UI's touch-only swipe path uses elementFromPoint() rather than
+        // the native event target. On physical mobile browsers that lookup can
+        // briefly resolve to an ancestor as controls animate or rerender,
+        // causing an ordinary tap to be released as a swipe/outside dismiss.
+        // The real target is still authoritative: controls inside a drawer
+        // must perform their action without dismissing the surface.
+        eventDetails.cancel()
+        return
+      }
+
+      onOpenChange?.(open, eventDetails)
+    },
+    [onOpenChange]
+  )
 
   return (
     <DrawerContext.Provider value={contextValue}>
       <DrawerPrimitive.Root
         data-slot="drawer"
         modal={modal}
+        onOpenChange={handleOpenChange}
         snapPoints={snapPoints}
         swipeDirection={swipeDirection}
         {...props}
@@ -114,12 +149,13 @@ function DrawerContent({
   ...props
 }: DrawerPrimitive.Popup.Props) {
   const { hasSnapPoints, modal, showSwipeHandle, swipeDirection } = useDrawer()
-  const contentRef = React.useRef<HTMLDivElement>(null)
+  const interactiveObserverRef = React.useRef<MutationObserver | null>(null)
   const swipeAxis =
     swipeDirection === "down" || swipeDirection === "up" ? "y" : "x"
 
-  React.useEffect(() => {
-    const content = contentRef.current
+  const setContentRef = React.useCallback((content: HTMLDivElement | null) => {
+    interactiveObserverRef.current?.disconnect()
+    interactiveObserverRef.current = null
     if (!content) return
 
     const markInteractiveControls = () => {
@@ -133,7 +169,7 @@ function DrawerContent({
     markInteractiveControls()
     const observer = new MutationObserver(markInteractiveControls)
     observer.observe(content, { childList: true, subtree: true })
-    return () => observer.disconnect()
+    interactiveObserverRef.current = observer
   }, [])
 
   return (
@@ -171,7 +207,7 @@ function DrawerContent({
           {showSwipeHandle && <DrawerSwipeHandle />}
           <DrawerPrimitive.Close
             aria-label="Close drawer"
-            className="absolute top-3 left-3 z-30 grid size-11 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-lg shadow-black/20 transition-[transform,color,background-color] duration-250 hover:bg-muted hover:text-foreground active:scale-90"
+            className="absolute top-3 left-3 z-30 grid size-11 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-lg shadow-black/20 transition-[transform,color,background-color] duration-250 active:bg-muted active:text-foreground active:scale-90"
             data-slot="drawer-close-button"
             render={
               <button
@@ -188,7 +224,7 @@ function DrawerContent({
             className={cn(
               "flex min-h-0 flex-1 flex-col overflow-hidden overscroll-contain rounded-[inherit] transition-opacity duration-300 ease-[cubic-bezier(0.45,1.005,0,1.005)] select-none group-data-nested-drawer-open/drawer-popup:opacity-0 group-data-nested-drawer-swiping/drawer-popup:opacity-100 group-data-swiping/drawer-popup:select-none"
             )}
-            ref={contentRef}
+            ref={setContentRef}
           >
             {children}
           </DrawerPrimitive.Content>

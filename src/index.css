@@ -208,7 +208,6 @@
     stroke 160ms ease;
 }
 
-.muscle-region:hover,
 .muscle-region:focus-visible {
   color: #47474d;
 }
@@ -223,7 +222,6 @@
   filter: drop-shadow(0 0 10px rgb(255 102 51 / 0.2));
 }
 
-.muscle-region.is-selected:hover,
 .muscle-region.is-selected:focus-visible {
   color: #ff784b;
 }

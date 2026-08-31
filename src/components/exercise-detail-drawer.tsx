@@ -6,6 +6,7 @@ import {
   DrawerFooter,
   DrawerTitle,
 } from "@/components/ui/drawer"
+import { triggerHaptic } from "@/lib/haptics"
 import { EXERCISE_ANIMATION_FILTER, exerciseAnimation } from "@/lib/visuals"
 import { useFavorites } from "@/store/use-favorites"
 import type { ExerciseSummary } from "@/types"
@@ -33,19 +34,6 @@ export function ExerciseDetailDrawer({
   return (
     <Drawer onOpenChange={onOpenChange} open={open} swipeDirection="down">
       <DrawerContent className="mx-auto max-w-[430px] [--drawer-inset:0px]">
-        <LikeButton
-          aria-label={
-            isFavorite
-              ? `Remove ${exercise.name} from favorites`
-              : `Add ${exercise.name} to favorites`
-          }
-          className="absolute top-3 right-3 z-30 grid size-11 shrink-0 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-lg shadow-black/20 transition-[transform,color,background-color] duration-250 hover:bg-muted active:scale-90"
-          data-haptics="off"
-          iconClassName="size-5"
-          liked={isFavorite}
-          onClick={() => toggleFavorite(exercise.id)}
-        />
-
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-16 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
           <div className="isolate aspect-square w-full shrink-0 overflow-hidden rounded-3xl bg-[#111113]">
             <img
@@ -74,9 +62,24 @@ export function ExerciseDetailDrawer({
           )}
         </div>
 
-        <DrawerFooter className="bottom-controls-scrim absolute inset-x-0 bottom-0 z-20 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] [--bottom-controls-color:var(--popover)]">
+        <DrawerFooter className="bottom-controls-scrim absolute inset-x-0 bottom-0 z-20 flex-row items-center gap-2.5 p-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] [--bottom-controls-color:var(--popover)]">
+          <LikeButton
+            aria-label={
+              isFavorite
+                ? `Remove ${exercise.name} from favorites`
+                : `Add ${exercise.name} to favorites`
+            }
+            className="grid size-12 shrink-0 place-items-center rounded-2xl border border-border bg-card text-muted-foreground shadow-sm transition-[transform,color,background-color] duration-250 active:bg-muted active:scale-90"
+            data-haptics="off"
+            iconClassName="size-5"
+            liked={isFavorite}
+            onClick={() => {
+              triggerHaptic("selection")
+              toggleFavorite(exercise.id)
+            }}
+          />
           <Button
-            className="relative h-12 w-full rounded-2xl text-base font-semibold"
+            className="relative h-12 flex-1 rounded-2xl text-base font-semibold"
             disabled={selected}
             onClick={() => onSelectExercise(exercise)}
           >

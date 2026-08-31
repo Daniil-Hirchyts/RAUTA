@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react"
+
 import { AnimatedCheck } from "@/components/animated-check"
 import { LikeButton } from "@/components/like-button"
 import { triggerHaptic } from "@/lib/haptics"
@@ -8,6 +10,9 @@ import {
 } from "@/lib/visuals"
 import { useFavorites } from "@/store/use-favorites"
 import type { ExerciseSummary } from "@/types"
+
+const LONG_PRESS_MS = 500
+const MOVE_TOLERANCE_PX = 10
 
 export function ExerciseCard({
   exercise,
@@ -29,8 +34,71 @@ export function ExerciseCard({
   )
   const toggleFavorite = useFavorites((state) => state.toggleFavorite)
 
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isLongPressRef = useRef(false)
+  const startCoordsRef = useRef<{ x: number; y: number } | null>(null)
+
+  const clearTimer = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+  }
+
+  useEffect(() => {
+    return () => clearTimer()
+  }, [])
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!selectMode) return
+    if (event.button !== 0 && event.pointerType === "mouse") return
+
+    clearTimer()
+    isLongPressRef.current = false
+    startCoordsRef.current = { x: event.clientX, y: event.clientY }
+
+    timerRef.current = setTimeout(() => {
+      isLongPressRef.current = true
+      timerRef.current = null
+      triggerHaptic("light")
+      onOpenDetail(exercise)
+    }, LONG_PRESS_MS)
+  }
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!timerRef.current || !startCoordsRef.current) return
+    const dx = event.clientX - startCoordsRef.current.x
+    const dy = event.clientY - startCoordsRef.current.y
+    if (Math.hypot(dx, dy) > MOVE_TOLERANCE_PX) {
+      clearTimer()
+    }
+  }
+
+  const handlePointerUp = () => {
+    clearTimer()
+  }
+
+  const handlePointerCancel = () => {
+    clearTimer()
+  }
+
   const activate = () =>
     selectMode ? onToggleSelect(exercise.id) : onOpenDetail(exercise)
+
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (isLongPressRef.current) {
+      isLongPressRef.current = false
+      event.preventDefault()
+      return
+    }
+    activate()
+  }
+
+  const handleContextMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (selectMode && isLongPressRef.current) {
+      event.preventDefault()
+    }
+  }
 
   return (
     <article
@@ -50,7 +118,13 @@ export function ExerciseCard({
         }
         aria-pressed={selectMode ? selected : undefined}
         className="block w-full cursor-pointer text-left"
-        onClick={activate}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+        onPointerCancel={handlePointerCancel}
+        onPointerDown={handlePointerDown}
+        onPointerLeave={handlePointerCancel}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
         type="button"
       >
         <div className="isolate aspect-square overflow-hidden bg-[#111113]">
@@ -80,7 +154,7 @@ export function ExerciseCard({
             ? `Remove ${exercise.name} from favorites`
             : `Add ${exercise.name} to favorites`
         }
-        className="absolute top-2.5 right-2.5 grid size-8 place-items-center rounded-full border border-border bg-background text-white transition-colors duration-150 hover:bg-muted active:bg-muted"
+        className="absolute top-2.5 left-2.5 grid size-8 place-items-center rounded-full border border-border bg-background text-white transition-colors duration-150 active:bg-muted"
         iconClassName="size-4"
         liked={isFavorite}
         onClick={(event) => {
@@ -93,7 +167,7 @@ export function ExerciseCard({
       {selectMode && (
         <AnimatedCheck
           checked={selected}
-          className="absolute top-2.5 left-2.5 size-8"
+          className="pointer-events-none absolute top-2.5 right-2.5 size-8"
         />
       )}
     </article>

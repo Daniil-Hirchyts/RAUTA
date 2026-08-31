@@ -337,7 +337,7 @@ export function App() {
                 <div className="flex items-center gap-1.5">
                   <Button
                     aria-label="My workouts"
-                    className="rounded-full bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="rounded-full bg-card text-muted-foreground active:bg-muted active:text-foreground"
                     onClick={() => {
                       triggerHaptic("medium")
                       setView({ type: "workouts" })
@@ -350,7 +350,7 @@ export function App() {
                   {hasFilters && (
                     <Button
                       aria-label="Reset selections"
-                      className="rounded-full bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+                      className="rounded-full bg-card text-muted-foreground active:bg-muted active:text-foreground"
                       onClick={resetFlow}
                       size="icon-lg"
                       variant="ghost"
@@ -396,7 +396,7 @@ export function App() {
                 data-page-id="1"
                 inert={stage !== 1}
               >
-                <div className="relative h-full min-h-0 overflow-hidden rounded-[28px] border border-border bg-card/60 px-[clamp(0.5rem,2vw,0.75rem)] pt-4 pb-2 shadow-[0_18px_40px_rgba(0,0,0,0.16)] backdrop-blur-xl">
+                <div className="relative h-full min-h-0 overflow-hidden rounded-[28px] border border-border bg-card/60 shadow-[0_18px_40px_rgba(0,0,0,0.16)] backdrop-blur-xl">
                   <DotPattern
                     className="[mask-image:radial-gradient(ellipse_at_center,black_15%,transparent_72%)] transition-[fill,fill-opacity] duration-500 ease-[var(--ease-smooth-out)]"
                     cr={1}
@@ -443,7 +443,7 @@ export function App() {
                         <span className="relative block aspect-[1.18] overflow-hidden bg-[#161618]">
                           <img
                             alt=""
-                            className="h-full w-full object-cover saturate-[1.65] transition-transform duration-250 ease-[var(--ease-smooth-out)] group-hover:scale-[1.025]"
+                            className="h-full w-full object-cover saturate-[1.65] transition-transform duration-250 ease-[var(--ease-smooth-out)]"
                             draggable={false}
                             loading="lazy"
                             src={equipmentImage(equipment)}
@@ -545,7 +545,7 @@ export function App() {
                     className={`grid size-[3.25rem] shrink-0 place-items-center rounded-[26px] border transition-colors duration-150 ${
                       favoritesOnly
                         ? "border-primary bg-[color-mix(in_oklch,var(--card),var(--primary)_16%)] text-primary"
-                        : "border-border bg-card text-muted-foreground hover:bg-muted"
+                        : "border-border bg-card text-muted-foreground active:bg-muted"
                     }`}
                     iconClassName="size-5"
                     liked={favoritesOnly}

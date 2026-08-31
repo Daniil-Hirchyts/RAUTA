@@ -374,7 +374,7 @@ function WorkoutForm({
         {isEdit && (
           <button
             aria-label="Save changes"
-            className="absolute top-3 right-3 z-30 grid size-11 place-items-center rounded-full border border-primary bg-primary text-primary-foreground shadow-lg shadow-black/20 transition-colors duration-250 hover:bg-[color-mix(in_oklch,var(--primary),black_10%)] disabled:border-border disabled:bg-muted disabled:text-muted-foreground"
+            className="absolute top-3 right-3 z-30 grid size-11 place-items-center rounded-full border border-primary bg-primary text-primary-foreground shadow-lg shadow-black/20 transition-colors duration-250 active:bg-[color-mix(in_oklch,var(--primary),black_10%)] active:scale-90 disabled:border-border disabled:bg-muted disabled:text-muted-foreground"
             data-haptics="off"
             disabled={!canSave}
             type="submit"
