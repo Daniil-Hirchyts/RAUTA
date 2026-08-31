@@ -5,8 +5,16 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
 } from "react"
-import { CalendarDays, ChevronLeft, Eraser, SearchX, X } from "lucide-react"
+import {
+  CalendarDays,
+  ChevronLeft,
+  Eraser,
+  SearchX,
+  Settings,
+  X,
+} from "lucide-react"
 
 import { AnimatedNumber } from "@/components/animated-number"
 import { AnimatedCheck } from "@/components/animated-check"
@@ -17,10 +25,13 @@ import { ExerciseDetailDrawer } from "@/components/exercise-detail-drawer"
 import { ExerciseSearch } from "@/components/exercise-search"
 import { HapticLayer } from "@/components/haptic-layer"
 import { LikeButton } from "@/components/like-button"
+import { SettingsEffects } from "@/components/settings-effects"
+import { SettingsPage } from "@/components/settings-page"
 import { SvgFilterDefs } from "@/components/svg-filters"
 import { SwipeBackPage } from "@/components/swipe-back-page"
 import { Button } from "@/components/ui/button"
 import { DotPattern } from "@/components/ui/dot-pattern"
+import { MatrixLoader } from "@/components/ui/matrix-loader"
 import { WorkoutDetailPage } from "@/components/workout-detail-page"
 import { WorkoutDestinationDrawer } from "@/components/workout-destination-drawer"
 import { WorkoutFormDrawer } from "@/components/workout-form-drawer"
@@ -345,6 +356,7 @@ export function App() {
   return (
     <div className="min-h-(--app-viewport-height) bg-[#0e0e0f] text-foreground">
       <HapticLayer />
+      <SettingsEffects />
       <SvgFilterDefs />
       <main className="relative mx-auto flex h-(--app-viewport-height) w-full max-w-[430px] touch-pan-y flex-col overflow-hidden border-x border-white/[0.04] bg-background pt-[env(safe-area-inset-top)] shadow-2xl shadow-black/40">
         {view.type === "workouts" && (
@@ -353,7 +365,17 @@ export function App() {
             onSelect={(workout) =>
               setView({ type: "workout-detail", workoutId: workout.id })
             }
+            onSettings={() => setView({ type: "settings" })}
           />
+        )}
+
+        {view.type === "settings" && (
+          <SwipeBackPage onBack={() => setView({ type: "workouts" })}>
+            <SettingsPage
+              onBack={() => setView({ type: "workouts" })}
+              onDataCleared={() => setView({ type: "workouts" })}
+            />
+          </SwipeBackPage>
         )}
 
         {view.type === "workout-detail" && (
@@ -411,6 +433,18 @@ export function App() {
                     variant="ghost"
                   >
                     <CalendarDays className="size-5" />
+                  </Button>
+                  <Button
+                    aria-label="Settings"
+                    className="rounded-full border-0 bg-transparent text-muted-foreground active:bg-muted active:text-foreground"
+                    onClick={() => {
+                      triggerHaptic("medium")
+                      setView({ type: "settings" })
+                    }}
+                    size="icon"
+                    variant="ghost"
+                  >
+                    <Settings className="size-5" />
                   </Button>
                   {hasFilters && (
                     <Button
@@ -588,12 +622,26 @@ export function App() {
                       ))}
                     </div>
                     {hasMoreExercises && (
-                      <div
-                        aria-hidden="true"
-                        className="h-1"
-                        data-testid="load-more-sentinel"
-                        ref={loadMoreSentinelRef}
-                      />
+                      <>
+                        <div className="flex justify-center py-6">
+                          <MatrixLoader
+                            label="Loading more exercises"
+                            style={
+                              {
+                                "--matrix-dot": "3px",
+                                "--matrix-gap": "3px",
+                              } as CSSProperties
+                            }
+                            variant="scan"
+                          />
+                        </div>
+                        <div
+                          aria-hidden="true"
+                          className="h-1"
+                          data-testid="load-more-sentinel"
+                          ref={loadMoreSentinelRef}
+                        />
+                      </>
                     )}
                   </>
                 )}

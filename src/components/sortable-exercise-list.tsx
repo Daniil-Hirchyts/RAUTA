@@ -3,7 +3,9 @@ import { isSortable, useSortable } from "@dnd-kit/react/sortable"
 import { ArrowLeftRight, GripVertical, Trash2 } from "lucide-react"
 import { useState, type Ref } from "react"
 
+import { AnimatedCheck } from "@/components/animated-check"
 import { SwipeableRow } from "@/components/swipeable-row"
+import type { ExerciseStatus } from "@/lib/active-workout"
 import { EXERCISES_BY_ID } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
 import { titleCase } from "@/lib/text"
@@ -21,6 +23,8 @@ function SortableExerciseRow({
   onOpen,
   onOpenChange,
   onRemove,
+  onToggleComplete,
+  status,
 }: {
   exercise: ExerciseSummary
   index: number
@@ -29,6 +33,9 @@ function SortableExerciseRow({
   onOpen?: (exercise: ExerciseSummary) => void
   onOpenChange: (open: boolean) => void
   onRemove?: (id: string) => void
+  /** Present only while a workout is being performed. */
+  onToggleComplete?: (id: string) => void
+  status?: ExerciseStatus
 }) {
   const { handleRef, isDragSource, ref } = useSortable({
     id: exercise.id,
@@ -41,12 +48,33 @@ function SortableExerciseRow({
       className={`mx-4 flex h-32 w-[calc(100%-2rem)] overflow-hidden rounded-[22px] border bg-card shadow-sm shadow-black/10 transition-[border-color,box-shadow,opacity] ${
         isDragSource
           ? "border-primary/70 opacity-90 shadow-xl shadow-black/30"
-          : "border-border"
+          : status === "active"
+            ? "border-primary/60"
+            : status === "completed"
+              ? "border-border opacity-55"
+              : "border-border"
       }`}
+      data-status={status}
     >
-      <div className="grid w-12 shrink-0 place-items-center border-r border-border bg-muted/35 text-base font-black text-primary tabular-nums">
-        {String(index + 1).padStart(2, "0")}
-      </div>
+      {onToggleComplete ? (
+        <button
+          aria-label={
+            status === "completed"
+              ? `Mark ${exercise.name} as not done`
+              : `Mark ${exercise.name} as done`
+          }
+          aria-pressed={status === "completed"}
+          className="grid w-12 shrink-0 place-items-center border-r border-border bg-muted/35 transition-colors active:bg-muted"
+          onClick={() => onToggleComplete(exercise.id)}
+          type="button"
+        >
+          <AnimatedCheck checked={status === "completed"} className="size-7" />
+        </button>
+      ) : (
+        <div className="grid w-12 shrink-0 place-items-center border-r border-border bg-muted/35 text-base font-black text-primary tabular-nums">
+          {String(index + 1).padStart(2, "0")}
+        </div>
+      )}
       <button
         aria-label={`Open ${exercise.name} demonstration`}
         className="isolate aspect-square h-32 shrink-0 bg-[#111113] active:bg-muted/60"
@@ -142,12 +170,18 @@ export function SortableExerciseList({
   onOpenExercise,
   onRemove,
   onReorder,
+  onToggleComplete,
+  statusOf,
 }: {
   exerciseIds: string[]
   onFindAlternative?: (exercise: ExerciseSummary) => void
   onOpenExercise?: (exercise: ExerciseSummary) => void
   onRemove?: (id: string) => void
   onReorder: (exerciseIds: string[]) => void
+  /** Pass both to add check-off and status to the list of a running workout.
+   *  Reordering, removing and swapping stay available either way. */
+  onToggleComplete?: (id: string) => void
+  statusOf?: (id: string) => ExerciseStatus
 }) {
   const [openRowId, setOpenRowId] = useState<string | null>(null)
 
@@ -182,6 +216,8 @@ export function SortableExerciseList({
               onOpen={onOpenExercise}
               onOpenChange={(open) => setOpenRowId(open ? id : null)}
               onRemove={onRemove}
+              onToggleComplete={onToggleComplete}
+              status={statusOf?.(id)}
             />
           )
         })}

@@ -5,6 +5,7 @@ export type AppStage = 1 | 2 | 3
 
 export type AppView =
   | { type: "flow" }
+  | { type: "settings" }
   | { type: "workouts" }
   | { type: "workout-detail"; workoutId: string }
 
@@ -43,6 +44,7 @@ function isExerciseId(id: string) {
 
 function parseView(value: unknown): AppView {
   if (!isRecord(value)) return DEFAULT_APP_SESSION.view
+  if (value.type === "settings") return { type: "settings" }
   if (value.type === "workouts") return { type: "workouts" }
   if (value.type === "workout-detail") {
     const workoutId = validString(value.workoutId)

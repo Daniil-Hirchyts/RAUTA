@@ -100,6 +100,12 @@
   --stagger-stagger: 40ms;
   --stagger-blur: 3px;
   --stagger-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --matrix-cycle: 1200ms;
+  --matrix-dot: 2px;
+  --matrix-gap: 2px;
+  --matrix-base: color-mix(in oklab, var(--muted-foreground) 40%, transparent);
+  --matrix-active: var(--foreground);
+  --matrix-ease: ease-in-out;
 }
 
 @supports (height: 100lvh) {
@@ -642,6 +648,44 @@
   animation: t-flip-in 220ms var(--ease-smooth-out);
 }
 
+/* Matrix dot loader. MatrixLoader renders sixteen dots and hands each one a
+   --d delay as a fraction of the shared colour cycle, so a variant is only a
+   delay table — see matrix-loader.tsx. Corner dots of the rounded variant get
+   .is-gap, cells a variant never lights get .is-still. */
+.t-matrix {
+  display: grid;
+  grid-template-columns: repeat(4, var(--matrix-dot));
+  grid-auto-rows: var(--matrix-dot);
+  gap: var(--matrix-gap);
+}
+
+.t-matrix i {
+  display: block;
+  background: var(--matrix-base);
+  animation: t-matrix-pulse var(--matrix-cycle) var(--matrix-ease) infinite;
+  animation-delay: calc(var(--d, 0) * var(--matrix-cycle));
+}
+
+.t-matrix i.is-gap {
+  visibility: hidden;
+}
+
+.t-matrix i.is-gap,
+.t-matrix i.is-still {
+  animation: none;
+}
+
+@keyframes t-matrix-pulse {
+  0%,
+  45%,
+  100% {
+    background-color: var(--matrix-base);
+  }
+  15% {
+    background-color: var(--matrix-active);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -662,6 +706,7 @@
 
   .t-check-box,
   .t-check-box .t-check-mark path,
+  .t-matrix i,
   .t-like-icon,
   .t-like-particles i,
   .t-text-swap,

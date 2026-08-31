@@ -2,6 +2,7 @@ import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics"
 import { hapticTrigger } from "ios-haptics"
 
 import { isNative } from "@/lib/native"
+import { useSettings } from "@/store/use-settings"
 
 export type HapticInput =
   "selection" | "light" | "medium" | "heavy" | "success" | "warning"
@@ -48,6 +49,12 @@ function selectionTick() {
  * straight into UIKit.
  */
 export function triggerHaptic(input: HapticInput) {
+  const { hapticsEnabled, soundChimesEnabled } = useSettings.getState()
+  if (soundChimesEnabled && (input === "success" || input === "warning")) {
+    playSoundChime(input)
+  }
+  if (!hapticsEnabled) return
+
   if (isNative()) {
     // Fire and forget: a dropped haptic must never surface as an unhandled
     // rejection or block the interaction that asked for it.
@@ -59,10 +66,33 @@ export function triggerHaptic(input: HapticInput) {
   navigator.vibrate(VIBRATION_PATTERNS[input])
 }
 
+function playSoundChime(input: "success" | "warning") {
+  if (typeof window === "undefined" || !("AudioContext" in window)) return
+
+  try {
+    const context = new AudioContext()
+    const oscillator = context.createOscillator()
+    const gain = context.createGain()
+    oscillator.frequency.value = input === "success" ? 740 : 420
+    oscillator.type = "sine"
+    gain.gain.setValueAtTime(0.0001, context.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.08, context.currentTime + 0.01)
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.16)
+    oscillator.connect(gain)
+    gain.connect(context.destination)
+    oscillator.start()
+    oscillator.stop(context.currentTime + 0.17)
+    oscillator.addEventListener("ended", () => void context.close(), {
+      once: true,
+    })
+  } catch {
+    // Audio feedback is optional; unsupported or blocked playback is harmless.
+  }
+}
+
 const HAPTIC_TARGETS = "button:not([data-haptics=off])"
 const DRAWER_SURFACE = '[data-slot="drawer-popup"]'
-const UNSAFE_GESTURE_SURFACE =
-  `${DRAWER_SURFACE}, [data-swipe-ignore], [draggable="true"]`
+const UNSAFE_GESTURE_SURFACE = `${DRAWER_SURFACE}, [data-swipe-ignore], [draggable="true"]`
 const SCROLLABLE_OVERFLOW = new Set(["auto", "scroll"])
 
 function isIOS() {
@@ -169,6 +199,11 @@ function enhanceTree(root: ParentNode) {
 
 function reconcileDirectTouchHaptics() {
   if (!isIOS()) return
+
+  if (!useSettings.getState().hapticsEnabled) {
+    suspendAllDirectTouchHaptics()
+    return
+  }
 
   // Base UI drawers are controlled gesture surfaces. Even a haptic switch on
   // an underlying page button can participate in the same iOS touch sequence

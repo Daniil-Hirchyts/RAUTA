@@ -12,6 +12,7 @@ import {
 } from "@/lib/exercises"
 import { useFavorites } from "@/store/use-favorites"
 import { useFilters } from "@/store/use-filters"
+import { DEFAULT_SETTINGS, useSettings } from "@/store/use-settings"
 import { useWorkouts } from "@/store/use-workouts"
 import { DEFAULT_APP_SESSION, writeAppSession } from "@/store/app-session"
 import { triggerIntersection } from "@/test/setup"
@@ -40,6 +41,7 @@ describe("App", () => {
     })
     useFavorites.setState({ favoriteIds: [] })
     useWorkouts.setState({ workouts: [] })
+    useSettings.setState(DEFAULT_SETTINGS)
     writeAppSession({ ...DEFAULT_APP_SESSION, view: { type: "flow" } })
   })
 
@@ -53,6 +55,27 @@ describe("App", () => {
     ).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Add workout" }))
     expect(screen.getByRole("heading", { name: "Muscles" })).toBeInTheDocument()
+  })
+
+  it("opens settings from the workouts header and persists preferences", async () => {
+    localStorage.clear()
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole("button", { name: "Settings" }))
+    expect(
+      screen.getByRole("heading", { name: "Settings" })
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole("switch", { name: "Sound chimes" }))
+    expect(useSettings.getState()).toMatchObject({
+      soundChimesEnabled: true,
+    })
+
+    await user.click(screen.getByRole("button", { name: "Back" }))
+    expect(
+      screen.getByRole("heading", { name: "My workouts" })
+    ).toBeInTheDocument()
   })
 
   it("moves through separate muscle, equipment, and exercise stages", async () => {

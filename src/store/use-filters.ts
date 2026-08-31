@@ -36,7 +36,7 @@ function validEquipment(value: string) {
   return equipmentSet.has(value)
 }
 
-function sanitizeFilterState(value: unknown): PersistedFilterState {
+export function sanitizeFilterState(value: unknown): PersistedFilterState {
   const state = isRecord(value) ? value : {}
   const rawPresets = Array.isArray(state.equipmentPresets)
     ? state.equipmentPresets

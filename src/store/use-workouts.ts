@@ -30,7 +30,7 @@ export type WorkoutsState = {
 
 type PersistedWorkoutsState = Pick<WorkoutsState, "workouts">
 
-function sanitizeWorkoutsState(value: unknown): PersistedWorkoutsState {
+export function sanitizeWorkoutsState(value: unknown): PersistedWorkoutsState {
   const state = isRecord(value) ? value : {}
   const rawWorkouts = Array.isArray(state.workouts) ? state.workouts : []
 

@@ -1,22 +1,33 @@
 import { useState } from "react"
-import { CalendarDays, ChevronRight, Copy, Trash2 } from "lucide-react"
+import {
+  CalendarDays,
+  ChevronRight,
+  Copy,
+  Settings,
+  Trash2,
+} from "lucide-react"
 
 import { BodyPreview } from "@/components/body-map"
 import { DeleteWorkoutConfirmation } from "@/components/delete-workout-confirmation"
 import { SwipeableRow } from "@/components/swipeable-row"
 import { WorkoutHeatmap } from "@/components/workout-heatmap"
 import { Button } from "@/components/ui/button"
+import { useElapsedMs } from "@/hooks/use-elapsed-ms"
+import { formatDuration, sessionProgress } from "@/lib/active-workout"
 import { formatDateShort } from "@/lib/date"
 import { musclesForExerciseIds } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
+import { useActiveWorkout } from "@/store/use-active-workout"
 import { useWorkouts, type Workout } from "@/store/use-workouts"
 
 export function WorkoutsPage({
   onCreate,
   onSelect,
+  onSettings,
 }: {
   onCreate: () => void
   onSelect: (workout: Workout) => void
+  onSettings: () => void
 }) {
   const workouts = useWorkouts((state) => state.workouts)
   const deleteWorkout = useWorkouts((state) => state.deleteWorkout)
@@ -28,6 +39,11 @@ export function WorkoutsPage({
   const [openRowId, setOpenRowId] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Workout | null>(null)
 
+  // At most one workout is being performed, so the clock ticks once for the
+  // whole list rather than once per row.
+  const session = useActiveWorkout((state) => state.session)
+  const elapsed = useElapsedMs(session)
+
   return (
     <>
       <header className="shrink-0 border-b border-white/[0.05] bg-background/80 px-5 pt-4 pb-4 backdrop-blur-xl">
@@ -35,6 +51,15 @@ export function WorkoutsPage({
           <h1 className="bg-gradient-to-r from-foreground to-foreground/75 bg-clip-text text-[30px] font-black tracking-[-0.03em] text-transparent">
             My workouts
           </h1>
+          <Button
+            aria-label="Settings"
+            className="rounded-full"
+            onClick={onSettings}
+            size="icon"
+            variant="secondary"
+          >
+            <Settings className="size-5" />
+          </Button>
         </div>
         <p className="mt-1 text-sm font-medium text-muted-foreground">
           Your next session starts here.
@@ -56,6 +81,7 @@ export function WorkoutsPage({
             <ul className="mt-5 space-y-3">
               {sorted.map((workout) => {
                 const isOpen = openRowId === workout.id
+                const isRunning = session?.workoutId === workout.id
                 const targetMuscles = musclesForExerciseIds(workout.exerciseIds)
                 return (
                   <li key={workout.id}>
@@ -99,7 +125,11 @@ export function WorkoutsPage({
                       }}
                     >
                       <button
-                        className="mx-5 flex w-[calc(100%-2.5rem)] items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 text-left transition-colors duration-150 active:bg-muted"
+                        className={`mx-5 flex w-[calc(100%-2.5rem)] items-center justify-between gap-3 rounded-2xl border p-4 text-left transition-colors duration-150 active:bg-muted ${
+                          isRunning
+                            ? "border-primary/55 bg-[color-mix(in_oklch,var(--card),var(--primary)_7%)]"
+                            : "border-border bg-card"
+                        }`}
                         data-haptics="off"
                         onClick={() => {
                           if (isOpen) {
@@ -114,10 +144,25 @@ export function WorkoutsPage({
                           <p className="text-lg font-bold tracking-[-0.01em]">
                             {formatDateShort(workout.date)}
                           </p>
-                          <p className="mt-0.5 text-sm font-medium text-muted-foreground">
-                            {workout.exerciseIds.length} exercise
-                            {workout.exerciseIds.length === 1 ? "" : "s"}
-                          </p>
+                          {isRunning && session ? (
+                            <p className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold text-primary tabular-nums">
+                              <span
+                                aria-hidden="true"
+                                className="size-1.5 animate-pulse rounded-full bg-primary"
+                              />
+                              {session.runningSince === null
+                                ? "Paused"
+                                : "In progress"}{" "}
+                              · {formatDuration(elapsed)} ·{" "}
+                              {sessionProgress(session).completed}/
+                              {sessionProgress(session).total}
+                            </p>
+                          ) : (
+                            <p className="mt-0.5 text-sm font-medium text-muted-foreground">
+                              {workout.exerciseIds.length} exercise
+                              {workout.exerciseIds.length === 1 ? "" : "s"}
+                            </p>
+                          )}
                         </div>
                         <BodyPreview
                           className="h-16 w-24 shrink-0"

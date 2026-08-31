@@ -12,7 +12,9 @@ export type FavoritesState = {
 
 type PersistedFavoritesState = Pick<FavoritesState, "favoriteIds">
 
-function sanitizeFavoritesState(value: unknown): PersistedFavoritesState {
+export function sanitizeFavoritesState(
+  value: unknown
+): PersistedFavoritesState {
   const state = isRecord(value) ? value : {}
   return {
     favoriteIds: validUniqueStrings(state.favoriteIds, (id) =>
