@@ -1,13 +1,33 @@
 import { useEffect, useState } from "react"
-import { ChevronLeft, Plus, Trash2 } from "lucide-react"
+import { Check, ChevronLeft, Plus, Trash2 } from "lucide-react"
 
 import { DeleteWorkoutConfirmation } from "@/components/delete-workout-confirmation"
+import { ExerciseSwapperDrawer } from "@/components/exercise-swapper-drawer"
 import { SortableExerciseList } from "@/components/sortable-exercise-list"
 import { Button } from "@/components/ui/button"
 import { formatDateLong } from "@/lib/date"
 import { triggerHaptic } from "@/lib/haptics"
+import { shareWorkout } from "@/lib/workout-sharing"
 import { useWorkouts } from "@/store/use-workouts"
 import type { ExerciseSummary } from "@/types"
+
+function IosShareIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+    >
+      <path d="M12 3v12" />
+      <path d="m8 7 4-4 4 4" />
+      <path d="M7 10H5.75A1.75 1.75 0 0 0 4 11.75v7.5C4 20.22 4.78 21 5.75 21h12.5c.97 0 1.75-.78 1.75-1.75v-7.5A1.75 1.75 0 0 0 18.25 10H17" />
+    </svg>
+  )
+}
 
 export function WorkoutDetailPage({
   onAddExercise,
@@ -28,6 +48,10 @@ export function WorkoutDetailPage({
   const updateWorkout = useWorkouts((state) => state.updateWorkout)
   const deleteWorkout = useWorkouts((state) => state.deleteWorkout)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [swapExercise, setSwapExercise] = useState<ExerciseSummary | null>(null)
+  const [shareStatus, setShareStatus] = useState<"idle" | "sharing" | "copied">(
+    "idle"
+  )
 
   useEffect(() => {
     if (!workout) onBack()
@@ -41,7 +65,7 @@ export function WorkoutDetailPage({
   return (
     <>
       <header className="shrink-0 border-b border-white/[0.05] bg-background/80 px-5 pt-4 pb-4 backdrop-blur-xl">
-        <div className="mb-3 flex items-center gap-2">
+        <div className="mb-3 flex items-center justify-between gap-2">
           <Button
             aria-label="Back to workouts"
             className="shrink-0 rounded-full"
@@ -50,6 +74,36 @@ export function WorkoutDetailPage({
             variant="secondary"
           >
             <ChevronLeft />
+          </Button>
+          <Button
+            aria-label={
+              shareStatus === "copied" ? "Workout copied" : "Share workout"
+            }
+            className="shrink-0 rounded-full"
+            disabled={shareStatus === "sharing"}
+            onClick={async () => {
+              setShareStatus("sharing")
+              try {
+                const result = await shareWorkout(workout)
+                triggerHaptic("success")
+                if (result === "copied") {
+                  setShareStatus("copied")
+                  window.setTimeout(() => setShareStatus("idle"), 1800)
+                } else {
+                  setShareStatus("idle")
+                }
+              } catch (error) {
+                const message = String(error).toLowerCase()
+                if (!message.includes("cancel") && !message.includes("abort")) {
+                  triggerHaptic("warning")
+                }
+                setShareStatus("idle")
+              }
+            }}
+            size="icon"
+            variant="secondary"
+          >
+            {shareStatus === "copied" ? <Check /> : <IosShareIcon />}
           </Button>
         </div>
         <h1 className="text-[26px] font-black tracking-[-0.03em]">
@@ -71,6 +125,10 @@ export function WorkoutDetailPage({
         ) : (
           <SortableExerciseList
             exerciseIds={workout.exerciseIds}
+            onFindAlternative={(exercise) => {
+              triggerHaptic("light")
+              setSwapExercise(exercise)
+            }}
             onOpenExercise={onOpenExercise}
             onRemove={(id) => {
               triggerHaptic("warning")
@@ -114,6 +172,25 @@ export function WorkoutDetailPage({
         }}
         onOpenChange={setDeleteOpen}
         open={deleteOpen}
+      />
+
+      <ExerciseSwapperDrawer
+        excludedExerciseIds={workout.exerciseIds}
+        exercise={swapExercise}
+        onOpenChange={(open) => {
+          if (!open) setSwapExercise(null)
+        }}
+        onSwap={(replacement) => {
+          if (!swapExercise) return
+          setExerciseIds(
+            workout.exerciseIds.map((id) =>
+              id === swapExercise.id ? replacement.id : id
+            )
+          )
+          triggerHaptic("success")
+          setSwapExercise(null)
+        }}
+        open={swapExercise !== null}
       />
     </>
   )

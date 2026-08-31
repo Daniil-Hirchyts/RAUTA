@@ -1,6 +1,6 @@
 import { DragDropProvider } from "@dnd-kit/react"
 import { isSortable, useSortable } from "@dnd-kit/react/sortable"
-import { GripVertical, Trash2 } from "lucide-react"
+import { ArrowLeftRight, GripVertical, Trash2 } from "lucide-react"
 import { useState, type Ref } from "react"
 
 import { SwipeableRow } from "@/components/swipeable-row"
@@ -17,6 +17,7 @@ function SortableExerciseRow({
   exercise,
   index,
   isOpen,
+  onFindAlternative,
   onOpen,
   onOpenChange,
   onRemove,
@@ -24,6 +25,7 @@ function SortableExerciseRow({
   exercise: ExerciseSummary
   index: number
   isOpen: boolean
+  onFindAlternative?: (exercise: ExerciseSummary) => void
   onOpen?: (exercise: ExerciseSummary) => void
   onOpenChange: (open: boolean) => void
   onRemove?: (id: string) => void
@@ -46,32 +48,38 @@ function SortableExerciseRow({
         {String(index + 1).padStart(2, "0")}
       </div>
       <button
-        aria-label={`View ${exercise.name} details`}
-        className="flex min-w-0 flex-1 items-center text-left active:bg-muted/60"
+        aria-label={`Open ${exercise.name} demonstration`}
+        className="isolate aspect-square h-32 shrink-0 bg-[#111113] active:bg-muted/60"
         disabled={!onOpen}
         onClick={() => onOpen?.(exercise)}
         type="button"
       >
-        <div className="isolate aspect-square h-32 shrink-0 bg-[#111113]">
-          <img
-            alt={`${exercise.name} demonstration`}
-            className="h-full w-full object-contain mix-blend-screen"
-            decoding="async"
-            draggable={false}
-            loading="lazy"
-            src={exerciseAnimation(exercise)}
-            style={{ filter: EXERCISE_ANIMATION_FILTER_LIGHT }}
-          />
-        </div>
-        <div className="min-w-0 flex-1 px-3 py-3">
+        <img
+          alt={`${exercise.name} demonstration`}
+          className="h-full w-full object-contain mix-blend-screen"
+          decoding="async"
+          draggable={false}
+          loading="lazy"
+          src={exerciseAnimation(exercise)}
+          style={{ filter: EXERCISE_ANIMATION_FILTER_LIGHT }}
+        />
+      </button>
+      <div className="flex min-w-0 flex-1 flex-col justify-center px-3 py-2">
+        <button
+          aria-label={`View ${exercise.name} details`}
+          className="min-w-0 text-left"
+          disabled={!onOpen}
+          onClick={() => onOpen?.(exercise)}
+          type="button"
+        >
           <p className="line-clamp-3 text-base leading-snug font-semibold capitalize">
             {exercise.name}
           </p>
           <p className="mt-1.5 text-sm text-muted-foreground">
             {titleCase(exercise.equipment)}
           </p>
-        </div>
-      </button>
+        </button>
+      </div>
       <button
         aria-label={`Reorder ${exercise.name}`}
         className="grid w-12 shrink-0 touch-none place-items-center text-muted-foreground transition-colors active:text-foreground"
@@ -90,15 +98,31 @@ function SortableExerciseRow({
       {onRemove ? (
         <SwipeableRow
           actionInset={16}
+          revealWidth={onFindAlternative ? 148 : undefined}
           action={
-            <button
-              aria-label={`Remove ${exercise.name}`}
-              className="text-destructive-foreground grid size-14 place-items-center rounded-full bg-destructive shadow-lg shadow-black/20 active:scale-90"
-              onClick={() => onRemove(exercise.id)}
-              type="button"
-            >
-              <Trash2 className="size-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              {onFindAlternative && (
+                <button
+                  aria-label="Find alternative"
+                  className="grid size-14 place-items-center rounded-full bg-secondary text-secondary-foreground shadow-lg shadow-black/20 active:scale-90"
+                  onClick={() => {
+                    onOpenChange(false)
+                    onFindAlternative(exercise)
+                  }}
+                  type="button"
+                >
+                  <ArrowLeftRight className="size-5" />
+                </button>
+              )}
+              <button
+                aria-label={`Remove ${exercise.name}`}
+                className="text-destructive-foreground grid size-14 place-items-center rounded-full bg-destructive shadow-lg shadow-black/20 active:scale-90"
+                onClick={() => onRemove(exercise.id)}
+                type="button"
+              >
+                <Trash2 className="size-5" />
+              </button>
+            </div>
           }
           isOpen={isOpen}
           onOpenChange={onOpenChange}
@@ -114,11 +138,13 @@ function SortableExerciseRow({
 
 export function SortableExerciseList({
   exerciseIds,
+  onFindAlternative,
   onOpenExercise,
   onRemove,
   onReorder,
 }: {
   exerciseIds: string[]
+  onFindAlternative?: (exercise: ExerciseSummary) => void
   onOpenExercise?: (exercise: ExerciseSummary) => void
   onRemove?: (id: string) => void
   onReorder: (exerciseIds: string[]) => void
@@ -152,6 +178,7 @@ export function SortableExerciseList({
               index={index}
               isOpen={openRowId === id}
               key={id}
+              onFindAlternative={onFindAlternative}
               onOpen={onOpenExercise}
               onOpenChange={(open) => setOpenRowId(open ? id : null)}
               onRemove={onRemove}

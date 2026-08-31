@@ -74,6 +74,44 @@ export function musclesForExerciseIds(ids: string[]) {
   return muscles
 }
 
+export function findExerciseAlternatives(
+  source: ExerciseSummary,
+  excludedIds: string[] = []
+) {
+  const excluded = new Set([source.id, ...excludedIds])
+  const sourceMuscles = new Set(source.muscles)
+
+  return EXERCISES.filter(
+    (exercise) =>
+      !excluded.has(exercise.id) &&
+      exercise.equipment !== source.equipment &&
+      exercise.muscles.length === source.muscles.length &&
+      exercise.muscles.every((muscle) => sourceMuscles.has(muscle))
+  ).sort((left, right) => {
+    const primaryDifference =
+      Number(left.primaryMuscle !== source.primaryMuscle) -
+      Number(right.primaryMuscle !== source.primaryMuscle)
+    if (primaryDifference !== 0) return primaryDifference
+
+    const weightDifference = (exercise: ExerciseSummary) =>
+      source.muscles.reduce((total, muscle, index) => {
+        const alternativeIndex = exercise.muscles.indexOf(muscle)
+        return (
+          total +
+          Math.abs(
+            source.muscleWeights[index] -
+              (exercise.muscleWeights[alternativeIndex] ?? 0)
+          )
+        )
+      }, 0)
+
+    return (
+      weightDifference(left) - weightDifference(right) ||
+      left.name.localeCompare(right.name)
+    )
+  })
+}
+
 const EQUIPMENT_RANK = new Map<string, number>(
   EQUIPMENT_POPULARITY.map((equipment, index) => [equipment, index])
 )

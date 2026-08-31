@@ -29,3 +29,15 @@ export function formatDateLong(iso: string) {
     day: "numeric",
   })
 }
+
+export function formatWeekdayShort(iso: string) {
+  const date = parseISODate(iso)
+  if (!date) return iso
+  return date.toLocaleDateString(undefined, { weekday: "short" })
+}
+
+export function formatMonthShort(iso: string) {
+  const date = parseISODate(iso)
+  if (!date) return iso
+  return date.toLocaleDateString(undefined, { month: "short" })
+}

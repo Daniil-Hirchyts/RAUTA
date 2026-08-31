@@ -77,4 +77,38 @@ describe("WorkoutDetailPage", () => {
     expect(useWorkouts.getState().workouts).toEqual([])
     expect(onDeleted).toHaveBeenCalledOnce()
   })
+
+  it("swaps a busy exercise for an exact muscle match", async () => {
+    const user = userEvent.setup()
+    const workoutId = useWorkouts.getState().createWorkout({
+      name: "Workout",
+      date: "2026-09-01",
+      exerciseIds: ["0001"],
+    })
+
+    render(
+      <WorkoutDetailPage
+        onAddExercise={() => {}}
+        onBack={() => {}}
+        onDeleted={() => {}}
+        onOpenExercise={() => {}}
+        workoutId={workoutId}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: "Find alternative" }))
+    const swapper = await screen.findByRole("dialog", {
+      name: "Find alternative",
+    })
+    const firstAlternative = within(swapper).getAllByRole("button", {
+      name: /swap to/i,
+    })[0]
+    await user.click(firstAlternative)
+
+    expect(
+      useWorkouts
+        .getState()
+        .workouts.find((workout) => workout.id === workoutId)?.exerciseIds
+    ).toEqual(["0010"])
+  })
 })

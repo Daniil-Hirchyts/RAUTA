@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   EQUIPMENT_OPTIONS,
   EXERCISES,
+  findExerciseAlternatives,
   filterExercises,
   supportingFromIndex,
 } from "@/lib/exercises"
@@ -99,6 +100,20 @@ describe("filtering", () => {
     expect(ids(filterExercises(fixture, ["biceps"], anyEquipment))).toEqual([
       "row",
     ])
+  })
+})
+
+describe("exercise alternatives", () => {
+  it("keeps the same muscles while changing equipment", () => {
+    const source = EXERCISES.find((entry) => entry.id === "0001")!
+    const alternatives = findExerciseAlternatives(source, ["0010"])
+
+    expect(alternatives.length).toBeGreaterThan(0)
+    expect(alternatives.some((entry) => entry.id === "0010")).toBe(false)
+    alternatives.forEach((alternative) => {
+      expect(alternative.equipment).not.toBe(source.equipment)
+      expect(new Set(alternative.muscles)).toEqual(new Set(source.muscles))
+    })
   })
 })
 
