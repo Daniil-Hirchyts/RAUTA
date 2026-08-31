@@ -19,7 +19,11 @@ export function ExerciseDetailDrawer({
   selected,
 }: {
   exercise: ExerciseSummary | null
-  onSelectExercise: (exercise: ExerciseSummary) => void
+  /**
+   * Omit to hide the select action entirely. Opened from a saved workout the
+   * exercise is already part of it, so there is nothing to select into.
+   */
+  onSelectExercise?: (exercise: ExerciseSummary) => void
   onOpenChange: (open: boolean) => void
   open: boolean
   selected: boolean
@@ -35,7 +39,7 @@ export function ExerciseDetailDrawer({
     <Drawer onOpenChange={onOpenChange} open={open} swipeDirection="down">
       <DrawerContent className="mx-auto max-w-[430px] [--drawer-inset:0px]">
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-16 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
-          <div className="isolate aspect-square w-full shrink-0 overflow-hidden rounded-3xl bg-[#111113]">
+          <div className="isolate aspect-square w-full shrink-0 overflow-hidden rounded-3xl bg-popover">
             <img
               alt={`${exercise.name} demonstration`}
               className="h-full w-full object-contain mix-blend-screen"
@@ -52,7 +56,7 @@ export function ExerciseDetailDrawer({
           </DrawerTitle>
 
           {exercise.instructions.length > 0 && (
-            <ol className="mt-4 list-decimal space-y-2.5 pl-5 text-base text-muted-foreground">
+            <ol className="mt-4 list-decimal space-y-2.5 pl-5 text-base text-muted-foreground marker:font-semibold marker:text-primary">
               {exercise.instructions.map((step, index) => (
                 <li className="pl-1 leading-relaxed" key={index}>
                   {step}
@@ -78,13 +82,26 @@ export function ExerciseDetailDrawer({
               toggleFavorite(exercise.id)
             }}
           />
-          <Button
-            className="relative h-12 flex-1 rounded-2xl text-base font-semibold"
-            disabled={selected}
-            onClick={() => onSelectExercise(exercise)}
-          >
-            {selected ? "Selected" : "Select"}
-          </Button>
+          {onSelectExercise ? (
+            <Button
+              className="relative h-12 flex-1 rounded-2xl text-base font-semibold"
+              disabled={selected}
+              onClick={() => onSelectExercise(exercise)}
+            >
+              {selected ? "Selected" : "Select"}
+            </Button>
+          ) : (
+            <Button
+              className="relative h-12 flex-1 rounded-2xl text-base font-semibold"
+              onClick={() => {
+                triggerHaptic("selection")
+                onOpenChange(false)
+              }}
+              variant="secondary"
+            >
+              Close
+            </Button>
+          )}
         </DrawerFooter>
       </DrawerContent>
     </Drawer>

@@ -269,6 +269,54 @@
   transition-delay: var(--page-stagger);
 }
 
+/* Standalone pages (workouts, workout detail) carry the same back gesture as
+   the staged flow. They track the finger with transitions off, then settle
+   back with the flow's own slide timing once the drag ends. */
+.t-swipe-back {
+  transition: transform var(--page-slide-dur) var(--page-slide-ease);
+  will-change: transform;
+}
+
+.t-swipe-back[data-dragging="true"] {
+  transition: none;
+}
+
+/* Interactive edge-swipe navigation.
+
+   While a drag is in flight both the outgoing and incoming pages are pinned
+   to the finger through --drag-x, with transitions off so they track it
+   exactly. Releasing removes [data-dragging], which restores the transitions
+   above — the pages then animate from wherever the finger left them to their
+   resting positions, so a committed swipe and a cancelled one use the same
+   motion as a button tap. */
+.t-page-slide[data-dragging="true"] .t-page {
+  transition: none;
+}
+
+.t-page-slide[data-dragging="true"][data-page="1"] .t-page[data-page-id="1"],
+.t-page-slide[data-dragging="true"][data-page="2"] .t-page[data-page-id="2"],
+.t-page-slide[data-dragging="true"][data-page="3"] .t-page[data-page-id="3"] {
+  transform: translateX(var(--drag-x, 0px));
+}
+
+.t-page-slide[data-dragging="true"] .t-page[data-drag-peer="true"] {
+  opacity: 1;
+  filter: none;
+  pointer-events: none;
+  /* Parked exactly one screen away on the side it is being pulled in from,
+     so it meets the outgoing page edge to edge with no gap. */
+  transform: translateX(
+    calc(var(--drag-x, 0px) + var(--drag-peer-offset, 100%))
+  );
+}
+
+.t-page-slide[data-dragging="true"][data-page="2"]
+  .t-page[data-drag-peer="true"][data-page-id="1"],
+.t-page-slide[data-dragging="true"][data-page="3"]
+  .t-page[data-drag-peer="true"][data-page-id="2"] {
+  --drag-peer-offset: -100%;
+}
+
 @keyframes t-digit-pop-in {
   0% {
     transform: translate(

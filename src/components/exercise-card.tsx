@@ -127,7 +127,7 @@ export function ExerciseCard({
         onPointerUp={handlePointerUp}
         type="button"
       >
-        <div className="isolate aspect-square overflow-hidden bg-[#111113]">
+        <div className="isolate aspect-square overflow-hidden bg-card">
           <img
             alt={`${exercise.name} demonstration`}
             className="h-full w-full object-contain mix-blend-screen"
@@ -141,8 +141,8 @@ export function ExerciseCard({
         </div>
         {/* Fixed height (not content-driven) so every card is identical
             regardless of grid row or 1- vs 2-line exercise names. */}
-        <div className="flex h-[4.5rem] items-center px-3.5">
-          <h3 className="line-clamp-2 text-base leading-snug font-semibold tracking-[-0.01em] capitalize">
+        <div className="flex h-[4.5rem] items-center justify-center px-3.5">
+          <h3 className="line-clamp-2 text-center text-base leading-snug font-semibold tracking-[-0.01em] capitalize">
             {exercise.name}
           </h3>
         </div>

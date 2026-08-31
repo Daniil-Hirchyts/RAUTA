@@ -27,7 +27,6 @@ bundled into the app, so it runs fully offline with no server URL.
 bun run ios        # build, sync, and open Xcode
 bun run ios:run    # build, sync, and run on a simulator or device
 bun run ios:sync   # build and copy the web assets into the Xcode project
-bun run ios:splash # regenerate splash screens from assets/
 bun run ios:archive # build a Release .xcarchive for distribution
 bun run ios:export  # export the archive as an App Store .ipa
 ```
@@ -44,8 +43,13 @@ up in the native shell.
 The app icon is an Icon Composer document at `ios/App/App/AppIcon.icon` — open
 it with Icon Composer (bundled in Xcode) to edit the layers. Xcode renders the
 default, dark, and tinted appearances from it at build time, so there is no
-`AppIcon.appiconset` to keep in sync. Splash screens are still generated from
-`assets/splash.png` and `assets/splash-dark.png`.
+`AppIcon.appiconset` to keep in sync.
+
+The launch screen is a real storyboard — `ios/App/App/Base.lproj/LaunchScreen.storyboard`
+— showing the logo, wordmark and a spinner on the app background, with the
+logo art in the `SplashLogo` image set. Do not run `capacitor-assets` against
+this project: it rewrites that storyboard and would replace the loading screen
+with a bare centred image.
 
 ### TestFlight
 

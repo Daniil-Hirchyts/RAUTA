@@ -74,7 +74,10 @@ function isIOS() {
 }
 
 function hasOpenDrawer() {
-  return document.querySelector(DRAWER_SURFACE) !== null
+  // A dismissed drawer stays mounted through its exit animation, and stays
+  // mounted indefinitely if the view changes before that animation finishes.
+  // Matching on presence alone would then suspend button haptics forever.
+  return document.querySelector(`${DRAWER_SURFACE}:not([data-closed])`) !== null
 }
 
 function getSwitchInput(button: HTMLButtonElement) {

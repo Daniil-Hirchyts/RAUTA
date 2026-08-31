@@ -7,14 +7,17 @@ import { BodyMap } from "@/components/body-map"
 import { EquipmentPresets } from "@/components/equipment-presets"
 import { ExerciseCard } from "@/components/exercise-card"
 import { ExerciseDetailDrawer } from "@/components/exercise-detail-drawer"
+import { ExerciseSearch } from "@/components/exercise-search"
 import { HapticLayer } from "@/components/haptic-layer"
 import { LikeButton } from "@/components/like-button"
 import { SvgFilterDefs } from "@/components/svg-filters"
+import { SwipeBackPage } from "@/components/swipe-back-page"
 import { Button } from "@/components/ui/button"
 import { DotPattern } from "@/components/ui/dot-pattern"
 import { WorkoutDetailPage } from "@/components/workout-detail-page"
 import { WorkoutFormDrawer } from "@/components/workout-form-drawer"
 import { WorkoutsPage } from "@/components/workouts-page"
+import { useEdgeSwipe } from "@/hooks/use-edge-swipe"
 import { useLoadMoreOnScroll } from "@/hooks/use-load-more-on-scroll"
 import {
   EQUIPMENT_OPTIONS,
@@ -192,13 +195,18 @@ export function App() {
     [selectedMuscles, selectedEquipment]
   )
 
-  const visibleExercises = useMemo(
-    () =>
-      favoritesOnly
-        ? exercises.filter((exercise) => favoriteIds.includes(exercise.id))
-        : exercises,
-    [exercises, favoritesOnly, favoriteIds]
-  )
+  const [search, setSearch] = useState("")
+
+  const visibleExercises = useMemo(() => {
+    const shortlist = favoritesOnly
+      ? exercises.filter((exercise) => favoriteIds.includes(exercise.id))
+      : exercises
+    const query = search.trim().toLowerCase()
+    if (!query) return shortlist
+    return shortlist.filter((exercise) =>
+      exercise.name.toLowerCase().includes(query)
+    )
+  }, [exercises, favoritesOnly, favoriteIds, search])
 
   const {
     hasMore: hasMoreExercises,
@@ -223,6 +231,7 @@ export function App() {
   const resetFlow = () => {
     triggerHaptic("warning")
     reset()
+    setSearch("")
     setStage(1)
   }
 
@@ -283,29 +292,50 @@ export function App() {
 
   const editWorkout = (workout: Workout) => openWorkoutForm({ workout })
 
+  const {
+    containerRef: swipeContainerRef,
+    dragging: swipeDragging,
+    handlers: swipeHandlers,
+    offset: swipeOffset,
+    peer: swipePeer,
+  } = useEdgeSwipe({
+    canGoBack: stage > 1,
+    // Forward only where the footer button would also allow it, so a swipe
+    // can never skip a step the flow still needs answered.
+    canGoForward: stage < 3 && canContinue,
+    onBack: goBack,
+    onForward: goForward,
+  })
+  const peerStage =
+    swipePeer === "prev" ? stage - 1 : swipePeer === "next" ? stage + 1 : null
+
   return (
     <div className="min-h-(--app-viewport-height) bg-[#0e0e0f] text-foreground">
       <HapticLayer />
       <SvgFilterDefs />
-      <main className="relative mx-auto flex min-h-(--app-viewport-height) w-full max-w-[430px] touch-pan-y flex-col overflow-hidden border-x border-white/[0.04] bg-background pt-[env(safe-area-inset-top)] shadow-2xl shadow-black/40">
+      <main className="relative mx-auto flex h-(--app-viewport-height) w-full max-w-[430px] touch-pan-y flex-col overflow-hidden border-x border-white/[0.04] bg-background pt-[env(safe-area-inset-top)] shadow-2xl shadow-black/40">
         {view.type === "workouts" && (
-          <WorkoutsPage
-            onBack={() => setView({ type: "flow" })}
-            onSelect={(workout) =>
-              setView({ type: "workout-detail", workoutId: workout.id })
-            }
-          />
+          <SwipeBackPage onBack={() => setView({ type: "flow" })}>
+            <WorkoutsPage
+              onBack={() => setView({ type: "flow" })}
+              onSelect={(workout) =>
+                setView({ type: "workout-detail", workoutId: workout.id })
+              }
+            />
+          </SwipeBackPage>
         )}
 
         {view.type === "workout-detail" && (
-          <WorkoutDetailPage
-            onBack={() => setView({ type: "workouts" })}
-            onDeleted={() => setView({ type: "workouts" })}
-            onDuplicated={() => setView({ type: "workouts" })}
-            onEdit={editWorkout}
-            onOpenExercise={openDetail}
-            workoutId={view.workoutId}
-          />
+          <SwipeBackPage onBack={() => setView({ type: "workouts" })}>
+            <WorkoutDetailPage
+              onBack={() => setView({ type: "workouts" })}
+              onDeleted={() => setView({ type: "workouts" })}
+              onDuplicated={() => setView({ type: "workouts" })}
+              onEdit={editWorkout}
+              onOpenExercise={openDetail}
+              workoutId={view.workoutId}
+            />
+          </SwipeBackPage>
         )}
 
         {view.type === "flow" && (
@@ -334,28 +364,33 @@ export function App() {
                     />
                   ))}
                 </div>
-                <div className="flex items-center gap-1.5">
+                {/* A single segmented pill. The border, surface and rounding
+                    belong to the group; the buttons inside carry none of their
+                    own, so nothing is clipped and there is no seam where they
+                    meet. Padding insets them, which turns each press into a
+                    round highlight within the pill. */}
+                <div className="flex items-center gap-1.5 rounded-full border border-border bg-card p-0.5">
                   <Button
                     aria-label="My workouts"
-                    className="rounded-full bg-card text-muted-foreground active:bg-muted active:text-foreground"
+                    className="rounded-full border-0 bg-transparent text-muted-foreground active:bg-muted active:text-foreground"
                     onClick={() => {
                       triggerHaptic("medium")
                       setView({ type: "workouts" })
                     }}
-                    size="icon-lg"
+                    size="icon"
                     variant="ghost"
                   >
-                    <CalendarDays className="size-5.5" />
+                    <CalendarDays className="size-5" />
                   </Button>
                   {hasFilters && (
                     <Button
                       aria-label="Reset selections"
-                      className="rounded-full bg-card text-muted-foreground active:bg-muted active:text-foreground"
+                      className="rounded-full border-0 bg-transparent text-muted-foreground active:bg-muted active:text-foreground"
                       onClick={resetFlow}
-                      size="icon-lg"
+                      size="icon"
                       variant="ghost"
                     >
-                      <Eraser className="size-5.5" />
+                      <Eraser className="size-5" />
                     </Button>
                   )}
                 </div>
@@ -388,11 +423,23 @@ export function App() {
               </div>
             </header>
 
-            <div className="t-page-slide min-h-0 flex-1" data-page={stage}>
+            <div
+              className="t-page-slide min-h-0 flex-1"
+              data-dragging={swipeDragging ? "true" : undefined}
+              data-page={stage}
+              ref={swipeContainerRef}
+              style={
+                swipeDragging
+                  ? ({ "--drag-x": `${swipeOffset}px` } as React.CSSProperties)
+                  : undefined
+              }
+              {...swipeHandlers}
+            >
               <section
                 aria-hidden={stage !== 1}
                 aria-label="Choose muscles"
                 className="t-page px-[clamp(0.75rem,4vw,1.25rem)] pt-[clamp(0.75rem,2vh,1.25rem)] pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
+                data-drag-peer={peerStage === 1 ? "true" : undefined}
                 data-page-id="1"
                 inert={stage !== 1}
               >
@@ -420,6 +467,7 @@ export function App() {
                 aria-hidden={stage !== 2}
                 aria-label="Choose equipment"
                 className="t-page overflow-y-auto px-5 pt-2 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
+                data-drag-peer={peerStage === 2 ? "true" : undefined}
                 data-page-id="2"
                 inert={stage !== 2}
               >
@@ -465,18 +513,22 @@ export function App() {
               <section
                 aria-hidden={stage !== 3}
                 aria-label="Matching exercises"
-                className="t-page overflow-y-auto px-5 pt-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
+                className="t-page overflow-y-auto px-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
+                data-drag-peer={peerStage === 3 ? "true" : undefined}
                 data-page-id="3"
                 inert={stage !== 3}
                 ref={exercisesScrollRef}
               >
+                <ExerciseSearch onChange={setSearch} value={search} />
                 {visibleExercises.length === 0 ? (
-                  <div className="flex h-full min-h-[20rem] flex-col items-center justify-center gap-3 text-center">
+                  <div className="flex min-h-[20rem] flex-col items-center justify-center gap-3 text-center">
                     <SearchX className="size-7 text-[color-mix(in_oklch,var(--muted-foreground),var(--background)_35%)]" />
                     <p className="max-w-[16rem] text-base text-muted-foreground">
-                      {favoritesOnly
-                        ? "No favorites yet. Tap the heart on an exercise to save it here."
-                        : "0 exercises"}
+                      {search.trim()
+                        ? `No exercises match "${search.trim()}".`
+                        : favoritesOnly
+                          ? "No favorites yet. Tap the heart on an exercise to save it here."
+                          : "0 exercises"}
                     </p>
                   </div>
                 ) : (
@@ -591,7 +643,9 @@ export function App() {
 
       <ExerciseDetailDrawer
         exercise={detailExercise}
-        onSelectExercise={selectExerciseFromDetail}
+        onSelectExercise={
+          view.type === "flow" ? selectExerciseFromDetail : undefined
+        }
         onOpenChange={setDetailOpen}
         open={detailOpen}
         selected={

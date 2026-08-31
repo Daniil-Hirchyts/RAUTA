@@ -78,7 +78,10 @@ export function WorkoutDetailPage({
         </p>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-5 pt-5 pb-5" ref={scrollRef}>
+      <div
+        className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
+        ref={scrollRef}
+      >
         {exercises.length === 0 ? (
           <p className="py-12 text-center text-base text-muted-foreground">
             No exercises in this workout.
@@ -104,7 +107,7 @@ export function WorkoutDetailPage({
         )}
       </div>
 
-      <footer className="bottom-controls-scrim shrink-0 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      <footer className="bottom-controls-scrim absolute inset-x-0 bottom-0 z-20 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <div className="flex items-center gap-2.5">
           <Button
             aria-label="Delete workout"
