@@ -61,9 +61,6 @@ export function WorkoutsPage({
             <Settings className="size-5" />
           </Button>
         </div>
-        <p className="mt-1 text-sm font-medium text-muted-foreground">
-          Your next session starts here.
-        </p>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pt-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">

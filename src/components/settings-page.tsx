@@ -232,9 +232,6 @@ export function SettingsPage({
           </Button>
         </div>
         <h1 className="text-[26px] font-black tracking-[-0.03em]">Settings</h1>
-        <p className="mt-1 text-sm font-medium text-muted-foreground">
-          Make Gym Lib yours.
-        </p>
       </header>
 
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 pt-5 pb-[calc(2rem+env(safe-area-inset-bottom))]">
