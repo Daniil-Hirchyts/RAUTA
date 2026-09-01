@@ -149,7 +149,7 @@ function SortableExerciseRow({
               )}
               <button
                 aria-label={`Remove ${exercise.name}`}
-                className="interactive-spring text-destructive-foreground grid size-14 place-items-center rounded-full bg-destructive shadow-lg shadow-black/20"
+                className="interactive-spring grid size-14 place-items-center rounded-full border border-primary bg-card text-primary shadow-lg shadow-black/20"
                 onClick={() => onRemove(exercise.id)}
                 type="button"
               >

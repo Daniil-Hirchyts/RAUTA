@@ -164,12 +164,15 @@ export function ExerciseCard({
         }}
       />
 
-      {selectMode && (
-        <AnimatedCheck
-          checked={selected}
-          className="pointer-events-none absolute top-2.5 right-2.5 size-8"
-        />
-      )}
+      <AnimatedCheck
+        checked={selected}
+        className={cn(
+          "pointer-events-none absolute top-2.5 right-2.5 size-8 transition-[opacity,transform] duration-250 ease-[var(--ease-smooth-out)]",
+          selectMode
+            ? "scale-100 opacity-100"
+            : "pointer-events-none scale-75 opacity-0"
+        )}
+      />
     </article>
   )
 }

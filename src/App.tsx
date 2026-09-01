@@ -16,8 +16,8 @@ import {
   X,
 } from "lucide-react"
 
-import { AnimatedNumber } from "@/components/animated-number"
 import { AnimatedCheck } from "@/components/animated-check"
+import { AppGrain } from "@/components/app-grain"
 import { BodyMap } from "@/components/body-map"
 import { EquipmentPresets } from "@/components/equipment-presets"
 import { ExerciseCard } from "@/components/exercise-card"
@@ -82,9 +82,8 @@ function StageHeading({ stage }: { stage: Stage }) {
       return
     }
     if (!element) return
-    const step = element.querySelector<HTMLElement>("[data-stage-step]")
     const title = element.querySelector<HTMLElement>("[data-stage-title]")
-    if (!step || !title) return
+    if (!title) return
 
     element.classList.add("is-exit")
     const reduceMotion = window.matchMedia?.(
@@ -93,7 +92,6 @@ function StageHeading({ stage }: { stage: Stage }) {
     const timeout = window.setTimeout(
       () => {
         displayedStage.current = stage
-        step.textContent = `${stage} / 3`
         title.textContent = STAGE_LABELS[stage]
         element.classList.remove("is-exit")
         element.classList.add("is-enter-start")
@@ -107,14 +105,8 @@ function StageHeading({ stage }: { stage: Stage }) {
 
   return (
     <div className="t-text-swap" ref={elementRef}>
-      <p
-        className="text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase"
-        data-stage-step
-      >
-        {initialStage} / 3
-      </p>
       <h1
-        className="mt-0.5 text-[32px] leading-[1.05] font-black tracking-[-0.03em] text-foreground"
+        className="text-[32px] leading-[1.05] font-black tracking-[-0.03em] text-foreground"
         data-stage-title
       >
         {STAGE_LABELS[initialStage]}
@@ -368,11 +360,12 @@ export function App() {
       : view.type
 
   return (
-    <div className="min-h-(--app-viewport-height) bg-[#0e0e0f] text-foreground">
+    <div className="min-h-(--app-viewport-height) bg-black text-foreground">
       <HapticLayer />
       <SettingsEffects />
       <SvgFilterDefs />
-      <main className="relative mx-auto flex h-(--app-viewport-height) w-full max-w-[430px] touch-pan-y flex-col overflow-hidden border-x border-white/[0.04] bg-background pt-[env(safe-area-inset-top)] shadow-2xl shadow-black/40">
+      <main className="relative mx-auto flex h-(--app-viewport-height) w-full max-w-[430px] touch-pan-y flex-col overflow-hidden bg-black">
+        <AppGrain />
         <div
           className="t-app-page flex min-h-0 flex-1 flex-col"
           data-direction={viewDirection}
@@ -417,264 +410,242 @@ export function App() {
           )}
 
           {view.type === "flow" && (
-            <>
-              <header className="shrink-0 border-b border-white/[0.05] bg-background/80 px-5 pt-4 pb-3 backdrop-blur-xl">
-                <div className="mb-5 flex items-center justify-between">
-                  <div
-                    aria-label={`Step ${stage} of 3`}
-                    aria-valuemax={3}
-                    aria-valuemin={1}
-                    aria-valuenow={stage}
-                    className="flex items-center gap-2.5"
-                    role="progressbar"
-                  >
-                    {[1, 2, 3].map((step) => (
-                      <span
-                        aria-hidden="true"
-                        className={`h-2 rounded-full transition-[width,background-color] duration-250 ${
-                          step === stage
-                            ? "w-9 bg-primary"
-                            : step < stage
-                              ? "w-5 bg-primary/35"
-                              : "w-5 bg-white/10"
-                        }`}
-                        key={step}
-                      />
-                    ))}
-                  </div>
-                  {/* A single segmented pill. The border, surface and rounding
+            <div className="app-screen" data-bottom-controls="true">
+              <div className="app-surface">
+                <header className="app-shell-header shrink-0 px-5 pt-4 pb-3">
+                  <div className="mb-5 flex items-center justify-between">
+                    <div
+                      aria-label={`Step ${stage} of 3`}
+                      aria-valuemax={3}
+                      aria-valuemin={1}
+                      aria-valuenow={stage}
+                      className="flex items-center gap-2.5"
+                      role="progressbar"
+                    >
+                      {[1, 2, 3].map((step) => (
+                        <span
+                          aria-hidden="true"
+                          className={`h-2 rounded-full transition-[width,background-color] duration-250 ${
+                            step === stage
+                              ? "w-9 bg-primary"
+                              : step < stage
+                                ? "w-5 bg-primary/35"
+                                : "w-5 bg-white/10"
+                          }`}
+                          key={step}
+                        />
+                      ))}
+                    </div>
+                    {/* A single segmented pill. The border, surface and rounding
                     belong to the group; the buttons inside carry none of their
                     own, so nothing is clipped and there is no seam where they
                     meet. Padding insets them, which turns each press into a
                     round highlight within the pill. */}
-                  <div className="flex items-center gap-1.5 rounded-full border border-border bg-card p-0.5">
-                    <Button
-                      aria-label="My workouts"
-                      className="interactive-spring rounded-full border-0 bg-transparent text-muted-foreground active:bg-white/10 active:text-white"
-                      onClick={() => {
-                        triggerHaptic("medium")
-                        navigate({ type: "workouts" }, "back")
-                      }}
-                      size="icon"
-                      variant="ghost"
-                    >
-                      <CalendarDays className="size-5" />
-                    </Button>
-                    <Button
-                      aria-label="Settings"
-                      className="interactive-spring rounded-full border-0 bg-transparent text-muted-foreground active:bg-white/10 active:text-white"
-                      onClick={() => {
-                        triggerHaptic("medium")
-                        navigate({ type: "settings" })
-                      }}
-                      size="icon"
-                      variant="ghost"
-                    >
-                      <Settings className="size-5" />
-                    </Button>
-                    {hasFilters && (
+                    <div className="flex items-center gap-1.5 rounded-full border border-border bg-card p-0.5">
                       <Button
-                        aria-label="Reset selections"
+                        aria-label="My workouts"
                         className="interactive-spring rounded-full border-0 bg-transparent text-muted-foreground active:bg-white/10 active:text-white"
-                        onClick={resetFlow}
+                        onClick={() => {
+                          triggerHaptic("medium")
+                          navigate({ type: "workouts" }, "back")
+                        }}
                         size="icon"
                         variant="ghost"
                       >
-                        <Eraser className="size-5" />
+                        <CalendarDays className="size-5" />
                       </Button>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-end justify-between">
-                  <StageHeading stage={stage} />
-                  <output
-                    aria-live="polite"
-                    className="text-[15px] font-medium text-muted-foreground tabular-nums"
-                    data-testid="stage-count"
-                  >
-                    {stage === 1 && (
-                      <>
-                        <AnimatedNumber value={selectedMuscles.length} />{" "}
-                        selected
-                      </>
-                    )}
-                    {stage === 2 && (
-                      <>
-                        <AnimatedNumber value={selectedEquipment.length} />{" "}
-                        selected
-                      </>
-                    )}
-                    {stage === 3 && (
-                      <>
-                        <AnimatedNumber value={visibleExercises.length} />{" "}
-                        exercises
-                      </>
-                    )}
-                  </output>
-                </div>
-              </header>
-
-              <div
-                className="t-page-slide min-h-0 flex-1"
-                data-dragging={swipeDragging ? "true" : undefined}
-                data-page={stage}
-                ref={swipeContainerRef}
-                style={
-                  swipeDragging
-                    ? ({
-                        "--drag-x": `${swipeOffset}px`,
-                      } as React.CSSProperties)
-                    : undefined
-                }
-                {...swipeHandlers}
-              >
-                <section
-                  aria-hidden={stage !== 1}
-                  aria-label="Choose muscles"
-                  className="t-page px-[clamp(0.75rem,4vw,1.25rem)] pt-[clamp(0.75rem,2vh,1.25rem)] pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
-                  data-drag-peer={peerStage === 1 ? "true" : undefined}
-                  data-page-id="1"
-                  inert={stage !== 1}
-                >
-                  <div className="relative h-full min-h-0 overflow-hidden rounded-[28px] border border-border bg-card/60 shadow-[0_18px_40px_rgba(0,0,0,0.16)] backdrop-blur-xl">
-                    <DotPattern
-                      className="[mask-image:radial-gradient(ellipse_at_center,black_15%,transparent_72%)] transition-[fill,fill-opacity] duration-500 ease-[var(--ease-smooth-out)]"
-                      cr={1}
-                      height={18}
-                      style={{
-                        fill: `color-mix(in oklch, var(--muted-foreground), var(--primary) ${25 + muscleDotIntensity * 55}%)`,
-                        fillOpacity: 0.3 + muscleDotIntensity * 0.3,
-                      }}
-                      width={18}
-                    />
-                    <div className="relative z-10 h-full">
-                      <BodyMap
-                        onToggle={toggleMuscleWithHaptic}
-                        selectedMuscles={selectedMuscles}
-                      />
-                    </div>
-                  </div>
-                </section>
-
-                <section
-                  aria-hidden={stage !== 2}
-                  aria-label="Choose equipment"
-                  className="t-page overflow-y-auto px-5 pt-2 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
-                  data-drag-peer={peerStage === 2 ? "true" : undefined}
-                  data-page-id="2"
-                  inert={stage !== 2}
-                >
-                  <EquipmentPresets />
-                  <div className="grid grid-cols-2 gap-3">
-                    {EQUIPMENT_OPTIONS.map((equipment) => {
-                      const checked = selectedEquipment.includes(equipment)
-                      return (
-                        <button
-                          aria-checked={checked}
-                          className={`t-check group relative overflow-hidden rounded-[22px] border bg-card text-left transition-[border-color,box-shadow] duration-300 ease-[var(--ease-smooth-out)] ${
-                            checked
-                              ? "border-primary shadow-[0_0_0_1px_var(--primary)]"
-                              : "border-border"
-                          }`}
-                          key={equipment}
-                          onClick={() => toggleEquipmentWithHaptic(equipment)}
-                          role="checkbox"
-                          type="button"
-                        >
-                          <span className="relative block aspect-[1.18] overflow-hidden bg-[#161618]">
-                            <img
-                              alt=""
-                              className="h-full w-full object-cover saturate-[1.65] transition-transform duration-250 ease-[var(--ease-smooth-out)]"
-                              draggable={false}
-                              loading="lazy"
-                              src={equipmentImage(equipment)}
-                            />
-                          </span>
-                          <span className="flex min-h-13 items-center justify-center px-3.5 py-3 text-center text-base leading-tight font-semibold">
-                            {titleCase(equipment)}
-                          </span>
-                          <AnimatedCheck
-                            checked={checked}
-                            className="absolute top-2.5 right-2.5 size-7"
-                          />
-                        </button>
-                      )
-                    })}
-                  </div>
-                </section>
-
-                <section
-                  aria-hidden={stage !== 3}
-                  aria-label="Matching exercises"
-                  className="t-page overflow-y-auto px-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
-                  data-drag-peer={peerStage === 3 ? "true" : undefined}
-                  data-page-id="3"
-                  inert={stage !== 3}
-                  ref={exercisesScrollRef}
-                >
-                  <ExerciseSearch onChange={setSearch} value={search} />
-                  {visibleExercises.length === 0 ? (
-                    <div className="flex min-h-[20rem] flex-col items-center justify-center gap-3 text-center">
-                      <SearchX className="size-7 text-[color-mix(in_oklch,var(--muted-foreground),var(--background)_35%)]" />
-                      <p className="max-w-[16rem] text-base text-muted-foreground">
-                        {search.trim()
-                          ? `No exercises match "${search.trim()}".`
-                          : favoritesOnly
-                            ? "No favorites yet. Tap the heart on an exercise to save it here."
-                            : "0 exercises"}
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <div
-                        className="t-stagger is-shown grid grid-cols-2 gap-3.5"
-                        data-testid="exercise-results"
+                      <Button
+                        aria-label="Settings"
+                        className="interactive-spring rounded-full border-0 bg-transparent text-muted-foreground active:bg-white/10 active:text-white"
+                        onClick={() => {
+                          triggerHaptic("medium")
+                          navigate({ type: "settings" })
+                        }}
+                        size="icon"
+                        variant="ghost"
                       >
-                        {pagedExercises.map((exercise, index) => (
-                          <Fragment key={exercise.id}>
-                            {index === supportingIndex && (
-                              <h2 className="col-span-2 flex items-center gap-3 pt-3 pb-0.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                                <span className="h-px flex-1 bg-border" />
-                                Also works these muscles
-                                <span className="h-px flex-1 bg-border" />
-                              </h2>
-                            )}
-                            <ExerciseCard
-                              exercise={exercise}
-                              index={index}
-                              onOpenDetail={openDetail}
-                              onToggleSelect={toggleSelected}
-                              selectMode={selectMode}
-                              selected={selectedIds.includes(exercise.id)}
-                            />
-                          </Fragment>
-                        ))}
-                      </div>
-                      {hasMoreExercises && (
-                        <>
-                          <div className="flex justify-center py-6">
-                            <MatrixLoader
-                              label="Loading more exercises"
-                              style={
-                                {
-                                  "--matrix-dot": "3px",
-                                  "--matrix-gap": "3px",
-                                } as CSSProperties
-                              }
-                              variant="scan"
-                            />
-                          </div>
-                          <div
-                            aria-hidden="true"
-                            className="h-1"
-                            data-testid="load-more-sentinel"
-                            ref={loadMoreSentinelRef}
-                          />
-                        </>
+                        <Settings className="size-5" />
+                      </Button>
+                      {hasFilters && (
+                        <Button
+                          aria-label="Reset selections"
+                          className="interactive-spring rounded-full border-0 bg-transparent text-muted-foreground active:bg-white/10 active:text-white"
+                          onClick={resetFlow}
+                          size="icon"
+                          variant="ghost"
+                        >
+                          <Eraser className="size-5" />
+                        </Button>
                       )}
-                    </>
-                  )}
-                </section>
+                    </div>
+                  </div>
+                  <div className="flex items-end justify-between gap-3">
+                    <StageHeading stage={stage} />
+                  </div>
+                </header>
+
+                <div
+                  className="app-stage-frame t-page-slide min-h-0 flex-1"
+                  data-dragging={swipeDragging ? "true" : undefined}
+                  data-page={stage}
+                  ref={swipeContainerRef}
+                  style={
+                    swipeDragging
+                      ? ({
+                          "--drag-x": `${swipeOffset}px`,
+                        } as React.CSSProperties)
+                      : undefined
+                  }
+                  {...swipeHandlers}
+                >
+                  <section
+                    aria-hidden={stage !== 1}
+                    aria-label="Choose muscles"
+                    className="t-page px-[clamp(0.75rem,4vw,1.25rem)] pt-[clamp(0.75rem,2vh,1.25rem)] pb-[clamp(0.75rem,2vh,1.25rem)]"
+                    data-drag-peer={peerStage === 1 ? "true" : undefined}
+                    data-page-id="1"
+                    inert={stage !== 1}
+                  >
+                    <div className="relative h-full min-h-0 overflow-hidden rounded-[28px] border border-border bg-card/60 shadow-[0_18px_40px_rgba(0,0,0,0.16)] backdrop-blur-xl">
+                      <DotPattern
+                        className="[mask-image:radial-gradient(ellipse_at_center,black_15%,transparent_72%)] transition-[fill,fill-opacity] duration-500 ease-[var(--ease-smooth-out)]"
+                        cr={1}
+                        height={18}
+                        style={{
+                          fill: `color-mix(in oklch, var(--muted-foreground), var(--primary) ${25 + muscleDotIntensity * 55}%)`,
+                          fillOpacity: 0.3 + muscleDotIntensity * 0.3,
+                        }}
+                        width={18}
+                      />
+                      <div className="relative z-10 h-full">
+                        <BodyMap
+                          onToggle={toggleMuscleWithHaptic}
+                          selectedMuscles={selectedMuscles}
+                        />
+                      </div>
+                    </div>
+                  </section>
+
+                  <section
+                    aria-hidden={stage !== 2}
+                    aria-label="Choose equipment"
+                    className="app-scroll-content t-page overflow-y-auto px-5 pt-2 pb-6"
+                    data-drag-peer={peerStage === 2 ? "true" : undefined}
+                    data-page-id="2"
+                    inert={stage !== 2}
+                  >
+                    <EquipmentPresets />
+                    <div className="grid grid-cols-2 gap-3">
+                      {EQUIPMENT_OPTIONS.map((equipment) => {
+                        const checked = selectedEquipment.includes(equipment)
+                        return (
+                          <button
+                            aria-checked={checked}
+                            className={`interactive-spring group relative overflow-hidden rounded-[22px] border bg-card text-left shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-300 ease-[var(--ease-smooth-out)] ${
+                              checked
+                                ? "border-primary/75 shadow-[0_0_0_1px_rgba(255,98,0,0.3)]"
+                                : "border-border"
+                            }`}
+                            key={equipment}
+                            onClick={() => toggleEquipmentWithHaptic(equipment)}
+                            role="checkbox"
+                            type="button"
+                          >
+                            <span className="relative block aspect-[1.18] overflow-hidden bg-[#161618]">
+                              <img
+                                alt=""
+                                className="h-full w-full object-cover saturate-[1.65] transition-transform duration-250 ease-[var(--ease-smooth-out)]"
+                                draggable={false}
+                                loading="lazy"
+                                src={equipmentImage(equipment)}
+                              />
+                            </span>
+                            <span className="flex min-h-13 items-center justify-center px-3.5 py-3 text-center text-base leading-tight font-semibold">
+                              {titleCase(equipment)}
+                            </span>
+                            <AnimatedCheck
+                              checked={checked}
+                              className="pointer-events-none absolute top-2.5 right-2.5 size-8"
+                            />
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </section>
+
+                  <section
+                    aria-hidden={stage !== 3}
+                    aria-label="Matching exercises"
+                    className="app-scroll-content t-page overflow-y-auto px-5 pb-6"
+                    data-drag-peer={peerStage === 3 ? "true" : undefined}
+                    data-page-id="3"
+                    inert={stage !== 3}
+                    ref={exercisesScrollRef}
+                  >
+                    <ExerciseSearch onChange={setSearch} value={search} />
+                    {visibleExercises.length === 0 ? (
+                      <div className="flex min-h-[20rem] flex-col items-center justify-center gap-3 text-center">
+                        <SearchX className="size-7 text-[color-mix(in_oklch,var(--muted-foreground),var(--background)_35%)]" />
+                        <p className="max-w-[16rem] text-base text-muted-foreground">
+                          {search.trim()
+                            ? `No exercises match "${search.trim()}".`
+                            : favoritesOnly
+                              ? "No favorites yet. Tap the heart on an exercise to save it here."
+                              : "0 exercises"}
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div
+                          className="t-stagger is-shown grid grid-cols-2 gap-3.5"
+                          data-testid="exercise-results"
+                        >
+                          {pagedExercises.map((exercise, index) => (
+                            <Fragment key={exercise.id}>
+                              {index === supportingIndex && (
+                                <h2 className="col-span-2 flex items-center gap-3 pt-3 pb-0.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                  <span className="h-px flex-1 bg-border" />
+                                  Also works these muscles
+                                  <span className="h-px flex-1 bg-border" />
+                                </h2>
+                              )}
+                              <ExerciseCard
+                                exercise={exercise}
+                                index={index}
+                                onOpenDetail={openDetail}
+                                onToggleSelect={toggleSelected}
+                                selectMode={selectMode}
+                                selected={selectedIds.includes(exercise.id)}
+                              />
+                            </Fragment>
+                          ))}
+                        </div>
+                        {hasMoreExercises && (
+                          <>
+                            <div className="flex justify-center py-6">
+                              <MatrixLoader
+                                label="Loading more exercises"
+                                style={
+                                  {
+                                    "--matrix-dot": "3px",
+                                    "--matrix-gap": "3px",
+                                  } as CSSProperties
+                                }
+                                variant="scan"
+                              />
+                            </div>
+                            <div
+                              aria-hidden="true"
+                              className="h-1"
+                              data-testid="load-more-sentinel"
+                              ref={loadMoreSentinelRef}
+                            />
+                          </>
+                        )}
+                      </>
+                    )}
+                  </section>
+                </div>
               </div>
 
               <footer className="bottom-controls-scrim absolute inset-x-0 bottom-0 z-20 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
@@ -752,7 +723,7 @@ export function App() {
                   )}
                 </div>
               </footer>
-            </>
+            </div>
           )}
         </div>
       </main>

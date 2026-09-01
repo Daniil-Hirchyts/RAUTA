@@ -57,6 +57,20 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Muscles" })).toBeInTheDocument()
   })
 
+  it("keeps the rounded content surface separate from bottom controls", () => {
+    render(<App />)
+
+    const screenShell = document.querySelector(".app-screen")
+    const surface = screenShell?.querySelector(".app-surface")
+    const header = screenShell?.querySelector(".app-shell-header")
+    const footer = screenShell?.querySelector("footer.bottom-controls-scrim")
+
+    expect(screenShell).toHaveAttribute("data-bottom-controls", "true")
+    expect(surface).toContainElement(header as HTMLElement)
+    expect(surface).not.toContainElement(footer as HTMLElement)
+    expect(surface?.querySelector(".app-stage-frame")).toBeInTheDocument()
+  })
+
   it("opens settings from the workouts header and persists preferences", async () => {
     localStorage.clear()
     const user = userEvent.setup()
@@ -136,7 +150,7 @@ describe("App", () => {
     ).toHaveAttribute("aria-pressed", "true")
   })
 
-  it("renders the matching result count and visual cards", async () => {
+  it("renders the matching visual cards", async () => {
     const user = userEvent.setup()
     const expected = filterExercises(EXERCISES, ["chest"], ["body weight"])
     useFilters.setState({
@@ -148,9 +162,6 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: /choose equipment/i }))
     await user.click(screen.getByRole("button", { name: /show exercises/i }))
 
-    expect(screen.getByTestId("stage-count")).toHaveTextContent(
-      `${expected.length} exercises`
-    )
     const results = screen.getByTestId("exercise-results")
     expect(results.querySelectorAll("article")).toHaveLength(
       Math.min(expected.length, EXERCISE_PAGE_SIZE)

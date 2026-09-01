@@ -30,6 +30,15 @@ export function formatDateLong(iso: string) {
   })
 }
 
+export function formatMonthDay(iso: string) {
+  const date = parseISODate(iso)
+  if (!date) return iso
+  return date.toLocaleDateString(undefined, {
+    month: "long",
+    day: "numeric",
+  })
+}
+
 export function formatWeekdayShort(iso: string) {
   const date = parseISODate(iso)
   if (!date) return iso

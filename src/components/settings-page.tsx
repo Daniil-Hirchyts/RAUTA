@@ -244,213 +244,219 @@ export function SettingsPage({
   }
 
   return (
-    <>
-      <header className="shrink-0 border-b border-white/[0.05] bg-background/80 px-5 pt-4 pb-4 backdrop-blur-xl">
-        <div className="mb-3 flex items-center gap-2">
-          <Button
-            aria-label="Back"
-            className="shrink-0 rounded-full"
-            onClick={onBack}
-            size="icon"
-            variant="secondary"
-          >
-            <ChevronLeft />
-          </Button>
-        </div>
-        <h1 className="text-[26px] font-black tracking-[-0.03em]">Settings</h1>
-      </header>
+    <div className="app-screen">
+      <div className="app-surface">
+        <header className="app-shell-header shrink-0 px-5 pt-4 pb-4">
+          <div className="flex min-h-10 items-center gap-3">
+            <Button
+              aria-label="Back"
+              className="shrink-0 rounded-full"
+              onClick={onBack}
+              size="icon"
+              variant="secondary"
+            >
+              <ChevronLeft />
+            </Button>
+            <h1 className="text-[26px] leading-none font-black tracking-[-0.03em]">
+              Settings
+            </h1>
+          </div>
+        </header>
 
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 pt-5 pb-[calc(2rem+env(safe-area-inset-bottom))]">
-        <SettingsSection title="Apple Health">
-          <SettingsRow
-            description={
-              settings.healthStatus === "connected"
-                ? settings.healthBodyWeightKg
-                  ? `Connected · ${settings.healthBodyWeightKg} kg from Health`
-                  : "Connected · workout write access granted"
-                : "Save completed strength workouts to Health"
-            }
-            icon={<Apple />}
-            title="Apple Health"
-          >
-            {healthBusy ? (
-              <MatrixLoader
-                label="Connecting to Apple Health"
-                variant="pulse"
+        <div className="app-scroll-region min-h-0 flex-1 space-y-6 overflow-y-auto px-5 pt-5 pb-6">
+          <SettingsSection title="Apple Health">
+            <SettingsRow
+              description={
+                settings.healthStatus === "connected"
+                  ? settings.healthBodyWeightKg
+                    ? `Connected · ${settings.healthBodyWeightKg} kg from Health`
+                    : "Connected · workout write access granted"
+                  : "Save completed strength workouts to Health"
+              }
+              icon={<Apple />}
+              title="Apple Health"
+            >
+              {healthBusy ? (
+                <MatrixLoader
+                  label="Connecting to Apple Health"
+                  variant="pulse"
+                />
+              ) : null}
+              <Switch
+                aria-label="Apple Health integration"
+                checked={settings.appleHealthEnabled}
+                data-haptics="off"
+                disabled={healthBusy}
+                onCheckedChange={toggleAppleHealth}
               />
-            ) : null}
-            <Switch
-              aria-label="Apple Health integration"
-              checked={settings.appleHealthEnabled}
-              data-haptics="off"
-              disabled={healthBusy}
-              onCheckedChange={toggleAppleHealth}
-            />
-          </SettingsRow>
-          <SettingsRow
-            description="Includes workout duration automatically"
-            icon={<HeartPulse />}
-            title="Sync completed workouts"
-          >
-            <Switch
-              aria-label="Sync completed workouts"
-              checked={settings.autoSyncWorkouts}
-              data-haptics="off"
-              disabled={!settings.appleHealthEnabled}
-              onCheckedChange={(checked) => update("autoSyncWorkouts", checked)}
-            />
-          </SettingsRow>
-          <SettingsRow
-            description="MET estimate using your latest Health weight when allowed"
-            icon={<Activity />}
-            title="Active calories"
-          >
-            <Switch
-              aria-label="Sync active calories"
-              checked={settings.syncActiveCalories}
-              data-haptics="off"
-              disabled={
-                !settings.appleHealthEnabled || !settings.autoSyncWorkouts
-              }
-              onCheckedChange={(checked) =>
-                update("syncActiveCalories", checked)
-              }
-            />
-          </SettingsRow>
-          {settings.healthStatus === "connected" ? (
-            <SettingsAction
+            </SettingsRow>
+            <SettingsRow
+              description="Includes workout duration automatically"
               icon={<HeartPulse />}
-              onClick={() => {
-                triggerHaptic("light")
-                void openAppleHealthSettings()
-              }}
-              title="Manage Health permissions"
-            />
-          ) : null}
-        </SettingsSection>
-
-        <SettingsSection title="Workout & Gym">
-          <SettingsRow icon={<Vibrate />} title="Haptic feedback">
-            <Switch
-              aria-label="Haptic feedback"
-              checked={settings.hapticsEnabled}
-              data-haptics="off"
-              onCheckedChange={(checked) => update("hapticsEnabled", checked)}
-            />
-          </SettingsRow>
-          <SettingsRow
-            description="Play a short cue for completed actions"
-            icon={<BellRing />}
-            title="Sound chimes"
-          >
-            <Switch
-              aria-label="Sound chimes"
-              checked={settings.soundChimesEnabled}
-              data-haptics="off"
-              onCheckedChange={(checked) =>
-                update("soundChimesEnabled", checked)
-              }
-            />
-          </SettingsRow>
-          <SettingsRow
-            description="Prevents auto-lock during an active workout"
-            icon={<Smartphone />}
-            title="Keep screen awake"
-          >
-            <Switch
-              aria-label="Keep screen awake"
-              checked={settings.keepAwake}
-              data-haptics="off"
-              onCheckedChange={(checked) => update("keepAwake", checked)}
-            />
-          </SettingsRow>
-        </SettingsSection>
-
-        <SettingsSection title="Data & Storage">
-          <SettingsRow
-            description={iCloudDescription}
-            icon={<Cloud />}
-            title="iCloud backup"
-          >
-            {iCloud.status === "checking" || iCloud.status === "syncing" ? (
-              <MatrixLoader label="Syncing iCloud backup" variant="pulse" />
-            ) : isNative() && iCloud.status !== "unavailable" ? (
-              <Button
-                aria-label="Sync iCloud backup now"
-                className="shrink-0 rounded-full"
+              title="Sync completed workouts"
+            >
+              <Switch
+                aria-label="Sync completed workouts"
+                checked={settings.autoSyncWorkouts}
+                data-haptics="off"
+                disabled={!settings.appleHealthEnabled}
+                onCheckedChange={(checked) =>
+                  update("autoSyncWorkouts", checked)
+                }
+              />
+            </SettingsRow>
+            <SettingsRow
+              description="MET estimate using your latest Health weight when allowed"
+              icon={<Activity />}
+              title="Active calories"
+            >
+              <Switch
+                aria-label="Sync active calories"
+                checked={settings.syncActiveCalories}
+                data-haptics="off"
+                disabled={
+                  !settings.appleHealthEnabled || !settings.autoSyncWorkouts
+                }
+                onCheckedChange={(checked) =>
+                  update("syncActiveCalories", checked)
+                }
+              />
+            </SettingsRow>
+            {settings.healthStatus === "connected" ? (
+              <SettingsAction
+                icon={<HeartPulse />}
                 onClick={() => {
                   triggerHaptic("light")
-                  void syncICloudNow().then((synced) => {
-                    if (synced) triggerHaptic("success")
-                  })
+                  void openAppleHealthSettings()
                 }}
-                size="icon"
-                variant="ghost"
-              >
-                <RefreshCw className="size-4.5" />
-              </Button>
+                title="Manage Health permissions"
+              />
             ) : null}
-          </SettingsRow>
-          <SettingsAction
-            description="Save a JSON backup of everything"
-            icon={<Download />}
-            onClick={() => {
-              triggerHaptic("light")
-              void exportGymLibData()
-                .then(() => {
-                  setNotice("Backup ready to save or share.")
-                  triggerHaptic("success")
-                })
-                .catch(() => setNotice("Could not export your data."))
-            }}
-            title="Export data"
-          />
-          <SettingsAction
-            description="Restore from a Gym Lib backup file"
-            icon={<FileUp />}
-            onClick={() => {
-              triggerHaptic("light")
-              fileInputRef.current?.click()
-            }}
-            title="Import data"
-          />
-          <SettingsAction
-            icon={<Trash2 />}
-            onClick={() => {
-              triggerHaptic("warning")
-              setClearOpen(true)
-            }}
-            title="Clear all data"
-            tone="destructive"
-          />
-        </SettingsSection>
+          </SettingsSection>
 
-        {/* Outside the card: a hidden child would still count as the section's
+          <SettingsSection title="Workout & Gym">
+            <SettingsRow icon={<Vibrate />} title="Haptic feedback">
+              <Switch
+                aria-label="Haptic feedback"
+                checked={settings.hapticsEnabled}
+                data-haptics="off"
+                onCheckedChange={(checked) => update("hapticsEnabled", checked)}
+              />
+            </SettingsRow>
+            <SettingsRow
+              description="Play a short cue for completed actions"
+              icon={<BellRing />}
+              title="Sound chimes"
+            >
+              <Switch
+                aria-label="Sound chimes"
+                checked={settings.soundChimesEnabled}
+                data-haptics="off"
+                onCheckedChange={(checked) =>
+                  update("soundChimesEnabled", checked)
+                }
+              />
+            </SettingsRow>
+            <SettingsRow
+              description="Prevents auto-lock during an active workout"
+              icon={<Smartphone />}
+              title="Keep screen awake"
+            >
+              <Switch
+                aria-label="Keep screen awake"
+                checked={settings.keepAwake}
+                data-haptics="off"
+                onCheckedChange={(checked) => update("keepAwake", checked)}
+              />
+            </SettingsRow>
+          </SettingsSection>
+
+          <SettingsSection title="Data & Storage">
+            <SettingsRow
+              description={iCloudDescription}
+              icon={<Cloud />}
+              title="iCloud backup"
+            >
+              {iCloud.status === "checking" || iCloud.status === "syncing" ? (
+                <MatrixLoader label="Syncing iCloud backup" variant="pulse" />
+              ) : isNative() && iCloud.status !== "unavailable" ? (
+                <Button
+                  aria-label="Sync iCloud backup now"
+                  className="shrink-0 rounded-full"
+                  onClick={() => {
+                    triggerHaptic("light")
+                    void syncICloudNow().then((synced) => {
+                      if (synced) triggerHaptic("success")
+                    })
+                  }}
+                  size="icon"
+                  variant="ghost"
+                >
+                  <RefreshCw className="size-4.5" />
+                </Button>
+              ) : null}
+            </SettingsRow>
+            <SettingsAction
+              description="Save a JSON backup of everything"
+              icon={<Download />}
+              onClick={() => {
+                triggerHaptic("light")
+                void exportGymLibData()
+                  .then(() => {
+                    setNotice("Backup ready to save or share.")
+                    triggerHaptic("success")
+                  })
+                  .catch(() => setNotice("Could not export your data."))
+              }}
+              title="Export data"
+            />
+            <SettingsAction
+              description="Restore from a Gym Lib backup file"
+              icon={<FileUp />}
+              onClick={() => {
+                triggerHaptic("light")
+                fileInputRef.current?.click()
+              }}
+              title="Import data"
+            />
+            <SettingsAction
+              icon={<Trash2 />}
+              onClick={() => {
+                triggerHaptic("warning")
+                setClearOpen(true)
+              }}
+              title="Clear all data"
+              tone="destructive"
+            />
+          </SettingsSection>
+
+          {/* Outside the card: a hidden child would still count as the section's
             last row and leave the row above it with a dangling divider. */}
-        <input
-          accept="application/json,.json"
-          className="hidden"
-          onChange={importFile}
-          ref={fileInputRef}
-          type="file"
-        />
+          <input
+            accept="application/json,.json"
+            className="hidden"
+            onChange={importFile}
+            ref={fileInputRef}
+            type="file"
+          />
 
-        <SettingsSection title="About">
-          <SettingsRow icon={<Info />} title="App version">
-            <span className="text-sm font-medium text-muted-foreground tabular-nums">
-              {appVersion}
-            </span>
-          </SettingsRow>
-        </SettingsSection>
+          <SettingsSection title="About">
+            <SettingsRow icon={<Info />} title="App version">
+              <span className="text-sm font-medium text-muted-foreground tabular-nums">
+                {appVersion}
+              </span>
+            </SettingsRow>
+          </SettingsSection>
 
-        {notice ? (
-          <p
-            aria-live="polite"
-            className="px-2 text-center text-sm text-muted-foreground"
-          >
-            {notice}
-          </p>
-        ) : null}
+          {notice ? (
+            <p
+              aria-live="polite"
+              className="px-2 text-center text-sm text-muted-foreground"
+            >
+              {notice}
+            </p>
+          ) : null}
+        </div>
       </div>
 
       <ClearDataConfirmation
@@ -462,6 +468,6 @@ export function SettingsPage({
         onOpenChange={setClearOpen}
         open={clearOpen}
       />
-    </>
+    </div>
   )
 }

@@ -14,7 +14,7 @@ const config: CapacitorConfig = {
     // areas with env(safe-area-inset-*), so let it draw edge to edge and keep
     // WebKit from adding scroll-view insets of its own.
     contentInset: "never",
-    backgroundColor: "#0e0e0f",
+    backgroundColor: "#000000",
     // The shell itself is overflow-hidden and every scrolling region is an
     // inner container, so the web view's own scroll view only ever produces
     // an unwanted whole-screen rubber band.
@@ -25,7 +25,7 @@ const config: CapacitorConfig = {
       // The web app renders instantly from a local bundle, so hold the splash
       // until React has actually painted, then fade it out from JS.
       launchAutoHide: false,
-      backgroundColor: "#0e0e0f",
+      backgroundColor: "#000000",
       showSpinner: false,
     },
     Keyboard: {

@@ -70,7 +70,7 @@ function WorkoutForm({
         {isEdit && (
           <button
             aria-label="Save changes"
-            className="interactive-spring absolute top-3 right-3 z-30 grid size-11 place-items-center rounded-full border border-primary bg-primary text-primary-foreground shadow-lg shadow-black/20 disabled:border-border disabled:bg-muted disabled:text-muted-foreground"
+            className="interactive-spring absolute top-3 right-3 z-30 grid size-11 place-items-center rounded-full border border-primary bg-card text-primary shadow-lg shadow-black/20 disabled:border-border disabled:bg-muted disabled:text-muted-foreground"
             disabled={!canSave}
             type="submit"
           >

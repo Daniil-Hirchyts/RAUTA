@@ -7,7 +7,6 @@ import {
   Clock3,
   Copy,
   Flag,
-  Pencil,
   Play,
   Plus,
   Trash2,
@@ -123,185 +122,186 @@ export function WorkoutDetailPage({
   const skipTarget =
     session && exercise ? nextPendingExerciseId(session, exercise.id) : null
 
+  const shareButton = (
+    <Button
+      aria-label={shareStatus === "copied" ? "Workout copied" : "Share workout"}
+      className="size-[3.25rem] rounded-[26px]"
+      disabled={shareStatus === "sharing"}
+      onClick={async () => {
+        setShareStatus("sharing")
+        try {
+          const result = await shareWorkout(workout)
+          triggerHaptic("success")
+          if (result === "copied") {
+            setShareStatus("copied")
+            window.setTimeout(() => setShareStatus("idle"), 1800)
+          } else {
+            setShareStatus("idle")
+          }
+        } catch (error) {
+          const message = String(error).toLowerCase()
+          if (!message.includes("cancel") && !message.includes("abort")) {
+            triggerHaptic("warning")
+          }
+          setShareStatus("idle")
+        }
+      }}
+      size="icon"
+      variant="secondary"
+    >
+      {shareStatus === "sharing" ? (
+        <MatrixLoader label="Sharing workout" rounded variant="orbit" />
+      ) : shareStatus === "copied" ? (
+        <Check />
+      ) : (
+        <IosShareIcon />
+      )}
+    </Button>
+  )
+
   return (
-    <>
-      <header className="shrink-0 border-b border-white/[0.05] bg-background/80 px-5 pt-4 pb-4 backdrop-blur-xl">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <Button
-            aria-label="Back to workouts"
-            className="shrink-0 rounded-full"
-            onClick={onBack}
-            size="icon"
-            variant="secondary"
-          >
-            <ChevronLeft />
-          </Button>
-          <Button
-            aria-label={
-              shareStatus === "copied" ? "Workout copied" : "Share workout"
-            }
-            className="shrink-0 rounded-full"
-            disabled={shareStatus === "sharing"}
-            onClick={async () => {
-              setShareStatus("sharing")
-              try {
-                const result = await shareWorkout(workout)
-                triggerHaptic("success")
-                if (result === "copied") {
-                  setShareStatus("copied")
-                  window.setTimeout(() => setShareStatus("idle"), 1800)
-                } else {
-                  setShareStatus("idle")
-                }
-              } catch (error) {
-                const message = String(error).toLowerCase()
-                if (!message.includes("cancel") && !message.includes("abort")) {
-                  triggerHaptic("warning")
-                }
-                setShareStatus("idle")
-              }
-            }}
-            size="icon"
-            variant="secondary"
-          >
-            {shareStatus === "sharing" ? (
-              <MatrixLoader label="Sharing workout" rounded variant="orbit" />
-            ) : shareStatus === "copied" ? (
-              <Check />
-            ) : (
-              <IosShareIcon />
-            )}
-          </Button>
-        </div>
-        {isPast ? (
-          <h1 className="text-[26px] font-black tracking-[-0.03em]">
-            {formatDateLong(workout.date)}
-          </h1>
-        ) : (
-          <button
-            aria-label={`Change date, currently ${formatDateLong(workout.date)}`}
-            className="group flex items-center gap-2 text-left"
-            onClick={() => {
-              triggerHaptic("light")
-              setDateOpen(true)
-            }}
-            type="button"
-          >
-            <h1 className="text-[26px] font-black tracking-[-0.03em]">
-              {formatDateLong(workout.date)}
-            </h1>
-            <Pencil className="size-4 shrink-0 text-muted-foreground transition-colors group-active:text-foreground" />
-          </button>
-        )}
-        <p className="mt-1 text-sm font-medium text-muted-foreground">
-          {workout.exerciseIds.length} exercise
-          {workout.exerciseIds.length === 1 ? "" : "s"}
-          {isPast ? " · Past workout" : ""}
-        </p>
-      </header>
-
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pt-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
-        {isPast ? (
-          <section
-            aria-label="Workout stats"
-            className="mx-4 grid grid-cols-3 gap-2 rounded-[22px] border border-border bg-card/70 p-3"
-          >
-            <div className="rounded-2xl bg-muted/45 p-3 text-center">
-              <Clock3 className="mx-auto size-4 text-primary" />
-              <p className="mt-1.5 text-base font-black tabular-nums">
-                {completion ? formatDuration(completion.durationMs) : "—"}
-              </p>
-              <p className="text-[11px] font-semibold text-muted-foreground">
-                Duration
-              </p>
+    <div className="app-screen" data-bottom-controls="true">
+      <div className="app-surface">
+        <header className="app-shell-header shrink-0 px-5 pt-4 pb-4">
+          <div className="flex items-center gap-3">
+            <Button
+              aria-label="Back to workouts"
+              className="shrink-0 rounded-full"
+              onClick={onBack}
+              size="icon"
+              variant="secondary"
+            >
+              <ChevronLeft />
+            </Button>
+            <div className="min-w-0">
+              {isPast ? (
+                <h1 className="truncate text-[26px] leading-none font-black tracking-[-0.03em]">
+                  {formatDateLong(workout.date)}
+                </h1>
+              ) : (
+                <button
+                  aria-label={`Change date, currently ${formatDateLong(workout.date)}`}
+                  className="min-w-0 text-left"
+                  onClick={() => {
+                    triggerHaptic("light")
+                    setDateOpen(true)
+                  }}
+                  type="button"
+                >
+                  <h1 className="truncate text-[26px] leading-none font-black tracking-[-0.03em]">
+                    {formatDateLong(workout.date)}
+                  </h1>
+                </button>
+              )}
             </div>
-            <div className="rounded-2xl bg-muted/45 p-3 text-center">
-              <Activity className="mx-auto size-4 text-primary" />
-              <p className="mt-1.5 text-base font-black tabular-nums">
-                {completion ? completion.activeCalories : "—"}
-              </p>
-              <p className="text-[11px] font-semibold text-muted-foreground">
-                kcal
-              </p>
-            </div>
-            <div className="rounded-2xl bg-muted/45 p-3 text-center">
-              <CheckCircle2 className="mx-auto size-4 text-primary" />
-              <p className="mt-1.5 text-base font-black tabular-nums">
-                {completion
-                  ? `${completion.completedExerciseIds.length}/${workout.exerciseIds.length}`
-                  : "—"}
-              </p>
-              <p className="text-[11px] font-semibold text-muted-foreground">
-                Completed
-              </p>
-            </div>
-          </section>
-        ) : null}
-        {session && (
-          <ActiveWorkoutTimer
-            onPause={pauseWorkout}
-            onResume={resumeWorkout}
-            session={session}
-          />
-        )}
-
-        {workout.exerciseIds.length === 0 ? (
-          <div className="flex min-h-[18rem] flex-col items-center justify-center gap-3 px-8 text-center">
-            <p className="text-base text-muted-foreground">
-              This workout is empty. Add an exercise to start building it.
-            </p>
           </div>
-        ) : (
-          <>
-            {session && exercise && (
-              <ActiveWorkoutHero
-                exercise={exercise}
-                onComplete={completeCurrent}
+        </header>
+
+        <div className="app-scroll-region min-h-0 flex-1 space-y-5 overflow-y-auto pt-5 pb-6">
+          {isPast ? (
+            <section
+              aria-label="Workout stats"
+              className="mx-4 grid grid-cols-3 gap-2 rounded-[22px] border border-border bg-card/70 p-3"
+            >
+              <div className="rounded-2xl bg-muted/45 p-3 text-center">
+                <Clock3 className="mx-auto size-4 text-primary" />
+                <p className="mt-1.5 text-base font-black tabular-nums">
+                  {completion ? formatDuration(completion.durationMs) : "—"}
+                </p>
+                <p className="text-[11px] font-semibold text-muted-foreground">
+                  Duration
+                </p>
+              </div>
+              <div className="rounded-2xl bg-muted/45 p-3 text-center">
+                <Activity className="mx-auto size-4 text-primary" />
+                <p className="mt-1.5 text-base font-black tabular-nums">
+                  {completion ? completion.activeCalories : "—"}
+                </p>
+                <p className="text-[11px] font-semibold text-muted-foreground">
+                  kcal
+                </p>
+              </div>
+              <div className="rounded-2xl bg-muted/45 p-3 text-center">
+                <CheckCircle2 className="mx-auto size-4 text-primary" />
+                <p className="mt-1.5 text-base font-black tabular-nums">
+                  {completion
+                    ? `${completion.completedExerciseIds.length}/${workout.exerciseIds.length}`
+                    : "—"}
+                </p>
+                <p className="text-[11px] font-semibold text-muted-foreground">
+                  Completed
+                </p>
+              </div>
+            </section>
+          ) : null}
+          {session && (
+            <ActiveWorkoutTimer
+              onPause={pauseWorkout}
+              onResume={resumeWorkout}
+              session={session}
+            />
+          )}
+
+          {workout.exerciseIds.length === 0 ? (
+            <div className="flex min-h-[18rem] flex-col items-center justify-center gap-3 px-8 text-center">
+              <p className="text-base text-muted-foreground">
+                This workout is empty. Add an exercise to start building it.
+              </p>
+            </div>
+          ) : (
+            <>
+              {session && exercise && (
+                <ActiveWorkoutHero
+                  exercise={exercise}
+                  onComplete={completeCurrent}
+                  onOpenExercise={onOpenExercise}
+                  onSkip={
+                    skipTarget
+                      ? () => setCurrentExercise(skipTarget)
+                      : undefined
+                  }
+                />
+              )}
+
+              <SortableExerciseList
+                exerciseIds={workout.exerciseIds}
+                onFindAlternative={
+                  isPast
+                    ? undefined
+                    : (candidate) => {
+                        triggerHaptic("light")
+                        setSwapExercise(candidate)
+                      }
+                }
                 onOpenExercise={onOpenExercise}
-                onSkip={
-                  skipTarget ? () => setCurrentExercise(skipTarget) : undefined
+                onRemove={
+                  isPast
+                    ? undefined
+                    : (id) => {
+                        triggerHaptic("warning")
+                        setExerciseIds(
+                          workout.exerciseIds.filter(
+                            (exerciseId) => exerciseId !== id
+                          )
+                        )
+                      }
+                }
+                onReorder={isPast ? undefined : setExerciseIds}
+                onToggleComplete={
+                  session
+                    ? (id) => {
+                        triggerHaptic("selection")
+                        toggleComplete(id)
+                      }
+                    : undefined
+                }
+                statusOf={
+                  session ? (id) => exerciseStatus(session, id) : undefined
                 }
               />
-            )}
-
-            <SortableExerciseList
-              exerciseIds={workout.exerciseIds}
-              onFindAlternative={
-                isPast
-                  ? undefined
-                  : (candidate) => {
-                      triggerHaptic("light")
-                      setSwapExercise(candidate)
-                    }
-              }
-              onOpenExercise={onOpenExercise}
-              onRemove={
-                isPast
-                  ? undefined
-                  : (id) => {
-                      triggerHaptic("warning")
-                      setExerciseIds(
-                        workout.exerciseIds.filter(
-                          (exerciseId) => exerciseId !== id
-                        )
-                      )
-                    }
-              }
-              onReorder={isPast ? undefined : setExerciseIds}
-              onToggleComplete={
-                session
-                  ? (id) => {
-                      triggerHaptic("selection")
-                      toggleComplete(id)
-                    }
-                  : undefined
-              }
-              statusOf={
-                session ? (id) => exerciseStatus(session, id) : undefined
-              }
-            />
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       <footer className="bottom-controls-scrim absolute inset-x-0 bottom-0 z-20 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
@@ -328,6 +328,7 @@ export function WorkoutDetailPage({
             >
               <Plus className="size-5" />
             </Button>
+            {shareButton}
             <Button
               className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
               onClick={() => {
@@ -353,6 +354,7 @@ export function WorkoutDetailPage({
             >
               <Trash2 />
             </Button>
+            {shareButton}
             <Button
               className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
               onClick={() => {
@@ -381,13 +383,16 @@ export function WorkoutDetailPage({
               <Trash2 />
             </Button>
             {workout.exerciseIds.length === 0 ? (
-              <Button
-                className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
-                onClick={onAddExercise}
-              >
-                <Plus className="size-5" />
-                Add exercise
-              </Button>
+              <>
+                {shareButton}
+                <Button
+                  className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
+                  onClick={onAddExercise}
+                >
+                  <Plus className="size-5" />
+                  Add exercise
+                </Button>
+              </>
             ) : (
               <>
                 <Button
@@ -399,6 +404,7 @@ export function WorkoutDetailPage({
                 >
                   <Plus className="size-5" />
                 </Button>
+                {shareButton}
                 <Button
                   className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
                   onClick={() => {
@@ -465,6 +471,6 @@ export function WorkoutDetailPage({
         }}
         open={swapExercise !== null}
       />
-    </>
+    </div>
   )
 }

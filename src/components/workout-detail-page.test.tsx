@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { WorkoutDetailPage } from "@/components/workout-detail-page"
+import { formatDateLong } from "@/lib/date"
 import { shareWorkout } from "@/lib/workout-sharing"
 import { useActiveWorkout } from "@/store/use-active-workout"
 import { useWorkouts } from "@/store/use-workouts"
@@ -349,7 +350,7 @@ describe("WorkoutDetailPage", () => {
       useWorkouts.getState().workouts.find((item) => item.id === workoutId)
         ?.date
     ).toBe("2026-09-04")
-    expect(screen.getByText("Friday, September 4")).toBeInTheDocument()
+    expect(screen.getByText(formatDateLong("2026-09-04"))).toBeInTheDocument()
   })
 
   it("offers no skip once this is the last exercise left", async () => {

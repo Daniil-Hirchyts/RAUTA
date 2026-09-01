@@ -16,7 +16,8 @@ export async function initNativeShell() {
 
   await Promise.allSettled([
     // Light glyphs, and the web view keeps the space behind the status bar so
-    // pt-[env(safe-area-inset-top)] stays the single source of inset truth.
+    // the rounded app surface can paint underneath it while its content uses
+    // env(safe-area-inset-top) as the single source of inset truth.
     StatusBar.setStyle({ style: Style.Dark }),
     StatusBar.setOverlaysWebView({ overlay: true }),
     // Drawer forms scroll their own content, so the web view must not also

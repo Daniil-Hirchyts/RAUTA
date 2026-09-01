@@ -1,6 +1,7 @@
 import { useRef, useState, type PointerEvent } from "react"
 import { FlipHorizontal2 } from "lucide-react"
 
+import { AnimatedNumber } from "@/components/animated-number"
 import bodyPathData from "@/data/body-paths.generated.json"
 import { triggerHaptic } from "@/lib/haptics"
 import { isMuscleId, MUSCLE_LABELS } from "@/lib/muscles"
@@ -209,6 +210,14 @@ export function BodyMap({ onToggle, selectedMuscles }: BodyMapProps) {
           {label}
         </span>
       </p>
+
+      <output
+        aria-live="polite"
+        className="pointer-events-auto absolute top-3.5 right-3.5 z-20 text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase tabular-nums sm:top-4 sm:right-4"
+        data-testid="stage-count"
+      >
+        <AnimatedNumber value={selectedMuscles.length} /> selected
+      </output>
 
       <button
         aria-label={`Show ${side === "front" ? "back" : "front"}`}

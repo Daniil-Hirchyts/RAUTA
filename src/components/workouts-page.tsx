@@ -106,7 +106,7 @@ function WorkoutRow({
           </button>
           <button
             aria-label={`Delete ${formatDateShort(workout.date)} workout`}
-            className="interactive-spring text-destructive-foreground grid size-14 shrink-0 place-items-center rounded-full bg-destructive shadow-lg shadow-black/20"
+            className="interactive-spring grid size-14 shrink-0 place-items-center rounded-full border border-primary bg-card text-primary shadow-lg shadow-black/20"
             data-haptics="off"
             onClick={onDelete}
             type="button"
@@ -240,58 +240,63 @@ export function WorkoutsPage({
   )
 
   return (
-    <>
-      <header className="shrink-0 border-b border-white/[0.05] bg-background/80 px-5 pt-4 pb-4 backdrop-blur-xl">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="bg-gradient-to-r from-foreground to-foreground/75 bg-clip-text text-[30px] font-black tracking-[-0.03em] text-transparent">
-            My workouts
-          </h1>
-          <Button
-            aria-label="Settings"
-            className="rounded-full"
-            onClick={onSettings}
-            size="icon"
-            variant="secondary"
-          >
-            <Settings className="size-5" />
-          </Button>
-        </div>
-      </header>
+    <div className="app-screen" data-bottom-controls="true">
+      <div className="app-surface">
+        <header className="app-shell-header shrink-0 px-5 pt-4 pb-4">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="bg-gradient-to-r from-foreground to-foreground/75 bg-clip-text text-[30px] font-black tracking-[-0.03em] text-transparent">
+              My workouts
+            </h1>
+            <Button
+              aria-label="Settings"
+              className="rounded-full"
+              onClick={onSettings}
+              size="icon"
+              variant="secondary"
+            >
+              <Settings className="size-5" />
+            </Button>
+          </div>
+        </header>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pt-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
-        <div className="space-y-7">
-          {upcoming.length > 0 ? (
-            <section aria-labelledby="upcoming-workouts-heading">
-              <div id="upcoming-workouts-heading">
-                <SectionHeading count={upcoming.length} title="Next workouts" />
-              </div>
-              {renderRows(upcoming, false)}
-            </section>
-          ) : null}
+        <div className="app-scroll-region flex min-h-0 flex-1 flex-col overflow-y-auto pt-5 pb-6">
+          <div className="space-y-7">
+            {upcoming.length > 0 ? (
+              <section aria-labelledby="upcoming-workouts-heading">
+                <div id="upcoming-workouts-heading">
+                  <SectionHeading
+                    count={upcoming.length}
+                    title="Next workouts"
+                  />
+                </div>
+                {renderRows(upcoming, false)}
+              </section>
+            ) : null}
 
-          {/* The year of training is the page's fixture, not a reward for
+            {/* The year of training is the page's fixture, not a reward for
               having finished something: an empty grid is what a first
               workout is measured against. */}
-          <WorkoutHeatmap onSelectWorkout={onSelect} workouts={completed} />
+            <WorkoutHeatmap onSelectWorkout={onSelect} workouts={completed} />
 
-          {past.length > 0 ? (
-            <section aria-labelledby="past-workouts-heading">
-              <div id="past-workouts-heading">
-                <SectionHeading count={past.length} title="Past workouts" />
+            {past.length > 0 ? (
+              <section aria-labelledby="past-workouts-heading">
+                <div id="past-workouts-heading">
+                  <SectionHeading count={past.length} title="Past workouts" />
+                </div>
+                {renderRows(past, true)}
+              </section>
+            ) : null}
+
+            {workouts.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 px-5 text-center">
+                <CalendarDays className="size-7 text-[color-mix(in_oklch,var(--muted-foreground),var(--background)_35%)]" />
+                <p className="max-w-[24rem] text-base text-muted-foreground">
+                  No workouts yet. Create one, choose muscles, and add your
+                  first exercises.
+                </p>
               </div>
-              {renderRows(past, true)}
-            </section>
-          ) : null}
-
-          {workouts.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 px-5 text-center">
-              <CalendarDays className="size-7 text-[color-mix(in_oklch,var(--muted-foreground),var(--background)_35%)]" />
-              <p className="max-w-[24rem] text-base text-muted-foreground">
-                No workouts yet. Create one, choose muscles, and add your first
-                exercises.
-              </p>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -313,6 +318,6 @@ export function WorkoutsPage({
         }}
         open={pendingDelete !== null}
       />
-    </>
+    </div>
   )
 }
