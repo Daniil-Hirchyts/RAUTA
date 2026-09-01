@@ -109,7 +109,7 @@ function BodyFigure({
     <div className="relative flex h-full min-h-0 w-full items-center justify-center">
       <svg
         aria-label={`${label} muscle map`}
-        className="block h-full max-h-full max-w-full overflow-visible"
+        className="block h-full max-h-full max-w-full overflow-visible blur-[0.25px]"
         preserveAspectRatio="xMidYMid meet"
         role="img"
         style={{ aspectRatio: `${widthAttr} / ${heightAttr}` }}

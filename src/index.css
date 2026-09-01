@@ -307,6 +307,7 @@ button[aria-label] svg {
 .muscle-region {
   color: #37373b;
   outline: none;
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.45));
 }
 
 .muscle-region path {
@@ -330,11 +331,18 @@ button[aria-label] svg {
 
 .muscle-region.is-selected {
   color: #FF6200;
-  filter: drop-shadow(0 0 14px rgb(255 98 0 / 0.45));
+}
+
+.muscle-region.is-selected path {
+  stroke: none;
 }
 
 .muscle-region.is-selected:focus-visible {
   color: #FF8533;
+}
+
+.muscle-region.is-selected:focus-visible path {
+  stroke: none;
 }
 
 .t-page-slide {
@@ -669,6 +677,23 @@ button[aria-label] svg {
   transition: none;
 }
 
+@keyframes t-search-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* The search field is mounted by the header toggle rather than sitting above
+   the results all along, so it arrives instead of blinking into place. */
+.t-search-reveal {
+  animation: t-search-reveal 240ms var(--ease-smooth-out) both;
+}
+
 .t-stagger-line {
   display: block;
   opacity: 0;
@@ -787,19 +812,15 @@ button[aria-label] svg {
 @keyframes t-muscle-selection-pop {
   0% {
     transform: scale(1);
-    filter: brightness(1);
   }
   40% {
     transform: scale(1.05);
-    filter: brightness(1.2);
   }
   70% {
     transform: scale(0.985);
-    filter: brightness(1.05);
   }
   100% {
     transform: scale(1);
-    filter: brightness(1);
   }
 }
 

@@ -8,11 +8,10 @@ import {
   type CSSProperties,
 } from "react"
 import {
-  CalendarDays,
   ChevronLeft,
-  Eraser,
+  Home,
+  Search,
   SearchX,
-  Settings,
   X,
 } from "lucide-react"
 
@@ -106,7 +105,7 @@ function StageHeading({ stage }: { stage: Stage }) {
   return (
     <div className="t-text-swap" ref={elementRef}>
       <h1
-        className="text-[32px] leading-[1.05] font-black tracking-[-0.03em] text-foreground"
+        className="text-[30px] leading-none font-black tracking-[-0.03em] text-foreground"
         data-stage-title
       >
         {STAGE_LABELS[initialStage]}
@@ -222,6 +221,7 @@ export function App() {
   )
 
   const [search, setSearch] = useState("")
+  const [searchOpen, setSearchOpen] = useState(false)
 
   const visibleExercises = useMemo(() => {
     const shortlist = favoritesOnly
@@ -254,7 +254,6 @@ export function App() {
 
   const canContinue =
     stage === 1 ? selectedMuscles.length > 0 : selectedEquipment.length > 0
-  const hasFilters = selectedMuscles.length > 0 || selectedEquipment.length > 0
 
   const goForward = () => {
     triggerHaptic("medium")
@@ -264,11 +263,13 @@ export function App() {
     triggerHaptic("medium")
     setStage((current) => Math.max(1, current - 1) as Stage)
   }
-  const resetFlow = () => {
-    triggerHaptic("warning")
-    reset()
-    setSearch("")
-    setStage(1)
+
+  const toggleSearch = () => {
+    triggerHaptic("medium")
+    // Closing takes the query with it: a filter that keeps narrowing the
+    // results from behind a hidden field has no visible cause.
+    if (searchOpen) setSearch("")
+    setSearchOpen(!searchOpen)
   }
 
   const toggleMuscleWithHaptic = useCallback(
@@ -331,6 +332,7 @@ export function App() {
     triggerHaptic("medium")
     reset()
     setSearch("")
+    setSearchOpen(false)
     setStage(1)
     setSelectMode(false)
     setSelectedIds([])
@@ -412,36 +414,39 @@ export function App() {
           {view.type === "flow" && (
             <div className="app-screen" data-bottom-controls="true">
               <div className="app-surface">
-                <header className="app-shell-header shrink-0 px-5 pt-4 pb-3">
-                  <div className="mb-5 flex items-center justify-between">
-                    <div
-                      aria-label={`Step ${stage} of 3`}
-                      aria-valuemax={3}
-                      aria-valuemin={1}
-                      aria-valuenow={stage}
-                      className="flex items-center gap-2.5"
-                      role="progressbar"
-                    >
-                      {[1, 2, 3].map((step) => (
-                        <span
-                          aria-hidden="true"
-                          className={`h-2 rounded-full transition-[width,background-color] duration-250 ${
-                            step === stage
-                              ? "w-9 bg-primary"
-                              : step < stage
-                                ? "w-5 bg-primary/35"
-                                : "w-5 bg-white/10"
-                          }`}
-                          key={step}
-                        />
-                      ))}
+                <header className="app-shell-header shrink-0 px-5 pt-3.5 pb-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div
+                        aria-label={`Step ${stage} of 3`}
+                        aria-valuemax={3}
+                        aria-valuemin={1}
+                        aria-valuenow={stage}
+                        className="mb-1.5 flex items-center gap-2.5 pt-2"
+                        role="progressbar"
+                      >
+                        {[1, 2, 3].map((step) => (
+                          <span
+                            aria-hidden="true"
+                            className={`h-1.5 rounded-full transition-[width,background-color] duration-250 ${
+                              step === stage
+                                ? "w-9 bg-primary"
+                                : step < stage
+                                  ? "w-5 bg-primary/35"
+                                  : "w-5 bg-white/10"
+                            }`}
+                            key={step}
+                          />
+                        ))}
+                      </div>
+                      <StageHeading stage={stage} />
                     </div>
                     {/* A single segmented pill. The border, surface and rounding
                     belong to the group; the buttons inside carry none of their
                     own, so nothing is clipped and there is no seam where they
                     meet. Padding insets them, which turns each press into a
                     round highlight within the pill. */}
-                    <div className="flex items-center gap-1.5 rounded-full border border-border bg-card p-0.5">
+                    <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card p-0.5">
                       <Button
                         aria-label="My workouts"
                         className="interactive-spring rounded-full border-0 bg-transparent text-muted-foreground active:bg-white/10 active:text-white"
@@ -452,35 +457,27 @@ export function App() {
                         size="icon"
                         variant="ghost"
                       >
-                        <CalendarDays className="size-5" />
+                        <Home className="size-5" />
                       </Button>
-                      <Button
-                        aria-label="Settings"
-                        className="interactive-spring rounded-full border-0 bg-transparent text-muted-foreground active:bg-white/10 active:text-white"
-                        onClick={() => {
-                          triggerHaptic("medium")
-                          navigate({ type: "settings" })
-                        }}
-                        size="icon"
-                        variant="ghost"
-                      >
-                        <Settings className="size-5" />
-                      </Button>
-                      {hasFilters && (
+                      {stage === 3 && (
                         <Button
-                          aria-label="Reset selections"
-                          className="interactive-spring rounded-full border-0 bg-transparent text-muted-foreground active:bg-white/10 active:text-white"
-                          onClick={resetFlow}
+                          aria-label={
+                            searchOpen ? "Hide search" : "Search exercises"
+                          }
+                          aria-pressed={searchOpen}
+                          className={`interactive-spring rounded-full border-0 ${
+                            searchOpen
+                              ? "bg-white/10 text-white"
+                              : "bg-transparent text-muted-foreground active:bg-white/10 active:text-white"
+                          }`}
+                          onClick={toggleSearch}
                           size="icon"
                           variant="ghost"
                         >
-                          <Eraser className="size-5" />
+                          <Search className="size-5" />
                         </Button>
                       )}
                     </div>
-                  </div>
-                  <div className="flex items-end justify-between gap-3">
-                    <StageHeading stage={stage} />
                   </div>
                 </header>
 
@@ -576,13 +573,17 @@ export function App() {
                   <section
                     aria-hidden={stage !== 3}
                     aria-label="Matching exercises"
-                    className="app-scroll-content t-page overflow-y-auto px-5 pb-6"
+                    className={`app-scroll-content t-page overflow-y-auto px-5 pb-6 ${
+                      searchOpen ? "" : "pt-4"
+                    }`}
                     data-drag-peer={peerStage === 3 ? "true" : undefined}
                     data-page-id="3"
                     inert={stage !== 3}
                     ref={exercisesScrollRef}
                   >
-                    <ExerciseSearch onChange={setSearch} value={search} />
+                    {searchOpen && (
+                      <ExerciseSearch onChange={setSearch} value={search} />
+                    )}
                     {visibleExercises.length === 0 ? (
                       <div className="flex min-h-[20rem] flex-col items-center justify-center gap-3 text-center">
                         <SearchX className="size-7 text-[color-mix(in_oklch,var(--muted-foreground),var(--background)_35%)]" />

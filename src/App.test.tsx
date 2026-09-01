@@ -92,6 +92,24 @@ describe("App", () => {
     ).toBeInTheDocument()
   })
 
+  it("shows settings only on workouts page and home button without erase button in flow header", async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    // In flow view (initial setup in beforeEach is flow view)
+    expect(screen.getByRole("heading", { name: "Muscles" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Settings" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /reset/i })).not.toBeInTheDocument()
+
+    const homeButton = screen.getByRole("button", { name: "My workouts" })
+    expect(homeButton).toBeInTheDocument()
+    await user.click(homeButton)
+
+    // Now on workouts page: settings button is shown
+    expect(screen.getByRole("heading", { name: "My workouts" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument()
+  })
+
   it("moves through separate muscle, equipment, and exercise stages", async () => {
     const user = userEvent.setup()
     render(<App />)
