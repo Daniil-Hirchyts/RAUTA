@@ -29,7 +29,7 @@ export function ActiveWorkoutTimer({
   const isPaused = session.runningSince === null
 
   return (
-    <div className="sticky top-0 z-20 mx-4 flex items-center gap-3 rounded-[22px] border border-primary/25 bg-background/85 px-3.5 py-2.5 shadow-lg shadow-black/40 backdrop-blur-xl">
+    <div className="sticky top-0 z-20 mx-4 flex items-center gap-3 rounded-xl border border-primary/25 bg-background/85 px-3.5 py-2.5 shadow-lg shadow-black/40 backdrop-blur-xl">
       <div className="min-w-0 flex-1">
         <p className="text-xs font-bold tracking-[0.16em] text-primary uppercase">
           {isPaused ? "Paused" : "In progress"}

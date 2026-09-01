@@ -26,13 +26,17 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.65);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.35);
-  --radius-2xl: calc(var(--radius) * 1.75);
-  --radius-3xl: calc(var(--radius) * 2.15);
-  --radius-4xl: calc(var(--radius) * 2.5);
+  /* A 5px ladder from 16px up. The values are the ones the screens were
+     already drawing by hand, so the utilities now cover the whole design and
+     nothing needs an arbitrary radius. */
+  --radius-xs: 3px;
+  --radius-sm: 9px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 25px;
+  --radius-3xl: 30px;
+  --radius-4xl: 35px;
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-bounce: cubic-bezier(0.34, 1.85, 0.64, 1);
 }
@@ -45,17 +49,34 @@
      shell, so size it from the large viewport instead. Older browsers fall
      back to the long-established 100vh behavior. */
   --app-viewport-height: 100vh;
-  --app-shell: #000;
-  --app-surface-gutter: 0.5rem;
-  --app-surface-radius: 2rem;
-  --app-controls-space: calc(5.5rem + env(safe-area-inset-bottom));
+  --app-shell: oklch(0.32 0 0);
+  --app-surface-gutter: 0.25rem;
+  /* The display's own corner radius, set per device by the block below. The
+     surface is inset by the gutter, so its corners are concentric with the
+     hardware only when they curve by that much less — that is what keeps the
+     frame the same width along the edges and around the corners. */
+  --app-device-radius: 55px;
+  --app-surface-radius: calc(
+    var(--app-device-radius) - var(--app-surface-gutter)
+  );
+  /* The footer's own box: its button, plus the padding above and below it.
+     The surface reserves exactly this, so the two cannot drift apart. */
+  --app-header-radius: min(calc(var(--app-surface-radius) - 1px), 3.25rem);
+  --app-controls-height: 3.25rem;
+  --app-controls-space: calc(
+    var(--app-controls-height) + 2rem + env(safe-area-inset-bottom)
+  );
   --background: oklch(0.175 0 0);
   --foreground: oklch(0.96 0 0);
-  --card: oklch(0.205 0 0);
+  --card: oklch(0.225 0 0);
   --card-foreground: oklch(0.96 0 0);
   --popover: oklch(0.19 0 0);
   --popover-foreground: oklch(0.96 0 0);
   --primary: oklch(0.715 0.245 42.5);
+  /* Two lighter steps of the accent. Derived so retinting --primary carries
+     the whole ramp instead of leaving hard-coded hexes behind. */
+  --primary-soft: color-mix(in oklch, var(--primary), white 18%);
+  --primary-softer: color-mix(in oklch, var(--primary), white 34%);
   --primary-foreground: oklch(0.12 0 0);
   --secondary: oklch(0.255 0 0);
   --secondary-foreground: oklch(0.9 0 0);
@@ -64,7 +85,7 @@
   --accent: oklch(0.715 0.245 42.5);
   --accent-foreground: oklch(0.12 0 0);
   --destructive: oklch(0.715 0.245 42.5);
-  --border: oklch(1 0 0 / 0.085);
+  --border: oklch(1 0 0 / 0.16);
   --input: oklch(1 0 0 / 0.13);
   --ring: oklch(0.715 0.245 42.5);
   --radius: 0.875rem;
@@ -123,13 +144,80 @@
   }
 }
 
+/* iOS clips the display at a corner radius that is fixed per device and is not
+   exposed to CSS, so match it by screen size. The app is portrait-locked, so a
+   single orientation per device is enough. Sizes that two devices share resolve
+   to the larger radius: an inner curve that is slightly too round only tightens
+   the frame at the corners, while one that is too shallow visibly fattens it. */
+
+/* iPhone X, Xs, 11 Pro (39pt) — shared with 12 mini, 13 mini (44pt) */
+@media (device-width: 375px) and (device-height: 812px) {
+  :root {
+    --app-device-radius: 44px;
+  }
+}
+
+/* iPhone Xr, 11 */
+@media (device-width: 414px) and (device-height: 896px) {
+  :root {
+    --app-device-radius: 41.5px;
+  }
+}
+
+/* iPhone 12, 12 Pro, 13, 13 Pro, 14, 16e */
+@media (device-width: 390px) and (device-height: 844px) {
+  :root {
+    --app-device-radius: 47.33px;
+  }
+}
+
+/* iPhone 12 Pro Max, 13 Pro Max, 14 Plus */
+@media (device-width: 428px) and (device-height: 926px) {
+  :root {
+    --app-device-radius: 53.33px;
+  }
+}
+
+/* iPhone 14 Pro, 15, 15 Pro, 16 */
+@media (device-width: 393px) and (device-height: 852px) {
+  :root {
+    --app-device-radius: 55px;
+  }
+}
+
+/* iPhone 14 Pro Max, 15 Plus, 15 Pro Max, 16 Plus */
+@media (device-width: 430px) and (device-height: 932px) {
+  :root {
+    --app-device-radius: 55px;
+  }
+}
+
+/* iPhone 16 Pro, 17, 17 Pro, Air */
+@media (device-width: 402px) and (device-height: 874px) {
+  :root {
+    --app-device-radius: 62px;
+  }
+}
+
+/* iPhone 16 Pro Max, 17 Pro Max */
+@media (device-width: 440px) and (device-height: 956px) {
+  :root {
+    --app-device-radius: 62px;
+  }
+}
+
+/* iPad screens curve at 18pt, but the shell is capped at 430px and centred
+   there, so the surface floats well inside the display and has no hardware
+   curve to be concentric with. It keeps the phone proportions instead. */
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
 
   html {
-    @apply bg-black font-sans antialiased;
+    @apply font-sans antialiased;
+    background: var(--app-shell);
     min-height: var(--app-viewport-height);
     min-width: 320px;
     overflow-x: hidden;
@@ -141,7 +229,8 @@
   }
 
   body {
-    @apply m-0 min-w-[320px] bg-black text-foreground;
+    @apply m-0 min-w-[320px] text-foreground;
+    background: var(--app-shell);
     width: 100%;
     min-height: var(--app-viewport-height);
     overflow-x: hidden;
@@ -183,8 +272,9 @@
   }
 }
 
-/* Every top-level route uses the same three-part shell: a true-black screen,
-   one real clipped content surface, and bottom controls outside that surface.
+/* Every top-level route uses the same three-part shell: a screen tinted a step
+   above the surface it frames, one real clipped content surface, and bottom
+   controls outside that surface.
    Keeping the surface as an element (rather than a pseudo-element under page
    padding) gives scrolling content its own clean viewport. */
 .app-screen {
@@ -201,6 +291,7 @@
 }
 
 .app-surface {
+  position: relative;
   display: flex;
   min-height: 0;
   flex: 1;
@@ -221,44 +312,18 @@
   padding-top: calc(1rem + env(safe-area-inset-top));
   border: 0;
   border-bottom: 1px solid var(--border);
-  border-radius: 0 0
-    calc(var(--app-surface-radius) - 1px)
-    calc(var(--app-surface-radius) - 1px);
-  background: color-mix(in oklch, var(--card) 82%, var(--background));
-}
-
-/* Icon-only actions use the product accent consistently, including raw
-   accessible buttons that do not go through the shared Button component. */
-button[aria-label] svg {
-  color: var(--primary);
+  /* The curve echoes the surface it sits in, capped so it stays a header
+     detail rather than most of the header's own height on the devices with
+     the deepest hardware corners. */
+  border-radius: 0 0 var(--app-header-radius) var(--app-header-radius);
+  background: var(--background);
 }
 
 /* A scroll viewport ends before the shell's lower curve. The subtle fade makes
    partially visible rows read as continuing content instead of looking as if
    the rounded mask accidentally sliced them. Bottom padding lets the final
    row scroll completely above that fade. */
-.app-scroll-region {
-  margin-bottom: var(--app-surface-gutter);
-  overscroll-behavior: contain;
-  scroll-padding-block: 1rem;
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    #000 0,
-    #000 calc(100% - 2rem),
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    #000 0,
-    #000 calc(100% - 2rem),
-    transparent 100%
-  );
-}
-
-.app-stage-frame {
-  margin-block: 0;
-}
-
+.app-scroll-region,
 .app-scroll-content {
   overscroll-behavior: contain;
   scroll-padding-block: 1rem;
@@ -274,6 +339,17 @@ button[aria-label] svg {
     #000 calc(100% - 2rem),
     transparent 100%
   );
+}
+
+/* A page scroller stops short of the surface edge. The staged flow's scrollers
+   fill a page frame that is already inset, so they take no margin of their
+   own — the only thing that ever separated these two treatments. */
+.app-scroll-region {
+  margin-bottom: var(--app-surface-gutter);
+}
+
+.app-stage-frame {
+  margin-block: 0;
 }
 
 .app-screen footer.bottom-controls-scrim {
@@ -325,12 +401,12 @@ button[aria-label] svg {
 }
 
 .muscle-region:focus-visible path {
-  stroke: #FFA266;
+  stroke: var(--primary-softer);
   stroke-width: 7;
 }
 
 .muscle-region.is-selected {
-  color: #FF6200;
+  color: var(--primary);
 }
 
 .muscle-region.is-selected path {
@@ -338,7 +414,7 @@ button[aria-label] svg {
 }
 
 .muscle-region.is-selected:focus-visible {
-  color: #FF8533;
+  color: var(--primary-soft);
 }
 
 .muscle-region.is-selected:focus-visible path {
@@ -753,6 +829,19 @@ button[aria-label] svg {
     transform: scale(1);
     filter: brightness(1);
   }
+}
+
+/* A few affordances are drawn smaller than a finger — a field's clear button,
+   a chip's delete. They keep their drawn size and take the 44px touch target
+   iOS asks for through a pseudo-element instead of growing. */
+.hit-target::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
 }
 
 .interactive-spring {

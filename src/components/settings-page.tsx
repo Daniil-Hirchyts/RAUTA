@@ -24,6 +24,7 @@ import {
 } from "lucide-react"
 
 import packageJson from "../../package.json"
+import { AppScreen, AppShellHeader, AppSurface } from "@/components/app-shell"
 import { ClearDataConfirmation } from "@/components/clear-data-confirmation"
 import { Button } from "@/components/ui/button"
 import { MatrixLoader } from "@/components/ui/matrix-loader"
@@ -57,7 +58,7 @@ function SettingsSection({
       <h2 className="mb-2 px-1 text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase">
         {title}
       </h2>
-      <div className="overflow-hidden rounded-[22px] border border-border bg-card shadow-sm shadow-black/10">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm shadow-black/10">
         {children}
       </div>
     </section>
@@ -244,9 +245,9 @@ export function SettingsPage({
   }
 
   return (
-    <div className="app-screen">
-      <div className="app-surface">
-        <header className="app-shell-header shrink-0 px-5 pt-4 pb-4">
+    <AppScreen>
+      <AppSurface>
+        <AppShellHeader>
           <div className="flex min-h-10 items-center gap-3">
             <Button
               aria-label="Back"
@@ -261,7 +262,7 @@ export function SettingsPage({
               Settings
             </h1>
           </div>
-        </header>
+        </AppShellHeader>
 
         <div className="app-scroll-region min-h-0 flex-1 space-y-6 overflow-y-auto px-5 pt-5 pb-6">
           <SettingsSection title="Apple Health">
@@ -457,7 +458,7 @@ export function SettingsPage({
             </p>
           ) : null}
         </div>
-      </div>
+      </AppSurface>
 
       <ClearDataConfirmation
         onConfirm={() => {
@@ -468,6 +469,6 @@ export function SettingsPage({
         onOpenChange={setClearOpen}
         open={clearOpen}
       />
-    </div>
+    </AppScreen>
   )
 }

@@ -9,6 +9,7 @@ import {
   Trash2,
 } from "lucide-react"
 
+import { AppScreen, AppShellHeader, AppSurface } from "@/components/app-shell"
 import { BodyPreview } from "@/components/body-map"
 import { DeleteWorkoutConfirmation } from "@/components/delete-workout-confirmation"
 import { SwipeableRow } from "@/components/swipeable-row"
@@ -97,7 +98,7 @@ function WorkoutRow({
         <div className="flex items-center gap-2">
           <button
             aria-label={`Copy ${formatDateShort(workout.date)} workout to today`}
-            className="interactive-spring grid size-14 shrink-0 place-items-center rounded-full bg-secondary text-secondary-foreground shadow-lg shadow-black/20"
+            className="interactive-spring grid size-14 shrink-0 place-items-center rounded-full bg-secondary text-primary shadow-lg shadow-black/20"
             data-haptics="off"
             onClick={onCopy}
             type="button"
@@ -240,9 +241,9 @@ export function WorkoutsPage({
   )
 
   return (
-    <div className="app-screen" data-bottom-controls="true">
-      <div className="app-surface">
-        <header className="app-shell-header shrink-0 px-5 pt-4 pb-4">
+    <AppScreen bottomControls>
+      <AppSurface>
+        <AppShellHeader>
           <div className="flex items-center justify-between gap-3">
             <h1 className="bg-gradient-to-r from-foreground to-foreground/75 bg-clip-text text-[30px] font-black tracking-[-0.03em] text-transparent">
               My workouts
@@ -257,7 +258,7 @@ export function WorkoutsPage({
               <Settings className="size-5" />
             </Button>
           </div>
-        </header>
+        </AppShellHeader>
 
         <div className="app-scroll-region flex min-h-0 flex-1 flex-col overflow-y-auto pt-5 pb-6">
           <div className="space-y-7">
@@ -298,11 +299,12 @@ export function WorkoutsPage({
             ) : null}
           </div>
         </div>
-      </div>
+      </AppSurface>
 
       <footer className="bottom-controls-scrim absolute inset-x-0 bottom-0 z-20 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <Button
-          className="h-[3.25rem] w-full rounded-[26px] text-base font-semibold shadow-xl shadow-black/25"
+          size="cta"
+          className="w-full shadow-xl shadow-black/25"
           onClick={onCreate}
         >
           Add workout
@@ -318,6 +320,6 @@ export function WorkoutsPage({
         }}
         open={pendingDelete !== null}
       />
-    </div>
+    </AppScreen>
   )
 }

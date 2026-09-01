@@ -15,6 +15,7 @@ import {
 
 import { ActiveWorkoutHero } from "@/components/active-workout-hero"
 import { ActiveWorkoutTimer } from "@/components/active-workout-timer"
+import { AppScreen, AppShellHeader, AppSurface } from "@/components/app-shell"
 import { DeleteWorkoutConfirmation } from "@/components/delete-workout-confirmation"
 import { EndWorkoutConfirmation } from "@/components/end-workout-confirmation"
 import { ExerciseSwapperDrawer } from "@/components/exercise-swapper-drawer"
@@ -125,7 +126,6 @@ export function WorkoutDetailPage({
   const shareButton = (
     <Button
       aria-label={shareStatus === "copied" ? "Workout copied" : "Share workout"}
-      className="size-[3.25rem] rounded-[26px]"
       disabled={shareStatus === "sharing"}
       onClick={async () => {
         setShareStatus("sharing")
@@ -146,7 +146,7 @@ export function WorkoutDetailPage({
           setShareStatus("idle")
         }
       }}
-      size="icon"
+      size="icon-cta"
       variant="secondary"
     >
       {shareStatus === "sharing" ? (
@@ -160,9 +160,9 @@ export function WorkoutDetailPage({
   )
 
   return (
-    <div className="app-screen" data-bottom-controls="true">
-      <div className="app-surface">
-        <header className="app-shell-header shrink-0 px-5 pt-4 pb-4">
+    <AppScreen bottomControls>
+      <AppSurface>
+        <AppShellHeader>
           <div className="flex items-center gap-3">
             <Button
               aria-label="Back to workouts"
@@ -195,13 +195,13 @@ export function WorkoutDetailPage({
               )}
             </div>
           </div>
-        </header>
+        </AppShellHeader>
 
         <div className="app-scroll-region min-h-0 flex-1 space-y-5 overflow-y-auto pt-5 pb-6">
           {isPast ? (
             <section
               aria-label="Workout stats"
-              className="mx-4 grid grid-cols-3 gap-2 rounded-[22px] border border-border bg-card/70 p-3"
+              className="mx-4 grid grid-cols-3 gap-2 rounded-xl border border-border bg-card/70 p-3"
             >
               <div className="rounded-2xl bg-muted/45 p-3 text-center">
                 <Clock3 className="mx-auto size-4 text-primary" />
@@ -302,35 +302,34 @@ export function WorkoutDetailPage({
             </>
           )}
         </div>
-      </div>
+      </AppSurface>
 
       <footer className="bottom-controls-scrim absolute inset-x-0 bottom-0 z-20 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         {session ? (
           <div className="flex items-center gap-2.5">
             <Button
               aria-label="Discard session"
-              className="size-[3.25rem] rounded-[26px]"
               onClick={() => {
                 triggerHaptic("warning")
                 setDiscardOpen(true)
               }}
-              size="icon"
+              size="icon-cta"
               variant="secondary"
             >
               <X />
             </Button>
             <Button
               aria-label="Add exercise"
-              className="size-[3.25rem] rounded-[26px]"
               onClick={onAddExercise}
-              size="icon"
+              size="icon-cta"
               variant="secondary"
             >
               <Plus className="size-5" />
             </Button>
             {shareButton}
             <Button
-              className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
+              size="cta"
+              className="flex-1"
               onClick={() => {
                 triggerHaptic("success")
                 finishWorkout()
@@ -344,19 +343,19 @@ export function WorkoutDetailPage({
           <div className="flex items-center gap-2.5">
             <Button
               aria-label="Delete workout"
-              className="size-[3.25rem] rounded-[26px]"
               onClick={() => {
                 triggerHaptic("warning")
                 setDeleteOpen(true)
               }}
-              size="icon"
+              size="icon-cta"
               variant="destructive"
             >
               <Trash2 />
             </Button>
             {shareButton}
             <Button
-              className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
+              size="cta"
+              className="flex-1"
               onClick={() => {
                 const copiedId = duplicateWorkout(workout.id)
                 if (!copiedId) return
@@ -372,12 +371,11 @@ export function WorkoutDetailPage({
           <div className="flex items-center gap-2.5">
             <Button
               aria-label="Delete workout"
-              className="size-[3.25rem] rounded-[26px]"
               onClick={() => {
                 triggerHaptic("warning")
                 setDeleteOpen(true)
               }}
-              size="icon"
+              size="icon-cta"
               variant="destructive"
             >
               <Trash2 />
@@ -385,10 +383,7 @@ export function WorkoutDetailPage({
             {workout.exerciseIds.length === 0 ? (
               <>
                 {shareButton}
-                <Button
-                  className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
-                  onClick={onAddExercise}
-                >
+                <Button size="cta" className="flex-1" onClick={onAddExercise}>
                   <Plus className="size-5" />
                   Add exercise
                 </Button>
@@ -397,16 +392,16 @@ export function WorkoutDetailPage({
               <>
                 <Button
                   aria-label="Add exercise"
-                  className="size-[3.25rem] rounded-[26px]"
                   onClick={onAddExercise}
-                  size="icon"
+                  size="icon-cta"
                   variant="secondary"
                 >
                   <Plus className="size-5" />
                 </Button>
                 {shareButton}
                 <Button
-                  className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
+                  size="cta"
+                  className="flex-1"
                   onClick={() => {
                     triggerHaptic("heavy")
                     setCountingDown(true)
@@ -471,6 +466,6 @@ export function WorkoutDetailPage({
         }}
         open={swapExercise !== null}
       />
-    </div>
+    </AppScreen>
   )
 }

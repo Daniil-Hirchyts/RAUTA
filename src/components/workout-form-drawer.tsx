@@ -93,12 +93,12 @@ function WorkoutForm({
         {datePickerOpen ? (
           <div
             aria-label="Choose workout date"
-            className="mt-4 min-h-0 flex-1 overflow-y-auto rounded-[20px] border border-border bg-card p-3"
+            className="mt-4 min-h-0 flex-1 overflow-y-auto rounded-xl border border-border bg-card p-3"
             id="workout-date-calendar"
             role="dialog"
           >
             <Calendar
-              className="w-full overflow-hidden rounded-[16px] bg-background [--cell-size:clamp(2.5rem,11vw,3rem)]"
+              className="w-full overflow-hidden rounded-lg bg-background [--cell-size:clamp(2.5rem,11vw,3rem)]"
               disabled={{ before: todayStart() }}
               mode="single"
               onSelect={(selected) => {

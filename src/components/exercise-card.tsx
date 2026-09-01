@@ -103,9 +103,9 @@ export function ExerciseCard({
   return (
     <article
       className={cn(
-        "exercise-card t-stagger-line relative overflow-hidden rounded-[22px] border bg-card shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-300 ease-[var(--ease-smooth-out)]",
+        "exercise-card t-stagger-line relative overflow-hidden rounded-xl border bg-card shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-300 ease-[var(--ease-smooth-out)]",
         selectMode && selected
-          ? "border-primary/75 shadow-[0_0_0_1px_rgba(255,98,0,0.3)]"
+          ? "border-primary/75 shadow-[0_0_0_1px_color-mix(in_oklch,var(--primary)_30%,transparent)]"
           : "border-border"
       )}
       style={{ transitionDelay: `${Math.min(index, 6) * 40}ms` }}
@@ -154,7 +154,7 @@ export function ExerciseCard({
             ? `Remove ${exercise.name} from favorites`
             : `Add ${exercise.name} to favorites`
         }
-        className="interactive-spring absolute top-2.5 left-2.5 grid size-8 place-items-center rounded-full border border-border bg-background text-white active:bg-card/90"
+        className="interactive-spring hit-target absolute top-2.5 left-2.5 grid size-8 place-items-center rounded-full border border-border bg-background text-primary active:bg-card/90"
         iconClassName="size-4"
         liked={isFavorite}
         onClick={(event) => {

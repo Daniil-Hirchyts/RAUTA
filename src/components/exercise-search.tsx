@@ -53,7 +53,7 @@ export function ExerciseSearch({
         {value !== "" && (
           <button
             aria-label="Clear search"
-            className="interactive-spring absolute top-1/2 right-3 grid size-7 -translate-y-1/2 place-items-center rounded-full text-muted-foreground active:bg-card/90 active:text-white"
+            className="interactive-spring hit-target absolute top-1/2 right-3 grid size-7 -translate-y-1/2 place-items-center rounded-full text-primary active:bg-card/90"
             data-haptics="off"
             onClick={() => {
               triggerHaptic("selection")

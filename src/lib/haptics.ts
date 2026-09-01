@@ -239,22 +239,64 @@ function reconcileDirectTouchHaptics() {
 export function installDirectTouchHaptics() {
   if (isNative()) return () => undefined
   if (typeof document === "undefined") return () => undefined
+  // The transparent switch exists only to reach iOS Safari's haptics. Anywhere
+  // else the observer would wake on every DOM mutation to decide it has
+  // nothing to do, so never install it.
+  if (!isIOS()) return () => undefined
 
   reconcileDirectTouchHaptics()
+  let drawerWasOpen = hasOpenDrawer()
 
+  // Reconciling the whole document per mutation batch costs an ancestor walk
+  // and a getComputedStyle per button, on every React render — hundreds of
+  // forced style resolutions while a results grid scrolls. Only the subtrees
+  // that actually changed need syncing; the document-wide pass is reserved for
+  // the two things that change what every button is allowed to do, a drawer
+  // opening or closing and haptics being switched off.
+  const pending = new Set<Element>()
   let reconcileQueued = false
-  const queueReconcile = () => {
+
+  const queueReconcile = (records: MutationRecord[]) => {
+    for (const record of records) {
+      if (record.type === "attributes") {
+        if (record.target instanceof HTMLButtonElement) {
+          pending.add(record.target)
+        }
+        continue
+      }
+      record.addedNodes.forEach((node) => {
+        if (node instanceof Element) pending.add(node)
+      })
+    }
+
     if (reconcileQueued) return
     reconcileQueued = true
     queueMicrotask(() => {
       reconcileQueued = false
-      reconcileDirectTouchHaptics()
+      const roots = [...pending]
+      pending.clear()
+
+      const drawerOpen = hasOpenDrawer()
+      const drawerChanged = drawerOpen !== drawerWasOpen
+      drawerWasOpen = drawerOpen
+      if (drawerChanged || !useSettings.getState().hapticsEnabled) {
+        reconcileDirectTouchHaptics()
+        return
+      }
+      if (drawerOpen) return
+
+      roots.forEach((root) => {
+        if (root instanceof HTMLButtonElement) syncButton(root)
+        enhanceTree(root)
+      })
     })
   }
 
   const observer = new MutationObserver(queueReconcile)
   observer.observe(document.body, {
-    attributeFilter: ["disabled", "data-haptics"],
+    // data-closed marks a drawer playing its exit animation, which is what
+    // hands control of the whole document back.
+    attributeFilter: ["disabled", "data-haptics", "data-closed"],
     attributes: true,
     childList: true,
     subtree: true,

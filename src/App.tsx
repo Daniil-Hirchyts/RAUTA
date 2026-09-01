@@ -7,16 +7,10 @@ import {
   useState,
   type CSSProperties,
 } from "react"
-import {
-  ChevronLeft,
-  Home,
-  Search,
-  SearchX,
-  X,
-} from "lucide-react"
+import { ChevronLeft, Home, Search, SearchX, X } from "lucide-react"
 
 import { AnimatedCheck } from "@/components/animated-check"
-import { AppGrain } from "@/components/app-grain"
+import { AppScreen, AppShellHeader, AppSurface } from "@/components/app-shell"
 import { BodyMap } from "@/components/body-map"
 import { EquipmentPresets } from "@/components/equipment-presets"
 import { ExerciseCard } from "@/components/exercise-card"
@@ -47,6 +41,7 @@ import {
 } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
 import { titleCase } from "@/lib/text"
+import { cn } from "@/lib/utils"
 import { equipmentImage } from "@/lib/visuals"
 import { useFavorites } from "@/store/use-favorites"
 import { useFilters } from "@/store/use-filters"
@@ -66,49 +61,51 @@ const STAGE_LABELS: Record<Stage, string> = {
 }
 
 function StageHeading({ stage }: { stage: Stage }) {
-  const [initialStage] = useState(stage)
-  const elementRef = useRef<HTMLDivElement>(null)
-  const displayedStage = useRef(stage)
+  // The label is React state, not a node an effect reaches in and rewrites.
+  // "shown" trails "stage" by the length of the exit leg, so the swap lands
+  // when the old word has finished leaving — and "exiting" is derived from the
+  // gap between them rather than tracked separately. A fast back-then-forward
+  // tap closes that gap on its own, which cancels the exit instead of leaving
+  // the header stuck invisible.
+  const [shown, setShown] = useState(stage)
+  const [entering, setEntering] = useState(false)
+  const exiting = stage !== shown
 
   useEffect(() => {
-    const element = elementRef.current
-    if (stage === displayedStage.current) {
-      // A fast back-then-forward (or forward-then-back) tap can land here
-      // after the effect below already added "is-exit" for the stage
-      // change that just got reverted, cancelling the timeout that would
-      // have cleared it — without this, the header stays invisible.
-      element?.classList.remove("is-exit", "is-enter-start")
-      return
-    }
-    if (!element) return
-    const title = element.querySelector<HTMLElement>("[data-stage-title]")
-    if (!title) return
-
-    element.classList.add("is-exit")
+    if (!exiting) return
     const reduceMotion = window.matchMedia?.(
       "(prefers-reduced-motion: reduce)"
     ).matches
     const timeout = window.setTimeout(
       () => {
-        displayedStage.current = stage
-        title.textContent = STAGE_LABELS[stage]
-        element.classList.remove("is-exit")
-        element.classList.add("is-enter-start")
-        void element.offsetHeight
-        element.classList.remove("is-enter-start")
+        setShown(stage)
+        setEntering(true)
       },
       reduceMotion ? 0 : 150
     )
     return () => window.clearTimeout(timeout)
-  }, [stage])
+  }, [exiting, stage])
+
+  useEffect(() => {
+    if (!entering) return
+    // The new word paints offset with transitions off; clearing that on the
+    // next frame is what the forced reflow used to buy.
+    const frame = requestAnimationFrame(() =>
+      requestAnimationFrame(() => setEntering(false))
+    )
+    return () => cancelAnimationFrame(frame)
+  }, [entering])
 
   return (
-    <div className="t-text-swap" ref={elementRef}>
-      <h1
-        className="text-[30px] leading-none font-black tracking-[-0.03em] text-foreground"
-        data-stage-title
-      >
-        {STAGE_LABELS[initialStage]}
+    <div
+      className={cn(
+        "t-text-swap",
+        exiting && "is-exit",
+        entering && "is-enter-start"
+      )}
+    >
+      <h1 className="text-[30px] leading-none font-black tracking-[-0.03em] text-foreground">
+        {STAGE_LABELS[shown]}
       </h1>
     </div>
   )
@@ -203,17 +200,24 @@ export function App() {
     ]
   )
 
+  const latestSession = useRef(appSession)
+
   useEffect(() => {
     writeAppSession(appSession)
+    latestSession.current = appSession
+  }, [appSession])
 
-    const saveBeforeSuspending = () => writeAppSession(appSession)
+  useEffect(() => {
+    // Reads the latest session through a ref, so suspending the app is wired
+    // up once instead of on every stage change and every selection.
+    const saveBeforeSuspending = () => writeAppSession(latestSession.current)
     window.addEventListener("pagehide", saveBeforeSuspending)
     document.addEventListener("visibilitychange", saveBeforeSuspending)
     return () => {
       window.removeEventListener("pagehide", saveBeforeSuspending)
       document.removeEventListener("visibilitychange", saveBeforeSuspending)
     }
-  }, [appSession])
+  }, [])
 
   const exercises = useMemo(
     () => filterExercises(EXERCISES, selectedMuscles, selectedEquipment),
@@ -362,12 +366,11 @@ export function App() {
       : view.type
 
   return (
-    <div className="min-h-(--app-viewport-height) bg-black text-foreground">
+    <div className="min-h-(--app-viewport-height) bg-(--app-shell) text-foreground">
       <HapticLayer />
       <SettingsEffects />
       <SvgFilterDefs />
-      <main className="relative mx-auto flex h-(--app-viewport-height) w-full max-w-[430px] touch-pan-y flex-col overflow-hidden bg-black">
-        <AppGrain />
+      <main className="relative mx-auto flex h-(--app-viewport-height) w-full max-w-[430px] touch-pan-y flex-col overflow-hidden bg-(--app-shell)">
         <div
           className="t-app-page flex min-h-0 flex-1 flex-col"
           data-direction={viewDirection}
@@ -412,9 +415,9 @@ export function App() {
           )}
 
           {view.type === "flow" && (
-            <div className="app-screen" data-bottom-controls="true">
-              <div className="app-surface">
-                <header className="app-shell-header shrink-0 px-5 pt-3.5 pb-3">
+            <AppScreen bottomControls>
+              <AppSurface>
+                <AppShellHeader>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div
@@ -449,7 +452,7 @@ export function App() {
                     <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card p-0.5">
                       <Button
                         aria-label="My workouts"
-                        className="interactive-spring rounded-full border-0 bg-transparent text-muted-foreground active:bg-white/10 active:text-white"
+                        className="interactive-spring rounded-full border-0 bg-transparent active:bg-white/10"
                         onClick={() => {
                           triggerHaptic("medium")
                           navigate({ type: "workouts" }, "back")
@@ -467,8 +470,8 @@ export function App() {
                           aria-pressed={searchOpen}
                           className={`interactive-spring rounded-full border-0 ${
                             searchOpen
-                              ? "bg-white/10 text-white"
-                              : "bg-transparent text-muted-foreground active:bg-white/10 active:text-white"
+                              ? "bg-white/10"
+                              : "bg-transparent active:bg-white/10"
                           }`}
                           onClick={toggleSearch}
                           size="icon"
@@ -479,7 +482,7 @@ export function App() {
                       )}
                     </div>
                   </div>
-                </header>
+                </AppShellHeader>
 
                 <div
                   className="app-stage-frame t-page-slide min-h-0 flex-1"
@@ -503,7 +506,7 @@ export function App() {
                     data-page-id="1"
                     inert={stage !== 1}
                   >
-                    <div className="relative h-full min-h-0 overflow-hidden rounded-[28px] border border-border bg-card/60 shadow-[0_18px_40px_rgba(0,0,0,0.16)] backdrop-blur-xl">
+                    <div className="relative h-full min-h-0">
                       <DotPattern
                         className="[mask-image:radial-gradient(ellipse_at_center,black_15%,transparent_72%)] transition-[fill,fill-opacity] duration-500 ease-[var(--ease-smooth-out)]"
                         cr={1}
@@ -538,9 +541,9 @@ export function App() {
                         return (
                           <button
                             aria-checked={checked}
-                            className={`interactive-spring group relative overflow-hidden rounded-[22px] border bg-card text-left shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-300 ease-[var(--ease-smooth-out)] ${
+                            className={`interactive-spring group relative overflow-hidden rounded-xl border bg-card text-left shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-300 ease-[var(--ease-smooth-out)] ${
                               checked
-                                ? "border-primary/75 shadow-[0_0_0_1px_rgba(255,98,0,0.3)]"
+                                ? "border-primary/75 shadow-[0_0_0_1px_color-mix(in_oklch,var(--primary)_30%,transparent)]"
                                 : "border-border"
                             }`}
                             key={equipment}
@@ -647,16 +650,15 @@ export function App() {
                     )}
                   </section>
                 </div>
-              </div>
+              </AppSurface>
 
               <footer className="bottom-controls-scrim absolute inset-x-0 bottom-0 z-20 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                 <div className="relative flex gap-2.5">
                   {stage > 1 && !selectMode && (
                     <Button
                       aria-label="Previous stage"
-                      className="size-[3.25rem] shrink-0 rounded-[26px]"
                       onClick={goBack}
-                      size="icon"
+                      size="icon-cta"
                       variant="secondary"
                     >
                       <ChevronLeft className="size-5" />
@@ -665,9 +667,8 @@ export function App() {
                   {stage === 3 && selectMode && (
                     <Button
                       aria-label="Cancel selection"
-                      className="size-[3.25rem] shrink-0 rounded-[26px]"
                       onClick={cancelSelectMode}
-                      size="icon"
+                      size="icon-cta"
                       variant="secondary"
                     >
                       <X />
@@ -681,10 +682,10 @@ export function App() {
                           ? "Show all exercises"
                           : "Show favorites only"
                       }
-                      className={`interactive-spring grid size-[3.25rem] shrink-0 place-items-center rounded-[26px] border ${
+                      className={`interactive-spring grid size-(--app-controls-height) shrink-0 place-items-center rounded-2xl border ${
                         favoritesOnly
-                          ? "border-primary bg-[color-mix(in_oklch,var(--card),var(--primary)_22%)] text-primary active:border-[#FFA266]"
-                          : "border-border bg-card text-muted-foreground active:bg-card/90 active:text-white"
+                          ? "border-primary bg-[color-mix(in_oklch,var(--card),var(--primary)_22%)] text-primary active:border-(--primary-softer)"
+                          : "border-border bg-card text-primary active:bg-card/90"
                       }`}
                       iconClassName="size-5"
                       liked={favoritesOnly}
@@ -696,7 +697,8 @@ export function App() {
                   )}
                   {stage < 3 ? (
                     <Button
-                      className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
+                      size="cta"
+                      className="flex-1"
                       disabled={!canContinue}
                       onClick={goForward}
                     >
@@ -704,7 +706,8 @@ export function App() {
                     </Button>
                   ) : selectMode ? (
                     <Button
-                      className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
+                      size="cta"
+                      className="flex-1"
                       disabled={selectedIds.length === 0}
                       onClick={addSelectionToWorkout}
                     >
@@ -713,7 +716,8 @@ export function App() {
                     </Button>
                   ) : (
                     <Button
-                      className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
+                      size="cta"
+                      className="flex-1"
                       onClick={() => {
                         triggerHaptic("medium")
                         setSelectMode(true)
@@ -724,7 +728,7 @@ export function App() {
                   )}
                 </div>
               </footer>
-            </div>
+            </AppScreen>
           )}
         </div>
       </main>

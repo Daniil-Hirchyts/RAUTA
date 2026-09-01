@@ -104,7 +104,8 @@ export function WorkoutCountdown({
       </button>
 
       <Button
-        className="h-[3.25rem] w-[min(18rem,70%)] rounded-[26px] text-base font-semibold"
+        size="cta"
+        className="w-[min(18rem,70%)]"
         onClick={() => {
           triggerHaptic("warning")
           onCancel()

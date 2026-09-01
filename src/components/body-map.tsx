@@ -109,7 +109,7 @@ function BodyFigure({
     <div className="relative flex h-full min-h-0 w-full items-center justify-center">
       <svg
         aria-label={`${label} muscle map`}
-        className="block h-full max-h-full max-w-full overflow-visible blur-[0.25px]"
+        className="block h-full max-h-full max-w-full overflow-visible"
         preserveAspectRatio="xMidYMid meet"
         role="img"
         style={{ aspectRatio: `${widthAttr} / ${heightAttr}` }}
@@ -221,7 +221,7 @@ export function BodyMap({ onToggle, selectedMuscles }: BodyMapProps) {
 
       <button
         aria-label={`Show ${side === "front" ? "back" : "front"}`}
-        className="interactive-spring pointer-events-auto absolute right-3.5 bottom-3.5 z-20 grid size-10 place-items-center rounded-full border border-border bg-card/90 text-foreground shadow-sm backdrop-blur-md active:bg-card/95 active:text-white sm:right-4 sm:bottom-4"
+        className="interactive-spring pointer-events-auto absolute right-3.5 bottom-3.5 z-20 grid size-11 place-items-center rounded-full border border-border bg-card/90 text-primary shadow-sm backdrop-blur-md active:bg-card/95 sm:right-4 sm:bottom-4"
         onClick={flipSide}
         type="button"
       >
@@ -247,4 +247,3 @@ export function BodyMap({ onToggle, selectedMuscles }: BodyMapProps) {
     </div>
   )
 }
-

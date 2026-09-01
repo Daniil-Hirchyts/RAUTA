@@ -2,6 +2,7 @@ import * as React from "react"
 import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer"
 import { X } from "lucide-react"
 
+import { AppGrain } from "@/components/app-grain"
 import { cn } from "@/lib/utils"
 
 type DrawerContextProps = {
@@ -229,6 +230,9 @@ function DrawerContent({
           >
             {children}
           </DrawerPrimitive.Content>
+          {/* Drawers are lit surfaces like the screens are, so they carry the
+              same grain — clipped to the popup's own corners. */}
+          <AppGrain className="rounded-[inherit]" />
         </DrawerPrimitive.Popup>
       </DrawerPrimitive.Viewport>
     </DrawerPortal>

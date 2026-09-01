@@ -26,7 +26,7 @@ export function ActiveWorkoutHero({
   return (
     <section
       aria-label="Current exercise"
-      className="mx-4 overflow-hidden rounded-[26px] border border-primary/30 bg-card shadow-lg shadow-black/20"
+      className="mx-4 overflow-hidden rounded-2xl border border-primary/30 bg-card shadow-lg shadow-black/20"
     >
       <button
         aria-label={`Open ${exercise.name} demonstration`}
@@ -52,7 +52,7 @@ export function ActiveWorkoutHero({
 
         <div className="mt-3.5 flex items-center gap-2.5">
           <Button
-            className="h-12 flex-1 rounded-[24px] text-base font-semibold"
+            className="h-12 flex-1 rounded-2xl text-base font-semibold"
             onClick={() => {
               triggerHaptic("success")
               onComplete()
@@ -63,7 +63,7 @@ export function ActiveWorkoutHero({
           </Button>
           <Button
             aria-label={`Skip ${exercise.name}`}
-            className="size-12 rounded-[24px]"
+            className="size-12 rounded-2xl"
             disabled={!onSkip}
             onClick={() => {
               triggerHaptic("light")

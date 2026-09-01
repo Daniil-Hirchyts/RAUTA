@@ -71,7 +71,7 @@ export function WorkoutHeatmap({
   return (
     <section
       aria-label="Training consistency"
-      className="mx-5 rounded-[22px] border border-border bg-card/60 p-4"
+      className="mx-5 rounded-xl border border-border bg-card/60 p-4"
       style={{ "--cell": `${CELL}px` } as React.CSSProperties}
     >
       <div className="flex items-start justify-between gap-3">
@@ -167,7 +167,7 @@ export function WorkoutHeatmap({
                     type="button"
                   >
                     <span
-                      className={`size-full rounded-[3px] transition-[box-shadow,transform] duration-150 ${LEVEL_FILL[day.level]} ${
+                      className={`size-full rounded-xs transition-[box-shadow,transform] duration-150 ${LEVEL_FILL[day.level]} ${
                         selectedDate === day.date
                           ? "scale-110 ring-2 ring-foreground/70"
                           : day.isToday
@@ -217,7 +217,7 @@ export function WorkoutHeatmap({
           Less
           {HEATMAP_LEVELS.map((level) => (
             <span
-              className={`size-2.5 rounded-[3px] ${LEVEL_FILL[level]}`}
+              className={`size-2.5 rounded-xs ${LEVEL_FILL[level]}`}
               key={level}
             />
           ))}

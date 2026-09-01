@@ -1,14 +1,23 @@
+import { cn } from "@/lib/utils"
+
 /**
- * Subtle organic film grain texture for the app shell.
+ * Subtle organic film grain texture for the app's lit surfaces.
  * Uses procedural fractal noise generated via SVG feTurbulence at 100% dimensions,
  * ensuring continuous non-repeating grain without grid or tile patterns.
  * Kept at very low opacity (barely visible) for a gentle analog feel.
+ *
+ * It belongs to whatever surface renders it — a screen surface or a drawer —
+ * and never to the shell frame around them, so it fills its positioned parent
+ * rather than the viewport.
  */
-export function AppGrain() {
+export function AppGrain({ className }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 z-30 overflow-hidden select-none"
+      className={cn(
+        "pointer-events-none absolute inset-0 z-30 overflow-hidden select-none",
+        className
+      )}
     >
       <svg
         className="size-full opacity-[0.08]"

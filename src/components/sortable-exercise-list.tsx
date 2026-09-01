@@ -48,7 +48,7 @@ function SortableExerciseRow({
 
   const row = (
     <div
-      className={`mx-4 flex h-32 w-[calc(100%-2rem)] overflow-hidden rounded-[22px] border bg-card shadow-sm shadow-black/10 transition-[border-color,box-shadow,opacity] ${
+      className={`mx-4 flex h-32 w-[calc(100%-2rem)] overflow-hidden rounded-xl border bg-card shadow-sm shadow-black/10 transition-[border-color,box-shadow,opacity] ${
         isDragSource
           ? "border-primary/70 opacity-90 shadow-xl shadow-black/30"
           : status === "active"
@@ -114,7 +114,7 @@ function SortableExerciseRow({
       {reorderable ? (
         <button
           aria-label={`Reorder ${exercise.name}`}
-          className="interactive-spring grid w-12 shrink-0 touch-none place-items-center text-muted-foreground active:text-foreground"
+          className="interactive-spring grid w-12 shrink-0 touch-none place-items-center text-primary"
           data-base-ui-swipe-ignore=""
           data-haptics="off"
           ref={handleRef as Ref<HTMLButtonElement>}
@@ -137,7 +137,7 @@ function SortableExerciseRow({
               {onFindAlternative && (
                 <button
                   aria-label="Find alternative"
-                  className="interactive-spring grid size-14 place-items-center rounded-full bg-secondary text-secondary-foreground shadow-lg shadow-black/20"
+                  className="interactive-spring grid size-14 place-items-center rounded-full bg-secondary text-primary shadow-lg shadow-black/20"
                   onClick={() => {
                     onOpenChange(false)
                     onFindAlternative(exercise)
