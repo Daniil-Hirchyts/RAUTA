@@ -7,7 +7,9 @@ import {
   type ActiveWorkoutSession,
 } from "@/lib/active-workout"
 import { EXERCISES_BY_ID } from "@/lib/exercises"
+import { estimateStrengthCalories, isPastWorkout } from "@/lib/workout-stats"
 import { isRecord, validString, validUniqueStrings } from "@/store/persistence"
+import { useSettings } from "@/store/use-settings"
 import { useWorkouts, type Workout } from "@/store/use-workouts"
 
 /** Why the last session stopped. Read by the Live Activity sync to decide
@@ -27,6 +29,8 @@ export type ActiveWorkoutState = {
   completeCurrent: () => void
   /** Keeps a running session aligned with edits made to the saved workout. */
   syncExercises: (exerciseIds: string[]) => void
+  /** The same, for every part of the workout the session mirrors. */
+  syncWorkout: (workout: Workout) => void
 }
 
 type PersistedActiveWorkoutState = Pick<ActiveWorkoutState, "session">
@@ -80,6 +84,13 @@ function sanitizeActiveWorkoutState(
   return { session: sanitizeSession(state.session) }
 }
 
+function sameOrder(left: string[], right: string[]) {
+  return (
+    left.length === right.length &&
+    left.every((value, index) => value === right[index])
+  )
+}
+
 /** Applies `patch` to the live session, or does nothing when idle. */
 function patchSession(
   update: (session: ActiveWorkoutSession) => ActiveWorkoutSession
@@ -90,10 +101,11 @@ function patchSession(
 
 export const useActiveWorkout = create<ActiveWorkoutState>()(
   persist<ActiveWorkoutState, [], [], PersistedActiveWorkoutState>(
-    (set) => ({
+    (set, get) => ({
       session: null,
       lastOutcome: null,
       start: (workout) => {
+        if (isPastWorkout(workout)) return
         const exerciseIds = workout.exerciseIds.filter((id) =>
           EXERCISES_BY_ID.has(id)
         )
@@ -115,7 +127,31 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
           },
         })
       },
-      finish: () => set({ session: null, lastOutcome: "finished" }),
+      finish: () => {
+        const { session } = get()
+        if (!session) return
+
+        const durationMs = elapsedMs(session)
+        const settings = useSettings.getState()
+        const completedAt = new Date().toISOString()
+        const shouldSync =
+          settings.appleHealthEnabled && settings.autoSyncWorkouts
+
+        useWorkouts.getState().completeWorkout(session.workoutId, {
+          activeCalories: estimateStrengthCalories(
+            durationMs,
+            settings.healthBodyWeightKg
+          ),
+          completedAt,
+          completedExerciseIds: session.exerciseIds.filter((id) =>
+            session.completedIds.includes(id)
+          ),
+          durationMs,
+          healthSyncStatus: shouldSync ? "pending" : "not-requested",
+          startedAt: new Date(session.startedAt).toISOString(),
+        })
+        set({ session: null, lastOutcome: "finished" })
+      },
       cancel: () => set({ session: null, lastOutcome: "cancelled" }),
       pause: () =>
         set(
@@ -232,6 +268,36 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
             },
           }
         }),
+      syncWorkout: (workout) => {
+        const { session } = get()
+        if (!session || session.workoutId !== workout.id) return
+
+        // The date is on the Lock Screen card, so moving a workout has to
+        // reach the session too — otherwise the card keeps naming the day the
+        // workout used to be on.
+        if (
+          session.workoutDate !== workout.date ||
+          session.workoutName !== workout.name
+        ) {
+          set(
+            patchSession((current) => ({
+              ...current,
+              workoutDate: workout.date,
+              workoutName: workout.name,
+            }))
+          )
+        }
+
+        // Compared after the same filtering `syncExercises` applies, so an
+        // id the library does not know cannot make the two look forever out
+        // of step and re-sync on every unrelated change.
+        const exerciseIds = workout.exerciseIds.filter((id) =>
+          EXERCISES_BY_ID.has(id)
+        )
+        if (!sameOrder(session.exerciseIds, exerciseIds)) {
+          get().syncExercises(exerciseIds)
+        }
+      },
     }),
     {
       name: "gym-lib-active-workout",
@@ -247,10 +313,13 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
 )
 
 /**
- * A session cannot outlive the workout it is performing. Workouts can be
- * deleted from the list, from the detail page, and from a swipe action, so the
- * invariant lives here rather than at every call site — otherwise one missed
- * path leaves a Live Activity counting for a workout that no longer exists.
+ * A session follows the workout it is performing, wherever that workout is
+ * edited from. Workouts can be deleted from the list, from the detail page and
+ * from a swipe action, and exercises can be added to a running one from the
+ * whole find-an-exercise flow — so the invariant lives here rather than at
+ * every call site. One missed path leaves a Live Activity counting for a
+ * workout that no longer exists, or a session that never hears about the
+ * exercise just added to it.
  *
  * `useWorkouts` is fully hydrated by the time this module finishes importing,
  * and subscribers only hear about later changes, so a session restored from
@@ -259,7 +328,12 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
 useWorkouts.subscribe((state) => {
   const { session } = useActiveWorkout.getState()
   if (!session) return
-  if (state.workouts.some((workout) => workout.id === session.workoutId)) return
 
-  useActiveWorkout.getState().cancel()
+  const workout = state.workouts.find((item) => item.id === session.workoutId)
+  if (!workout) {
+    useActiveWorkout.getState().cancel()
+    return
+  }
+
+  useActiveWorkout.getState().syncWorkout(workout)
 })

@@ -16,38 +16,35 @@ struct WorkoutLiveActivityWidget: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    ExerciseFrame(name: context.state.exerciseFrame, side: 54)
+                    ExerciseFrame(name: context.state.exerciseFrame, side: 58)
                         .padding(.leading, 4)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        WorkoutTimerText(state: context.state)
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundStyle(Color(WorkoutActivityPalette.text))
-                            .frame(maxWidth: 92, alignment: .trailing)
-                        Text(context.state.progressText)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(Color(WorkoutActivityPalette.mutedText))
-                    }
+                    MuscleMapFrame(
+                        name: context.state.muscleMapFrame,
+                        width: 40,
+                        height: 58
+                    )
+                    .padding(.trailing, 4)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(context.state.exerciseName)
-                            .font(.system(size: 15, weight: .semibold))
+                    VStack(spacing: 1) {
+                        WorkoutTimerText(state: context.state)
+                            .font(.system(size: 30, weight: .heavy))
                             .foregroundStyle(Color(WorkoutActivityPalette.text))
-                            .lineLimit(2)
-                        if !context.state.exerciseMuscles.isEmpty {
-                            Text(context.state.exerciseMuscles)
-                                .font(.system(size: 12))
-                                .foregroundStyle(Color(WorkoutActivityPalette.mutedText))
-                                .lineLimit(1)
-                        }
+                        Text(context.state.exerciseName)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color(WorkoutActivityPalette.mutedText))
+                            .lineLimit(1)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack(spacing: 8) {
                         ProgressDots(state: context.state)
+                        Text(context.state.progressText)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color(WorkoutActivityPalette.mutedText))
                         Spacer(minLength: 8)
                         StatusLabel(state: context.state)
                     }
@@ -65,97 +62,98 @@ struct WorkoutLiveActivityWidget: Widget {
                     .foregroundStyle(Color(WorkoutActivityPalette.text))
                     .frame(maxWidth: 52, alignment: .trailing)
             } minimal: {
-                Image(systemName: context.state.isPaused ? "pause.fill" : "figure.run")
-                    .foregroundStyle(Color(WorkoutActivityPalette.accent))
+                HStack(spacing: 2) {
+                    WorkoutGlyph(isPaused: context.state.isPaused)
+                        .font(.system(size: 10, weight: .bold))
+                    WorkoutTimerText(state: context.state)
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .foregroundStyle(Color(WorkoutActivityPalette.accent))
             }
             .keylineTint(Color(WorkoutActivityPalette.accent))
         }
     }
 }
 
-/// "Paused", "Complete", or the exercise waiting after this one — whichever
-/// tells the glancing user the most.
+/// "Paused" or "Complete" — the only two things about the session that the
+/// timer and the progress dots do not already say. What comes *after* this
+/// exercise is deliberately absent: the card is for the set being performed
+/// right now, and reading ahead is what the app is for.
 @available(iOS 16.1, *)
 private struct StatusLabel: View {
     var state: WorkoutActivityAttributes.ContentState
 
     var body: some View {
         if state.isPaused {
-            label("Paused", color: WorkoutActivityPalette.accent)
+            label("Paused")
         } else if state.isComplete {
-            label("Complete", color: WorkoutActivityPalette.accent)
-        } else if !state.nextExerciseName.isEmpty {
-            HStack(spacing: 4) {
-                Text("Next")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Color(WorkoutActivityPalette.accent))
-                Text(state.nextExerciseName)
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color(WorkoutActivityPalette.mutedText))
-                    .lineLimit(1)
-            }
+            label("Complete")
         }
     }
 
-    private func label(_ text: String, color: WorkoutActivityColor) -> some View {
+    private func label(_ text: String) -> some View {
         Text(text.uppercased())
             .font(.system(size: 11, weight: .bold))
             .tracking(1.2)
-            .foregroundStyle(Color(color))
+            .foregroundStyle(Color(WorkoutActivityPalette.accent))
     }
 }
 
+/// Three columns across one row: the exercise on the left, the clock filling
+/// the middle, and the muscles being worked on the right. The Lock Screen is
+/// read at arm's length mid-set, so the timer is sized to be the thing the eye
+/// lands on and everything else is arranged around it.
 @available(iOS 16.1, *)
 private struct LockScreenCard: View {
     var attributes: WorkoutActivityAttributes
     var state: WorkoutActivityAttributes.ContentState
 
+    private static let panel: CGFloat = 84
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(attributes.workoutName)
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(Color(WorkoutActivityPalette.accent))
-                        .lineLimit(1)
-                    Text(attributes.workoutDate)
-                        .font(.system(size: 11))
-                        .foregroundStyle(Color(WorkoutActivityPalette.mutedText))
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 12)
-                WorkoutTimerText(state: state)
-                    .font(.system(size: 28, weight: .heavy))
-                    .foregroundStyle(Color(WorkoutActivityPalette.text))
-                    .frame(maxWidth: 118, alignment: .trailing)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text(attributes.workoutDate)
+                    .font(.system(size: 11, weight: .bold))
+                    .tracking(1.1)
+                    .foregroundStyle(Color(WorkoutActivityPalette.accent))
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                StatusLabel(state: state)
             }
 
-            HStack(spacing: 12) {
-                ExerciseFrame(name: state.exerciseFrame, side: 60)
+            HStack(alignment: .center, spacing: 10) {
+                ExerciseFrame(name: state.exerciseFrame, side: Self.panel)
 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 2) {
+                    WorkoutTimerText(state: state)
+                        .font(.system(size: 42, weight: .heavy))
+                        .foregroundStyle(Color(WorkoutActivityPalette.text))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
                     Text(state.exerciseName)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Color(WorkoutActivityPalette.text))
                         .lineLimit(2)
-                    if !state.exerciseMuscles.isEmpty {
-                        Text(state.exerciseMuscles)
-                            .font(.system(size: 12))
+
+                    Spacer(minLength: 2)
+
+                    HStack(spacing: 7) {
+                        ProgressDots(state: state)
+                        Text(state.progressText)
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(Color(WorkoutActivityPalette.mutedText))
                             .lineLimit(1)
                     }
-                    HStack(spacing: 8) {
-                        ProgressDots(state: state)
-                        Text(state.progressText)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Color(WorkoutActivityPalette.mutedText))
-                    }
-                    .padding(.top, 1)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
+                .frame(height: Self.panel)
 
-            StatusLabel(state: state)
+                MuscleMapFrame(
+                    name: state.muscleMapFrame,
+                    width: 52,
+                    height: Self.panel
+                )
+            }
         }
         .padding(14)
     }

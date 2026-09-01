@@ -6,7 +6,7 @@ import {
   startLiveActivitySync,
 } from "@/lib/live-activity-sync"
 import { useActiveWorkout } from "@/store/use-active-workout"
-import type { Workout } from "@/store/use-workouts"
+import { useWorkouts, type Workout } from "@/store/use-workouts"
 
 vi.mock("@/lib/live-activity", () => ({
   liveActivity: {
@@ -24,6 +24,7 @@ const workout: Workout = {
   name: "Push day",
   date: "2026-09-01",
   exerciseIds: ["0001", "0002", "0003"],
+  completion: null,
   createdAt: "2026-09-01T08:00:00.000Z",
   updatedAt: "2026-09-01T08:00:00.000Z",
 }
@@ -46,14 +47,13 @@ function session(patch: Partial<ActiveWorkoutSession> = {}) {
 let stop = () => {}
 
 describe("liveActivityContent", () => {
-  it("describes the exercise in progress and the one after it", () => {
+  it("describes the exercise in progress and the muscles it works", () => {
     expect(liveActivityContent(session())).toMatchObject({
       workoutId: "workout-1",
       workoutName: "Push day",
       exerciseId: "0001",
       exerciseName: "3/4 Sit-Up",
-      exerciseMuscles: "Abs · Hip flexors · Lower back",
-      nextExerciseName: "45° Side Bend",
+      muscleMapKey: "front-abs-hip-flexors-lower-back",
       completedCount: 0,
       totalCount: 3,
       isPaused: false,
@@ -95,7 +95,7 @@ describe("liveActivityContent", () => {
     expect(liveActivityContent(done)).toMatchObject({
       exerciseId: "",
       exerciseName: "All exercises done",
-      nextExerciseName: "",
+      muscleMapKey: "",
       completedCount: 3,
     })
   })
@@ -104,6 +104,10 @@ describe("liveActivityContent", () => {
 describe("startLiveActivitySync", () => {
   beforeEach(() => {
     localStorage.clear()
+    // Finishing a workout writes its completion back to the workouts store,
+    // and a session whose workout is missing from there is treated as orphaned
+    // — so the workout being performed has to actually be saved.
+    useWorkouts.setState({ workouts: [workout] })
     useActiveWorkout.setState({ session: null, lastOutcome: null })
     vi.mocked(liveActivity.start).mockClear()
     vi.mocked(liveActivity.update).mockClear()
@@ -131,6 +135,23 @@ describe("startLiveActivitySync", () => {
     expect(liveActivity.update).toHaveBeenCalledTimes(2)
     expect(liveActivity.update).toHaveBeenLastCalledWith(
       expect.objectContaining({ isPaused: true, completedCount: 1 })
+    )
+  })
+
+  it("steps the demonstration on with every update, and restarts it per exercise", () => {
+    useActiveWorkout.getState().start(workout)
+    expect(liveActivity.start).toHaveBeenCalledWith(
+      expect.objectContaining({ exerciseId: "0001", frameIndex: 0 })
+    )
+
+    useActiveWorkout.getState().pause()
+    expect(liveActivity.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ exerciseId: "0001", frameIndex: 1 })
+    )
+
+    useActiveWorkout.getState().completeCurrent()
+    expect(liveActivity.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ exerciseId: "0002", frameIndex: 0 })
     )
   })
 

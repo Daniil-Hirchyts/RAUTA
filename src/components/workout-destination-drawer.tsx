@@ -3,6 +3,7 @@ import { CalendarDays, ChevronRight, Plus } from "lucide-react"
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
 import { formatDateShort } from "@/lib/date"
 import { triggerHaptic } from "@/lib/haptics"
+import { isPastWorkout } from "@/lib/workout-stats"
 import { useWorkouts } from "@/store/use-workouts"
 
 export function WorkoutDestinationDrawer({
@@ -21,11 +22,13 @@ export function WorkoutDestinationDrawer({
   preferredWorkoutId?: string | null
 }) {
   const workouts = useWorkouts((state) => state.workouts)
-  const sorted = [...workouts].sort((left, right) => {
-    if (left.id === preferredWorkoutId) return -1
-    if (right.id === preferredWorkoutId) return 1
-    return right.date.localeCompare(left.date)
-  })
+  const sorted = workouts
+    .filter((workout) => !isPastWorkout(workout))
+    .sort((left, right) => {
+      if (left.id === preferredWorkoutId) return -1
+      if (right.id === preferredWorkoutId) return 1
+      return right.date.localeCompare(left.date)
+    })
 
   return (
     <Drawer onOpenChange={onOpenChange} open={open} swipeDirection="down">

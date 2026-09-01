@@ -126,6 +126,16 @@ function StageHeading({ stage }: { stage: Stage }) {
 export function App() {
   const [initialSession] = useState(readAppSession)
   const [view, setView] = useState<View>(initialSession.view)
+  const [viewDirection, setViewDirection] = useState<"forward" | "back">(
+    "forward"
+  )
+  const navigate = useCallback(
+    (nextView: View, direction: "forward" | "back" = "forward") => {
+      setViewDirection(direction)
+      setView(nextView)
+    },
+    []
+  )
   const [stage, setStage] = useState<Stage>(initialSession.stage)
   const selectedMuscles = useFilters((state) => state.selectedMuscles)
   const muscleDotIntensity = Math.min(selectedMuscles.length / 6, 1)
@@ -333,7 +343,7 @@ export function App() {
     setSelectMode(false)
     setSelectedIds([])
     setPreferredWorkoutId(workoutId ?? null)
-    setView({ type: "flow" })
+    navigate({ type: "flow" })
   }
 
   const {
@@ -352,6 +362,10 @@ export function App() {
   })
   const peerStage =
     swipePeer === "prev" ? stage - 1 : swipePeer === "next" ? stage + 1 : null
+  const viewKey =
+    view.type === "workout-detail"
+      ? `${view.type}-${view.workoutId}`
+      : view.type
 
   return (
     <div className="min-h-(--app-viewport-height) bg-[#0e0e0f] text-foreground">
@@ -359,372 +373,388 @@ export function App() {
       <SettingsEffects />
       <SvgFilterDefs />
       <main className="relative mx-auto flex h-(--app-viewport-height) w-full max-w-[430px] touch-pan-y flex-col overflow-hidden border-x border-white/[0.04] bg-background pt-[env(safe-area-inset-top)] shadow-2xl shadow-black/40">
-        {view.type === "workouts" && (
-          <WorkoutsPage
-            onCreate={() => startExerciseFlow()}
-            onSelect={(workout) =>
-              setView({ type: "workout-detail", workoutId: workout.id })
-            }
-            onSettings={() => setView({ type: "settings" })}
-          />
-        )}
-
-        {view.type === "settings" && (
-          <SwipeBackPage onBack={() => setView({ type: "workouts" })}>
-            <SettingsPage
-              onBack={() => setView({ type: "workouts" })}
-              onDataCleared={() => setView({ type: "workouts" })}
+        <div
+          className="t-app-page flex min-h-0 flex-1 flex-col"
+          data-direction={viewDirection}
+          key={viewKey}
+        >
+          {view.type === "workouts" && (
+            <WorkoutsPage
+              onCreate={() => startExerciseFlow()}
+              onSelect={(workout) =>
+                navigate({ type: "workout-detail", workoutId: workout.id })
+              }
+              onSettings={() => navigate({ type: "settings" })}
             />
-          </SwipeBackPage>
-        )}
+          )}
 
-        {view.type === "workout-detail" && (
-          <SwipeBackPage onBack={() => setView({ type: "workouts" })}>
-            <WorkoutDetailPage
-              onAddExercise={() => startExerciseFlow(view.workoutId)}
-              onBack={() => setView({ type: "workouts" })}
-              onDeleted={() => setView({ type: "workouts" })}
-              onOpenExercise={openDetail}
-              workoutId={view.workoutId}
-            />
-          </SwipeBackPage>
-        )}
+          {view.type === "settings" && (
+            <SwipeBackPage
+              onBack={() => navigate({ type: "workouts" }, "back")}
+            >
+              <SettingsPage
+                onBack={() => navigate({ type: "workouts" }, "back")}
+                onDataCleared={() => navigate({ type: "workouts" }, "back")}
+              />
+            </SwipeBackPage>
+          )}
 
-        {view.type === "flow" && (
-          <>
-            <header className="shrink-0 border-b border-white/[0.05] bg-background/80 px-5 pt-4 pb-3 backdrop-blur-xl">
-              <div className="mb-5 flex items-center justify-between">
-                <div
-                  aria-label={`Step ${stage} of 3`}
-                  aria-valuemax={3}
-                  aria-valuemin={1}
-                  aria-valuenow={stage}
-                  className="flex items-center gap-2.5"
-                  role="progressbar"
-                >
-                  {[1, 2, 3].map((step) => (
-                    <span
-                      aria-hidden="true"
-                      className={`h-2 rounded-full transition-[width,background-color] duration-250 ${
-                        step === stage
-                          ? "w-9 bg-primary"
-                          : step < stage
-                            ? "w-5 bg-primary/35"
-                            : "w-5 bg-white/10"
-                      }`}
-                      key={step}
-                    />
-                  ))}
-                </div>
-                {/* A single segmented pill. The border, surface and rounding
+          {view.type === "workout-detail" && (
+            <SwipeBackPage
+              onBack={() => navigate({ type: "workouts" }, "back")}
+            >
+              <WorkoutDetailPage
+                onAddExercise={() => startExerciseFlow(view.workoutId)}
+                onBack={() => navigate({ type: "workouts" }, "back")}
+                onCopied={(workoutId) =>
+                  navigate({ type: "workout-detail", workoutId })
+                }
+                onDeleted={() => navigate({ type: "workouts" }, "back")}
+                onOpenExercise={openDetail}
+                workoutId={view.workoutId}
+              />
+            </SwipeBackPage>
+          )}
+
+          {view.type === "flow" && (
+            <>
+              <header className="shrink-0 border-b border-white/[0.05] bg-background/80 px-5 pt-4 pb-3 backdrop-blur-xl">
+                <div className="mb-5 flex items-center justify-between">
+                  <div
+                    aria-label={`Step ${stage} of 3`}
+                    aria-valuemax={3}
+                    aria-valuemin={1}
+                    aria-valuenow={stage}
+                    className="flex items-center gap-2.5"
+                    role="progressbar"
+                  >
+                    {[1, 2, 3].map((step) => (
+                      <span
+                        aria-hidden="true"
+                        className={`h-2 rounded-full transition-[width,background-color] duration-250 ${
+                          step === stage
+                            ? "w-9 bg-primary"
+                            : step < stage
+                              ? "w-5 bg-primary/35"
+                              : "w-5 bg-white/10"
+                        }`}
+                        key={step}
+                      />
+                    ))}
+                  </div>
+                  {/* A single segmented pill. The border, surface and rounding
                     belong to the group; the buttons inside carry none of their
                     own, so nothing is clipped and there is no seam where they
                     meet. Padding insets them, which turns each press into a
                     round highlight within the pill. */}
-                <div className="flex items-center gap-1.5 rounded-full border border-border bg-card p-0.5">
-                  <Button
-                    aria-label="My workouts"
-                    className="rounded-full border-0 bg-transparent text-muted-foreground active:bg-muted active:text-foreground"
-                    onClick={() => {
-                      triggerHaptic("medium")
-                      setView({ type: "workouts" })
-                    }}
-                    size="icon"
-                    variant="ghost"
-                  >
-                    <CalendarDays className="size-5" />
-                  </Button>
-                  <Button
-                    aria-label="Settings"
-                    className="rounded-full border-0 bg-transparent text-muted-foreground active:bg-muted active:text-foreground"
-                    onClick={() => {
-                      triggerHaptic("medium")
-                      setView({ type: "settings" })
-                    }}
-                    size="icon"
-                    variant="ghost"
-                  >
-                    <Settings className="size-5" />
-                  </Button>
-                  {hasFilters && (
+                  <div className="flex items-center gap-1.5 rounded-full border border-border bg-card p-0.5">
                     <Button
-                      aria-label="Reset selections"
+                      aria-label="My workouts"
                       className="rounded-full border-0 bg-transparent text-muted-foreground active:bg-muted active:text-foreground"
-                      onClick={resetFlow}
+                      onClick={() => {
+                        triggerHaptic("medium")
+                        navigate({ type: "workouts" }, "back")
+                      }}
                       size="icon"
                       variant="ghost"
                     >
-                      <Eraser className="size-5" />
+                      <CalendarDays className="size-5" />
+                    </Button>
+                    <Button
+                      aria-label="Settings"
+                      className="rounded-full border-0 bg-transparent text-muted-foreground active:bg-muted active:text-foreground"
+                      onClick={() => {
+                        triggerHaptic("medium")
+                        navigate({ type: "settings" })
+                      }}
+                      size="icon"
+                      variant="ghost"
+                    >
+                      <Settings className="size-5" />
+                    </Button>
+                    {hasFilters && (
+                      <Button
+                        aria-label="Reset selections"
+                        className="rounded-full border-0 bg-transparent text-muted-foreground active:bg-muted active:text-foreground"
+                        onClick={resetFlow}
+                        size="icon"
+                        variant="ghost"
+                      >
+                        <Eraser className="size-5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-end justify-between">
+                  <StageHeading stage={stage} />
+                  <output
+                    aria-live="polite"
+                    className="text-[15px] font-medium text-muted-foreground tabular-nums"
+                    data-testid="stage-count"
+                  >
+                    {stage === 1 && (
+                      <>
+                        <AnimatedNumber value={selectedMuscles.length} />{" "}
+                        selected
+                      </>
+                    )}
+                    {stage === 2 && (
+                      <>
+                        <AnimatedNumber value={selectedEquipment.length} />{" "}
+                        selected
+                      </>
+                    )}
+                    {stage === 3 && (
+                      <>
+                        <AnimatedNumber value={visibleExercises.length} />{" "}
+                        exercises
+                      </>
+                    )}
+                  </output>
+                </div>
+              </header>
+
+              <div
+                className="t-page-slide min-h-0 flex-1"
+                data-dragging={swipeDragging ? "true" : undefined}
+                data-page={stage}
+                ref={swipeContainerRef}
+                style={
+                  swipeDragging
+                    ? ({
+                        "--drag-x": `${swipeOffset}px`,
+                      } as React.CSSProperties)
+                    : undefined
+                }
+                {...swipeHandlers}
+              >
+                <section
+                  aria-hidden={stage !== 1}
+                  aria-label="Choose muscles"
+                  className="t-page px-[clamp(0.75rem,4vw,1.25rem)] pt-[clamp(0.75rem,2vh,1.25rem)] pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
+                  data-drag-peer={peerStage === 1 ? "true" : undefined}
+                  data-page-id="1"
+                  inert={stage !== 1}
+                >
+                  <div className="relative h-full min-h-0 overflow-hidden rounded-[28px] border border-border bg-card/60 shadow-[0_18px_40px_rgba(0,0,0,0.16)] backdrop-blur-xl">
+                    <DotPattern
+                      className="[mask-image:radial-gradient(ellipse_at_center,black_15%,transparent_72%)] transition-[fill,fill-opacity] duration-500 ease-[var(--ease-smooth-out)]"
+                      cr={1}
+                      height={18}
+                      style={{
+                        fill: `color-mix(in oklch, var(--muted-foreground), var(--primary) ${25 + muscleDotIntensity * 55}%)`,
+                        fillOpacity: 0.3 + muscleDotIntensity * 0.3,
+                      }}
+                      width={18}
+                    />
+                    <div className="relative z-10 h-full">
+                      <BodyMap
+                        onToggle={toggleMuscleWithHaptic}
+                        selectedMuscles={selectedMuscles}
+                      />
+                    </div>
+                  </div>
+                </section>
+
+                <section
+                  aria-hidden={stage !== 2}
+                  aria-label="Choose equipment"
+                  className="t-page overflow-y-auto px-5 pt-2 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
+                  data-drag-peer={peerStage === 2 ? "true" : undefined}
+                  data-page-id="2"
+                  inert={stage !== 2}
+                >
+                  <EquipmentPresets />
+                  <div className="grid grid-cols-2 gap-3">
+                    {EQUIPMENT_OPTIONS.map((equipment) => {
+                      const checked = selectedEquipment.includes(equipment)
+                      return (
+                        <button
+                          aria-checked={checked}
+                          className={`t-check group relative overflow-hidden rounded-[22px] border bg-card text-left transition-[border-color,box-shadow] duration-300 ease-[var(--ease-smooth-out)] ${
+                            checked
+                              ? "border-primary shadow-[0_0_0_1px_var(--primary)]"
+                              : "border-border"
+                          }`}
+                          key={equipment}
+                          onClick={() => toggleEquipmentWithHaptic(equipment)}
+                          role="checkbox"
+                          type="button"
+                        >
+                          <span className="relative block aspect-[1.18] overflow-hidden bg-[#161618]">
+                            <img
+                              alt=""
+                              className="h-full w-full object-cover saturate-[1.65] transition-transform duration-250 ease-[var(--ease-smooth-out)]"
+                              draggable={false}
+                              loading="lazy"
+                              src={equipmentImage(equipment)}
+                            />
+                          </span>
+                          <span className="flex min-h-13 items-center justify-center px-3.5 py-3 text-center text-base leading-tight font-semibold">
+                            {titleCase(equipment)}
+                          </span>
+                          <AnimatedCheck
+                            checked={checked}
+                            className="absolute top-2.5 right-2.5 size-7"
+                          />
+                        </button>
+                      )
+                    })}
+                  </div>
+                </section>
+
+                <section
+                  aria-hidden={stage !== 3}
+                  aria-label="Matching exercises"
+                  className="t-page overflow-y-auto px-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
+                  data-drag-peer={peerStage === 3 ? "true" : undefined}
+                  data-page-id="3"
+                  inert={stage !== 3}
+                  ref={exercisesScrollRef}
+                >
+                  <ExerciseSearch onChange={setSearch} value={search} />
+                  {visibleExercises.length === 0 ? (
+                    <div className="flex min-h-[20rem] flex-col items-center justify-center gap-3 text-center">
+                      <SearchX className="size-7 text-[color-mix(in_oklch,var(--muted-foreground),var(--background)_35%)]" />
+                      <p className="max-w-[16rem] text-base text-muted-foreground">
+                        {search.trim()
+                          ? `No exercises match "${search.trim()}".`
+                          : favoritesOnly
+                            ? "No favorites yet. Tap the heart on an exercise to save it here."
+                            : "0 exercises"}
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div
+                        className="t-stagger is-shown grid grid-cols-2 gap-3.5"
+                        data-testid="exercise-results"
+                      >
+                        {pagedExercises.map((exercise, index) => (
+                          <Fragment key={exercise.id}>
+                            {index === supportingIndex && (
+                              <h2 className="col-span-2 flex items-center gap-3 pt-3 pb-0.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                <span className="h-px flex-1 bg-border" />
+                                Also works these muscles
+                                <span className="h-px flex-1 bg-border" />
+                              </h2>
+                            )}
+                            <ExerciseCard
+                              exercise={exercise}
+                              index={index}
+                              onOpenDetail={openDetail}
+                              onToggleSelect={toggleSelected}
+                              selectMode={selectMode}
+                              selected={selectedIds.includes(exercise.id)}
+                            />
+                          </Fragment>
+                        ))}
+                      </div>
+                      {hasMoreExercises && (
+                        <>
+                          <div className="flex justify-center py-6">
+                            <MatrixLoader
+                              label="Loading more exercises"
+                              style={
+                                {
+                                  "--matrix-dot": "3px",
+                                  "--matrix-gap": "3px",
+                                } as CSSProperties
+                              }
+                              variant="scan"
+                            />
+                          </div>
+                          <div
+                            aria-hidden="true"
+                            className="h-1"
+                            data-testid="load-more-sentinel"
+                            ref={loadMoreSentinelRef}
+                          />
+                        </>
+                      )}
+                    </>
+                  )}
+                </section>
+              </div>
+
+              <footer className="bottom-controls-scrim absolute inset-x-0 bottom-0 z-20 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                <div className="relative flex gap-2.5">
+                  {stage > 1 && !selectMode && (
+                    <Button
+                      aria-label="Previous stage"
+                      className="size-[3.25rem] shrink-0 rounded-[26px]"
+                      onClick={goBack}
+                      size="icon"
+                      variant="secondary"
+                    >
+                      <ChevronLeft className="size-5" />
+                    </Button>
+                  )}
+                  {stage === 3 && selectMode && (
+                    <Button
+                      aria-label="Cancel selection"
+                      className="size-[3.25rem] shrink-0 rounded-[26px]"
+                      onClick={cancelSelectMode}
+                      size="icon"
+                      variant="secondary"
+                    >
+                      <X />
+                    </Button>
+                  )}
+                  {stage === 3 && (
+                    <LikeButton
+                      animated={false}
+                      aria-label={
+                        favoritesOnly
+                          ? "Show all exercises"
+                          : "Show favorites only"
+                      }
+                      className={`grid size-[3.25rem] shrink-0 place-items-center rounded-[26px] border transition-colors duration-150 ${
+                        favoritesOnly
+                          ? "border-primary bg-[color-mix(in_oklch,var(--card),var(--primary)_16%)] text-primary"
+                          : "border-border bg-card text-muted-foreground active:bg-muted"
+                      }`}
+                      iconClassName="size-5"
+                      liked={favoritesOnly}
+                      onClick={() => {
+                        triggerHaptic("selection")
+                        setFavoritesOnly((value) => !value)
+                      }}
+                    />
+                  )}
+                  {stage < 3 ? (
+                    <Button
+                      className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
+                      disabled={!canContinue}
+                      onClick={goForward}
+                    >
+                      {stage === 1 ? "Choose equipment" : "Show exercises"}
+                    </Button>
+                  ) : selectMode ? (
+                    <Button
+                      className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
+                      disabled={selectedIds.length === 0}
+                      onClick={addSelectionToWorkout}
+                    >
+                      Add to workout
+                      {selectedIds.length > 0 && ` (${selectedIds.length})`}
+                    </Button>
+                  ) : (
+                    <Button
+                      className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
+                      onClick={() => {
+                        triggerHaptic("medium")
+                        setSelectMode(true)
+                      }}
+                    >
+                      Select
                     </Button>
                   )}
                 </div>
-              </div>
-              <div className="flex items-end justify-between">
-                <StageHeading stage={stage} />
-                <output
-                  aria-live="polite"
-                  className="text-[15px] font-medium text-muted-foreground tabular-nums"
-                  data-testid="stage-count"
-                >
-                  {stage === 1 && (
-                    <>
-                      <AnimatedNumber value={selectedMuscles.length} /> selected
-                    </>
-                  )}
-                  {stage === 2 && (
-                    <>
-                      <AnimatedNumber value={selectedEquipment.length} />{" "}
-                      selected
-                    </>
-                  )}
-                  {stage === 3 && (
-                    <>
-                      <AnimatedNumber value={visibleExercises.length} />{" "}
-                      exercises
-                    </>
-                  )}
-                </output>
-              </div>
-            </header>
-
-            <div
-              className="t-page-slide min-h-0 flex-1"
-              data-dragging={swipeDragging ? "true" : undefined}
-              data-page={stage}
-              ref={swipeContainerRef}
-              style={
-                swipeDragging
-                  ? ({ "--drag-x": `${swipeOffset}px` } as React.CSSProperties)
-                  : undefined
-              }
-              {...swipeHandlers}
-            >
-              <section
-                aria-hidden={stage !== 1}
-                aria-label="Choose muscles"
-                className="t-page px-[clamp(0.75rem,4vw,1.25rem)] pt-[clamp(0.75rem,2vh,1.25rem)] pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
-                data-drag-peer={peerStage === 1 ? "true" : undefined}
-                data-page-id="1"
-                inert={stage !== 1}
-              >
-                <div className="relative h-full min-h-0 overflow-hidden rounded-[28px] border border-border bg-card/60 shadow-[0_18px_40px_rgba(0,0,0,0.16)] backdrop-blur-xl">
-                  <DotPattern
-                    className="[mask-image:radial-gradient(ellipse_at_center,black_15%,transparent_72%)] transition-[fill,fill-opacity] duration-500 ease-[var(--ease-smooth-out)]"
-                    cr={1}
-                    height={18}
-                    style={{
-                      fill: `color-mix(in oklch, var(--muted-foreground), var(--primary) ${25 + muscleDotIntensity * 55}%)`,
-                      fillOpacity: 0.3 + muscleDotIntensity * 0.3,
-                    }}
-                    width={18}
-                  />
-                  <div className="relative z-10 h-full">
-                    <BodyMap
-                      onToggle={toggleMuscleWithHaptic}
-                      selectedMuscles={selectedMuscles}
-                    />
-                  </div>
-                </div>
-              </section>
-
-              <section
-                aria-hidden={stage !== 2}
-                aria-label="Choose equipment"
-                className="t-page overflow-y-auto px-5 pt-2 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
-                data-drag-peer={peerStage === 2 ? "true" : undefined}
-                data-page-id="2"
-                inert={stage !== 2}
-              >
-                <EquipmentPresets />
-                <div className="grid grid-cols-2 gap-3">
-                  {EQUIPMENT_OPTIONS.map((equipment) => {
-                    const checked = selectedEquipment.includes(equipment)
-                    return (
-                      <button
-                        aria-checked={checked}
-                        className={`t-check group relative overflow-hidden rounded-[22px] border bg-card text-left transition-[border-color,box-shadow] duration-300 ease-[var(--ease-smooth-out)] ${
-                          checked
-                            ? "border-primary shadow-[0_0_0_1px_var(--primary)]"
-                            : "border-border"
-                        }`}
-                        key={equipment}
-                        onClick={() => toggleEquipmentWithHaptic(equipment)}
-                        role="checkbox"
-                        type="button"
-                      >
-                        <span className="relative block aspect-[1.18] overflow-hidden bg-[#161618]">
-                          <img
-                            alt=""
-                            className="h-full w-full object-cover saturate-[1.65] transition-transform duration-250 ease-[var(--ease-smooth-out)]"
-                            draggable={false}
-                            loading="lazy"
-                            src={equipmentImage(equipment)}
-                          />
-                        </span>
-                        <span className="flex min-h-13 items-center justify-center px-3.5 py-3 text-center text-base leading-tight font-semibold">
-                          {titleCase(equipment)}
-                        </span>
-                        <AnimatedCheck
-                          checked={checked}
-                          className="absolute top-2.5 right-2.5 size-7"
-                        />
-                      </button>
-                    )
-                  })}
-                </div>
-              </section>
-
-              <section
-                aria-hidden={stage !== 3}
-                aria-label="Matching exercises"
-                className="t-page overflow-y-auto px-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
-                data-drag-peer={peerStage === 3 ? "true" : undefined}
-                data-page-id="3"
-                inert={stage !== 3}
-                ref={exercisesScrollRef}
-              >
-                <ExerciseSearch onChange={setSearch} value={search} />
-                {visibleExercises.length === 0 ? (
-                  <div className="flex min-h-[20rem] flex-col items-center justify-center gap-3 text-center">
-                    <SearchX className="size-7 text-[color-mix(in_oklch,var(--muted-foreground),var(--background)_35%)]" />
-                    <p className="max-w-[16rem] text-base text-muted-foreground">
-                      {search.trim()
-                        ? `No exercises match "${search.trim()}".`
-                        : favoritesOnly
-                          ? "No favorites yet. Tap the heart on an exercise to save it here."
-                          : "0 exercises"}
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <div
-                      className="t-stagger is-shown grid grid-cols-2 gap-3.5"
-                      data-testid="exercise-results"
-                    >
-                      {pagedExercises.map((exercise, index) => (
-                        <Fragment key={exercise.id}>
-                          {index === supportingIndex && (
-                            <h2 className="col-span-2 flex items-center gap-3 pt-3 pb-0.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                              <span className="h-px flex-1 bg-border" />
-                              Also works these muscles
-                              <span className="h-px flex-1 bg-border" />
-                            </h2>
-                          )}
-                          <ExerciseCard
-                            exercise={exercise}
-                            index={index}
-                            onOpenDetail={openDetail}
-                            onToggleSelect={toggleSelected}
-                            selectMode={selectMode}
-                            selected={selectedIds.includes(exercise.id)}
-                          />
-                        </Fragment>
-                      ))}
-                    </div>
-                    {hasMoreExercises && (
-                      <>
-                        <div className="flex justify-center py-6">
-                          <MatrixLoader
-                            label="Loading more exercises"
-                            style={
-                              {
-                                "--matrix-dot": "3px",
-                                "--matrix-gap": "3px",
-                              } as CSSProperties
-                            }
-                            variant="scan"
-                          />
-                        </div>
-                        <div
-                          aria-hidden="true"
-                          className="h-1"
-                          data-testid="load-more-sentinel"
-                          ref={loadMoreSentinelRef}
-                        />
-                      </>
-                    )}
-                  </>
-                )}
-              </section>
-            </div>
-
-            <footer className="bottom-controls-scrim absolute inset-x-0 bottom-0 z-20 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-              <div className="relative flex gap-2.5">
-                {stage > 1 && !selectMode && (
-                  <Button
-                    aria-label="Previous stage"
-                    className="size-[3.25rem] shrink-0 rounded-[26px]"
-                    onClick={goBack}
-                    size="icon"
-                    variant="secondary"
-                  >
-                    <ChevronLeft className="size-5" />
-                  </Button>
-                )}
-                {stage === 3 && selectMode && (
-                  <Button
-                    aria-label="Cancel selection"
-                    className="size-[3.25rem] shrink-0 rounded-[26px]"
-                    onClick={cancelSelectMode}
-                    size="icon"
-                    variant="secondary"
-                  >
-                    <X />
-                  </Button>
-                )}
-                {stage === 3 && (
-                  <LikeButton
-                    animated={false}
-                    aria-label={
-                      favoritesOnly
-                        ? "Show all exercises"
-                        : "Show favorites only"
-                    }
-                    className={`grid size-[3.25rem] shrink-0 place-items-center rounded-[26px] border transition-colors duration-150 ${
-                      favoritesOnly
-                        ? "border-primary bg-[color-mix(in_oklch,var(--card),var(--primary)_16%)] text-primary"
-                        : "border-border bg-card text-muted-foreground active:bg-muted"
-                    }`}
-                    iconClassName="size-5"
-                    liked={favoritesOnly}
-                    onClick={() => {
-                      triggerHaptic("selection")
-                      setFavoritesOnly((value) => !value)
-                    }}
-                  />
-                )}
-                {stage < 3 ? (
-                  <Button
-                    className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
-                    disabled={!canContinue}
-                    onClick={goForward}
-                  >
-                    {stage === 1 ? "Choose equipment" : "Show exercises"}
-                  </Button>
-                ) : selectMode ? (
-                  <Button
-                    className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
-                    disabled={selectedIds.length === 0}
-                    onClick={addSelectionToWorkout}
-                  >
-                    Add to workout
-                    {selectedIds.length > 0 && ` (${selectedIds.length})`}
-                  </Button>
-                ) : (
-                  <Button
-                    className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
-                    onClick={() => {
-                      triggerHaptic("medium")
-                      setSelectMode(true)
-                    }}
-                  >
-                    Select
-                  </Button>
-                )}
-              </div>
-            </footer>
-          </>
-        )}
+              </footer>
+            </>
+          )}
+        </div>
       </main>
 
       <ExerciseDetailDrawer
@@ -746,7 +776,7 @@ export function App() {
         onSaved={(workoutId) => {
           cancelSelectMode()
           setPreferredWorkoutId(null)
-          setView({ type: "workout-detail", workoutId })
+          navigate({ type: "workout-detail", workoutId })
         }}
         open={workoutFormOpen}
         workout={workoutFormSeed.workout}
@@ -765,7 +795,7 @@ export function App() {
           setWorkoutDestinationOpen(false)
           cancelSelectMode()
           setPreferredWorkoutId(null)
-          setView({ type: "workout-detail", workoutId })
+          navigate({ type: "workout-detail", workoutId })
         }}
         onCreateNew={() => {
           setWorkoutDestinationOpen(false)

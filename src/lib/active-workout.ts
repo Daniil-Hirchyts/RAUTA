@@ -1,6 +1,4 @@
 import { EXERCISES_BY_ID } from "@/lib/exercises"
-import { MUSCLE_LABELS } from "@/lib/muscles"
-import type { ExerciseSummary } from "@/types"
 
 /**
  * A workout being performed right now. The timer is stored as a running
@@ -103,9 +101,4 @@ export function currentExercise(session: ActiveWorkoutSession) {
   return session.currentExerciseId
     ? (EXERCISES_BY_ID.get(session.currentExerciseId) ?? null)
     : null
-}
-
-/** The muscles worth naming beside an exercise, strongest involvement first. */
-export function exerciseMuscleLabels(exercise: ExerciseSummary, limit = 3) {
-  return exercise.muscles.slice(0, limit).map((muscle) => MUSCLE_LABELS[muscle])
 }

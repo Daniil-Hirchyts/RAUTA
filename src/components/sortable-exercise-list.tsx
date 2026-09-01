@@ -24,6 +24,7 @@ function SortableExerciseRow({
   onOpenChange,
   onRemove,
   onToggleComplete,
+  reorderable,
   status,
 }: {
   exercise: ExerciseSummary
@@ -35,9 +36,11 @@ function SortableExerciseRow({
   onRemove?: (id: string) => void
   /** Present only while a workout is being performed. */
   onToggleComplete?: (id: string) => void
+  reorderable: boolean
   status?: ExerciseStatus
 }) {
   const { handleRef, isDragSource, ref } = useSortable({
+    disabled: !reorderable,
     id: exercise.id,
     index,
     transition: { duration: 220, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
@@ -108,16 +111,18 @@ function SortableExerciseRow({
           </p>
         </button>
       </div>
-      <button
-        aria-label={`Reorder ${exercise.name}`}
-        className="grid w-12 shrink-0 touch-none place-items-center text-muted-foreground transition-colors active:text-foreground"
-        data-base-ui-swipe-ignore=""
-        data-haptics="off"
-        ref={handleRef as Ref<HTMLButtonElement>}
-        type="button"
-      >
-        <GripVertical className="size-6" />
-      </button>
+      {reorderable ? (
+        <button
+          aria-label={`Reorder ${exercise.name}`}
+          className="grid w-12 shrink-0 touch-none place-items-center text-muted-foreground transition-colors active:text-foreground"
+          data-base-ui-swipe-ignore=""
+          data-haptics="off"
+          ref={handleRef as Ref<HTMLButtonElement>}
+          type="button"
+        >
+          <GripVertical className="size-6" />
+        </button>
+      ) : null}
     </div>
   )
 
@@ -177,13 +182,14 @@ export function SortableExerciseList({
   onFindAlternative?: (exercise: ExerciseSummary) => void
   onOpenExercise?: (exercise: ExerciseSummary) => void
   onRemove?: (id: string) => void
-  onReorder: (exerciseIds: string[]) => void
+  onReorder?: (exerciseIds: string[]) => void
   /** Pass both to add check-off and status to the list of a running workout.
    *  Reordering, removing and swapping stay available either way. */
   onToggleComplete?: (id: string) => void
   statusOf?: (id: string) => ExerciseStatus
 }) {
   const [openRowId, setOpenRowId] = useState<string | null>(null)
+  const reorderable = Boolean(onReorder)
 
   return (
     <DragDropProvider
@@ -197,7 +203,7 @@ export function SortableExerciseList({
         const next = [...exerciseIds]
         const [moved] = next.splice(initialIndex, 1)
         next.splice(index, 0, moved)
-        onReorder(next)
+        onReorder?.(next)
         triggerHaptic("success")
       }}
       onDragStart={() => triggerHaptic("selection")}
@@ -217,6 +223,7 @@ export function SortableExerciseList({
               onOpenChange={(open) => setOpenRowId(open ? id : null)}
               onRemove={onRemove}
               onToggleComplete={onToggleComplete}
+              reorderable={reorderable}
               status={statusOf?.(id)}
             />
           )

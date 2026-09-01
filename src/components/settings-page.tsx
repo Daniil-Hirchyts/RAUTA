@@ -184,12 +184,19 @@ export function SettingsPage({
     setNotice("")
     try {
       const result = await requestAppleHealthAccess()
-      const connected = result === "connected"
+      const connected = result.status === "connected"
       setPreference("appleHealthEnabled", connected)
       setPreference("healthStatus", connected ? "connected" : "unavailable")
+      setPreference("healthBodyWeightKg", result.bodyWeightKg)
+      setPreference(
+        "healthLastConnectedAt",
+        connected ? new Date().toISOString() : null
+      )
       setNotice(
         connected
-          ? "Apple Health connected."
+          ? result.bodyWeightKg
+            ? `Apple Health connected. Using ${result.bodyWeightKg} kg for energy estimates.`
+            : "Apple Health connected. Weight access is optional; energy uses a standard estimate."
           : "Apple Health is available in the iPhone app."
       )
       triggerHaptic(connected ? "success" : "warning")
@@ -239,7 +246,9 @@ export function SettingsPage({
           <SettingsRow
             description={
               settings.healthStatus === "connected"
-                ? "Connected to HealthKit"
+                ? settings.healthBodyWeightKg
+                  ? `Connected · ${settings.healthBodyWeightKg} kg from Health`
+                  : "Connected · workout write access granted"
                 : "Save completed strength workouts to Health"
             }
             icon={<Apple />}
@@ -273,7 +282,7 @@ export function SettingsPage({
             />
           </SettingsRow>
           <SettingsRow
-            description="Include your estimated active energy"
+            description="MET estimate using your latest Health weight when allowed"
             icon={<Activity />}
             title="Active calories"
           >

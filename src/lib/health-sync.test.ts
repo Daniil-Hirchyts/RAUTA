@@ -4,6 +4,7 @@ import { saveCompletedWorkoutToHealth } from "@/lib/health"
 import { startAppleHealthSync } from "@/lib/health-sync"
 import { useActiveWorkout } from "@/store/use-active-workout"
 import { DEFAULT_SETTINGS, useSettings } from "@/store/use-settings"
+import { useWorkouts } from "@/store/use-workouts"
 
 vi.mock("@/lib/health", () => ({
   saveCompletedWorkoutToHealth: vi.fn().mockResolvedValue(true),
@@ -23,6 +24,19 @@ const session = {
 
 describe("Apple Health sync", () => {
   beforeEach(() => {
+    useWorkouts.setState({
+      workouts: [
+        {
+          completion: null,
+          createdAt: "2026-08-31T09:00:00.000Z",
+          date: "2026-08-31",
+          exerciseIds: ["0001"],
+          id: "workout-1",
+          name: "Push day",
+          updatedAt: "2026-08-31T09:00:00.000Z",
+        },
+      ],
+    })
     useActiveWorkout.setState({ lastOutcome: null, session: null })
     useSettings.setState({
       ...DEFAULT_SETTINGS,
@@ -38,13 +52,16 @@ describe("Apple Health sync", () => {
 
     await vi.waitFor(() => {
       expect(saveCompletedWorkoutToHealth).toHaveBeenCalledWith({
-        activeCalories: 90,
+        activeCalories: 118,
         endDate: "2026-08-31T10:15:00.000Z",
         startDate: "2026-08-31T10:00:00.000Z",
         workoutId: "workout-1",
         workoutName: "Push day",
       })
     })
+    expect(
+      useWorkouts.getState().workouts[0].completion?.healthSyncStatus
+    ).toBe("synced")
     stop()
   })
 

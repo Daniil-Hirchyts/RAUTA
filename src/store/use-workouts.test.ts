@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest"
 
+import { toISODate } from "@/lib/date"
 import { useWorkouts } from "@/store/use-workouts"
 
 describe("workouts store", () => {
@@ -64,7 +65,8 @@ describe("workouts store", () => {
     const copy = useWorkouts.getState().workouts.find((w) => w.id === copyId)
     expect(copy?.name).toBe("Push day copy")
     expect(copy?.exerciseIds).toEqual(["0001", "0002"])
-    expect(copy?.date).toBe("2026-09-01")
+    expect(copy?.date).toBe(toISODate(new Date()))
+    expect(copy?.completion).toBeNull()
   })
 
   it("returns null when duplicating a missing workout", () => {
@@ -94,16 +96,52 @@ describe("workouts store", () => {
 
     await useWorkouts.persist.rehydrate()
 
-    expect(useWorkouts.persist.getOptions().version).toBe(1)
+    expect(useWorkouts.persist.getOptions().version).toBe(2)
     expect(useWorkouts.getState().workouts).toEqual([
       {
         id: "valid",
         name: "Training",
         date: "2026-09-01",
         exerciseIds: ["0001"],
+        completion: null,
         createdAt: "2026-08-01T00:00:00.000Z",
         updatedAt: "2026-08-01T00:00:00.000Z",
       },
     ])
+  })
+
+  it("records completion stats and clears them when copied to today", () => {
+    const id = useWorkouts.getState().createWorkout({
+      name: "Push day",
+      date: "2026-09-01",
+      exerciseIds: ["0001", "0002"],
+    })
+    useWorkouts.getState().completeWorkout(id, {
+      activeCalories: 120,
+      completedAt: "2026-09-01T10:30:00.000Z",
+      completedExerciseIds: ["0001"],
+      durationMs: 30 * 60_000,
+      healthSyncStatus: "synced",
+      startedAt: "2026-09-01T10:00:00.000Z",
+    })
+
+    const copyId = useWorkouts.getState().duplicateWorkout(id)!
+    const source = useWorkouts
+      .getState()
+      .workouts.find((item) => item.id === id)
+    const copy = useWorkouts
+      .getState()
+      .workouts.find((item) => item.id === copyId)
+
+    expect(source?.completion).toMatchObject({
+      activeCalories: 120,
+      durationMs: 30 * 60_000,
+      healthSyncStatus: "synced",
+    })
+    expect(copy).toMatchObject({
+      completion: null,
+      date: toISODate(new Date()),
+      exerciseIds: ["0001", "0002"],
+    })
   })
 })

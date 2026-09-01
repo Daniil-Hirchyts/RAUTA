@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 import UIKit
 
 /// Prepares the demonstration image a Live Activity shows.
@@ -15,57 +16,84 @@ import UIKit
 /// bitmap context hands back, so the per-pixel pass below reproduces the
 /// browser rather than approximating it with Core Image's linear working space.
 enum ExerciseFrameRenderer {
-    /// Large enough for the expanded Dynamic Island on a 3x screen, small
-    /// enough that the pass is a few milliseconds.
-    private static let side = 240
+    /// Large enough for the Lock Screen card's demonstration panel on a 3x
+    /// screen, small enough that the pass is a few milliseconds.
+    private static let side = 320
+
+    /// How many stills the movement is decomposed into. Four is enough to read
+    /// as a rep rather than a pose, and small enough that preparing an exercise
+    /// stays a handful of milliseconds.
+    static let frameCount = 4
 
     /// Prepared frames are worth keeping between sessions, but the library has
-    /// over a thousand exercises and the container is shared with the widget.
-    /// Only the recently used ones stay.
-    private static let cacheLimit = 60
+    /// over a thousand exercises, each now costs `frameCount` files, and the
+    /// container is shared with the widget — and with the muscle maps, which
+    /// are pruned by the same rule. Only the recently used ones stay.
+    static let cacheLimit = 240
 
     /// The web filter chain, term for term.
     private static let hueRotation = 191.0
     private static let saturation = 1.75
     private static let contrast = 1.03
 
-    /// Renders `exerciseId`'s frame if it is not already prepared, and returns
-    /// the file name to put in the activity's content state. `nil` when there
-    /// is nothing to show — an unknown id, or no reachable App Group.
-    static func prepareFrame(exerciseId: String) -> String? {
+    /// Prepares the whole set of stills for `exerciseId` if it is not already
+    /// on disk, and returns the file name for `frameIndex` — the one this
+    /// update of the card should show. `nil` when there is nothing to show: an
+    /// unknown id, or no reachable App Group.
+    ///
+    /// The set is written all at once. The card asks for a different index on
+    /// every update, so preparing them one at a time would only spread the same
+    /// work over the first four updates of an exercise while showing an empty
+    /// panel in between.
+    static func prepareFrame(exerciseId: String, frameIndex: Int) -> String? {
         guard !exerciseId.isEmpty else { return nil }
 
-        let name = "exercise-\(exerciseId).png"
-        guard let url = WorkoutActivityStore.frameURL(named: name) else { return nil }
-        if FileManager.default.fileExists(atPath: url.path) {
-            touch(url)
-            return name
+        let names = (0..<frameCount).map { frameName(exerciseId: exerciseId, index: $0) }
+        let urls = names.compactMap { WorkoutActivityStore.frameURL(named: $0) }
+        guard urls.count == names.count else { return nil }
+
+        let manager = FileManager.default
+        if urls.allSatisfy({ manager.fileExists(atPath: $0.path) }) {
+            urls.forEach(touch)
+            return names[wrapped(frameIndex, count: names.count)]
         }
 
-        guard
-            let source = bundledAnimation(exerciseId: exerciseId),
-            let data = render(source)
-        else { return nil }
+        let images = bundledFrames(exerciseId: exerciseId)
+        guard images.count == names.count else { return nil }
 
-        do {
-            try data.write(to: url, options: .atomic)
-            pruneCache()
-            return name
-        } catch {
-            return nil
+        for (url, image) in zip(urls, images) {
+            guard let data = render(image) else { return nil }
+            do {
+                try data.write(to: url, options: .atomic)
+            } catch {
+                return nil
+            }
         }
+        pruneCache()
+
+        return names[wrapped(frameIndex, count: names.count)]
+    }
+
+    /// The version suffix retires frames prepared by an earlier build: the
+    /// size and the sampled point of the movement are both baked into the PNG.
+    private static func frameName(exerciseId: String, index: Int) -> String {
+        "exercise-\(exerciseId)-\(index)-v3.png"
+    }
+
+    private static func wrapped(_ index: Int, count: Int) -> Int {
+        count > 0 ? ((index % count) + count) % count : 0
     }
 
     /// Keeps the cache honest about which frames are still in use, so pruning
     /// drops the ones no workout has reached for in a long time.
-    private static func touch(_ url: URL) {
+    static func touch(_ url: URL) {
         try? FileManager.default.setAttributes(
             [.modificationDate: Date()],
             ofItemAtPath: url.path
         )
     }
 
-    private static func pruneCache() {
+    static func pruneCache() {
         guard let directory = WorkoutActivityStore.framesDirectory else { return }
 
         let manager = FileManager.default
@@ -90,19 +118,49 @@ enum ExerciseFrameRenderer {
             .contentModificationDate ?? .distantPast
     }
 
-    /// The animations ship inside the web bundle's `public` folder reference.
-    /// `UIImage` decodes an animated WebP to its first frame, which is the
-    /// keyframe a still card wants anyway.
-    private static func bundledAnimation(exerciseId: String) -> UIImage? {
+    /// Where in the sequence the first still is taken from. Frame zero of the
+    /// source animation is the rest position, which is the least recognisable
+    /// moment of most exercises; starting a third of the way in means the
+    /// still the card spends most of its time showing is one where the
+    /// exercise is being *done*.
+    private static let motionOffset = 1.0 / 3.0
+
+    /// `frameCount` stills spanning one repetition, in the order the card
+    /// steps through them. The animations ship inside the web bundle's
+    /// `public` folder reference; `CGImageSource` reads the individual frames
+    /// of an animated WebP, where `UIImage` would only ever decode the first.
+    ///
+    /// A still source — or one ImageIO will not take apart — yields the same
+    /// image `frameCount` times, so the card simply does not appear to move.
+    private static func bundledFrames(exerciseId: String) -> [UIImage] {
         guard
             let url = Bundle.main.url(
                 forResource: exerciseId,
                 withExtension: "webp",
                 subdirectory: "public/assets/exercises/webp"
             )
-        else { return nil }
+        else { return [] }
 
-        return UIImage(contentsOfFile: url.path)
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
+            return still(at: url)
+        }
+
+        let count = CGImageSourceGetCount(source)
+        guard count > 1 else { return still(at: url) }
+
+        let frames = (0..<frameCount).compactMap { step -> UIImage? in
+            let position = motionOffset + Double(step) / Double(frameCount)
+            let index = Int(Double(count) * position.truncatingRemainder(dividingBy: 1))
+            return CGImageSourceCreateImageAtIndex(source, min(index, count - 1), nil)
+                .map(UIImage.init(cgImage:))
+        }
+
+        return frames.count == frameCount ? frames : still(at: url)
+    }
+
+    private static func still(at url: URL) -> [UIImage] {
+        guard let image = UIImage(contentsOfFile: url.path) else { return [] }
+        return Array(repeating: image, count: frameCount)
     }
 
     private static func render(_ image: UIImage) -> Data? {
@@ -251,5 +309,40 @@ enum ExerciseFrameRenderer {
             green: 1 - (1 - color.green) * (1 - ground.green),
             blue: 1 - (1 - color.blue) * (1 - ground.blue)
         )
+    }
+}
+
+
+/// The muscle map the Lock Screen card shows instead of a list of muscle
+/// names. Unlike the demonstration frame there is nothing to compute here: the
+/// web layer rasterizes the same figures the app draws on screen and hands the
+/// bytes over, so this only has to put them somewhere the widget can read.
+enum MuscleMapStore {
+    /// Writes the map for `key` if it is not already in the shared container
+    /// and returns the file name to put in the activity's content state. The
+    /// PNG may be empty — the web layer sends it only the first time a set of
+    /// muscles comes up — which is fine as long as the file is already there.
+    static func prepareMap(key: String, base64Png: String) -> String? {
+        guard !key.isEmpty else { return nil }
+
+        let name = "muscles-\(key).png"
+        guard let url = WorkoutActivityStore.frameURL(named: name) else { return nil }
+        if FileManager.default.fileExists(atPath: url.path) {
+            ExerciseFrameRenderer.touch(url)
+            return name
+        }
+
+        guard
+            !base64Png.isEmpty,
+            let data = Data(base64Encoded: base64Png)
+        else { return nil }
+
+        do {
+            try data.write(to: url, options: .atomic)
+            ExerciseFrameRenderer.pruneCache()
+            return name
+        } catch {
+            return nil
+        }
     }
 }

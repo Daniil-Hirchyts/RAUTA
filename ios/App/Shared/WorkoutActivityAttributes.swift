@@ -12,11 +12,13 @@ struct WorkoutActivityAttributes: ActivityAttributes {
     /// already skips updates that would not change anything here.
     struct ContentState: Codable, Hashable {
         var exerciseName: String
-        var exerciseMuscles: String
         /// File name of the prepared demonstration frame in the shared
         /// container, or "" when there is no frame to show.
         var exerciseFrame: String
-        var nextExerciseName: String
+        /// File name of the prepared muscle map — the front and back figures
+        /// with the exercise's muscles picked out. The card shows this in
+        /// place of spelling the muscle names out; "" when unavailable.
+        var muscleMapFrame: String
         var completedCount: Int
         var totalCount: Int
         /// The instant a stopwatch would have had to start to read the current

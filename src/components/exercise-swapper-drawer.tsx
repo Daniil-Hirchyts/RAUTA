@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
+import { FULL_HEIGHT_DRAWER_STYLE } from "@/components/ui/drawer-style"
 import { findExerciseAlternatives } from "@/lib/exercises"
 import { titleCase } from "@/lib/text"
 import {
@@ -8,6 +9,12 @@ import {
   exerciseAnimation,
 } from "@/lib/visuals"
 import type { ExerciseSummary } from "@/types"
+
+// Past this many alternatives the sheet is mostly a scrolling list, and a
+// swap is a comparison — so it takes the whole screen instead of asking for
+// the choice through a letterbox. A handful still reads better as a sheet
+// with the workout visible behind it.
+const FULL_SCREEN_FROM = 5
 
 export function ExerciseSwapperDrawer({
   excludedExerciseIds,
@@ -38,6 +45,10 @@ export function ExerciseSwapperDrawer({
 
   if (!exercise) return null
 
+  // Measured on everything available rather than what the equipment filter
+  // leaves, so narrowing the list does not make the sheet jump.
+  const fullScreen = alternatives.length >= FULL_SCREEN_FROM
+
   return (
     <Drawer
       onOpenChange={(nextOpen) => {
@@ -47,7 +58,10 @@ export function ExerciseSwapperDrawer({
       open={open}
       swipeDirection="down"
     >
-      <DrawerContent className="mx-auto max-w-[430px] [--drawer-height:min(82vh,44rem)] [--drawer-inset:0px]">
+      <DrawerContent
+        className="mx-auto max-w-[430px] [--drawer-height:min(82vh,44rem)] [--drawer-inset:0px]"
+        style={fullScreen ? FULL_HEIGHT_DRAWER_STYLE : undefined}
+      >
         <div className="flex min-h-0 flex-1 flex-col pt-16">
           <div className="shrink-0 px-5">
             <DrawerTitle className="text-2xl font-black tracking-[-0.025em]">

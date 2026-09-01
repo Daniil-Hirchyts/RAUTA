@@ -8,6 +8,8 @@ export type HealthStatus = "idle" | "connected" | "unavailable" | "error"
 export type SettingsPreferences = {
   appleHealthEnabled: boolean
   healthStatus: HealthStatus
+  healthBodyWeightKg: number | null
+  healthLastConnectedAt: string | null
   autoSyncWorkouts: boolean
   syncActiveCalories: boolean
   hapticsEnabled: boolean
@@ -26,6 +28,8 @@ type SettingsState = SettingsPreferences & {
 export const DEFAULT_SETTINGS: SettingsPreferences = {
   appleHealthEnabled: false,
   healthStatus: "idle",
+  healthBodyWeightKg: null,
+  healthLastConnectedAt: null,
   autoSyncWorkouts: false,
   syncActiveCalories: true,
   hapticsEnabled: true,
@@ -59,6 +63,17 @@ export function sanitizeSettings(value: unknown): SettingsPreferences {
       HEALTH_STATUSES,
       DEFAULT_SETTINGS.healthStatus
     ),
+    healthBodyWeightKg:
+      typeof state.healthBodyWeightKg === "number" &&
+      Number.isFinite(state.healthBodyWeightKg) &&
+      state.healthBodyWeightKg >= 30 &&
+      state.healthBodyWeightKg <= 300
+        ? state.healthBodyWeightKg
+        : null,
+    healthLastConnectedAt:
+      typeof state.healthLastConnectedAt === "string"
+        ? state.healthLastConnectedAt
+        : null,
     autoSyncWorkouts: state.autoSyncWorkouts === true,
     syncActiveCalories: state.syncActiveCalories !== false,
     hapticsEnabled: state.hapticsEnabled !== false,
@@ -76,7 +91,7 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: "gym-lib-settings",
-      version: 2,
+      version: 3,
       migrate: sanitizeSettings,
       merge: (persistedState, currentState) => ({
         ...currentState,

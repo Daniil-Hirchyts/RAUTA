@@ -10,6 +10,7 @@ describe("workout sharing", () => {
       name: "Workout",
       date: "2026-09-01",
       exerciseIds: ["0001", "0002"],
+      completion: null,
       createdAt: "2026-08-31T00:00:00.000Z",
       updatedAt: "2026-08-31T00:00:00.000Z",
     }

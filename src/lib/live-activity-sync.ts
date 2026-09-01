@@ -1,14 +1,16 @@
 import {
   currentExercise,
   elapsedMs,
-  exerciseMuscleLabels,
-  nextPendingExerciseId,
   sessionProgress,
   type ActiveWorkoutSession,
 } from "@/lib/active-workout"
 import { formatDateLong } from "@/lib/date"
-import { EXERCISES_BY_ID } from "@/lib/exercises"
-import { liveActivity, type LiveActivityContent } from "@/lib/live-activity"
+import {
+  liveActivity,
+  type LiveActivityContent,
+  type LiveActivityPayload,
+} from "@/lib/live-activity"
+import { muscleMapKey, muscleMapPng } from "@/lib/muscle-map-image"
 import { titleCase } from "@/lib/text"
 import { useActiveWorkout } from "@/store/use-active-workout"
 
@@ -17,8 +19,6 @@ export function liveActivityContent(
   session: ActiveWorkoutSession
 ): LiveActivityContent {
   const exercise = currentExercise(session)
-  const nextId = nextPendingExerciseId(session)
-  const next = nextId ? EXERCISES_BY_ID.get(nextId) : null
   const { completed, total } = sessionProgress(session)
   const isPaused = session.runningSince === null
 
@@ -28,8 +28,7 @@ export function liveActivityContent(
     workoutDate: formatDateLong(session.workoutDate),
     exerciseId: exercise?.id ?? "",
     exerciseName: exercise ? titleCase(exercise.name) : "All exercises done",
-    exerciseMuscles: exercise ? exerciseMuscleLabels(exercise).join(" · ") : "",
-    nextExerciseName: next ? titleCase(next.name) : "",
+    muscleMapKey: exercise ? muscleMapKey(exercise.muscles) : "",
     completedCount: completed,
     totalCount: total,
     timerStartEpochMs: isPaused
@@ -45,8 +44,7 @@ function endContent(session: ActiveWorkoutSession): LiveActivityContent {
   return {
     ...liveActivityContent(session),
     exerciseName: "Workout complete",
-    exerciseMuscles: "",
-    nextExerciseName: "",
+    muscleMapKey: "",
     timerStartEpochMs: 0,
     elapsedMs: elapsedMs(session),
     isPaused: true,
@@ -61,10 +59,24 @@ function endContent(session: ActiveWorkoutSession): LiveActivityContent {
 export function startLiveActivitySync() {
   let lastFrame: string | null = null
   let lastWorkoutId: string | null = null
+  let lastExerciseId: string | null = null
+  let frameIndex = 0
 
   const render = (session: ActiveWorkoutSession) => {
     const content = liveActivityContent(session)
-    const frame = JSON.stringify(content)
+    const exercise = currentExercise(session)
+    // Rasterizing a muscle map is asynchronous, so the first frame of a new
+    // exercise goes out without one and the map arrives with the next — which
+    // this schedules itself, since nothing else about the session will have
+    // changed by then.
+    const map = exercise
+      ? muscleMapPng(exercise.muscles, () => {
+          const current = useActiveWorkout.getState().session
+          if (current) render(current)
+        })
+      : null
+
+    const frame = JSON.stringify({ ...content, hasMap: map !== null })
     if (frame === lastFrame) return
 
     // The first frame of a session starts the activity — which on the native
@@ -75,16 +87,36 @@ export function startLiveActivitySync() {
     const needsStart = lastWorkoutId !== content.workoutId
     lastFrame = frame
     lastWorkoutId = content.workoutId
+
+    // Every update steps the demonstration one still further through the
+    // movement, and a new exercise starts its own at the beginning. It is the
+    // only motion a Live Activity can be given: the card is redrawn when the
+    // content state changes and at no other time.
+    frameIndex = content.exerciseId === lastExerciseId ? frameIndex + 1 : 0
+    lastExerciseId = content.exerciseId
+
+    const payload: LiveActivityPayload = {
+      ...content,
+      frameIndex,
+      muscleMapPng: map ?? "",
+    }
     void (needsStart
-      ? liveActivity.start(content)
-      : liveActivity.update(content))
+      ? liveActivity.start(payload)
+      : liveActivity.update(payload))
   }
 
   const stop = (session: ActiveWorkoutSession, dismissImmediately: boolean) => {
     if (lastFrame === null) return
     lastFrame = null
     lastWorkoutId = null
-    void liveActivity.end({ ...endContent(session), dismissImmediately })
+    lastExerciseId = null
+    frameIndex = 0
+    void liveActivity.end({
+      ...endContent(session),
+      frameIndex: 0,
+      muscleMapPng: "",
+      dismissImmediately,
+    })
   }
 
   const initial = useActiveWorkout.getState().session

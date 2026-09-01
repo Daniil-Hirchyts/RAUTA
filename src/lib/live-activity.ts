@@ -21,8 +21,9 @@ export type LiveActivityContent = {
   /** Selects the demonstration frame the extension renders; "" when done. */
   exerciseId: string
   exerciseName: string
-  exerciseMuscles: string
-  nextExerciseName: string
+  /** Names the prepared muscle map for this exercise; "" when there is none.
+   *  The card shows the map rather than spelling the muscles out. */
+  muscleMapKey: string
   completedCount: number
   totalCount: number
   /** Epoch ms; 0 while paused. */
@@ -32,7 +33,26 @@ export type LiveActivityContent = {
   isPaused: boolean
 }
 
-export type LiveActivityEndOptions = LiveActivityContent & {
+/**
+ * A frame plus the artwork the native side may still be missing. The PNG is
+ * carried separately from the content because it is large, identical for every
+ * frame of the same exercise, and written to the shared container at most once
+ * — the sync compares frames on {@link LiveActivityContent} alone.
+ */
+export type LiveActivityPayload = LiveActivityContent & {
+  /** Base64 PNG of the muscle map for `muscleMapKey`; "" when it could not be
+   *  prepared. Sent on every frame rather than once — the native side writes
+   *  it only if the file is missing, so a map evicted from its bounded cache
+   *  comes back on its own. */
+  muscleMapPng: string
+  /** Which still of the exercise's movement to show. A Live Activity cannot
+   *  play an animation, and only redraws when the content state changes, so
+   *  the demonstration is stepped on by one every time the card is updated —
+   *  which is the whole of the motion the platform allows. Wraps natively. */
+  frameIndex: number
+}
+
+export type LiveActivityEndOptions = LiveActivityPayload & {
   /** A finished workout lingers on the Lock Screen; a cancelled one does not. */
   dismissImmediately: boolean
 }
@@ -40,9 +60,9 @@ export type LiveActivityEndOptions = LiveActivityContent & {
 export type LiveActivityPlugin = {
   isSupported: () => Promise<{ supported: boolean }>
   start: (
-    content: LiveActivityContent
+    content: LiveActivityPayload
   ) => Promise<{ activityId: string | null }>
-  update: (content: LiveActivityContent) => Promise<void>
+  update: (content: LiveActivityPayload) => Promise<void>
   end: (options: LiveActivityEndOptions) => Promise<void>
 }
 
@@ -63,8 +83,8 @@ export const liveActivity = {
       return false
     }
   },
-  start: (content: LiveActivityContent) => call(() => plugin.start(content)),
-  update: (content: LiveActivityContent) => call(() => plugin.update(content)),
+  start: (content: LiveActivityPayload) => call(() => plugin.start(content)),
+  update: (content: LiveActivityPayload) => call(() => plugin.update(content)),
   end: (options: LiveActivityEndOptions) => call(() => plugin.end(options)),
 }
 

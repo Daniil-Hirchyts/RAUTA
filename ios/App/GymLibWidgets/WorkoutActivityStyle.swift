@@ -7,11 +7,12 @@ extension Color {
     }
 }
 
-/// The prepared demonstration frame for a content state, already carrying the
-/// app's dark treatment and composited onto ``WorkoutActivityPalette.surface``
-/// — so it must be drawn on that exact color to look seamless.
+/// Loads a PNG the app prepared in the shared container. Everything the card
+/// draws comes through here: the widget extension has no access to the web
+/// bundle and cannot run the app's CSS filters, so the app renders both the
+/// demonstration frame and the muscle map ahead of time.
 @available(iOS 16.1, *)
-func exerciseFrameImage(named name: String) -> Image? {
+func sharedFrameImage(named name: String) -> Image? {
     guard
         let url = WorkoutActivityStore.frameURL(named: name),
         let image = UIImage(contentsOfFile: url.path)
@@ -20,8 +21,19 @@ func exerciseFrameImage(named name: String) -> Image? {
     return Image(uiImage: image)
 }
 
-/// The demonstration thumbnail, falling back to the app's mark when the frame
-/// has not been prepared — an exercise with no art, or no reachable App Group.
+/// The demonstration panel: the largest thing on the card, because it is the
+/// one part that answers "what am I supposed to be doing" without reading.
+///
+/// The movement is decomposed into stills and the card steps to the next one
+/// on every update, which is as close to playing it as the platform gets:
+/// WidgetKit renders a Live Activity as a static view and redraws it only when
+/// the content state changes, so there is no clock here to animate against and
+/// no way to hand it an animated image.
+///
+/// The frame is composited onto ``WorkoutActivityPalette.surface`` when it is
+/// prepared, so it must be drawn on that exact color to look seamless. Nothing
+/// stands in when there is no frame: an empty tile reads as "no picture for
+/// this exercise", where a placeholder icon reads as a broken one.
 @available(iOS 16.1, *)
 struct ExerciseFrame: View {
     var name: String
@@ -29,17 +41,59 @@ struct ExerciseFrame: View {
 
     var body: some View {
         Group {
-            if let image = exerciseFrameImage(named: name) {
+            if let image = sharedFrameImage(named: name) {
                 image.resizable().scaledToFit()
             } else {
-                Image(systemName: "figure.strengthtraining.traditional")
-                    .font(.system(size: side * 0.42, weight: .semibold))
-                    .foregroundStyle(Color(WorkoutActivityPalette.accent))
+                Color.clear
             }
         }
         .frame(width: side, height: side)
         .background(Color(WorkoutActivityPalette.surface))
-        .clipShape(RoundedRectangle(cornerRadius: side * 0.22, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: side * 0.2, style: .continuous))
+    }
+}
+
+/// The body with the exercise's muscles lit, standing in for the list of
+/// muscle names the card used to spell out. One figure, facing whichever way
+/// the exercise is about (see `preferredSide` in `src/lib/muscle-map-image.ts`)
+/// — two shrunk to fit beside the timer read as a smudge rather than a
+/// diagram. The art carries its own transparency and sits directly on the
+/// card, with no tile behind it.
+@available(iOS 16.1, *)
+struct MuscleMapFrame: View {
+    var name: String
+    var width: CGFloat
+    var height: CGFloat
+
+    var body: some View {
+        Group {
+            if let image = sharedFrameImage(named: name) {
+                image.resizable().scaledToFit()
+            } else {
+                Color.clear
+            }
+        }
+        .frame(width: width, height: height)
+    }
+}
+
+/// What a workout looks like when there is room for one shape and nothing
+/// else. Deliberately not a runner — this is a weights app, and the Island's
+/// smallest presentation is the only thing some glances ever see.
+@available(iOS 16.1, *)
+struct WorkoutGlyph: View {
+    var isPaused: Bool
+
+    var body: some View {
+        if isPaused {
+            Image(systemName: "pause.fill")
+        } else if #available(iOS 18.0, *) {
+            Image(systemName: "dumbbell.fill")
+        } else {
+            // `dumbbell.fill` only arrived in iOS 18; below that a flame is
+            // the closest symbol that is not a person.
+            Image(systemName: "flame.fill")
+        }
     }
 }
 
@@ -58,6 +112,8 @@ struct WorkoutTimerText: View {
             }
         }
         .monospacedDigit()
+        .lineLimit(1)
+        .minimumScaleFactor(0.55)
     }
 }
 

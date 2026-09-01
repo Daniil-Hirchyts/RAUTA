@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 
 import { useEdgeSwipe } from "@/hooks/use-edge-swipe"
 
@@ -14,19 +14,50 @@ export function SwipeBackPage({
   children: ReactNode
   onBack: () => void
 }) {
+  const [committed, setCommitted] = useState(false)
+  const completedRef = useRef(false)
+  const finishBack = useCallback(() => {
+    if (completedRef.current) return
+    completedRef.current = true
+    onBack()
+  }, [onBack])
+  const beginBack = useCallback(() => setCommitted(true), [])
+
+  useEffect(() => {
+    if (!committed) return
+    const fallback = window.setTimeout(finishBack, 360)
+    return () => window.clearTimeout(fallback)
+  }, [committed, finishBack])
+
   const { containerRef, dragging, offset, handlers } = useEdgeSwipe({
     canGoBack: true,
     canGoForward: false,
-    onBack,
+    onBack: beginBack,
     onForward: () => undefined,
   })
 
   return (
     <div
       className="t-swipe-back flex min-h-0 flex-1 flex-col"
+      data-committed={committed ? "true" : undefined}
       data-dragging={dragging ? "true" : undefined}
+      onTransitionEnd={(event) => {
+        if (
+          committed &&
+          event.currentTarget === event.target &&
+          event.propertyName === "transform"
+        ) {
+          finishBack()
+        }
+      }}
       ref={containerRef}
-      style={dragging ? { transform: `translateX(${offset}px)` } : undefined}
+      style={
+        committed
+          ? { transform: "translateX(100%)" }
+          : dragging
+            ? { transform: `translateX(${offset}px)` }
+            : undefined
+      }
       {...handlers}
     >
       {children}

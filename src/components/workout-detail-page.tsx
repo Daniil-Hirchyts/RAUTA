@@ -1,5 +1,18 @@
 import { useEffect, useState } from "react"
-import { Check, ChevronLeft, Flag, Play, Plus, Trash2, X } from "lucide-react"
+import {
+  Activity,
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  Clock3,
+  Copy,
+  Flag,
+  Pencil,
+  Play,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react"
 
 import { ActiveWorkoutHero } from "@/components/active-workout-hero"
 import { ActiveWorkoutTimer } from "@/components/active-workout-timer"
@@ -9,14 +22,18 @@ import { ExerciseSwapperDrawer } from "@/components/exercise-swapper-drawer"
 import { SortableExerciseList } from "@/components/sortable-exercise-list"
 import { Button } from "@/components/ui/button"
 import { MatrixLoader } from "@/components/ui/matrix-loader"
+import { WorkoutCountdown } from "@/components/workout-countdown"
+import { WorkoutDateDrawer } from "@/components/workout-date-drawer"
 import {
   currentExercise,
   exerciseStatus,
+  formatDuration,
   nextPendingExerciseId,
 } from "@/lib/active-workout"
 import { formatDateLong } from "@/lib/date"
 import { triggerHaptic } from "@/lib/haptics"
 import { shareWorkout } from "@/lib/workout-sharing"
+import { isPastWorkout } from "@/lib/workout-stats"
 import { useActiveWorkout } from "@/store/use-active-workout"
 import { useWorkouts } from "@/store/use-workouts"
 import type { ExerciseSummary } from "@/types"
@@ -42,12 +59,14 @@ function IosShareIcon() {
 export function WorkoutDetailPage({
   onAddExercise,
   onBack,
+  onCopied,
   onDeleted,
   onOpenExercise,
   workoutId,
 }: {
   onAddExercise: () => void
   onBack: () => void
+  onCopied?: (workoutId: string) => void
   onDeleted: () => void
   onOpenExercise: (exercise: ExerciseSummary) => void
   workoutId: string
@@ -57,6 +76,7 @@ export function WorkoutDetailPage({
   )
   const updateWorkout = useWorkouts((state) => state.updateWorkout)
   const deleteWorkout = useWorkouts((state) => state.deleteWorkout)
+  const duplicateWorkout = useWorkouts((state) => state.duplicateWorkout)
 
   const runningSession = useActiveWorkout((state) => state.session)
   const startWorkout = useActiveWorkout((state) => state.start)
@@ -69,13 +89,14 @@ export function WorkoutDetailPage({
     (state) => state.setCurrentExercise
   )
   const toggleComplete = useActiveWorkout((state) => state.toggleComplete)
-  const syncExercises = useActiveWorkout((state) => state.syncExercises)
 
   // A session belongs to exactly one workout: another workout's run must not
   // turn this page into a checklist.
   const session =
     runningSession?.workoutId === workoutId ? runningSession : null
 
+  const [countingDown, setCountingDown] = useState(false)
+  const [dateOpen, setDateOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [discardOpen, setDiscardOpen] = useState(false)
   const [swapExercise, setSwapExercise] = useState<ExerciseSummary | null>(null)
@@ -89,9 +110,13 @@ export function WorkoutDetailPage({
 
   if (!workout) return null
 
+  const isPast = !session && isPastWorkout(workout)
+  const completion = workout.completion
+
+  // A running session mirrors the saved workout through the store, so an edit
+  // made here — or from the find-an-exercise flow — reaches it either way.
   const setExerciseIds = (exerciseIds: string[]) => {
     updateWorkout(workout.id, { exerciseIds })
-    if (session) syncExercises(exerciseIds)
   }
 
   const exercise = session ? currentExercise(session) : null
@@ -148,16 +173,70 @@ export function WorkoutDetailPage({
             )}
           </Button>
         </div>
-        <h1 className="text-[26px] font-black tracking-[-0.03em]">
-          {formatDateLong(workout.date)}
-        </h1>
+        {isPast ? (
+          <h1 className="text-[26px] font-black tracking-[-0.03em]">
+            {formatDateLong(workout.date)}
+          </h1>
+        ) : (
+          <button
+            aria-label={`Change date, currently ${formatDateLong(workout.date)}`}
+            className="group flex items-center gap-2 text-left"
+            onClick={() => {
+              triggerHaptic("light")
+              setDateOpen(true)
+            }}
+            type="button"
+          >
+            <h1 className="text-[26px] font-black tracking-[-0.03em]">
+              {formatDateLong(workout.date)}
+            </h1>
+            <Pencil className="size-4 shrink-0 text-muted-foreground transition-colors group-active:text-foreground" />
+          </button>
+        )}
         <p className="mt-1 text-sm font-medium text-muted-foreground">
           {workout.exerciseIds.length} exercise
           {workout.exerciseIds.length === 1 ? "" : "s"}
+          {isPast ? " · Past workout" : ""}
         </p>
       </header>
 
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pt-5 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
+        {isPast ? (
+          <section
+            aria-label="Workout stats"
+            className="mx-4 grid grid-cols-3 gap-2 rounded-[22px] border border-border bg-card/70 p-3"
+          >
+            <div className="rounded-2xl bg-muted/45 p-3 text-center">
+              <Clock3 className="mx-auto size-4 text-primary" />
+              <p className="mt-1.5 text-base font-black tabular-nums">
+                {completion ? formatDuration(completion.durationMs) : "—"}
+              </p>
+              <p className="text-[11px] font-semibold text-muted-foreground">
+                Duration
+              </p>
+            </div>
+            <div className="rounded-2xl bg-muted/45 p-3 text-center">
+              <Activity className="mx-auto size-4 text-primary" />
+              <p className="mt-1.5 text-base font-black tabular-nums">
+                {completion ? completion.activeCalories : "—"}
+              </p>
+              <p className="text-[11px] font-semibold text-muted-foreground">
+                kcal
+              </p>
+            </div>
+            <div className="rounded-2xl bg-muted/45 p-3 text-center">
+              <CheckCircle2 className="mx-auto size-4 text-primary" />
+              <p className="mt-1.5 text-base font-black tabular-nums">
+                {completion
+                  ? `${completion.completedExerciseIds.length}/${workout.exerciseIds.length}`
+                  : "—"}
+              </p>
+              <p className="text-[11px] font-semibold text-muted-foreground">
+                Completed
+              </p>
+            </div>
+          </section>
+        ) : null}
         {session && (
           <ActiveWorkoutTimer
             onPause={pauseWorkout}
@@ -187,18 +266,28 @@ export function WorkoutDetailPage({
 
             <SortableExerciseList
               exerciseIds={workout.exerciseIds}
-              onFindAlternative={(candidate) => {
-                triggerHaptic("light")
-                setSwapExercise(candidate)
-              }}
+              onFindAlternative={
+                isPast
+                  ? undefined
+                  : (candidate) => {
+                      triggerHaptic("light")
+                      setSwapExercise(candidate)
+                    }
+              }
               onOpenExercise={onOpenExercise}
-              onRemove={(id) => {
-                triggerHaptic("warning")
-                setExerciseIds(
-                  workout.exerciseIds.filter((exerciseId) => exerciseId !== id)
-                )
-              }}
-              onReorder={setExerciseIds}
+              onRemove={
+                isPast
+                  ? undefined
+                  : (id) => {
+                      triggerHaptic("warning")
+                      setExerciseIds(
+                        workout.exerciseIds.filter(
+                          (exerciseId) => exerciseId !== id
+                        )
+                      )
+                    }
+              }
+              onReorder={isPast ? undefined : setExerciseIds}
               onToggleComplete={
                 session
                   ? (id) => {
@@ -231,6 +320,15 @@ export function WorkoutDetailPage({
               <X />
             </Button>
             <Button
+              aria-label="Add exercise"
+              className="size-[3.25rem] rounded-[26px]"
+              onClick={onAddExercise}
+              size="icon"
+              variant="secondary"
+            >
+              <Plus className="size-5" />
+            </Button>
+            <Button
               className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
               onClick={() => {
                 triggerHaptic("success")
@@ -239,6 +337,33 @@ export function WorkoutDetailPage({
             >
               <Flag className="size-5" />
               Finish workout
+            </Button>
+          </div>
+        ) : isPast ? (
+          <div className="flex items-center gap-2.5">
+            <Button
+              aria-label="Delete workout"
+              className="size-[3.25rem] rounded-[26px]"
+              onClick={() => {
+                triggerHaptic("warning")
+                setDeleteOpen(true)
+              }}
+              size="icon"
+              variant="destructive"
+            >
+              <Trash2 />
+            </Button>
+            <Button
+              className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
+              onClick={() => {
+                const copiedId = duplicateWorkout(workout.id)
+                if (!copiedId) return
+                triggerHaptic("success")
+                onCopied?.(copiedId)
+              }}
+            >
+              <Copy className="size-5" />
+              Copy to today
             </Button>
           </div>
         ) : (
@@ -278,7 +403,7 @@ export function WorkoutDetailPage({
                   className="h-[3.25rem] flex-1 rounded-[26px] text-base font-semibold"
                   onClick={() => {
                     triggerHaptic("heavy")
-                    startWorkout(workout)
+                    setCountingDown(true)
                   }}
                 >
                   <Play className="size-5" />
@@ -289,6 +414,23 @@ export function WorkoutDetailPage({
           </div>
         )}
       </footer>
+
+      {countingDown && (
+        <WorkoutCountdown
+          onCancel={() => setCountingDown(false)}
+          onComplete={() => {
+            setCountingDown(false)
+            startWorkout(workout)
+          }}
+        />
+      )}
+
+      <WorkoutDateDrawer
+        date={workout.date}
+        onOpenChange={setDateOpen}
+        onSelect={(date) => updateWorkout(workout.id, { date })}
+        open={dateOpen}
+      />
 
       <DeleteWorkoutConfirmation
         onConfirm={() => {

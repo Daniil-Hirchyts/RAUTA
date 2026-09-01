@@ -1,10 +1,11 @@
-import { useState, type CSSProperties, type FormEvent } from "react"
+import { useState, type FormEvent } from "react"
 import { CalendarDays, Check } from "lucide-react"
 
 import { SortableExerciseList } from "@/components/sortable-exercise-list"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
+import { FULL_HEIGHT_DRAWER_STYLE } from "@/components/ui/drawer-style"
 import { formatDateLong, toISODate } from "@/lib/date"
 import { triggerHaptic } from "@/lib/haptics"
 import { useWorkouts, type Workout } from "@/store/use-workouts"
@@ -13,17 +14,15 @@ function todayISO() {
   return toISODate(new Date())
 }
 
+function todayStart() {
+  const today = new Date()
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate())
+}
+
 function isoToDate(iso: string) {
   const [year, month, day] = iso.split("-").map(Number)
   return new Date(year, month - 1, day)
 }
-
-const FULL_HEIGHT_DRAWER_STYLE = {
-  "--drawer-content-max-height":
-    "calc(var(--app-viewport-height) - 0.5rem - env(safe-area-inset-top))",
-  "--drawer-height":
-    "calc(var(--app-viewport-height) - 0.5rem - env(safe-area-inset-top))",
-} as CSSProperties
 
 function WorkoutForm({
   initialExerciseIds,
@@ -100,6 +99,7 @@ function WorkoutForm({
           >
             <Calendar
               className="w-full overflow-hidden rounded-[16px] bg-background [--cell-size:clamp(2.5rem,11vw,3rem)]"
+              disabled={{ before: todayStart() }}
               mode="single"
               onSelect={(selected) => {
                 if (!selected) return

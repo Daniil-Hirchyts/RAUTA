@@ -9,6 +9,7 @@ const workout: Workout = {
   name: "Push day",
   date: "2026-09-01",
   exerciseIds: ["0001", "0002", "0003"],
+  completion: null,
   createdAt: "2026-09-01T08:00:00.000Z",
   updatedAt: "2026-09-01T08:00:00.000Z",
 }
@@ -46,6 +47,26 @@ describe("useActiveWorkout", () => {
 
   it("refuses to start a workout with nothing to perform", () => {
     state().start({ ...workout, exerciseIds: ["not-an-exercise"] })
+    expect(state().session).toBeNull()
+  })
+
+  it("refuses to start a workout whose date has already passed", () => {
+    state().start({ ...workout, date: "2026-08-31" })
+    expect(state().session).toBeNull()
+  })
+
+  it("refuses to restart a completed workout", () => {
+    state().start({
+      ...workout,
+      completion: {
+        activeCalories: 80,
+        completedAt: "2026-09-01T09:30:00.000Z",
+        completedExerciseIds: ["0001"],
+        durationMs: 30 * 60_000,
+        healthSyncStatus: "not-requested",
+        startedAt: "2026-09-01T09:00:00.000Z",
+      },
+    })
     expect(state().session).toBeNull()
   })
 
@@ -247,6 +268,35 @@ describe("useActiveWorkout", () => {
 
     useWorkouts.getState().deleteWorkout(workoutId)
     expect(state()).toMatchObject({ session: null, lastOutcome: "cancelled" })
+  })
+
+  it("follows the workout to another date while it is being performed", () => {
+    const workoutId = useWorkouts.getState().createWorkout({
+      name: "Push day",
+      date: "2026-09-01",
+      exerciseIds: ["0001", "0002"],
+    })
+    state().start({ ...workout, id: workoutId })
+
+    useWorkouts.getState().updateWorkout(workoutId, { date: "2026-09-04" })
+    expect(session().workoutDate).toBe("2026-09-04")
+  })
+
+  it("picks up an exercise added to the workout from elsewhere", () => {
+    const workoutId = useWorkouts.getState().createWorkout({
+      name: "Push day",
+      date: "2026-09-01",
+      exerciseIds: ["0001"],
+    })
+    state().start({ ...workout, id: workoutId, exerciseIds: ["0001"] })
+
+    useWorkouts
+      .getState()
+      .updateWorkout(workoutId, { exerciseIds: ["0001", "0002"] })
+    expect(session()).toMatchObject({
+      exerciseIds: ["0001", "0002"],
+      currentExerciseId: "0001",
+    })
   })
 
   it("leaves the session alone when a different workout is deleted", () => {

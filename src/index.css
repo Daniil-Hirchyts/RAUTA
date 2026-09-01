@@ -287,6 +287,39 @@
   transition: none;
 }
 
+@keyframes t-app-page-forward {
+  from {
+    opacity: 0.55;
+    transform: translate3d(16px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes t-app-page-back {
+  from {
+    opacity: 0.55;
+    transform: translate3d(-12px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Every top-level surface enters through the same motion grammar. The
+   interactive edge swipe still owns its transform while a finger is down. */
+.t-app-page {
+  animation: t-app-page-forward 280ms var(--ease-smooth-out) both;
+  will-change: transform, opacity;
+}
+
+.t-app-page[data-direction="back"] {
+  animation-name: t-app-page-back;
+}
+
 /* Interactive edge-swipe navigation.
 
    While a drag is in flight both the outgoing and incoming pages are pinned
@@ -359,6 +392,30 @@
 
 .t-digit-group.is-animating .t-digit[data-stagger="2"] {
   animation-delay: calc(var(--digit-stagger) * 2);
+}
+
+@keyframes t-countdown-digit-in {
+  0% {
+    transform: scale(1.4);
+    opacity: 0;
+    filter: blur(7px);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+/* The countdown before a workout starts: each second lands with a snap, and
+   the ring drains at exactly the rate the number counts. */
+.t-countdown-digit {
+  display: block;
+  animation: t-countdown-digit-in 300ms var(--ease-smooth-out) both;
+}
+
+.t-countdown-ring {
+  transition: stroke-dashoffset 1000ms linear;
 }
 
 .t-check-box {
@@ -584,29 +641,6 @@
   animation: t-muscle-selection-pop 200ms var(--ease-smooth-out);
 }
 
-@keyframes drawer-enter-from-bottom {
-  from {
-    transform: translate3d(0, calc(100% + var(--drawer-inset, 0px) + 2px), 0);
-  }
-
-  to {
-    transform: translate3d(var(--translate-x, 0px), var(--translate-y, 0px), 0)
-      scale(var(--stack-scale, 1));
-  }
-}
-
-[data-slot="drawer-popup"][data-drawer-enter][data-open][data-swipe-direction="down"]:not(
-    [data-swiping]
-  ) {
-  animation: drawer-enter-from-bottom 460ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  [data-slot="drawer-popup"][data-drawer-enter] {
-    animation: none;
-  }
-}
-
 /* Resting rows can skip offscreen rendering, but the dragged row must stay
    fully painted while its transform moves beyond its original layout box. */
 .workout-exercise-card:not(.is-dragging) {
@@ -706,6 +740,9 @@
 
   .t-check-box,
   .t-check-box .t-check-mark path,
+  .t-countdown-digit,
+  .t-countdown-ring,
+  .t-app-page,
   .t-matrix i,
   .t-like-icon,
   .t-like-particles i,

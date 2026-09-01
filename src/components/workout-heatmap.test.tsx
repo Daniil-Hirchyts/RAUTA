@@ -18,6 +18,7 @@ function makeWorkout(date: string, exercises: number): Workout {
     name: "Session",
     date,
     exerciseIds: Array.from({ length: exercises }, (_, index) => `${index}`),
+    completion: null,
     createdAt: "",
     updatedAt: "",
   }

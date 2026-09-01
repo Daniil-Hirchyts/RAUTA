@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest"
 
 import {
   elapsedMs,
-  exerciseMuscleLabels,
   exerciseStatus,
   formatDuration,
   nextPendingExerciseId,
@@ -10,7 +9,6 @@ import {
   timerStartEpochMs,
   type ActiveWorkoutSession,
 } from "@/lib/active-workout"
-import { EXERCISES_BY_ID } from "@/lib/exercises"
 
 function session(patch: Partial<ActiveWorkoutSession> = {}) {
   return {
@@ -112,21 +110,5 @@ describe("nextPendingExerciseId", () => {
   it("returns nothing when the workout is finished", () => {
     const done = session({ completedIds: ["0001", "0002", "0003"] })
     expect(nextPendingExerciseId(done, "0003")).toBeNull()
-  })
-})
-
-describe("exerciseMuscleLabels", () => {
-  it("names the muscles strongest involvement first", () => {
-    const exercise = EXERCISES_BY_ID.get("0001")!
-    expect(exerciseMuscleLabels(exercise)).toEqual([
-      "Abs",
-      "Hip flexors",
-      "Lower back",
-    ])
-  })
-
-  it("honours the limit", () => {
-    const exercise = EXERCISES_BY_ID.get("0001")!
-    expect(exerciseMuscleLabels(exercise, 1)).toEqual(["Abs"])
   })
 })

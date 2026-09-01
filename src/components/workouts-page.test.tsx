@@ -75,4 +75,35 @@ describe("WorkoutsPage", () => {
     expect(screen.getByText("2 exercises")).toBeInTheDocument()
     expect(screen.queryByText(/In progress/)).not.toBeInTheDocument()
   })
+
+  it("separates past workouts and shows their completion stats", () => {
+    const pastId = useWorkouts.getState().createWorkout({
+      name: "Past session",
+      date: "2026-08-31",
+      exerciseIds: ["0001", "0002"],
+    })
+    useWorkouts.getState().completeWorkout(pastId, {
+      activeCalories: 118,
+      completedAt: "2026-08-31T10:15:00.000Z",
+      completedExerciseIds: ["0001", "0002"],
+      durationMs: 15 * 60_000,
+      healthSyncStatus: "synced",
+      startedAt: "2026-08-31T10:00:00.000Z",
+    })
+    useWorkouts.getState().createWorkout({
+      name: "Next session",
+      date: "2026-09-02",
+      exerciseIds: ["0003"],
+    })
+
+    renderPage()
+
+    expect(screen.getByRole("heading", { name: "Next workouts" })).toBeVisible()
+    expect(screen.getByRole("heading", { name: "Past workouts" })).toBeVisible()
+    expect(screen.getByText("15:00")).toBeVisible()
+    expect(screen.getByText("118 kcal")).toBeVisible()
+    expect(
+      screen.getAllByRole("button", { name: /Copy .* workout to today/ })
+    ).not.toHaveLength(0)
+  })
 })

@@ -33,6 +33,14 @@ describe("WorkoutDetailPage", () => {
     useActiveWorkout.setState({ session: null, lastOutcome: null })
   })
 
+  // Starting is guarded by a countdown, and every test that wants a running
+  // session wants it now rather than three seconds from now — which is exactly
+  // what the countdown's own "start now" affordance is for.
+  async function startNow(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole("button", { name: "Start workout" }))
+    await user.click(screen.getByRole("button", { name: "Start now" }))
+  }
+
   function renderWorkout(exerciseIds: string[]) {
     const workoutId = useWorkouts.getState().createWorkout({
       name: "Workout",
@@ -141,7 +149,7 @@ describe("WorkoutDetailPage", () => {
     const user = userEvent.setup()
     const workoutId = renderWorkout(["0001", "0002"])
 
-    await user.click(screen.getByRole("button", { name: "Start workout" }))
+    await startNow(user)
 
     const session = useActiveWorkout.getState().session
     expect(session).toMatchObject({ workoutId, currentExerciseId: "0001" })
@@ -164,14 +172,15 @@ describe("WorkoutDetailPage", () => {
       session: null,
       lastOutcome: "finished",
     })
-    expect(screen.getByRole("button", { name: "Start workout" })).toBeVisible()
+    // Whatever the footer offers a finished workout, the clock is gone.
+    expect(screen.queryByRole("timer")).not.toBeInTheDocument()
   })
 
   it("pauses and resumes the workout clock", async () => {
     const user = userEvent.setup()
     renderWorkout(["0001"])
 
-    await user.click(screen.getByRole("button", { name: "Start workout" }))
+    await startNow(user)
     await user.click(screen.getByRole("button", { name: "Pause workout" }))
     expect(useActiveWorkout.getState().session?.runningSince).toBeNull()
 
@@ -199,7 +208,7 @@ describe("WorkoutDetailPage", () => {
     expect(screen.queryByRole("timer")).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Start workout" })).toBeVisible()
 
-    await user.click(screen.getByRole("button", { name: "Start workout" }))
+    await startNow(user)
     expect(useActiveWorkout.getState().session?.workoutId).not.toBe(
       "some-other-workout"
     )
@@ -209,7 +218,7 @@ describe("WorkoutDetailPage", () => {
     const user = userEvent.setup()
     renderWorkout(["0001"])
 
-    await user.click(screen.getByRole("button", { name: "Start workout" }))
+    await startNow(user)
     await user.click(screen.getByRole("button", { name: "Discard session" }))
     expect(useActiveWorkout.getState().session).not.toBeNull()
 
@@ -252,7 +261,7 @@ describe("WorkoutDetailPage", () => {
     const user = userEvent.setup()
     const workoutId = renderWorkout(["0001", "0002"])
 
-    await user.click(screen.getByRole("button", { name: "Start workout" }))
+    await startNow(user)
 
     expect(
       screen.getByRole("button", { name: "Reorder 3/4 sit-up" })
@@ -274,11 +283,80 @@ describe("WorkoutDetailPage", () => {
     })
   })
 
-  it("offers no skip once this is the last exercise left", async () => {
+  it("counts a workout in before the clock starts, and can be called off", async () => {
     const user = userEvent.setup()
     renderWorkout(["0001"])
 
     await user.click(screen.getByRole("button", { name: "Start workout" }))
+    expect(useActiveWorkout.getState().session).toBeNull()
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }))
+    expect(useActiveWorkout.getState().session).toBeNull()
+    expect(
+      screen.queryByRole("dialog", { name: "Starting workout" })
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Start workout" })).toBeVisible()
+  })
+
+  it("adds an exercise to a workout that is already being performed", async () => {
+    const user = userEvent.setup()
+    const onAddExercise = vi.fn()
+    const workoutId = useWorkouts.getState().createWorkout({
+      name: "Workout",
+      date: "2026-09-01",
+      exerciseIds: ["0001"],
+    })
+
+    render(
+      <WorkoutDetailPage
+        onAddExercise={onAddExercise}
+        onBack={() => {}}
+        onDeleted={() => {}}
+        onOpenExercise={() => {}}
+        workoutId={workoutId}
+      />
+    )
+
+    await startNow(user)
+    await user.click(screen.getByRole("button", { name: "Add exercise" }))
+    expect(onAddExercise).toHaveBeenCalledOnce()
+
+    // The session follows exercises added from anywhere, not just this page.
+    useWorkouts.getState().updateWorkout(workoutId, {
+      exerciseIds: ["0001", "0002"],
+    })
+    expect(useActiveWorkout.getState().session).toMatchObject({
+      exerciseIds: ["0001", "0002"],
+    })
+  })
+
+  it("moves the workout to another day", async () => {
+    const user = userEvent.setup()
+    const workoutId = renderWorkout(["0001"])
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /^Change date, currently/,
+      })
+    )
+
+    const picker = await screen.findByRole("dialog", { name: "Change date" })
+    await user.click(
+      within(picker).getByRole("button", { name: /September 4/ })
+    )
+
+    expect(
+      useWorkouts.getState().workouts.find((item) => item.id === workoutId)
+        ?.date
+    ).toBe("2026-09-04")
+    expect(screen.getByText("Friday, September 4")).toBeInTheDocument()
+  })
+
+  it("offers no skip once this is the last exercise left", async () => {
+    const user = userEvent.setup()
+    renderWorkout(["0001"])
+
+    await startNow(user)
     expect(
       screen.getByRole("button", { name: "Skip 3/4 sit-up" })
     ).toBeDisabled()
