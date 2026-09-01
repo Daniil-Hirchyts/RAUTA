@@ -4,7 +4,7 @@ import WidgetKit
 
 /// The Lock Screen card and the Dynamic Island presentations of a workout in
 /// progress. Everything rendered here comes from the activity's content state,
-/// which the app pushes only when a frame would actually change — the timer is
+/// which the app pushes only when visible workout state changes — the timer is
 /// the exception, and counts on its own from a date.
 @available(iOS 16.2, *)
 struct WorkoutLiveActivityWidget: Widget {
@@ -15,27 +15,20 @@ struct WorkoutLiveActivityWidget: Widget {
                 .activitySystemActionForegroundColor(Color(WorkoutActivityPalette.accent))
         } dynamicIsland: { context in
             DynamicIsland {
-                DynamicIslandExpandedRegion(.leading) {
-                    ExerciseFrame(name: context.state.exerciseFrame, side: 58)
-                        .padding(.leading, 4)
-                }
-                DynamicIslandExpandedRegion(.trailing) {
-                    MuscleMapFrame(
-                        name: context.state.muscleMapFrame,
-                        width: 40,
-                        height: 58
-                    )
-                    .padding(.trailing, 4)
-                }
                 DynamicIslandExpandedRegion(.center) {
-                    VStack(spacing: 1) {
+                    VStack(spacing: 3) {
+                        HStack(spacing: 5) {
+                            WorkoutGlyph(isPaused: context.state.isPaused)
+                                .font(.system(size: 12, weight: .bold))
+                            Text(context.attributes.workoutName)
+                                .font(.system(size: 13, weight: .semibold))
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(Color(WorkoutActivityPalette.accent))
+
                         WorkoutTimerText(state: context.state)
                             .font(.system(size: 30, weight: .heavy))
                             .foregroundStyle(Color(WorkoutActivityPalette.text))
-                        Text(context.state.exerciseName)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Color(WorkoutActivityPalette.mutedText))
-                            .lineLimit(1)
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -51,11 +44,9 @@ struct WorkoutLiveActivityWidget: Widget {
                     .padding(.top, 2)
                 }
             } compactLeading: {
-                Text(context.state.exerciseName)
-                    .font(.system(size: 13, weight: .semibold))
+                WorkoutGlyph(isPaused: context.state.isPaused)
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(Color(WorkoutActivityPalette.accent))
-                    .lineLimit(1)
-                    .frame(maxWidth: 66, alignment: .leading)
             } compactTrailing: {
                 WorkoutTimerText(state: context.state)
                     .font(.system(size: 13, weight: .semibold))
@@ -99,60 +90,46 @@ private struct StatusLabel: View {
     }
 }
 
-/// Three columns across one row: the exercise on the left, the clock filling
-/// the middle, and the muscles being worked on the right. The Lock Screen is
-/// read at arm's length mid-set, so the timer is sized to be the thing the eye
-/// lands on and everything else is arranged around it.
+/// A text-first Lock Screen card. The timer is sized for an arm's-length glance;
+/// the current exercise remains beneath it, while artwork stays in the app where
+/// it has room to be useful.
 @available(iOS 16.1, *)
 private struct LockScreenCard: View {
     var attributes: WorkoutActivityAttributes
     var state: WorkoutActivityAttributes.ContentState
 
-    private static let panel: CGFloat = 84
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 7) {
             HStack(spacing: 8) {
-                Text(attributes.workoutDate)
-                    .font(.system(size: 11, weight: .bold))
-                    .tracking(1.1)
-                    .foregroundStyle(Color(WorkoutActivityPalette.accent))
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(attributes.workoutDate)
+                        .font(.system(size: 11, weight: .bold))
+                        .tracking(1.1)
+                    Text(attributes.workoutName)
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundStyle(Color(WorkoutActivityPalette.accent))
+                .lineLimit(1)
                 Spacer(minLength: 8)
                 StatusLabel(state: state)
             }
 
-            HStack(alignment: .center, spacing: 10) {
-                ExerciseFrame(name: state.exerciseFrame, side: Self.panel)
+            WorkoutTimerText(state: state)
+                .font(.system(size: 44, weight: .heavy))
+                .foregroundStyle(Color(WorkoutActivityPalette.text))
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    WorkoutTimerText(state: state)
-                        .font(.system(size: 42, weight: .heavy))
-                        .foregroundStyle(Color(WorkoutActivityPalette.text))
-                        .frame(maxWidth: .infinity, alignment: .leading)
+            Text(state.exerciseName)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color(WorkoutActivityPalette.text))
+                .lineLimit(1)
 
-                    Text(state.exerciseName)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color(WorkoutActivityPalette.text))
-                        .lineLimit(2)
-
-                    Spacer(minLength: 2)
-
-                    HStack(spacing: 7) {
-                        ProgressDots(state: state)
-                        Text(state.progressText)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(Color(WorkoutActivityPalette.mutedText))
-                            .lineLimit(1)
-                    }
-                }
-                .frame(height: Self.panel)
-
-                MuscleMapFrame(
-                    name: state.muscleMapFrame,
-                    width: 52,
-                    height: Self.panel
-                )
+            HStack(spacing: 7) {
+                ProgressDots(state: state)
+                Text(state.progressText)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color(WorkoutActivityPalette.mutedText))
+                    .lineLimit(1)
             }
         }
         .padding(14)

@@ -4,6 +4,7 @@ import { EXERCISES } from "@/lib/exercises"
 import {
   clearAllGymLibData,
   createGymLibBackup,
+  hasMeaningfulGymLibData,
   importGymLibData,
 } from "@/lib/app-backup"
 import { useFavorites } from "@/store/use-favorites"
@@ -51,5 +52,22 @@ describe("Gym Lib backup", () => {
     expect(() => importGymLibData('{"version":99}')).toThrow(
       "not a supported Gym Lib backup"
     )
+  })
+
+  it("distinguishes a fresh install from data that should win a cloud conflict", () => {
+    expect(hasMeaningfulGymLibData()).toBe(false)
+
+    useSettings.setState({ ...DEFAULT_SETTINGS, keepAwake: true })
+    expect(hasMeaningfulGymLibData()).toBe(true)
+
+    clearAllGymLibData()
+    useFavorites.setState({ favoriteIds: [EXERCISES[0].id] })
+    expect(hasMeaningfulGymLibData()).toBe(true)
+  })
+
+  it("can stamp a cloud backup with the conflict-resolution timestamp", () => {
+    const timestamp = "2026-09-01T09:30:00.000Z"
+    const backup = JSON.parse(createGymLibBackup(timestamp))
+    expect(backup.createdAt).toBe(timestamp)
   })
 })

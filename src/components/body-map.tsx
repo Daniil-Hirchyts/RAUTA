@@ -212,7 +212,7 @@ export function BodyMap({ onToggle, selectedMuscles }: BodyMapProps) {
 
       <button
         aria-label={`Show ${side === "front" ? "back" : "front"}`}
-        className="pointer-events-auto absolute right-3.5 bottom-3.5 z-20 grid size-10 place-items-center rounded-full border border-border bg-card/90 text-foreground shadow-sm backdrop-blur-md transition-colors duration-150 active:bg-muted sm:right-4 sm:bottom-4"
+        className="interactive-spring pointer-events-auto absolute right-3.5 bottom-3.5 z-20 grid size-10 place-items-center rounded-full border border-border bg-card/90 text-foreground shadow-sm backdrop-blur-md active:bg-card/95 active:text-white sm:right-4 sm:bottom-4"
         onClick={flipSide}
         type="button"
       >

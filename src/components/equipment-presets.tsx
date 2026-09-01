@@ -75,7 +75,7 @@ export function EquipmentPresets() {
           disabled={selectedEquipment.length === 0}
           render={
             <button
-              className="grid size-10 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground shadow-[0_8px_24px_rgb(0_0_0/0.18)] transition-colors duration-200 active:bg-muted disabled:bg-muted disabled:text-muted-foreground"
+              className="interactive-spring grid size-10 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground shadow-[0_8px_24px_rgb(0_0_0/0.18)] active:bg-card/90 disabled:bg-muted disabled:text-muted-foreground"
               type="button"
             />
           }
@@ -145,7 +145,7 @@ export function EquipmentPresets() {
             </button>
             <button
               aria-label={`Delete ${preset.name} preset`}
-              className="ml-1.5 grid size-8 shrink-0 place-items-center rounded-full text-inherit opacity-65 transition-all duration-150 hover:opacity-100 active:scale-90"
+              className="interactive-spring ml-1.5 grid size-8 shrink-0 place-items-center rounded-full text-inherit opacity-65 hover:opacity-100 active:opacity-100"
               data-haptics="off"
               onClick={() => {
                 triggerHaptic("warning")

@@ -84,18 +84,6 @@ public class LiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
 
         return WorkoutActivityAttributes.ContentState(
             exerciseName: call.getString("exerciseName", ""),
-            // Preparing the stills is a few milliseconds of pixel work that
-            // only happens the first time an exercise appears; afterwards the
-            // PNGs are already in the shared container and this just picks the
-            // one this update of the card steps to.
-            exerciseFrame: ExerciseFrameRenderer.prepareFrame(
-                exerciseId: call.getString("exerciseId", ""),
-                frameIndex: call.getInt("frameIndex", 0)
-            ) ?? "",
-            muscleMapFrame: MuscleMapStore.prepareMap(
-                key: call.getString("muscleMapKey", ""),
-                base64Png: call.getString("muscleMapPng", "")
-            ) ?? "",
             completedCount: call.getInt("completedCount", 0),
             totalCount: call.getInt("totalCount", 0),
             timerStart: timerStart > 0

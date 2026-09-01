@@ -73,7 +73,7 @@ export function ExerciseDetailDrawer({
                 ? `Remove ${exercise.name} from favorites`
                 : `Add ${exercise.name} to favorites`
             }
-            className="grid size-12 shrink-0 place-items-center rounded-2xl border border-border bg-card text-muted-foreground shadow-sm transition-[transform,color,background-color] duration-250 active:bg-muted active:scale-90"
+            className="interactive-spring grid size-12 shrink-0 place-items-center rounded-2xl border border-border bg-card text-muted-foreground shadow-sm active:bg-card/90 active:text-white"
             data-haptics="off"
             iconClassName="size-5"
             liked={isFavorite}

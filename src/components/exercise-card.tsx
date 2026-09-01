@@ -105,7 +105,7 @@ export function ExerciseCard({
       className={cn(
         "exercise-card t-stagger-line relative overflow-hidden rounded-[22px] border bg-card shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-300 ease-[var(--ease-smooth-out)]",
         selectMode && selected
-          ? "border-primary/70 shadow-[0_0_0_1px_rgba(255,102,51,0.14)]"
+          ? "border-primary/75 shadow-[0_0_0_1px_rgba(255,98,0,0.3)]"
           : "border-border"
       )}
       style={{ transitionDelay: `${Math.min(index, 6) * 40}ms` }}
@@ -117,7 +117,7 @@ export function ExerciseCard({
             : `View ${exercise.name} details`
         }
         aria-pressed={selectMode ? selected : undefined}
-        className="block w-full cursor-pointer text-left"
+        className="interactive-spring block w-full cursor-pointer text-left"
         onClick={handleClick}
         onContextMenu={handleContextMenu}
         onPointerCancel={handlePointerCancel}
@@ -154,7 +154,7 @@ export function ExerciseCard({
             ? `Remove ${exercise.name} from favorites`
             : `Add ${exercise.name} to favorites`
         }
-        className="absolute top-2.5 left-2.5 grid size-8 place-items-center rounded-full border border-border bg-background text-white transition-colors duration-150 active:bg-muted"
+        className="interactive-spring absolute top-2.5 left-2.5 grid size-8 place-items-center rounded-full border border-border bg-background text-white active:bg-card/90"
         iconClassName="size-4"
         liked={isFavorite}
         onClick={(event) => {

@@ -4,5 +4,7 @@
 <dict>
 	<key>com.apple.developer.healthkit</key>
 	<true/>
+	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
+	<string>$(TeamIdentifierPrefix)com.hirchyts.gymlib</string>
 </dict>
 </plist>

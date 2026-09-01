@@ -33,9 +33,9 @@ export function exerciseAnimation(exercise: ExerciseSummary) {
  * just the sharpen for exactly that case.
  */
 export const EXERCISE_ANIMATION_FILTER =
-  "url(#exercise-gif-sharpen) invert(1) hue-rotate(191deg) saturate(1.75) contrast(1.03)"
+  "url(#exercise-gif-sharpen) invert(1) hue-rotate(188deg) saturate(2.2) contrast(1.05)"
 
 /** Same dark-theme treatment as {@link EXERCISE_ANIMATION_FILTER}, minus the
  *  SVG sharpen — for grids that can render many cards at once. */
 export const EXERCISE_ANIMATION_FILTER_LIGHT =
-  "invert(1) hue-rotate(191deg) saturate(1.75) contrast(1.03)"
+  "invert(1) hue-rotate(188deg) saturate(2.2) contrast(1.05)"

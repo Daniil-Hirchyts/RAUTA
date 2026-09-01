@@ -5,12 +5,7 @@ import {
   type ActiveWorkoutSession,
 } from "@/lib/active-workout"
 import { formatDateLong } from "@/lib/date"
-import {
-  liveActivity,
-  type LiveActivityContent,
-  type LiveActivityPayload,
-} from "@/lib/live-activity"
-import { muscleMapKey, muscleMapPng } from "@/lib/muscle-map-image"
+import { liveActivity, type LiveActivityContent } from "@/lib/live-activity"
 import { titleCase } from "@/lib/text"
 import { useActiveWorkout } from "@/store/use-active-workout"
 
@@ -26,9 +21,7 @@ export function liveActivityContent(
     workoutId: session.workoutId,
     workoutName: session.workoutName,
     workoutDate: formatDateLong(session.workoutDate),
-    exerciseId: exercise?.id ?? "",
     exerciseName: exercise ? titleCase(exercise.name) : "All exercises done",
-    muscleMapKey: exercise ? muscleMapKey(exercise.muscles) : "",
     completedCount: completed,
     totalCount: total,
     timerStartEpochMs: isPaused
@@ -44,7 +37,6 @@ function endContent(session: ActiveWorkoutSession): LiveActivityContent {
   return {
     ...liveActivityContent(session),
     exerciseName: "Workout complete",
-    muscleMapKey: "",
     timerStartEpochMs: 0,
     elapsedMs: elapsedMs(session),
     isPaused: true,
@@ -59,24 +51,10 @@ function endContent(session: ActiveWorkoutSession): LiveActivityContent {
 export function startLiveActivitySync() {
   let lastFrame: string | null = null
   let lastWorkoutId: string | null = null
-  let lastExerciseId: string | null = null
-  let frameIndex = 0
 
   const render = (session: ActiveWorkoutSession) => {
     const content = liveActivityContent(session)
-    const exercise = currentExercise(session)
-    // Rasterizing a muscle map is asynchronous, so the first frame of a new
-    // exercise goes out without one and the map arrives with the next — which
-    // this schedules itself, since nothing else about the session will have
-    // changed by then.
-    const map = exercise
-      ? muscleMapPng(exercise.muscles, () => {
-          const current = useActiveWorkout.getState().session
-          if (current) render(current)
-        })
-      : null
-
-    const frame = JSON.stringify({ ...content, hasMap: map !== null })
+    const frame = JSON.stringify(content)
     if (frame === lastFrame) return
 
     // The first frame of a session starts the activity — which on the native
@@ -88,33 +66,17 @@ export function startLiveActivitySync() {
     lastFrame = frame
     lastWorkoutId = content.workoutId
 
-    // Every update steps the demonstration one still further through the
-    // movement, and a new exercise starts its own at the beginning. It is the
-    // only motion a Live Activity can be given: the card is redrawn when the
-    // content state changes and at no other time.
-    frameIndex = content.exerciseId === lastExerciseId ? frameIndex + 1 : 0
-    lastExerciseId = content.exerciseId
-
-    const payload: LiveActivityPayload = {
-      ...content,
-      frameIndex,
-      muscleMapPng: map ?? "",
-    }
     void (needsStart
-      ? liveActivity.start(payload)
-      : liveActivity.update(payload))
+      ? liveActivity.start(content)
+      : liveActivity.update(content))
   }
 
   const stop = (session: ActiveWorkoutSession, dismissImmediately: boolean) => {
     if (lastFrame === null) return
     lastFrame = null
     lastWorkoutId = null
-    lastExerciseId = null
-    frameIndex = 0
     void liveActivity.end({
       ...endContent(session),
-      frameIndex: 0,
-      muscleMapPng: "",
       dismissImmediately,
     })
   }

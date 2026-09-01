@@ -6,12 +6,19 @@ import { isRecord } from "@/store/persistence"
 import { useActiveWorkout } from "@/store/use-active-workout"
 import { sanitizeFavoritesState, useFavorites } from "@/store/use-favorites"
 import { sanitizeFilterState, useFilters } from "@/store/use-filters"
-import { sanitizeSettings, useSettings } from "@/store/use-settings"
+import {
+  DEFAULT_SETTINGS,
+  sanitizeSettings,
+  useSettings,
+} from "@/store/use-settings"
 import { sanitizeWorkoutsState, useWorkouts } from "@/store/use-workouts"
 
 const BACKUP_VERSION = 1
 
-export function createGymLibBackup() {
+export function createGymLibBackup(
+  createdAt = new Date().toISOString(),
+  pretty = true
+) {
   const favorites = useFavorites.getState()
   const filters = useFilters.getState()
   const settings = useSettings.getState()
@@ -20,7 +27,7 @@ export function createGymLibBackup() {
   return JSON.stringify(
     {
       app: "Gym Lib",
-      createdAt: new Date().toISOString(),
+      createdAt,
       version: BACKUP_VERSION,
       data: {
         favorites: { favoriteIds: favorites.favoriteIds },
@@ -34,7 +41,24 @@ export function createGymLibBackup() {
       },
     },
     null,
-    2
+    pretty ? 2 : undefined
+  )
+}
+
+/** Defaults do not need to win a first-run conflict over an existing cloud copy. */
+export function hasMeaningfulGymLibData() {
+  const favorites = useFavorites.getState()
+  const filters = useFilters.getState()
+  const settings = sanitizeSettings(useSettings.getState())
+  const workouts = useWorkouts.getState()
+
+  return (
+    favorites.favoriteIds.length > 0 ||
+    filters.selectedMuscles.length > 0 ||
+    filters.selectedEquipment.length > 0 ||
+    filters.equipmentPresets.length > 0 ||
+    workouts.workouts.length > 0 ||
+    JSON.stringify(settings) !== JSON.stringify(DEFAULT_SETTINGS)
   )
 }
 

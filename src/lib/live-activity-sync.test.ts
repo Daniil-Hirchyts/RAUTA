@@ -47,13 +47,11 @@ function session(patch: Partial<ActiveWorkoutSession> = {}) {
 let stop = () => {}
 
 describe("liveActivityContent", () => {
-  it("describes the exercise in progress and the muscles it works", () => {
+  it("describes the exercise in progress without sending artwork", () => {
     expect(liveActivityContent(session())).toMatchObject({
       workoutId: "workout-1",
       workoutName: "Push day",
-      exerciseId: "0001",
       exerciseName: "3/4 Sit-Up",
-      muscleMapKey: "front-abs-hip-flexors-lower-back",
       completedCount: 0,
       totalCount: 3,
       isPaused: false,
@@ -93,9 +91,7 @@ describe("liveActivityContent", () => {
     })
 
     expect(liveActivityContent(done)).toMatchObject({
-      exerciseId: "",
       exerciseName: "All exercises done",
-      muscleMapKey: "",
       completedCount: 3,
     })
   })
@@ -122,7 +118,7 @@ describe("startLiveActivitySync", () => {
 
     expect(liveActivity.start).toHaveBeenCalledOnce()
     expect(liveActivity.start).toHaveBeenCalledWith(
-      expect.objectContaining({ exerciseId: "0001", completedCount: 0 })
+      expect.objectContaining({ exerciseName: "3/4 Sit-Up", completedCount: 0 })
     )
     expect(liveActivity.update).not.toHaveBeenCalled()
   })
@@ -138,21 +134,20 @@ describe("startLiveActivitySync", () => {
     )
   })
 
-  it("steps the demonstration on with every update, and restarts it per exercise", () => {
+  it("sends no artwork fields while the workout changes", () => {
     useActiveWorkout.getState().start(workout)
-    expect(liveActivity.start).toHaveBeenCalledWith(
-      expect.objectContaining({ exerciseId: "0001", frameIndex: 0 })
-    )
-
     useActiveWorkout.getState().pause()
-    expect(liveActivity.update).toHaveBeenLastCalledWith(
-      expect.objectContaining({ exerciseId: "0001", frameIndex: 1 })
-    )
-
     useActiveWorkout.getState().completeCurrent()
-    expect(liveActivity.update).toHaveBeenLastCalledWith(
-      expect.objectContaining({ exerciseId: "0002", frameIndex: 0 })
-    )
+
+    for (const [payload] of [
+      ...vi.mocked(liveActivity.start).mock.calls,
+      ...vi.mocked(liveActivity.update).mock.calls,
+    ]) {
+      expect(payload).not.toHaveProperty("exerciseId")
+      expect(payload).not.toHaveProperty("frameIndex")
+      expect(payload).not.toHaveProperty("muscleMapKey")
+      expect(payload).not.toHaveProperty("muscleMapPng")
+    }
   })
 
   it("skips a store change that would not alter the card", () => {

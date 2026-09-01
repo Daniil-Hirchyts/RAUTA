@@ -208,7 +208,7 @@ function DrawerContent({
           {showSwipeHandle && <DrawerSwipeHandle />}
           <DrawerPrimitive.Close
             aria-label="Close drawer"
-            className="absolute top-3 left-3 z-30 grid size-11 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-lg shadow-black/20 transition-[transform,color,background-color] duration-250 active:scale-90 active:bg-muted active:text-foreground"
+            className="interactive-spring absolute top-3 left-3 z-30 grid size-11 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-lg shadow-black/20 active:bg-card/90 active:text-white"
             data-slot="drawer-close-button"
             render={
               <button

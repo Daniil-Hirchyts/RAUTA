@@ -139,7 +139,7 @@ export function ExerciseSwapperDrawer({
                 {visibleAlternatives.map((alternative) => (
                   <button
                     aria-label={`Swap to ${alternative.name}`}
-                    className="flex w-full items-center gap-3 overflow-hidden rounded-[20px] border border-border bg-card p-2.5 text-left transition-colors active:bg-muted"
+                    className="interactive-spring flex w-full items-center gap-3 overflow-hidden rounded-[20px] border border-border bg-card p-2.5 text-left active:bg-card/90"
                     key={alternative.id}
                     onClick={() => onSwap(alternative)}
                     type="button"

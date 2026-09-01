@@ -12,10 +12,12 @@ import {
   BellRing,
   ChevronLeft,
   ChevronRight,
+  Cloud,
   Download,
   FileUp,
   HeartPulse,
   Info,
+  RefreshCw,
   Smartphone,
   Trash2,
   Vibrate,
@@ -33,6 +35,7 @@ import {
 } from "@/lib/app-backup"
 import { openAppleHealthSettings, requestAppleHealthAccess } from "@/lib/health"
 import { triggerHaptic } from "@/lib/haptics"
+import { syncICloudNow, useICloudSync } from "@/lib/icloud-sync"
 import { isNative } from "@/lib/native"
 import { cn } from "@/lib/utils"
 import { useSettings, type SettingsPreferences } from "@/store/use-settings"
@@ -125,7 +128,7 @@ function SettingsAction({
     <button
       className={cn(
         ROW,
-        "transition-colors duration-150 active:bg-muted",
+        "interactive-spring active:bg-muted/80",
         tone === "destructive" && "text-primary"
       )}
       data-haptics="off"
@@ -152,6 +155,7 @@ export function SettingsPage({
   onDataCleared: () => void
 }) {
   const settings = useSettings()
+  const iCloud = useICloudSync()
   const setPreference = settings.setPreference
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [clearOpen, setClearOpen] = useState(false)
@@ -173,6 +177,21 @@ export function SettingsPage({
     triggerHaptic("selection")
     setPreference(key, value)
   }
+
+  const iCloudDescription = (() => {
+    if (!isNative()) return "Automatic backup is available in the iPhone app"
+    if (iCloud.status === "checking") return "Checking your iCloud account…"
+    if (iCloud.status === "syncing") return "Saving workouts and settings…"
+    if (iCloud.status === "unavailable")
+      return "Sign in to iCloud to enable backup"
+    if (iCloud.status === "error")
+      return iCloud.error ?? "The last backup could not be saved"
+    if (!iCloud.lastSyncedAt) return "Your data is backed up automatically"
+    return `Saved automatically · ${new Intl.DateTimeFormat(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(iCloud.lastSyncedAt))}`
+  })()
 
   const toggleAppleHealth = async (enabled: boolean) => {
     if (!enabled) {
@@ -348,6 +367,30 @@ export function SettingsPage({
         </SettingsSection>
 
         <SettingsSection title="Data & Storage">
+          <SettingsRow
+            description={iCloudDescription}
+            icon={<Cloud />}
+            title="iCloud backup"
+          >
+            {iCloud.status === "checking" || iCloud.status === "syncing" ? (
+              <MatrixLoader label="Syncing iCloud backup" variant="pulse" />
+            ) : isNative() && iCloud.status !== "unavailable" ? (
+              <Button
+                aria-label="Sync iCloud backup now"
+                className="shrink-0 rounded-full"
+                onClick={() => {
+                  triggerHaptic("light")
+                  void syncICloudNow().then((synced) => {
+                    if (synced) triggerHaptic("success")
+                  })
+                }}
+                size="icon"
+                variant="ghost"
+              >
+                <RefreshCw className="size-4.5" />
+              </Button>
+            ) : null}
+          </SettingsRow>
           <SettingsAction
             description="Save a JSON backup of everything"
             icon={<Download />}
@@ -413,6 +456,7 @@ export function SettingsPage({
       <ClearDataConfirmation
         onConfirm={() => {
           clearAllGymLibData()
+          void syncICloudNow()
           onDataCleared()
         }}
         onOpenChange={setClearOpen}

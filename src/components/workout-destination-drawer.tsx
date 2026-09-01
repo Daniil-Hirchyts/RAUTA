@@ -43,7 +43,7 @@ export function WorkoutDestinationDrawer({
           </p>
 
           <button
-            className="mt-5 flex w-full items-center gap-3 rounded-[20px] border border-primary/45 bg-[color-mix(in_oklch,var(--card),var(--primary)_9%)] p-4 text-left active:bg-muted"
+            className="interactive-spring mt-5 flex w-full items-center gap-3 rounded-[20px] border border-primary/45 bg-[color-mix(in_oklch,var(--card),var(--primary)_10%)] p-4 text-left active:bg-[color-mix(in_oklch,var(--card),var(--primary)_24%)] active:border-primary"
             onClick={() => {
               triggerHaptic("medium")
               onCreateNew()
@@ -70,7 +70,7 @@ export function WorkoutDestinationDrawer({
               <div className="max-h-[42vh] space-y-2 overflow-y-auto">
                 {sorted.map((workout) => (
                   <button
-                    className={`flex w-full items-center gap-3 rounded-[18px] border p-3.5 text-left active:bg-muted ${
+                    className={`interactive-spring flex w-full items-center gap-3 rounded-[18px] border p-3.5 text-left active:bg-muted/80 ${
                       workout.id === preferredWorkoutId
                         ? "border-primary/50 bg-card"
                         : "border-border bg-card"

@@ -62,7 +62,7 @@ export function WorkoutCountdown({
 
       <button
         aria-label="Start now"
-        className="relative grid size-[11.5rem] place-items-center rounded-full transition-transform duration-150 active:scale-95"
+        className="interactive-spring relative grid size-[11.5rem] place-items-center rounded-full"
         onClick={() => {
           triggerHaptic("heavy")
           setRemaining(0)

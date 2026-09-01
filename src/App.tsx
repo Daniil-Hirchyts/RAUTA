@@ -450,7 +450,7 @@ export function App() {
                   <div className="flex items-center gap-1.5 rounded-full border border-border bg-card p-0.5">
                     <Button
                       aria-label="My workouts"
-                      className="rounded-full border-0 bg-transparent text-muted-foreground active:bg-muted active:text-foreground"
+                      className="interactive-spring rounded-full border-0 bg-transparent text-muted-foreground active:bg-white/10 active:text-white"
                       onClick={() => {
                         triggerHaptic("medium")
                         navigate({ type: "workouts" }, "back")
@@ -462,7 +462,7 @@ export function App() {
                     </Button>
                     <Button
                       aria-label="Settings"
-                      className="rounded-full border-0 bg-transparent text-muted-foreground active:bg-muted active:text-foreground"
+                      className="interactive-spring rounded-full border-0 bg-transparent text-muted-foreground active:bg-white/10 active:text-white"
                       onClick={() => {
                         triggerHaptic("medium")
                         navigate({ type: "settings" })
@@ -475,7 +475,7 @@ export function App() {
                     {hasFilters && (
                       <Button
                         aria-label="Reset selections"
-                        className="rounded-full border-0 bg-transparent text-muted-foreground active:bg-muted active:text-foreground"
+                        className="interactive-spring rounded-full border-0 bg-transparent text-muted-foreground active:bg-white/10 active:text-white"
                         onClick={resetFlow}
                         size="icon"
                         variant="ghost"
@@ -709,10 +709,10 @@ export function App() {
                           ? "Show all exercises"
                           : "Show favorites only"
                       }
-                      className={`grid size-[3.25rem] shrink-0 place-items-center rounded-[26px] border transition-colors duration-150 ${
+                      className={`interactive-spring grid size-[3.25rem] shrink-0 place-items-center rounded-[26px] border ${
                         favoritesOnly
-                          ? "border-primary bg-[color-mix(in_oklch,var(--card),var(--primary)_16%)] text-primary"
-                          : "border-border bg-card text-muted-foreground active:bg-muted"
+                          ? "border-primary bg-[color-mix(in_oklch,var(--card),var(--primary)_22%)] text-primary active:border-[#FFA266]"
+                          : "border-border bg-card text-muted-foreground active:bg-card/90 active:text-white"
                       }`}
                       iconClassName="size-5"
                       liked={favoritesOnly}

@@ -97,7 +97,7 @@ function WorkoutRow({
         <div className="flex items-center gap-2">
           <button
             aria-label={`Copy ${formatDateShort(workout.date)} workout to today`}
-            className="grid size-14 shrink-0 place-items-center rounded-full bg-secondary text-secondary-foreground shadow-lg shadow-black/20 transition-transform duration-150 active:scale-90"
+            className="interactive-spring grid size-14 shrink-0 place-items-center rounded-full bg-secondary text-secondary-foreground shadow-lg shadow-black/20"
             data-haptics="off"
             onClick={onCopy}
             type="button"
@@ -106,7 +106,7 @@ function WorkoutRow({
           </button>
           <button
             aria-label={`Delete ${formatDateShort(workout.date)} workout`}
-            className="text-destructive-foreground grid size-14 shrink-0 place-items-center rounded-full bg-destructive shadow-lg shadow-black/20 transition-transform duration-150 active:scale-90"
+            className="interactive-spring text-destructive-foreground grid size-14 shrink-0 place-items-center rounded-full bg-destructive shadow-lg shadow-black/20"
             data-haptics="off"
             onClick={onDelete}
             type="button"
@@ -126,7 +126,7 @@ function WorkoutRow({
         }`}
       >
         <button
-          className="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 text-left active:bg-muted"
+          className="interactive-spring flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 text-left active:bg-muted/80"
           data-haptics="off"
           onClick={() => {
             if (isOpen) {

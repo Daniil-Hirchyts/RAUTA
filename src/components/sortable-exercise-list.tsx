@@ -67,7 +67,7 @@ function SortableExerciseRow({
               : `Mark ${exercise.name} as done`
           }
           aria-pressed={status === "completed"}
-          className="grid w-12 shrink-0 place-items-center border-r border-border bg-muted/35 transition-colors active:bg-muted"
+          className="interactive-spring grid w-12 shrink-0 place-items-center border-r border-border bg-muted/35 active:bg-muted/80"
           onClick={() => onToggleComplete(exercise.id)}
           type="button"
         >
@@ -80,7 +80,7 @@ function SortableExerciseRow({
       )}
       <button
         aria-label={`Open ${exercise.name} demonstration`}
-        className="isolate aspect-square h-32 shrink-0 bg-[#111113] active:bg-muted/60"
+        className="interactive-spring isolate aspect-square h-32 shrink-0 bg-[#111113]"
         disabled={!onOpen}
         onClick={() => onOpen?.(exercise)}
         type="button"
@@ -114,7 +114,7 @@ function SortableExerciseRow({
       {reorderable ? (
         <button
           aria-label={`Reorder ${exercise.name}`}
-          className="grid w-12 shrink-0 touch-none place-items-center text-muted-foreground transition-colors active:text-foreground"
+          className="interactive-spring grid w-12 shrink-0 touch-none place-items-center text-muted-foreground active:text-foreground"
           data-base-ui-swipe-ignore=""
           data-haptics="off"
           ref={handleRef as Ref<HTMLButtonElement>}
@@ -137,7 +137,7 @@ function SortableExerciseRow({
               {onFindAlternative && (
                 <button
                   aria-label="Find alternative"
-                  className="grid size-14 place-items-center rounded-full bg-secondary text-secondary-foreground shadow-lg shadow-black/20 active:scale-90"
+                  className="interactive-spring grid size-14 place-items-center rounded-full bg-secondary text-secondary-foreground shadow-lg shadow-black/20"
                   onClick={() => {
                     onOpenChange(false)
                     onFindAlternative(exercise)
@@ -149,7 +149,7 @@ function SortableExerciseRow({
               )}
               <button
                 aria-label={`Remove ${exercise.name}`}
-                className="text-destructive-foreground grid size-14 place-items-center rounded-full bg-destructive shadow-lg shadow-black/20 active:scale-90"
+                className="interactive-spring text-destructive-foreground grid size-14 place-items-center rounded-full bg-destructive shadow-lg shadow-black/20"
                 onClick={() => onRemove(exercise.id)}
                 type="button"
               >

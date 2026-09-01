@@ -5,21 +5,21 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-4xl border border-transparent bg-clip-padding text-sm font-semibold whitespace-nowrap transition-[color,background-color,border-color,transform,box-shadow] duration-150 outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 active:not-aria-[haspopup]:translate-y-px active:not-aria-[haspopup]:scale-[0.97] disabled:pointer-events-none aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button interactive-spring inline-flex shrink-0 items-center justify-center rounded-4xl border border-transparent bg-clip-padding text-sm font-semibold whitespace-nowrap outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 focus-visible:brightness-110 disabled:pointer-events-none aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default:
-          "border-primary bg-primary text-primary-foreground active:bg-[color-mix(in_oklch,var(--primary),black_10%)] disabled:border-border disabled:bg-muted disabled:text-muted-foreground",
+          "border-primary bg-primary text-primary-foreground active:border-[#FFA266] active:bg-[color-mix(in_oklch,var(--primary),white_24%)] active:brightness-125 disabled:border-border disabled:bg-muted disabled:text-muted-foreground",
         outline:
-          "border-border bg-background active:bg-muted active:text-foreground disabled:bg-muted disabled:text-muted-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
+          "border-border bg-background active:border-border/80 active:bg-muted/80 active:text-white active:brightness-125 disabled:bg-muted disabled:text-muted-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
         secondary:
-          "border-border bg-secondary text-secondary-foreground active:bg-muted disabled:bg-muted disabled:text-muted-foreground aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "border-border bg-secondary text-secondary-foreground active:bg-secondary/90 active:text-white active:brightness-125 disabled:bg-muted disabled:text-muted-foreground aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
-          "border-border bg-card active:bg-muted active:text-foreground disabled:bg-muted disabled:text-muted-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
+          "border-border bg-card active:bg-card/90 active:text-white active:brightness-125 disabled:bg-muted disabled:text-muted-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
         destructive:
-          "border-primary bg-card text-primary active:bg-[color-mix(in_oklch,var(--card),var(--primary)_12%)] focus-visible:border-primary focus-visible:ring-primary/30 disabled:border-border disabled:bg-muted disabled:text-muted-foreground",
-        link: "text-primary underline-offset-4 active:underline disabled:text-primary/40",
+          "border-primary bg-card text-primary active:border-primary active:bg-[color-mix(in_oklch,var(--card),var(--primary)_28%)] active:text-primary active:brightness-125 focus-visible:border-primary focus-visible:ring-primary/30 disabled:border-border disabled:bg-muted disabled:text-muted-foreground",
+        link: "text-primary underline-offset-4 active:brightness-135 active:underline disabled:text-primary/40",
       },
       size: {
         default:

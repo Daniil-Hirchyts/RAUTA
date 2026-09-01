@@ -47,7 +47,7 @@ export function ClearDataConfirmation({
           <DrawerDescription className="mx-auto mt-2 max-w-[18rem]">
             {confirmed
               ? "Export a backup first if you may need any of it later."
-              : "Every workout, favorite, equipment preset, and preference on this device is removed."}
+              : "Every workout, favorite, equipment preset, and preference is removed from this device and iCloud."}
           </DrawerDescription>
         </div>
         <DrawerFooter className="bg-transparent pb-[calc(1rem+env(safe-area-inset-bottom))]">
