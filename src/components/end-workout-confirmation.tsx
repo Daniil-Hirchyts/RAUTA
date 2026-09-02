@@ -3,7 +3,7 @@ import {
   Drawer,
   DrawerContent,
   DrawerDescription,
-  DrawerFooter,
+  DrawerControls,
   DrawerTitle,
 } from "@/components/ui/drawer"
 import { triggerHaptic } from "@/lib/haptics"
@@ -30,9 +30,10 @@ export function EndWorkoutConfirmation({
             stays saved.
           </DrawerDescription>
         </div>
-        <DrawerFooter className="bg-transparent pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <DrawerControls>
           <Button
-            className="h-12 w-full rounded-2xl text-base font-semibold"
+            className="w-full"
+            size="cta"
             onClick={() => {
               triggerHaptic("warning")
               onConfirm()
@@ -42,14 +43,7 @@ export function EndWorkoutConfirmation({
           >
             Discard session
           </Button>
-          <Button
-            className="h-12 w-full rounded-2xl text-base"
-            onClick={() => onOpenChange(false)}
-            variant="secondary"
-          >
-            Keep going
-          </Button>
-        </DrawerFooter>
+        </DrawerControls>
       </DrawerContent>
     </Drawer>
   )

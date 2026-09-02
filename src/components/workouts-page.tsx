@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import {
   CalendarDays,
   CheckCircle2,
@@ -9,7 +9,12 @@ import {
   Trash2,
 } from "lucide-react"
 
-import { AppScreen, AppShellHeader, AppSurface } from "@/components/app-shell"
+import {
+  AppHeaderButton,
+  AppScreen,
+  AppShellHeader,
+  AppSurface,
+} from "@/components/app-shell"
 import { BodyPreview } from "@/components/body-map"
 import { DeleteWorkoutConfirmation } from "@/components/delete-workout-confirmation"
 import { SwipeableRow } from "@/components/swipeable-row"
@@ -120,14 +125,14 @@ function WorkoutRow({
       onOpenChange={onOpenChange}
     >
       <div
-        className={`mx-5 flex w-[calc(100%-2.5rem)] items-center gap-2 rounded-2xl border p-2 pr-2.5 transition-[border-color,background-color] duration-200 ${
+        className={`mx-5 flex w-[calc(100%-2.5rem)] items-center gap-2 rounded-3xl border p-2 pr-2.5 transition-[border-color,background-color] duration-200 ${
           isRunning
             ? "border-primary/55 bg-[color-mix(in_oklch,var(--card),var(--primary)_7%)]"
             : "border-border bg-card"
         }`}
       >
         <button
-          className="interactive-spring flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 text-left active:bg-muted/80"
+          className="interactive-spring flex min-w-0 flex-1 items-center gap-3 rounded-2xl p-2 text-left active:bg-muted/80"
           data-haptics="off"
           onClick={() => {
             if (isOpen) {
@@ -181,6 +186,7 @@ export function WorkoutsPage({
   onSelect: (workout: Workout) => void
   onSettings: () => void
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
   const workouts = useWorkouts((state) => state.workouts)
   const deleteWorkout = useWorkouts((state) => state.deleteWorkout)
   const duplicateWorkout = useWorkouts((state) => state.duplicateWorkout)
@@ -243,24 +249,21 @@ export function WorkoutsPage({
   return (
     <AppScreen bottomControls>
       <AppSurface>
-        <AppShellHeader>
-          <div className="flex items-center justify-between gap-3">
-            <h1 className="bg-gradient-to-r from-foreground to-foreground/75 bg-clip-text text-[30px] font-black tracking-[-0.03em] text-transparent">
-              My workouts
-            </h1>
-            <Button
-              aria-label="Settings"
-              className="rounded-full"
-              onClick={onSettings}
-              size="icon"
-              variant="secondary"
-            >
+        <AppShellHeader
+          right={
+            <AppHeaderButton aria-label="Settings" onClick={onSettings}>
               <Settings className="size-5" />
-            </Button>
-          </div>
-        </AppShellHeader>
+            </AppHeaderButton>
+          }
+          scrollRef={scrollRef}
+          title="My workouts"
+        />
 
-        <div className="app-scroll-region flex min-h-0 flex-1 flex-col overflow-y-auto pt-5 pb-6">
+        <div
+          className="app-scroll-region flex min-h-0 flex-1 flex-col overflow-y-auto pt-5 pb-6"
+          ref={scrollRef}
+          tabIndex={-1}
+        >
           <div className="space-y-7">
             {upcoming.length > 0 ? (
               <section aria-labelledby="upcoming-workouts-heading">

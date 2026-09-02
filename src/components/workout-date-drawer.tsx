@@ -41,9 +41,9 @@ export function WorkoutDateDrawer({
             Currently {formatDateLong(date)}.
           </p>
 
-          <div className="mt-4 rounded-xl border border-border bg-card p-3">
+          <div className="mt-4 rounded-2xl border border-border bg-card p-3">
             <Calendar
-              className="w-full overflow-hidden rounded-lg bg-background [--cell-size:clamp(2.5rem,11vw,3rem)]"
+              className="w-full overflow-hidden rounded-xl bg-background [--cell-size:clamp(2.5rem,11vw,3rem)]"
               disabled={{ before: todayStart() }}
               mode="single"
               onSelect={(selected) => {

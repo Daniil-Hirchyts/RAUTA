@@ -103,7 +103,7 @@ export function ExerciseCard({
   return (
     <article
       className={cn(
-        "exercise-card t-stagger-line relative overflow-hidden rounded-xl border bg-card shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-300 ease-[var(--ease-smooth-out)]",
+        "exercise-card t-stagger-line relative overflow-hidden rounded-3xl border bg-card shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-300 ease-[var(--ease-smooth-out)]",
         selectMode && selected
           ? "border-primary/75 shadow-[0_0_0_1px_color-mix(in_oklch,var(--primary)_30%,transparent)]"
           : "border-border"

@@ -11,9 +11,10 @@ import { triggerHaptic } from "@/lib/haptics"
 
 /**
  * The workout clock: elapsed time, how much of the session is done, and the
- * one control that changes either. It floats above the list rather than
- * scrolling away with it, because it is the thing being glanced at mid-set —
- * and it mirrors the Lock Screen card, so both readings agree.
+ * one control that changes either. Its parent keeps it in the fixed bottom
+ * dock rather than letting it scroll with the exercise list, because it is
+ * the thing being glanced at mid-set — and it mirrors the Lock Screen card,
+ * so both readings agree.
  */
 export function ActiveWorkoutTimer({
   onPause,
@@ -29,7 +30,7 @@ export function ActiveWorkoutTimer({
   const isPaused = session.runningSince === null
 
   return (
-    <div className="sticky top-0 z-20 mx-4 flex items-center gap-3 rounded-xl border border-primary/25 bg-background/85 px-3.5 py-2.5 shadow-lg shadow-black/40 backdrop-blur-xl">
+    <div className="active-workout-timer flex items-center gap-3 rounded-2xl border border-primary/25 bg-background/85 px-3.5 py-2.5 shadow-lg shadow-black/40 backdrop-blur-xl">
       <div className="min-w-0 flex-1">
         <p className="text-xs font-bold tracking-[0.16em] text-primary uppercase">
           {isPaused ? "Paused" : "In progress"}

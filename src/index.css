@@ -61,7 +61,6 @@
   );
   /* The footer's own box: its button, plus the padding above and below it.
      The surface reserves exactly this, so the two cannot drift apart. */
-  --app-header-radius: min(calc(var(--app-surface-radius) - 1px), 3.25rem);
   --app-controls-height: 3.25rem;
   --app-controls-space: calc(
     var(--app-controls-height) + 2rem + env(safe-area-inset-bottom)
@@ -292,6 +291,7 @@
 
 .app-surface {
   position: relative;
+  isolation: isolate;
   display: flex;
   min-height: 0;
   flex: 1;
@@ -302,21 +302,122 @@
   background: var(--background);
 }
 
-/* The header is the shell's top section, so the surface itself supplies its
-   top and side outline. Keep only the lower divider/curve, and absorb the safe
-   area into the header's content padding instead of creating an inset gap. */
+/* The top edge fade belongs to the surface, not to the title. It remains in
+   place when the title slides away, mirroring the fixed fade behind the
+   bottom controls without painting a full header-height band. */
+.app-top-scrim {
+  position: absolute;
+  z-index: 20;
+  inset: 0 0 auto;
+  height: 2.25rem;
+  background: linear-gradient(
+    to bottom,
+    var(--background) 0%,
+    color-mix(in oklch, var(--background) 55%, transparent) 55%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* The title floats independently above the page scroller. Only its controls
+   animate away; the compact edge fade is owned by .app-top-scrim and remains
+   fixed to the surface. */
 .app-shell-header {
-  position: relative;
-  z-index: 10;
+  position: absolute;
+  z-index: 30;
+  inset: 0 0 auto;
   margin: 0;
-  padding-top: calc(1rem + env(safe-area-inset-top));
+  padding: calc(0.75rem + env(safe-area-inset-top)) 1.25rem 0.75rem;
   border: 0;
-  border-bottom: 1px solid var(--border);
-  /* The curve echoes the surface it sits in, capped so it stays a header
-     detail rather than most of the header's own height on the devices with
-     the deepest hardware corners. */
-  border-radius: 0 0 var(--app-header-radius) var(--app-header-radius);
-  background: var(--background);
+  border-radius: 0;
+  background: transparent;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 180ms ease,
+    transform 260ms var(--ease-smooth-out);
+  will-change: transform, opacity;
+}
+
+.app-shell-header[data-hidden="true"] {
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-100%);
+}
+
+.app-shell-header-row {
+  display: grid;
+  min-height: 2.75rem;
+  grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
+  align-items: center;
+  column-gap: 0.75rem;
+}
+
+.app-shell-header-action {
+  display: grid;
+  min-width: 0;
+  place-items: center;
+}
+
+.app-shell-header-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 1.25rem;
+  font-weight: 850;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-shell-header-button {
+  border-radius: 9999px;
+}
+
+.app-shell-header-below {
+  display: flex;
+  justify-content: center;
+  padding-top: 0.625rem;
+}
+
+/* The scroller now runs underneath the fixed gradient. Its leading padding
+   keeps the first real content clear at rest, then naturally scrolls away so
+   later cards can pass behind the fade instead of hitting a solid title bar. */
+.app-shell-header + .app-scroll-region {
+  padding-top: calc(4.25rem + env(safe-area-inset-top) + 1.25rem);
+}
+
+.app-shell-header + .app-stage-frame > .t-page {
+  padding-top: calc(5.25rem + env(safe-area-inset-top) + 0.75rem);
+}
+
+.app-surface-bottom-dock {
+  position: relative;
+  z-index: 20;
+  flex: none;
+  background: transparent;
+}
+
+.equipment-presets-dock {
+  padding-block: 0.75rem 1rem;
+}
+
+.active-workout-dock {
+  padding: 0.75rem 1rem 1rem;
+}
+
+/* Drawers portal in here rather than into the body, so they open inside the
+   shell: the host is the surface's box, and its overflow clip gives a sheet
+   the same corners the shell has. It is inert until a drawer fills it. */
+.app-drawer-host {
+  position: absolute;
+  z-index: 50;
+  inset: var(--app-surface-gutter);
+  overflow: hidden;
+  border-radius: var(--app-surface-radius);
+  pointer-events: none;
 }
 
 /* A scroll viewport ends before the shell's lower curve. The subtle fade makes

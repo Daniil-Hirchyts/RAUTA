@@ -64,7 +64,8 @@ function WorkoutForm({
         {isEdit ? "Edit workout" : "New workout"}
       </DrawerTitle>
       <form
-        className="flex min-h-0 flex-1 flex-col px-4 pt-16"
+        className="flex min-h-0 flex-1 flex-col px-4 pt-16 pb-6"
+        id="workout-form"
         onSubmit={submit}
       >
         {isEdit && (
@@ -93,12 +94,12 @@ function WorkoutForm({
         {datePickerOpen ? (
           <div
             aria-label="Choose workout date"
-            className="mt-4 min-h-0 flex-1 overflow-y-auto rounded-xl border border-border bg-card p-3"
+            className="mt-4 min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border bg-card p-3"
             id="workout-date-calendar"
             role="dialog"
           >
             <Calendar
-              className="w-full overflow-hidden rounded-lg bg-background [--cell-size:clamp(2.5rem,11vw,3rem)]"
+              className="w-full overflow-hidden rounded-xl bg-background [--cell-size:clamp(2.5rem,11vw,3rem)]"
               disabled={{ before: todayStart() }}
               mode="single"
               onSelect={(selected) => {
@@ -123,15 +124,17 @@ function WorkoutForm({
           </div>
         )}
 
-        <div className="bottom-controls-scrim -mx-4 shrink-0 px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] [--bottom-controls-color:var(--popover)]">
+        <DrawerControls>
           <Button
-            className="h-12 w-full rounded-2xl text-base font-semibold"
+            className="w-full"
             disabled={!canSave}
+            form="workout-form"
+            size="cta"
             type="submit"
           >
             {isEdit ? "Save workout" : "Create workout"}
           </Button>
-        </div>
+        </DrawerControls>
       </form>
     </>
   )

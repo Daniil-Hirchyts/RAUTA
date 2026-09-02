@@ -6,7 +6,7 @@ import {
   Drawer,
   DrawerContent,
   DrawerDescription,
-  DrawerFooter,
+  DrawerControls,
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { EQUIPMENT_OPTIONS } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
+import { cn } from "@/lib/utils"
 import { useFilters } from "@/store/use-filters"
 
 const STARTER_PRESETS = [
@@ -37,7 +38,7 @@ function sameSelection(left: readonly string[], right: readonly string[]) {
   )
 }
 
-export function EquipmentPresets() {
+export function EquipmentPresets({ className }: { className?: string }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const selectedEquipment = useFilters((state) => state.selectedEquipment)
@@ -66,7 +67,10 @@ export function EquipmentPresets() {
 
   return (
     <div
-      className="sticky top-0 z-20 -mx-5 mb-1 flex [scrollbar-width:none] gap-2 overflow-x-auto px-5 pt-2 pb-4 [&::-webkit-scrollbar]:hidden"
+      className={cn(
+        "flex min-w-0 [scrollbar-width:none] gap-2 overflow-x-auto py-0.5 [&::-webkit-scrollbar]:hidden",
+        className
+      )}
       data-swipe-ignore
     >
       <Drawer onOpenChange={setOpen} open={open} swipeDirection="down">
@@ -92,7 +96,7 @@ export function EquipmentPresets() {
               {selectedEquipment.length === 1 ? "" : "s"}
             </DrawerDescription>
           </DrawerHeader>
-          <form className="space-y-4 px-5 pt-4" onSubmit={submit}>
+          <form className="space-y-4 px-5 pt-4 pb-6" id="equipment-preset-form" onSubmit={submit}>
             <Input
               aria-label="Preset name"
               autoFocus
@@ -101,15 +105,17 @@ export function EquipmentPresets() {
               placeholder="Preset name"
               value={name}
             />
-            <DrawerFooter className="px-0 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+            <DrawerControls>
               <Button
-                className="h-12 w-full rounded-2xl text-base font-semibold"
+                className="w-full"
                 disabled={!name.trim()}
+                form="equipment-preset-form"
+                size="cta"
                 type="submit"
               >
                 Save preset
               </Button>
-            </DrawerFooter>
+            </DrawerControls>
           </form>
         </DrawerContent>
       </Drawer>

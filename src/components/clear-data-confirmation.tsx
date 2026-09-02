@@ -5,7 +5,7 @@ import {
   Drawer,
   DrawerContent,
   DrawerDescription,
-  DrawerFooter,
+  DrawerControls,
   DrawerTitle,
 } from "@/components/ui/drawer"
 import { triggerHaptic } from "@/lib/haptics"
@@ -50,9 +50,10 @@ export function ClearDataConfirmation({
               : "Every workout, favorite, equipment preset, and preference is removed from this device and iCloud."}
           </DrawerDescription>
         </div>
-        <DrawerFooter className="bg-transparent pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <DrawerControls>
           <Button
-            className="h-12 w-full rounded-2xl text-base font-semibold"
+            className="w-full"
+            size="cta"
             onClick={() => {
               if (!confirmed) {
                 triggerHaptic("medium")
@@ -67,14 +68,7 @@ export function ClearDataConfirmation({
           >
             {confirmed ? "Delete everything" : "Continue"}
           </Button>
-          <Button
-            className="h-12 w-full rounded-2xl text-base"
-            onClick={close}
-            variant="secondary"
-          >
-            Cancel
-          </Button>
-        </DrawerFooter>
+        </DrawerControls>
       </DrawerContent>
     </Drawer>
   )

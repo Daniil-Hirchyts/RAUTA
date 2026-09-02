@@ -21,6 +21,9 @@ type BodyView = {
 type BodyMapProps = {
   selectedMuscles: MuscleId[]
   onToggle: (muscle: MuscleId) => void
+  onSideChange?: (side: Side) => void
+  showFlipButton?: boolean
+  side?: Side
 }
 
 type Side = "front" | "back"
@@ -165,15 +168,24 @@ function BodyFigure({
   )
 }
 
-export function BodyMap({ onToggle, selectedMuscles }: BodyMapProps) {
-  const [side, setSide] = useState<Side>("front")
+export function BodyMap({
+  onSideChange,
+  onToggle,
+  selectedMuscles,
+  showFlipButton = true,
+  side: controlledSide,
+}: BodyMapProps) {
+  const [internalSide, setInternalSide] = useState<Side>("front")
+  const side = controlledSide ?? internalSide
   const label = side === "front" ? "Front" : "Back"
   const view = side === "front" ? body.front : body.back
   const swipeStartX = useRef<number | null>(null)
 
   const flipSide = () => {
     triggerHaptic("selection")
-    setSide((current) => (current === "front" ? "back" : "front"))
+    const next = side === "front" ? "back" : "front"
+    if (controlledSide === undefined) setInternalSide(next)
+    onSideChange?.(next)
   }
 
   const onPointerDown = (event: PointerEvent) => {
@@ -219,14 +231,16 @@ export function BodyMap({ onToggle, selectedMuscles }: BodyMapProps) {
         <AnimatedNumber value={selectedMuscles.length} /> selected
       </output>
 
-      <button
-        aria-label={`Show ${side === "front" ? "back" : "front"}`}
-        className="interactive-spring pointer-events-auto absolute right-3.5 bottom-3.5 z-20 grid size-11 place-items-center rounded-full border border-border bg-card/90 text-primary shadow-sm backdrop-blur-md active:bg-card/95 sm:right-4 sm:bottom-4"
-        onClick={flipSide}
-        type="button"
-      >
-        <FlipHorizontal2 className="size-4.5" />
-      </button>
+      {showFlipButton ? (
+        <button
+          aria-label={`Show ${side === "front" ? "back" : "front"}`}
+          className="interactive-spring pointer-events-auto absolute right-3.5 bottom-3.5 z-20 grid size-11 place-items-center rounded-full border border-border bg-card/90 text-primary shadow-sm backdrop-blur-md active:bg-card/95 sm:right-4 sm:bottom-4"
+          onClick={flipSide}
+          type="button"
+        >
+          <FlipHorizontal2 className="size-4.5" />
+        </button>
+      ) : null}
       <div
         className="t-flip min-h-0 w-full flex-1 touch-pan-y p-3.5 sm:p-4"
         data-swipe-ignore

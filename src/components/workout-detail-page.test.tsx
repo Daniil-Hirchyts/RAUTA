@@ -154,7 +154,16 @@ describe("WorkoutDetailPage", () => {
 
     const session = useActiveWorkout.getState().session
     expect(session).toMatchObject({ workoutId, currentExerciseId: "0001" })
-    expect(screen.getByRole("timer")).toHaveTextContent("00:00")
+    const timer = screen.getByRole("timer")
+    const timerPanel = timer.closest(".active-workout-timer")
+    const surface = document.querySelector(".app-surface")
+    const scroller = document.querySelector(".app-scroll-region")
+    const footer = document.querySelector("footer.bottom-controls-scrim")
+
+    expect(timer).toHaveTextContent("00:00")
+    expect(surface).toContainElement(timerPanel as HTMLElement)
+    expect(scroller).not.toContainElement(timerPanel as HTMLElement)
+    expect(footer).not.toContainElement(timerPanel as HTMLElement)
 
     const hero = screen.getByRole("region", { name: "Current exercise" })
     expect(within(hero).getByText("3/4 sit-up")).toBeInTheDocument()

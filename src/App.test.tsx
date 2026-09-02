@@ -67,6 +67,7 @@ describe("App", () => {
 
     expect(screenShell).toHaveAttribute("data-bottom-controls", "true")
     expect(surface).toContainElement(header as HTMLElement)
+    expect(header).toContainElement(screen.getByRole("progressbar"))
     expect(surface).not.toContainElement(footer as HTMLElement)
     expect(surface?.querySelector(".app-stage-frame")).toBeInTheDocument()
   })
@@ -98,15 +99,21 @@ describe("App", () => {
 
     // In flow view (initial setup in beforeEach is flow view)
     expect(screen.getByRole("heading", { name: "Muscles" })).toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Settings" })).not.toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: /reset/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "Settings" })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: /reset/i })
+    ).not.toBeInTheDocument()
 
     const homeButton = screen.getByRole("button", { name: "My workouts" })
     expect(homeButton).toBeInTheDocument()
     await user.click(homeButton)
 
     // Now on workouts page: settings button is shown
-    expect(screen.getByRole("heading", { name: "My workouts" })).toBeInTheDocument()
+    expect(
+      screen.getByRole("heading", { name: "My workouts" })
+    ).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument()
   })
 
@@ -127,6 +134,19 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", { name: "Equipment" })
     ).toBeInTheDocument()
+    const equipmentSurface = document.querySelector(".app-surface")
+    const equipmentFooter = document.querySelector(
+      "footer.bottom-controls-scrim"
+    )
+    const presetDock = document.querySelector(".equipment-presets-dock")
+
+    expect(equipmentSurface).toContainElement(presetDock as HTMLElement)
+    expect(equipmentFooter).not.toContainElement(presetDock as HTMLElement)
+    const fullGymPreset = screen.getByRole("button", { name: "Full gym" })
+    const presetScroller = fullGymPreset.closest("[data-swipe-ignore]")
+    expect(fullGymPreset.closest(".app-surface")).toBe(equipmentSurface)
+    expect(presetScroller).toHaveClass("px-5")
+    expect(presetDock).not.toHaveClass("bottom-controls-scrim")
     await user.click(screen.getByRole("checkbox", { name: "Body Weight" }))
     const showExercises = screen.getByRole("button", {
       name: /show exercises/i,

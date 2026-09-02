@@ -24,7 +24,12 @@ import {
 } from "lucide-react"
 
 import packageJson from "../../package.json"
-import { AppScreen, AppShellHeader, AppSurface } from "@/components/app-shell"
+import {
+  AppHeaderButton,
+  AppScreen,
+  AppShellHeader,
+  AppSurface,
+} from "@/components/app-shell"
 import { ClearDataConfirmation } from "@/components/clear-data-confirmation"
 import { Button } from "@/components/ui/button"
 import { MatrixLoader } from "@/components/ui/matrix-loader"
@@ -58,7 +63,7 @@ function SettingsSection({
       <h2 className="mb-2 px-1 text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase">
         {title}
       </h2>
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm shadow-black/10">
+      <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm shadow-black/10">
         {children}
       </div>
     </section>
@@ -155,6 +160,7 @@ export function SettingsPage({
   onBack: () => void
   onDataCleared: () => void
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
   const settings = useSettings()
   const iCloud = useICloudSync()
   const setPreference = settings.setPreference
@@ -247,24 +253,21 @@ export function SettingsPage({
   return (
     <AppScreen>
       <AppSurface>
-        <AppShellHeader>
-          <div className="flex min-h-10 items-center gap-3">
-            <Button
-              aria-label="Back"
-              className="shrink-0 rounded-full"
-              onClick={onBack}
-              size="icon"
-              variant="secondary"
-            >
+        <AppShellHeader
+          left={
+            <AppHeaderButton aria-label="Back" onClick={onBack}>
               <ChevronLeft />
-            </Button>
-            <h1 className="text-[26px] leading-none font-black tracking-[-0.03em]">
-              Settings
-            </h1>
-          </div>
-        </AppShellHeader>
+            </AppHeaderButton>
+          }
+          scrollRef={scrollRef}
+          title="Settings"
+        />
 
-        <div className="app-scroll-region min-h-0 flex-1 space-y-6 overflow-y-auto px-5 pt-5 pb-6">
+        <div
+          className="app-scroll-region min-h-0 flex-1 space-y-6 overflow-y-auto px-5 pt-5 pb-6"
+          ref={scrollRef}
+          tabIndex={-1}
+        >
           <SettingsSection title="Apple Health">
             <SettingsRow
               description={

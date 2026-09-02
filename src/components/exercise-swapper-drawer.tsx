@@ -71,7 +71,7 @@ export function ExerciseSwapperDrawer({
               Same muscles, different equipment.
             </p>
 
-            <div className="mt-4 flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+            <div className="mt-4 flex items-center gap-3 rounded-2xl border border-border bg-card p-3">
               <div className="isolate size-16 shrink-0 overflow-hidden rounded-2xl bg-[#111113]">
                 <img
                   alt=""
@@ -131,7 +131,7 @@ export function ExerciseSwapperDrawer({
 
           <div className="mt-4 min-h-0 flex-1 overflow-y-auto px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
             {visibleAlternatives.length === 0 ? (
-              <p className="rounded-xl border border-border bg-card px-5 py-8 text-center text-sm leading-relaxed text-muted-foreground">
+              <p className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm leading-relaxed text-muted-foreground">
                 No exact muscle match is available on different equipment.
               </p>
             ) : (
@@ -139,7 +139,7 @@ export function ExerciseSwapperDrawer({
                 {visibleAlternatives.map((alternative) => (
                   <button
                     aria-label={`Swap to ${alternative.name}`}
-                    className="interactive-spring flex w-full items-center gap-3 overflow-hidden rounded-xl border border-border bg-card p-2.5 text-left active:bg-card/90"
+                    className="interactive-spring flex w-full items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card p-2.5 text-left active:bg-card/90"
                     key={alternative.id}
                     onClick={() => onSwap(alternative)}
                     type="button"

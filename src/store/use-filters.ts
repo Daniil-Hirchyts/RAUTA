@@ -18,6 +18,7 @@ export type FilterState = {
   equipmentPresets: EquipmentPreset[]
   toggleMuscle: (muscle: MuscleId) => void
   toggleEquipment: (equipment: string) => void
+  setMuscles: (muscles: MuscleId[]) => void
   setEquipment: (equipment: string[]) => void
   saveEquipmentPreset: (name: string) => void
   applyEquipmentPreset: (id: string) => void
@@ -89,6 +90,13 @@ export const useFilters = create<FilterState>()(
               ),
             }))
           : undefined,
+      setMuscles: (muscles) =>
+        set({
+          selectedMuscles: validUniqueStrings(
+            muscles,
+            isMuscleId
+          ) as MuscleId[],
+        }),
       setEquipment: (equipment) =>
         set({
           selectedEquipment: validUniqueStrings(equipment, validEquipment),

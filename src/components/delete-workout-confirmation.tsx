@@ -3,7 +3,7 @@ import {
   Drawer,
   DrawerContent,
   DrawerDescription,
-  DrawerFooter,
+  DrawerControls,
   DrawerTitle,
 } from "@/components/ui/drawer"
 import { triggerHaptic } from "@/lib/haptics"
@@ -28,9 +28,10 @@ export function DeleteWorkoutConfirmation({
             This workout will be permanently removed from this device.
           </DrawerDescription>
         </div>
-        <DrawerFooter className="bg-transparent pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <DrawerControls>
           <Button
-            className="h-12 w-full rounded-2xl text-base font-semibold"
+            className="w-full"
+            size="cta"
             onClick={() => {
               triggerHaptic("warning")
               onConfirm()
@@ -40,14 +41,7 @@ export function DeleteWorkoutConfirmation({
           >
             Delete workout
           </Button>
-          <Button
-            className="h-12 w-full rounded-2xl text-base"
-            onClick={() => onOpenChange(false)}
-            variant="secondary"
-          >
-            Cancel
-          </Button>
-        </DrawerFooter>
+        </DrawerControls>
       </DrawerContent>
     </Drawer>
   )

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import {
   Drawer,
   DrawerContent,
-  DrawerFooter,
+  DrawerControls,
   DrawerTitle,
 } from "@/components/ui/drawer"
 import { triggerHaptic } from "@/lib/haptics"
@@ -38,7 +38,24 @@ export function ExerciseDetailDrawer({
   return (
     <Drawer onOpenChange={onOpenChange} open={open} swipeDirection="down">
       <DrawerContent className="mx-auto max-w-[430px] [--drawer-inset:0px]">
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-16 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
+        <LikeButton
+          aria-label={
+            isFavorite
+              ? `Remove ${exercise.name} from favorites`
+              : `Add ${exercise.name} to favorites`
+          }
+          className="interactive-spring absolute top-4 right-4 z-30 grid size-11 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-lg shadow-black/20 active:bg-card/90 active:text-white"
+          data-haptics="off"
+          iconClassName="size-5"
+          liked={isFavorite}
+          onClick={() => {
+            triggerHaptic("selection")
+            toggleFavorite(exercise.id)
+          }}
+        />
+        <div
+          className="min-h-0 flex-1 overflow-y-auto px-4 pt-16 pb-6"
+        >
           <div className="isolate aspect-square w-full shrink-0 overflow-hidden rounded-3xl bg-popover">
             <img
               alt={`${exercise.name} demonstration`}
@@ -66,43 +83,18 @@ export function ExerciseDetailDrawer({
           )}
         </div>
 
-        <DrawerFooter className="bottom-controls-scrim absolute inset-x-0 bottom-0 z-20 flex-row items-center gap-2.5 p-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] [--bottom-controls-color:var(--popover)]">
-          <LikeButton
-            aria-label={
-              isFavorite
-                ? `Remove ${exercise.name} from favorites`
-                : `Add ${exercise.name} to favorites`
-            }
-            className="interactive-spring grid size-12 shrink-0 place-items-center rounded-2xl border border-border bg-card text-muted-foreground shadow-sm active:bg-card/90 active:text-white"
-            data-haptics="off"
-            iconClassName="size-5"
-            liked={isFavorite}
-            onClick={() => {
-              triggerHaptic("selection")
-              toggleFavorite(exercise.id)
-            }}
-          />
-          {onSelectExercise ? (
+        {onSelectExercise ? (
+          <DrawerControls>
             <Button
-              className="relative h-12 flex-1 rounded-2xl text-base font-semibold"
+              className="w-full"
               disabled={selected}
               onClick={() => onSelectExercise(exercise)}
+              size="cta"
             >
               {selected ? "Selected" : "Select"}
             </Button>
-          ) : (
-            <Button
-              className="relative h-12 flex-1 rounded-2xl text-base font-semibold"
-              onClick={() => {
-                triggerHaptic("selection")
-                onOpenChange(false)
-              }}
-              variant="secondary"
-            >
-              Close
-            </Button>
-          )}
-        </DrawerFooter>
+          </DrawerControls>
+        ) : null}
       </DrawerContent>
     </Drawer>
   )

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   Activity,
   Check,
@@ -9,13 +9,19 @@ import {
   Flag,
   Play,
   Plus,
+  Share2,
   Trash2,
   X,
 } from "lucide-react"
 
 import { ActiveWorkoutHero } from "@/components/active-workout-hero"
 import { ActiveWorkoutTimer } from "@/components/active-workout-timer"
-import { AppScreen, AppShellHeader, AppSurface } from "@/components/app-shell"
+import {
+  AppHeaderButton,
+  AppScreen,
+  AppShellHeader,
+  AppSurface,
+} from "@/components/app-shell"
 import { DeleteWorkoutConfirmation } from "@/components/delete-workout-confirmation"
 import { EndWorkoutConfirmation } from "@/components/end-workout-confirmation"
 import { ExerciseSwapperDrawer } from "@/components/exercise-swapper-drawer"
@@ -38,24 +44,6 @@ import { useActiveWorkout } from "@/store/use-active-workout"
 import { useWorkouts } from "@/store/use-workouts"
 import type { ExerciseSummary } from "@/types"
 
-function IosShareIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      viewBox="0 0 24 24"
-    >
-      <path d="M12 3v12" />
-      <path d="m8 7 4-4 4 4" />
-      <path d="M7 10H5.75A1.75 1.75 0 0 0 4 11.75v7.5C4 20.22 4.78 21 5.75 21h12.5c.97 0 1.75-.78 1.75-1.75v-7.5A1.75 1.75 0 0 0 18.25 10H17" />
-    </svg>
-  )
-}
-
 export function WorkoutDetailPage({
   onAddExercise,
   onBack,
@@ -71,6 +59,7 @@ export function WorkoutDetailPage({
   onOpenExercise: (exercise: ExerciseSummary) => void
   workoutId: string
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
   const workout = useWorkouts((state) =>
     state.workouts.find((item) => item.id === workoutId)
   )
@@ -124,7 +113,7 @@ export function WorkoutDetailPage({
     session && exercise ? nextPendingExerciseId(session, exercise.id) : null
 
   const shareButton = (
-    <Button
+    <AppHeaderButton
       aria-label={shareStatus === "copied" ? "Workout copied" : "Share workout"}
       disabled={shareStatus === "sharing"}
       onClick={async () => {
@@ -146,62 +135,56 @@ export function WorkoutDetailPage({
           setShareStatus("idle")
         }
       }}
-      size="icon-cta"
-      variant="secondary"
     >
       {shareStatus === "sharing" ? (
         <MatrixLoader label="Sharing workout" rounded variant="orbit" />
       ) : shareStatus === "copied" ? (
         <Check />
       ) : (
-        <IosShareIcon />
+        <Share2 className="size-5" />
       )}
-    </Button>
+    </AppHeaderButton>
   )
 
   return (
     <AppScreen bottomControls>
       <AppSurface>
-        <AppShellHeader>
-          <div className="flex items-center gap-3">
-            <Button
-              aria-label="Back to workouts"
-              className="shrink-0 rounded-full"
-              onClick={onBack}
-              size="icon"
-              variant="secondary"
-            >
+        <AppShellHeader
+          left={
+            <AppHeaderButton aria-label="Back to workouts" onClick={onBack}>
               <ChevronLeft />
-            </Button>
-            <div className="min-w-0">
-              {isPast ? (
-                <h1 className="truncate text-[26px] leading-none font-black tracking-[-0.03em]">
-                  {formatDateLong(workout.date)}
-                </h1>
-              ) : (
-                <button
-                  aria-label={`Change date, currently ${formatDateLong(workout.date)}`}
-                  className="min-w-0 text-left"
-                  onClick={() => {
-                    triggerHaptic("light")
-                    setDateOpen(true)
-                  }}
-                  type="button"
-                >
-                  <h1 className="truncate text-[26px] leading-none font-black tracking-[-0.03em]">
-                    {formatDateLong(workout.date)}
-                  </h1>
-                </button>
-              )}
-            </div>
-          </div>
-        </AppShellHeader>
+            </AppHeaderButton>
+          }
+          right={shareButton}
+          scrollRef={scrollRef}
+          title={
+            isPast ? (
+              formatDateLong(workout.date)
+            ) : (
+              <button
+                aria-label={`Change date, currently ${formatDateLong(workout.date)}`}
+                className="max-w-full truncate text-center"
+                onClick={() => {
+                  triggerHaptic("light")
+                  setDateOpen(true)
+                }}
+                type="button"
+              >
+                {formatDateLong(workout.date)}
+              </button>
+            )
+          }
+        />
 
-        <div className="app-scroll-region min-h-0 flex-1 space-y-5 overflow-y-auto pt-5 pb-6">
+        <div
+          className="app-scroll-region min-h-0 flex-1 space-y-5 overflow-y-auto pt-5 pb-6"
+          ref={scrollRef}
+          tabIndex={-1}
+        >
           {isPast ? (
             <section
               aria-label="Workout stats"
-              className="mx-4 grid grid-cols-3 gap-2 rounded-xl border border-border bg-card/70 p-3"
+              className="mx-4 grid grid-cols-3 gap-2 rounded-3xl border border-border bg-card/70 p-3"
             >
               <div className="rounded-2xl bg-muted/45 p-3 text-center">
                 <Clock3 className="mx-auto size-4 text-primary" />
@@ -234,14 +217,6 @@ export function WorkoutDetailPage({
               </div>
             </section>
           ) : null}
-          {session && (
-            <ActiveWorkoutTimer
-              onPause={pauseWorkout}
-              onResume={resumeWorkout}
-              session={session}
-            />
-          )}
-
           {workout.exerciseIds.length === 0 ? (
             <div className="flex min-h-[18rem] flex-col items-center justify-center gap-3 px-8 text-center">
               <p className="text-base text-muted-foreground">
@@ -302,6 +277,16 @@ export function WorkoutDetailPage({
             </>
           )}
         </div>
+
+        {session ? (
+          <div className="app-surface-bottom-dock active-workout-dock">
+            <ActiveWorkoutTimer
+              onPause={pauseWorkout}
+              onResume={resumeWorkout}
+              session={session}
+            />
+          </div>
+        ) : null}
       </AppSurface>
 
       <footer className="bottom-controls-scrim absolute inset-x-0 bottom-0 z-20 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
@@ -326,7 +311,6 @@ export function WorkoutDetailPage({
             >
               <Plus className="size-5" />
             </Button>
-            {shareButton}
             <Button
               size="cta"
               className="flex-1"
@@ -352,7 +336,6 @@ export function WorkoutDetailPage({
             >
               <Trash2 />
             </Button>
-            {shareButton}
             <Button
               size="cta"
               className="flex-1"
@@ -382,7 +365,6 @@ export function WorkoutDetailPage({
             </Button>
             {workout.exerciseIds.length === 0 ? (
               <>
-                {shareButton}
                 <Button size="cta" className="flex-1" onClick={onAddExercise}>
                   <Plus className="size-5" />
                   Add exercise
@@ -398,7 +380,6 @@ export function WorkoutDetailPage({
                 >
                   <Plus className="size-5" />
                 </Button>
-                {shareButton}
                 <Button
                   size="cta"
                   className="flex-1"
