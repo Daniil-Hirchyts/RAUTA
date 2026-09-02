@@ -7,9 +7,15 @@ import {
   type RefObject,
 } from "react"
 
+import { createPortal } from "react-dom"
+
 import { AppGrain } from "@/components/app-grain"
 import { Button } from "@/components/ui/button"
-import { DrawerHostContext } from "@/hooks/use-drawer-host"
+import {
+  ControlsHostContext,
+  DrawerHostContext,
+  useControlsHost,
+} from "@/hooks/use-drawer-host"
 import { cn } from "@/lib/utils"
 
 /**
@@ -23,11 +29,23 @@ import { cn } from "@/lib/utils"
  */
 export function AppDrawerHost({ children }: { children: ReactNode }) {
   const hostRef = useRef<HTMLDivElement>(null)
+  const [controlsHost, setControlsHost] = useState<HTMLDivElement | null>(null)
 
   return (
     <DrawerHostContext.Provider value={hostRef}>
-      {children}
-      <div className="app-drawer-host" ref={hostRef} />
+      <ControlsHostContext.Provider value={controlsHost}>
+        {children}
+        <div className="app-drawer-host" ref={hostRef} />
+        {/* Base UI hides everything outside an open modal drawer from assistive
+            tech. The band is deliberately outside it — it belongs to the shell —
+            so it declares itself a live region, which is the exemption that
+            sweep honours, and keeps a drawer's action reachable. */}
+        <div
+          aria-live="off"
+          className="app-controls-host"
+          ref={setControlsHost}
+        />
+      </ControlsHostContext.Provider>
     </DrawerHostContext.Provider>
   )
 }
@@ -55,6 +73,32 @@ export function AppScreen({
   )
 }
 
+/**
+ * A screen's bottom actions. They render into the shell's band rather than into
+ * the screen, so they sit above the drawer layer: a sheet slides up behind the
+ * buttons instead of covering them, and a drawer that brings actions of its own
+ * takes the band over for as long as it is open.
+ */
+export function AppControls({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  const host = useControlsHost()
+  const controls = (
+    <footer
+      className={cn("bottom-controls-scrim app-controls", className)}
+      data-slot="app-controls"
+    >
+      {children}
+    </footer>
+  )
+
+  return host ? createPortal(controls, host) : controls
+}
+
 /** The clipped content surface, and the only thing the grain belongs to. */
 export function AppSurface({ children }: { children: ReactNode }) {
   return (
@@ -67,6 +111,7 @@ export function AppSurface({ children }: { children: ReactNode }) {
 }
 
 export function AppShellHeader({
+  above,
   below,
   className,
   left,
@@ -74,6 +119,7 @@ export function AppShellHeader({
   scrollRef,
   title,
 }: {
+  above?: ReactNode
   below?: ReactNode
   className?: string
   left?: ReactNode
@@ -130,12 +176,16 @@ export function AppShellHeader({
   return (
     <header
       className={cn("app-shell-header shrink-0", className)}
+      data-above={above ? "true" : undefined}
       data-below={below ? "true" : undefined}
       data-hidden={hidden ? "true" : undefined}
     >
       <div className="app-shell-header-row">
         <div className="app-shell-header-action">{left}</div>
-        <h1 className="app-shell-header-title">{title}</h1>
+        <div className="app-shell-header-center">
+          {above ? <div className="app-shell-header-above">{above}</div> : null}
+          <h1 className="app-shell-header-title">{title}</h1>
+        </div>
         <div className="app-shell-header-action">{right}</div>
       </div>
       {below ? <div className="app-shell-header-below">{below}</div> : null}

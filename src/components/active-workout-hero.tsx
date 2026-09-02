@@ -1,4 +1,4 @@
-import { Check, SkipForward } from "lucide-react"
+import { SkipForward } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { triggerHaptic } from "@/lib/haptics"
@@ -46,7 +46,7 @@ export function ActiveWorkoutHero({
       </button>
 
       <div className="px-4 pt-1 pb-4">
-        <h2 className="text-xl leading-snug font-bold capitalize">
+        <h2 className="text-center text-xl leading-snug font-bold capitalize">
           {exercise.name}
         </h2>
 
@@ -58,7 +58,6 @@ export function ActiveWorkoutHero({
               onComplete()
             }}
           >
-            <Check className="size-5" />
             Mark done
           </Button>
           <Button

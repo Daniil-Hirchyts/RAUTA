@@ -5,11 +5,8 @@ import {
   CheckCircle2,
   ChevronLeft,
   Clock3,
-  Copy,
-  Flag,
-  Play,
   Plus,
-  Share2,
+  Share,
   Trash2,
   X,
 } from "lucide-react"
@@ -17,6 +14,7 @@ import {
 import { ActiveWorkoutHero } from "@/components/active-workout-hero"
 import { ActiveWorkoutTimer } from "@/components/active-workout-timer"
 import {
+  AppControls,
   AppHeaderButton,
   AppScreen,
   AppShellHeader,
@@ -25,6 +23,7 @@ import {
 import { DeleteWorkoutConfirmation } from "@/components/delete-workout-confirmation"
 import { EndWorkoutConfirmation } from "@/components/end-workout-confirmation"
 import { ExerciseSwapperDrawer } from "@/components/exercise-swapper-drawer"
+import { FinishWorkoutConfirmation } from "@/components/finish-workout-confirmation"
 import { SortableExerciseList } from "@/components/sortable-exercise-list"
 import { Button } from "@/components/ui/button"
 import { MatrixLoader } from "@/components/ui/matrix-loader"
@@ -38,6 +37,7 @@ import {
 } from "@/lib/active-workout"
 import { formatDateLong } from "@/lib/date"
 import { triggerHaptic } from "@/lib/haptics"
+import { cn } from "@/lib/utils"
 import { shareWorkout } from "@/lib/workout-sharing"
 import { isPastWorkout } from "@/lib/workout-stats"
 import { useActiveWorkout } from "@/store/use-active-workout"
@@ -88,6 +88,7 @@ export function WorkoutDetailPage({
   const [dateOpen, setDateOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [discardOpen, setDiscardOpen] = useState(false)
+  const [finishOpen, setFinishOpen] = useState(false)
   const [swapExercise, setSwapExercise] = useState<ExerciseSummary | null>(null)
   const [shareStatus, setShareStatus] = useState<"idle" | "sharing" | "copied">(
     "idle"
@@ -141,7 +142,7 @@ export function WorkoutDetailPage({
       ) : shareStatus === "copied" ? (
         <Check />
       ) : (
-        <Share2 className="size-5" />
+        <Share className="size-5" />
       )}
     </AppHeaderButton>
   )
@@ -177,7 +178,10 @@ export function WorkoutDetailPage({
         />
 
         <div
-          className="app-scroll-region min-h-0 flex-1 space-y-5 overflow-y-auto pt-5 pb-6"
+          className={cn(
+            "app-scroll-region min-h-0 flex-1 space-y-5 overflow-y-auto pt-5",
+            session ? "pb-28" : "pb-6"
+          )}
           ref={scrollRef}
           tabIndex={-1}
         >
@@ -289,7 +293,7 @@ export function WorkoutDetailPage({
         ) : null}
       </AppSurface>
 
-      <footer className="bottom-controls-scrim absolute inset-x-0 bottom-0 z-20 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      <AppControls>
         {session ? (
           <div className="flex items-center gap-2.5">
             <Button
@@ -315,11 +319,10 @@ export function WorkoutDetailPage({
               size="cta"
               className="flex-1"
               onClick={() => {
-                triggerHaptic("success")
-                finishWorkout()
+                triggerHaptic("medium")
+                setFinishOpen(true)
               }}
             >
-              <Flag className="size-5" />
               Finish workout
             </Button>
           </div>
@@ -346,7 +349,6 @@ export function WorkoutDetailPage({
                 onCopied?.(copiedId)
               }}
             >
-              <Copy className="size-5" />
               Copy to today
             </Button>
           </div>
@@ -388,14 +390,13 @@ export function WorkoutDetailPage({
                     setCountingDown(true)
                   }}
                 >
-                  <Play className="size-5" />
                   Start workout
                 </Button>
               </>
             )}
           </div>
         )}
-      </footer>
+      </AppControls>
 
       {countingDown && (
         <WorkoutCountdown
@@ -427,6 +428,12 @@ export function WorkoutDetailPage({
         onConfirm={cancelWorkout}
         onOpenChange={setDiscardOpen}
         open={discardOpen}
+      />
+
+      <FinishWorkoutConfirmation
+        onConfirm={finishWorkout}
+        onOpenChange={setFinishOpen}
+        open={finishOpen}
       />
 
       <ExerciseSwapperDrawer

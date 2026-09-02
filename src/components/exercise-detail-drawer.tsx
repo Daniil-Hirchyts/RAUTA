@@ -44,7 +44,7 @@ export function ExerciseDetailDrawer({
               ? `Remove ${exercise.name} from favorites`
               : `Add ${exercise.name} to favorites`
           }
-          className="interactive-spring absolute top-4 right-4 z-30 grid size-11 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-lg shadow-black/20 active:bg-card/90 active:text-white"
+          className="interactive-spring absolute top-4 right-4 z-30 grid size-11 place-items-center rounded-full border border-border bg-card text-primary shadow-lg shadow-black/20 active:bg-card/90 active:text-white"
           data-haptics="off"
           iconClassName="size-5"
           liked={isFavorite}
@@ -53,9 +53,7 @@ export function ExerciseDetailDrawer({
             toggleFavorite(exercise.id)
           }}
         />
-        <div
-          className="min-h-0 flex-1 overflow-y-auto px-4 pt-16 pb-6"
-        >
+        <div className="app-scroll-content min-h-0 flex-1 overflow-y-auto px-4 pt-16 pb-6">
           <div className="isolate aspect-square w-full shrink-0 overflow-hidden rounded-3xl bg-popover">
             <img
               alt={`${exercise.name} demonstration`}

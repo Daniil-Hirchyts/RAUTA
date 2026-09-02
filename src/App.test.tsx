@@ -270,7 +270,9 @@ describe("App", () => {
       within(drawer).getByRole("heading", { name: first.name })
     ).toBeInTheDocument()
     expect(
-      within(drawer).getByRole("button", { name: "Select" })
+      within(
+        document.querySelector("[data-slot='drawer-controls']")!
+      ).getByRole("button", { name: "Select" })
     ).toBeInTheDocument()
     expect(
       within(drawer).getByRole("button", { name: "Close drawer" })
@@ -345,9 +347,10 @@ describe("App", () => {
       })
     )
 
-    const detailDrawer = await screen.findByRole("dialog")
     await user.click(
-      within(detailDrawer).getByRole("button", { name: "Select" })
+      within(
+        document.querySelector("[data-slot='drawer-controls']")!
+      ).getByRole("button", { name: "Select" })
     )
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
@@ -463,7 +466,7 @@ describe("App", () => {
     expect(trigger).toBeInTheDocument()
 
     await user.click(
-      within(formDrawer).getByRole("button", { name: "Create workout" })
+      screen.getByRole("button", { name: "Create workout" })
     )
 
     expect(useWorkouts.getState().workouts).toHaveLength(1)

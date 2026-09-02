@@ -137,7 +137,7 @@ function SortableExerciseRow({
               {onFindAlternative && (
                 <button
                   aria-label="Find alternative"
-                  className="interactive-spring grid size-14 place-items-center rounded-full bg-secondary text-primary shadow-lg shadow-black/20"
+                  className="interactive-spring grid size-14 place-items-center rounded-full border border-border bg-card text-primary shadow-lg shadow-black/20 active:bg-card/90 active:text-white"
                   onClick={() => {
                     onOpenChange(false)
                     onFindAlternative(exercise)

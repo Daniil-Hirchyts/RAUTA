@@ -4,7 +4,12 @@ import { CalendarDays, Check } from "lucide-react"
 import { SortableExerciseList } from "@/components/sortable-exercise-list"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
-import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
+import {
+  Drawer,
+  DrawerContent,
+  DrawerControls,
+  DrawerTitle,
+} from "@/components/ui/drawer"
 import { FULL_HEIGHT_DRAWER_STYLE } from "@/components/ui/drawer-style"
 import { formatDateLong, toISODate } from "@/lib/date"
 import { triggerHaptic } from "@/lib/haptics"
@@ -111,16 +116,22 @@ function WorkoutForm({
             />
           </div>
         ) : (
-          <div className="-mx-4 mt-4 min-h-0 flex-1 overflow-y-auto pb-3">
-            <SortableExerciseList
-              exerciseIds={exerciseIds}
-              onRemove={(id) =>
-                setExerciseIds((ids) =>
-                  ids.filter((exerciseId) => exerciseId !== id)
-                )
-              }
-              onReorder={setExerciseIds}
+          <div className="relative -mx-4 mt-2 min-h-0 flex-1">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 z-10 h-7 bg-gradient-to-b from-popover via-popover/65 to-transparent"
             />
+            <div className="app-scroll-content h-full overflow-y-auto pt-2 pb-3">
+              <SortableExerciseList
+                exerciseIds={exerciseIds}
+                onRemove={(id) =>
+                  setExerciseIds((ids) =>
+                    ids.filter((exerciseId) => exerciseId !== id)
+                  )
+                }
+                onReorder={setExerciseIds}
+              />
+            </div>
           </div>
         )}
 

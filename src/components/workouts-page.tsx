@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 
 import {
+  AppControls,
   AppHeaderButton,
   AppScreen,
   AppShellHeader,
@@ -103,7 +104,7 @@ function WorkoutRow({
         <div className="flex items-center gap-2">
           <button
             aria-label={`Copy ${formatDateShort(workout.date)} workout to today`}
-            className="interactive-spring grid size-14 shrink-0 place-items-center rounded-full bg-secondary text-primary shadow-lg shadow-black/20"
+            className="interactive-spring grid size-14 shrink-0 place-items-center rounded-full border border-border bg-card text-primary shadow-lg shadow-black/20 active:bg-card/90 active:text-white"
             data-haptics="off"
             onClick={onCopy}
             type="button"
@@ -304,7 +305,7 @@ export function WorkoutsPage({
         </div>
       </AppSurface>
 
-      <footer className="bottom-controls-scrim absolute inset-x-0 bottom-0 z-20 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      <AppControls>
         <Button
           size="cta"
           className="w-full shadow-xl shadow-black/25"
@@ -312,7 +313,7 @@ export function WorkoutsPage({
         >
           Add workout
         </Button>
-      </footer>
+      </AppControls>
 
       <DeleteWorkoutConfirmation
         onConfirm={() => {

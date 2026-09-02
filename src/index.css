@@ -131,8 +131,8 @@
   --matrix-cycle: 1200ms;
   --matrix-dot: 2px;
   --matrix-gap: 2px;
-  --matrix-base: color-mix(in oklab, var(--muted-foreground) 40%, transparent);
-  --matrix-active: var(--foreground);
+  --matrix-base: color-mix(in oklch, var(--primary) 25%, transparent);
+  --matrix-active: var(--primary);
   --matrix-ease: ease-in-out;
 }
 
@@ -359,8 +359,28 @@
   place-items: center;
 }
 
+.app-shell-header-center {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-shell-header-above {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
 .app-shell-header-title {
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   color: var(--foreground);
   font-size: 1.25rem;
@@ -390,7 +410,7 @@
 }
 
 .app-shell-header + .app-stage-frame > .t-page {
-  padding-top: calc(5.25rem + env(safe-area-inset-top) + 0.75rem);
+  padding-top: calc(4.25rem + env(safe-area-inset-top) + 0.75rem);
 }
 
 .app-surface-bottom-dock {
@@ -401,11 +421,32 @@
 }
 
 .equipment-presets-dock {
-  padding-block: 0.75rem 1rem;
+  position: absolute;
+  z-index: 20;
+  inset: auto 0 0;
+  padding-top: 1.75rem;
+  padding-bottom: 0.75rem;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in oklch, var(--background) 65%, transparent) 45%,
+    var(--background) 100%
+  );
+  pointer-events: none;
 }
 
 .active-workout-dock {
-  padding: 0.75rem 1rem 1rem;
+  position: absolute;
+  z-index: 20;
+  inset: auto 0 0;
+  padding: 1.75rem 1rem 1rem;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in oklch, var(--background) 65%, transparent) 45%,
+    var(--background) 100%
+  );
+  pointer-events: none;
 }
 
 /* Drawers portal in here rather than into the body, so they open inside the
@@ -453,8 +494,48 @@
   margin-block: 0;
 }
 
-.app-screen footer.bottom-controls-scrim {
+/* Every set of bottom actions renders into this band — a screen's own and a
+   drawer's alike. It sits above the drawer layer, so a sheet slides up behind
+   the buttons instead of covering them. */
+.app-controls-host {
+  position: absolute;
+  z-index: 60;
+  inset: auto 0 0;
+  pointer-events: none;
+}
+
+/* Both sets occupy the same box, so which one shows is a matter of opacity
+   rather than of which happened to render first. */
+.app-controls-host > * {
+  position: absolute;
+  inset: auto 0 0;
+  pointer-events: auto;
+}
+
+.app-controls,
+.app-drawer-controls {
   --bottom-controls-color: var(--app-shell);
+  padding: 1rem 1.25rem calc(1rem + env(safe-area-inset-bottom));
+  transition: opacity 200ms var(--ease-smooth-out);
+}
+
+/* A drawer's actions take the band over from the screen's while it is open. */
+.app-controls-host:has([data-slot="drawer-controls"])
+  [data-slot="app-controls"] {
+  opacity: 0;
+}
+
+/* A screen's buttons stay visible behind an open drawer — the sheet is behind
+   them, not over them — but the drawer owns the interaction while it is up. */
+.app-shell-frame:has([data-slot="drawer-popup"]) [data-slot="app-controls"] {
+  pointer-events: none;
+}
+
+/* A sheet reaches the shell's floor and passes behind the band, so whenever the
+   band holds anything — the screen's buttons or the drawer's — the sheet's
+   content stops short of it, the same room a screen leaves for its own. */
+.app-shell-frame:has(.app-controls-host > *) [data-slot="drawer-content"] {
+  padding-bottom: var(--app-controls-space);
 }
 
 /* A plain color scrim keeps fixed bottom actions readable over scrolling

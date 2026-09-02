@@ -129,46 +129,49 @@ export function ExerciseSwapperDrawer({
             )}
           </div>
 
-          <div className="mt-4 min-h-0 flex-1 overflow-y-auto px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
-            {visibleAlternatives.length === 0 ? (
-              <p className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm leading-relaxed text-muted-foreground">
-                No exact muscle match is available on different equipment.
-              </p>
-            ) : (
-              <div className="space-y-2.5">
-                {visibleAlternatives.map((alternative) => (
-                  <button
-                    aria-label={`Swap to ${alternative.name}`}
-                    className="interactive-spring flex w-full items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card p-2.5 text-left active:bg-card/90"
-                    key={alternative.id}
-                    onClick={() => onSwap(alternative)}
-                    type="button"
-                  >
-                    <span className="isolate size-20 shrink-0 overflow-hidden rounded-2xl bg-[#111113]">
-                      <img
-                        alt=""
-                        className="h-full w-full object-contain mix-blend-screen"
-                        draggable={false}
-                        loading="lazy"
-                        src={exerciseAnimation(alternative)}
-                        style={{ filter: EXERCISE_ANIMATION_FILTER_LIGHT }}
-                      />
-                    </span>
-                    <span className="min-w-0 flex-1 py-1">
-                      <span className="line-clamp-2 text-sm leading-snug font-semibold capitalize">
-                        {alternative.name}
+          <div className="relative mt-2 min-h-0 flex-1">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 z-10 h-7 bg-gradient-to-b from-popover via-popover/65 to-transparent"
+            />
+            <div className="app-scroll-content h-full overflow-y-auto px-5 pt-2 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+              {visibleAlternatives.length === 0 ? (
+                <p className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm leading-relaxed text-muted-foreground">
+                  No exact muscle match is available on different equipment.
+                </p>
+              ) : (
+                <div className="space-y-2.5">
+                  {visibleAlternatives.map((alternative) => (
+                    <button
+                      aria-label={`Swap to ${alternative.name}`}
+                      className="interactive-spring flex w-full items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card p-2.5 text-left active:bg-card/90"
+                      key={alternative.id}
+                      onClick={() => onSwap(alternative)}
+                      type="button"
+                    >
+                      <span className="isolate size-20 shrink-0 overflow-hidden rounded-2xl bg-[#111113]">
+                        <img
+                          alt=""
+                          className="h-full w-full object-contain mix-blend-screen"
+                          draggable={false}
+                          loading="lazy"
+                          src={exerciseAnimation(alternative)}
+                          style={{ filter: EXERCISE_ANIMATION_FILTER_LIGHT }}
+                        />
                       </span>
-                      <span className="mt-1 block text-xs font-medium text-primary">
-                        Use {titleCase(alternative.equipment)}
+                      <span className="min-w-0 flex-1 py-1">
+                        <span className="line-clamp-2 text-sm leading-snug font-semibold capitalize">
+                          {alternative.name}
+                        </span>
+                        <span className="mt-1 block text-xs font-medium text-primary">
+                          Use {titleCase(alternative.equipment)}
+                        </span>
                       </span>
-                    </span>
-                    <span className="shrink-0 rounded-full border border-primary/35 px-3 py-1.5 text-xs font-bold text-primary">
-                      Swap
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </DrawerContent>

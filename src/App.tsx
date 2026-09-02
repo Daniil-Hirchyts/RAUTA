@@ -18,6 +18,7 @@ import {
 
 import { AnimatedCheck } from "@/components/animated-check"
 import {
+  AppControls,
   AppDrawerHost,
   AppHeaderButton,
   AppScreen,
@@ -129,18 +130,18 @@ function FlowProgress({ stage }: { stage: Stage }) {
       aria-valuemax={3}
       aria-valuemin={1}
       aria-valuenow={stage}
-      className="flex items-center justify-center gap-2.5"
+      className="flex items-center justify-center gap-1.5"
       role="progressbar"
     >
       {[1, 2, 3].map((step) => (
         <span
           aria-hidden="true"
-          className={`h-1.5 rounded-full transition-[width,background-color] duration-250 ${
+          className={`h-1 rounded-full transition-[width,background-color] duration-250 ${
             step === stage
-              ? "w-9 bg-primary"
+              ? "w-7 bg-primary"
               : step < stage
-                ? "w-5 bg-primary/35"
-                : "w-5 bg-white/10"
+                ? "w-3.5 bg-primary/35"
+                : "w-3.5 bg-white/10"
           }`}
           key={step}
         />
@@ -415,7 +416,7 @@ export function App() {
       <HapticLayer />
       <SettingsEffects />
       <SvgFilterDefs />
-      <main className="relative mx-auto flex h-(--app-viewport-height) w-full max-w-[430px] touch-pan-y flex-col overflow-hidden bg-(--app-shell)">
+      <main className="app-shell-frame relative mx-auto flex h-(--app-viewport-height) w-full touch-pan-y flex-col overflow-hidden bg-(--app-shell) sm:max-w-[430px]">
         <AppDrawerHost>
           <div
             className="t-app-page flex min-h-0 flex-1 flex-col"
@@ -464,7 +465,7 @@ export function App() {
               <AppScreen bottomControls>
                 <AppSurface>
                   <AppShellHeader
-                    below={<FlowProgress stage={stage} />}
+                    above={<FlowProgress stage={stage} />}
                     left={
                       <AppHeaderButton
                         aria-label={
@@ -551,7 +552,7 @@ export function App() {
                     <section
                       aria-hidden={stage !== 2}
                       aria-label="Choose equipment"
-                      className="app-scroll-content t-page overflow-y-auto px-5 pt-4 pb-6"
+                      className="app-scroll-content t-page overflow-y-auto px-5 pt-4 pb-20"
                       data-drag-peer={peerStage === 2 ? "true" : undefined}
                       data-page-id="2"
                       inert={stage !== 2}
@@ -679,7 +680,7 @@ export function App() {
                   ) : null}
                 </AppSurface>
 
-                <footer className="bottom-controls-scrim absolute inset-x-0 bottom-0 z-20 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                <AppControls>
                   {stage === 3 && searchOpen ? (
                     <div className="relative flex gap-2.5">
                       <ExerciseSearch onChange={setSearch} value={search} />
@@ -811,7 +812,7 @@ export function App() {
                       )}
                     </div>
                   )}
-                </footer>
+                </AppControls>
               </AppScreen>
             )}
           </div>

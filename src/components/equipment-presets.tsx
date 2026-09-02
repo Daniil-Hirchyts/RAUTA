@@ -68,7 +68,7 @@ export function EquipmentPresets({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex min-w-0 [scrollbar-width:none] gap-2 overflow-x-auto py-0.5 [&::-webkit-scrollbar]:hidden",
+        "pointer-events-auto flex min-w-0 [scrollbar-width:none] gap-2 overflow-x-auto py-0.5 [&::-webkit-scrollbar]:hidden",
         className
       )}
       data-swipe-ignore

@@ -4,7 +4,7 @@ import { Drawer as DrawerPrimitive } from "@base-ui/react/drawer"
 import { X } from "lucide-react"
 
 import { AppGrain } from "@/components/app-grain"
-import { useDrawerHost } from "@/hooks/use-drawer-host"
+import { useControlsHost, useDrawerHost } from "@/hooks/use-drawer-host"
 import { cn } from "@/lib/utils"
 
 type DrawerContextProps = {
@@ -15,14 +15,6 @@ type DrawerContextProps = {
 }
 
 const DrawerContext = React.createContext<DrawerContextProps | null>(null)
-
-/**
- * Where a drawer's actions render: a slot inside the popup but below the sheet,
- * so they land in the shell's control band instead of inside the sheet. Being
- * part of the popup keeps them inside the focus trap and out of the
- * aria-hidden sweep that a portal outside it would fall into.
- */
-const DrawerControlsSlotContext = React.createContext<HTMLElement | null>(null)
 
 const DRAWER_INTERACTIVE_SELECTOR = [
   "button",
@@ -198,19 +190,19 @@ function useSwipeIgnoreMarker() {
  * replaces the app's bottom buttons instead of sliding across them.
  */
 function DrawerControls({ className, ...props }: React.ComponentProps<"div">) {
-  const slot = React.useContext(DrawerControlsSlotContext)
+  const host = useControlsHost()
   const controls = (
     <div
       data-slot="drawer-controls"
       className={cn(
-        "flex flex-col gap-2.5 px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]",
+        "bottom-controls-scrim app-drawer-controls flex flex-col gap-2.5",
         className
       )}
       {...props}
     />
   )
 
-  return slot ? createPortal(controls, slot) : controls
+  return host ? createPortal(controls, host) : controls
 }
 
 function DrawerContent({
@@ -223,85 +215,71 @@ function DrawerContent({
     swipeDirection === "down" || swipeDirection === "up" ? "y" : "x"
 
   const setContentRef = useSwipeIgnoreMarker()
-  const markControlsSlot = useSwipeIgnoreMarker()
-  const [controlsSlot, setControlsSlot] = React.useState<HTMLDivElement | null>(
-    null
-  )
-  const setControlsSlotRef = React.useCallback(
-    (node: HTMLDivElement | null) => {
-      setControlsSlot(node)
-      markControlsSlot(node)
-    },
-    [markControlsSlot]
-  )
 
   return (
-    <DrawerControlsSlotContext.Provider value={controlsSlot}>
-      <DrawerPortal data-slot="drawer-portal">
-        {modal === true && (
-          <DrawerOverlay data-snap-points={hasSnapPoints ? "" : undefined} />
-        )}
-        <DrawerPrimitive.Viewport
-          data-slot="drawer-viewport"
-          data-modal={modal}
-          className="pointer-events-none absolute inset-0 z-50 select-none data-[modal=true]:pointer-events-auto"
+    <DrawerPortal data-slot="drawer-portal">
+      {modal === true && (
+        <DrawerOverlay data-snap-points={hasSnapPoints ? "" : undefined} />
+      )}
+      <DrawerPrimitive.Viewport
+        data-slot="drawer-viewport"
+        data-modal={modal}
+        className="pointer-events-none absolute inset-0 z-50 select-none data-[modal=true]:pointer-events-auto"
+      >
+        <DrawerPrimitive.Popup
+          data-slot="drawer-popup"
+          data-swipe-axis={swipeAxis}
+          data-snap-points={hasSnapPoints ? "" : undefined}
+          className={cn(
+            "group/drawer-popup pointer-events-auto absolute z-50 m-(--drawer-inset,0px) flex h-(--drawer-content-height) max-h-(--drawer-content-max-height,none) min-h-0 w-(--drawer-content-width,auto) transform-[translate3d(var(--translate-x,0px),var(--translate-y,0px),0)_scale(var(--stack-scale))] flex-col text-sm text-popover-foreground transition-[transform,height,opacity,filter] duration-[380ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform outline-none select-none [--drawer-bleed-background:transparent] [--drawer-inset:--spacing(2)] [--drawer-stacked-shadow:0_-20px_25px_-5px_rgb(0_0_0/0.1),0_-8px_10px_-6px_rgb(0_0_0/0.1)] [interpolate-size:allow-keywords] data-[swipe-direction=down]:mb-0 data-[swipe-direction=down]:data-nested-drawer-open:shadow-(--drawer-stacked-shadow)",
+            "data-nested-drawer-open:overflow-hidden data-nested-drawer-open:brightness-95",
+            "after:pointer-events-none after:absolute after:bg-(--drawer-bleed-background,var(--color-popover)) data-[swipe-axis=x]:after:inset-y-0 data-[swipe-axis=x]:after:w-(--bleed) data-[swipe-axis=y]:after:inset-x-0 data-[swipe-axis=y]:after:h-(--bleed) data-[swipe-direction=down]:after:top-full data-[swipe-direction=left]:after:right-full data-[swipe-direction=right]:after:left-full data-[swipe-direction=up]:after:bottom-full",
+            "[--drawer-content-height:var(--drawer-height,auto)] data-[swipe-axis=x]:[--drawer-content-width:75%] data-[swipe-axis=y]:[--drawer-content-max-height:calc(100%-6rem)] data-[swipe-axis=y]:data-snap-points:[--drawer-content-height:100%] data-[swipe-axis=x]:sm:[--drawer-content-width:24rem]",
+            "[--bleed:3rem] [--peek:1rem] [--stack-height:var(--drawer-frontmost-height,var(--drawer-height,0px))] [--stack-peek-offset:max(0px,calc((var(--nested-drawers)-var(--stack-progress))*var(--peek)))] [--stack-progress:clamp(0,var(--drawer-swipe-progress),1)] [--stack-scale-base:max(0,calc(1-(var(--nested-drawers)*var(--stack-step))))] [--stack-scale:clamp(0,calc(var(--stack-scale-base)+(var(--stack-step)*var(--stack-progress))),1)] [--stack-shrink:calc(1-var(--stack-scale))] [--stack-step:0.05]",
+            "data-ending-style:transform-(--closed-transform) data-ending-style:opacity-[0.9999] data-ending-style:duration-[calc(var(--drawer-swipe-strength)*340ms)] data-nested-drawer-swiping:duration-0 data-ending-style:data-nested-drawer-swiping:duration-[calc(var(--drawer-swipe-strength)*340ms)] data-starting-style:transform-(--closed-transform) data-swiping:duration-0 data-ending-style:data-swiping:duration-[calc(var(--drawer-swipe-strength)*340ms)]",
+            "data-[swipe-axis=y]:inset-x-0 data-[swipe-axis=y]:data-nested-drawer-open:h-(--stack-height)",
+            "data-[swipe-axis=x]:inset-y-0 data-[swipe-axis=x]:flex-row",
+            "data-[swipe-direction=down]:bottom-0 data-[swipe-direction=down]:origin-bottom data-[swipe-direction=down]:[--closed-transform:translate3d(0,calc(100%+var(--drawer-inset,0px)+2px),0)] data-[swipe-direction=down]:[--translate-y:calc(var(--drawer-snap-point-offset,0px)+var(--drawer-swipe-movement-y)-var(--stack-peek-offset)-(var(--stack-shrink)*var(--stack-height)))]",
+            "data-[swipe-direction=up]:top-0 data-[swipe-direction=up]:origin-top data-[swipe-direction=up]:[--closed-transform:translate3d(0,calc(-100%-var(--drawer-inset,0px)-2px),0)] data-[swipe-direction=up]:[--translate-y:calc(var(--drawer-snap-point-offset,0px)+var(--drawer-swipe-movement-y)+var(--stack-peek-offset)+(var(--stack-shrink)*var(--stack-height)))]",
+            "data-[swipe-direction=left]:left-0 data-[swipe-direction=left]:origin-left data-[swipe-direction=left]:[--closed-transform:translate3d(calc(-100%-var(--drawer-inset,0px)-2px),0,0)] data-[swipe-direction=left]:[--translate-x:calc(var(--drawer-swipe-movement-x)+var(--stack-peek-offset)+(var(--stack-shrink)*100%))]",
+            "data-[swipe-direction=right]:right-0 data-[swipe-direction=right]:origin-right data-[swipe-direction=right]:[--closed-transform:translate3d(calc(100%+var(--drawer-inset,0px)+2px),0,0)] data-[swipe-direction=right]:[--translate-x:calc(var(--drawer-swipe-movement-x)-var(--stack-peek-offset)-(var(--stack-shrink)*100%))]",
+            className
+          )}
+          {...props}
         >
-          <DrawerPrimitive.Popup
-            data-slot="drawer-popup"
-            data-swipe-axis={swipeAxis}
-            data-snap-points={hasSnapPoints ? "" : undefined}
-            className={cn(
-              "group/drawer-popup pointer-events-auto absolute z-50 m-(--drawer-inset,0px) flex h-(--drawer-content-height) max-h-(--drawer-content-max-height,none) min-h-0 w-(--drawer-content-width,auto) transform-[translate3d(var(--translate-x,0px),var(--translate-y,0px),0)_scale(var(--stack-scale))] flex-col text-sm text-popover-foreground transition-[transform,height,opacity,filter] duration-[380ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform outline-none select-none [--drawer-bleed-background:transparent] [--drawer-inset:--spacing(2)] [--drawer-stacked-shadow:0_-20px_25px_-5px_rgb(0_0_0/0.1),0_-8px_10px_-6px_rgb(0_0_0/0.1)] [interpolate-size:allow-keywords] data-[swipe-direction=down]:mb-0 data-[swipe-direction=down]:data-nested-drawer-open:shadow-(--drawer-stacked-shadow)",
-              "data-nested-drawer-open:overflow-hidden data-nested-drawer-open:brightness-95",
-              "after:pointer-events-none after:absolute after:bg-(--drawer-bleed-background,var(--color-popover)) data-[swipe-axis=x]:after:inset-y-0 data-[swipe-axis=x]:after:w-(--bleed) data-[swipe-axis=y]:after:inset-x-0 data-[swipe-axis=y]:after:h-(--bleed) data-[swipe-direction=down]:after:top-full data-[swipe-direction=left]:after:right-full data-[swipe-direction=right]:after:left-full data-[swipe-direction=up]:after:bottom-full",
-              "[--drawer-content-height:var(--drawer-height,auto)] data-[swipe-axis=x]:[--drawer-content-width:75%] data-[swipe-axis=y]:[--drawer-content-max-height:calc(100%-6rem)] data-[swipe-axis=y]:data-snap-points:[--drawer-content-height:100%] data-[swipe-axis=x]:sm:[--drawer-content-width:24rem]",
-              "[--bleed:3rem] [--peek:1rem] [--stack-height:var(--drawer-frontmost-height,var(--drawer-height,0px))] [--stack-peek-offset:max(0px,calc((var(--nested-drawers)-var(--stack-progress))*var(--peek)))] [--stack-progress:clamp(0,var(--drawer-swipe-progress),1)] [--stack-scale-base:max(0,calc(1-(var(--nested-drawers)*var(--stack-step))))] [--stack-scale:clamp(0,calc(var(--stack-scale-base)+(var(--stack-step)*var(--stack-progress))),1)] [--stack-shrink:calc(1-var(--stack-scale))] [--stack-step:0.05]",
-              "data-ending-style:transform-(--closed-transform) data-ending-style:opacity-[0.9999] data-ending-style:duration-[calc(var(--drawer-swipe-strength)*340ms)] data-nested-drawer-swiping:duration-0 data-ending-style:data-nested-drawer-swiping:duration-[calc(var(--drawer-swipe-strength)*340ms)] data-starting-style:transform-(--closed-transform) data-swiping:duration-0 data-ending-style:data-swiping:duration-[calc(var(--drawer-swipe-strength)*340ms)]",
-              "data-[swipe-axis=y]:inset-x-0 data-[swipe-axis=y]:data-nested-drawer-open:h-(--stack-height)",
-              "data-[swipe-axis=x]:inset-y-0 data-[swipe-axis=x]:flex-row",
-              "data-[swipe-direction=down]:bottom-0 data-[swipe-direction=down]:origin-bottom data-[swipe-direction=down]:[--closed-transform:translate3d(0,calc(100%+var(--drawer-inset,0px)+2px),0)] data-[swipe-direction=down]:[--translate-y:calc(var(--drawer-snap-point-offset,0px)+var(--drawer-swipe-movement-y)-var(--stack-peek-offset)-(var(--stack-shrink)*var(--stack-height)))]",
-              "data-[swipe-direction=up]:top-0 data-[swipe-direction=up]:origin-top data-[swipe-direction=up]:[--closed-transform:translate3d(0,calc(-100%-var(--drawer-inset,0px)-2px),0)] data-[swipe-direction=up]:[--translate-y:calc(var(--drawer-snap-point-offset,0px)+var(--drawer-swipe-movement-y)+var(--stack-peek-offset)+(var(--stack-shrink)*var(--stack-height)))]",
-              "data-[swipe-direction=left]:left-0 data-[swipe-direction=left]:origin-left data-[swipe-direction=left]:[--closed-transform:translate3d(calc(-100%-var(--drawer-inset,0px)-2px),0,0)] data-[swipe-direction=left]:[--translate-x:calc(var(--drawer-swipe-movement-x)+var(--stack-peek-offset)+(var(--stack-shrink)*100%))]",
-              "data-[swipe-direction=right]:right-0 data-[swipe-direction=right]:origin-right data-[swipe-direction=right]:[--closed-transform:translate3d(calc(100%+var(--drawer-inset,0px)+2px),0,0)] data-[swipe-direction=right]:[--translate-x:calc(var(--drawer-swipe-movement-x)-var(--stack-peek-offset)-(var(--stack-shrink)*100%))]",
-              className
-            )}
-            {...props}
+          {showSwipeHandle && <DrawerSwipeHandle />}
+          <DrawerPrimitive.Close
+            aria-label="Close drawer"
+            className="interactive-spring absolute top-4 left-4 z-30 grid size-11 place-items-center rounded-full border border-border bg-card text-primary shadow-lg shadow-black/20 active:bg-card/90 active:text-white"
+            data-slot="drawer-close-button"
+            render={
+              <button
+                data-base-ui-swipe-ignore=""
+                data-haptics="off"
+                type="button"
+              />
+            }
           >
-            {showSwipeHandle && <DrawerSwipeHandle />}
-            <DrawerPrimitive.Close
-              aria-label="Close drawer"
-              className="interactive-spring absolute top-4 left-4 z-30 grid size-11 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-lg shadow-black/20 active:bg-card/90 active:text-white"
-              data-slot="drawer-close-button"
-              render={
-                <button
-                  data-base-ui-swipe-ignore=""
-                  data-haptics="off"
-                  type="button"
-                />
-              }
-            >
-              <X className="size-5" />
-            </DrawerPrimitive.Close>
-            <DrawerPrimitive.Content
-              data-slot="drawer-content"
-              className={cn(
-                // The sheet, and the only part of the drawer that is skinned.
-                // The popup around it is a transparent frame so the actions
-                // below can sit on the shell rather than inside the sheet.
-                "relative flex min-h-0 flex-1 flex-col overflow-hidden overscroll-contain rounded-(--app-surface-radius) border border-popover bg-popover shadow-xl transition-opacity duration-300 ease-[cubic-bezier(0.45,1.005,0,1.005)] select-none group-data-nested-drawer-open/drawer-popup:opacity-0 group-data-nested-drawer-swiping/drawer-popup:opacity-100 group-data-swiping/drawer-popup:select-none dark:border-border"
-              )}
-              ref={setContentRef}
-            >
-              {children}
-              {/* Drawers are lit surfaces like the screens are, so they carry
+            <X className="size-5" />
+          </DrawerPrimitive.Close>
+          <DrawerPrimitive.Content
+            data-slot="drawer-content"
+            className={cn(
+              // The sheet, and the only part of the drawer that is skinned.
+              // The popup around it is a transparent frame so the actions
+              // below can sit on the shell rather than inside the sheet.
+              "relative flex min-h-0 flex-1 flex-col overflow-hidden overscroll-contain rounded-(--app-surface-radius) border-t border-popover bg-popover shadow-xl transition-opacity duration-300 ease-[cubic-bezier(0.45,1.005,0,1.005)] select-none group-data-nested-drawer-open/drawer-popup:opacity-0 group-data-nested-drawer-swiping/drawer-popup:opacity-100 group-data-swiping/drawer-popup:select-none dark:border-border"
+            )}
+            ref={setContentRef}
+          >
+            {children}
+            {/* Drawers are lit surfaces like the screens are, so they carry
                 the same grain — clipped to the sheet's own corners. */}
-              <AppGrain className="rounded-[inherit]" />
-            </DrawerPrimitive.Content>
-            <div data-slot="drawer-controls-slot" ref={setControlsSlotRef} />
-          </DrawerPrimitive.Popup>
-        </DrawerPrimitive.Viewport>
-      </DrawerPortal>
-    </DrawerControlsSlotContext.Provider>
+            <AppGrain className="rounded-[inherit]" />
+          </DrawerPrimitive.Content>
+        </DrawerPrimitive.Popup>
+      </DrawerPrimitive.Viewport>
+    </DrawerPortal>
   )
 }
 

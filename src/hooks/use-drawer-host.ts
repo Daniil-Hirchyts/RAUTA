@@ -11,3 +11,14 @@ export const DrawerHostContext =
 export function useDrawerHost() {
   return use(DrawerHostContext)
 }
+
+/**
+ * The shell's control band. Every set of bottom actions renders into it — a
+ * screen's own and a drawer's alike — so the band is a fixed piece of the shell
+ * that sheets slide up behind, and only its contents change hands.
+ */
+export const ControlsHostContext = createContext<HTMLDivElement | null>(null)
+
+export function useControlsHost() {
+  return use(ControlsHostContext)
+}

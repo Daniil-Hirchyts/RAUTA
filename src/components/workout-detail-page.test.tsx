@@ -174,16 +174,43 @@ describe("WorkoutDetailPage", () => {
       currentExerciseId: "0002",
     })
 
-    await user.click(
-      screen.getByRole("button", { name: "Mark 45° side bend as done" })
-    )
     await user.click(screen.getByRole("button", { name: "Finish workout" }))
+    const finishConfirmation = await screen.findByRole("dialog")
+    expect(
+      within(finishConfirmation).getByRole("heading", {
+        name: "Finish workout?",
+      })
+    ).toBeInTheDocument()
+    await user.click(
+      within(finishConfirmation).getByRole("button", { name: "Finish workout" })
+    )
     expect(useActiveWorkout.getState()).toMatchObject({
       session: null,
       lastOutcome: "finished",
     })
     // Whatever the footer offers a finished workout, the clock is gone.
     expect(screen.queryByRole("timer")).not.toBeInTheDocument()
+  })
+
+  it("requires confirmation before finishing a running session", async () => {
+    const user = userEvent.setup()
+    renderWorkout(["0001"])
+
+    await startNow(user)
+    await user.click(screen.getByRole("button", { name: "Finish workout" }))
+    expect(useActiveWorkout.getState().session).not.toBeNull()
+
+    const confirmation = await screen.findByRole("dialog")
+    expect(
+      within(confirmation).getByRole("heading", { name: "Finish workout?" })
+    ).toBeInTheDocument()
+    await user.click(
+      within(confirmation).getByRole("button", { name: "Finish workout" })
+    )
+    expect(useActiveWorkout.getState()).toMatchObject({
+      session: null,
+      lastOutcome: "finished",
+    })
   })
 
   it("pauses and resumes the workout clock", async () => {
