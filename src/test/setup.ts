@@ -1,6 +1,10 @@
 import "@testing-library/jest-dom/vitest"
 import { cleanup } from "@testing-library/react"
-import { afterEach, vi } from "vitest"
+import { afterEach, beforeEach, vi } from "vitest"
+
+beforeEach(() => {
+  vi.setSystemTime(new Date("2026-09-01T12:00:00.000Z"))
+})
 
 afterEach(() => {
   cleanup()

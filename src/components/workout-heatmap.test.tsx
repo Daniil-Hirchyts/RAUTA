@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { WorkoutHeatmap } from "@/components/workout-heatmap"
 import { formatDateShort, toISODate } from "@/lib/date"
@@ -24,13 +24,17 @@ function makeWorkout(date: string, exercises: number): Workout {
   }
 }
 
-const TODAY = daysAgo(0)
-// Exactly one week back, so the two workouts always land in adjacent columns.
-const LAST_WEEK = daysAgo(7)
-
-const WORKOUTS = [makeWorkout(TODAY, 2), makeWorkout(LAST_WEEK, 5)]
+let TODAY = ""
+let LAST_WEEK = ""
+let WORKOUTS: Workout[] = []
 
 describe("WorkoutHeatmap", () => {
+  beforeEach(() => {
+    TODAY = daysAgo(0)
+    LAST_WEEK = daysAgo(7)
+    WORKOUTS = [makeWorkout(TODAY, 2), makeWorkout(LAST_WEEK, 5)]
+  })
+
   it("summarises the year and the running streak", () => {
     render(<WorkoutHeatmap workouts={WORKOUTS} />)
 
