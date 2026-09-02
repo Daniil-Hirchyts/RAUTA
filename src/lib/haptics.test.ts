@@ -69,7 +69,7 @@ describe("haptics", () => {
     stop()
   })
 
-  it("does not overlay buttons inside swipe or drawer surfaces", () => {
+  it("does not overlay buttons inside swipe or retained inactive pages", () => {
     mockIOS()
 
     const swipeSurface = document.createElement("div")
@@ -77,12 +77,12 @@ describe("haptics", () => {
     const swipeButton = document.createElement("button")
     swipeSurface.append(swipeButton)
 
-    const drawer = document.createElement("div")
-    drawer.dataset.slot = "drawer-popup"
-    const drawerButton = document.createElement("button")
-    drawer.append(drawerButton)
+    const inactivePage = document.createElement("section")
+    inactivePage.setAttribute("inert", "")
+    const inactiveButton = document.createElement("button")
+    inactivePage.append(inactiveButton)
 
-    document.body.append(swipeSurface, drawer)
+    document.body.append(swipeSurface, inactivePage)
 
     const stop = installDirectTouchHaptics()
 
@@ -90,13 +90,13 @@ describe("haptics", () => {
       swipeButton.querySelector("input[type='checkbox'][switch]")
     ).not.toBeInTheDocument()
     expect(
-      drawerButton.querySelector("input[type='checkbox'][switch]")
+      inactiveButton.querySelector("input[type='checkbox'][switch]")
     ).not.toBeInTheDocument()
 
     stop()
   })
 
-  it("suspends existing page haptics while a drawer is mounted", async () => {
+  it("keeps stable page haptics when another page is mounted", async () => {
     mockIOS()
 
     const stableButton = document.createElement("button")
@@ -107,25 +107,17 @@ describe("haptics", () => {
       stableButton.querySelector("input[type='checkbox'][switch]")
     ).toBeInTheDocument()
 
-    const drawer = document.createElement("div")
-    drawer.dataset.slot = "drawer-popup"
-    const drawerButton = document.createElement("button")
-    drawer.append(drawerButton)
-    document.body.append(drawer)
+    const page = document.createElement("section")
+    const pageButton = document.createElement("button")
+    page.append(pageButton)
+    document.body.append(page)
     await flushHapticObserver()
 
     expect(
       stableButton.querySelector("input[type='checkbox'][switch]")
-    ).not.toBeInTheDocument()
+    ).toBeInTheDocument()
     expect(
-      drawerButton.querySelector("input[type='checkbox'][switch]")
-    ).not.toBeInTheDocument()
-
-    drawer.remove()
-    await flushHapticObserver()
-
-    expect(
-      stableButton.querySelector("input[type='checkbox'][switch]")
+      pageButton.querySelector("input[type='checkbox'][switch]")
     ).toBeInTheDocument()
 
     stop()

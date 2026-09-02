@@ -1,5 +1,7 @@
 import type { ExerciseSummary } from "@/types"
 
+import { isNative } from "@/lib/native"
+
 export function equipmentImage(equipment: string) {
   const revision =
     equipment === "assisted" || equipment === "rope" ? "?v=2" : ""
@@ -26,14 +28,15 @@ export function exerciseAnimation(exercise: ExerciseSummary) {
  * warm as the pair gets while staying on brand.
  *
  * Use this only where at most a handful of images render at once (the
- * workout list, the detail drawer). `feConvolveMatrix` is a real per-pixel
+ * workout list, and exercise detail page). `feConvolveMatrix` is a real per-pixel
  * convolution, not a compositor-accelerated effect — stamped on a results
  * grid that can hold hundreds of cards, it's expensive enough to crash
  * mobile Safari's renderer. `EXERCISE_ANIMATION_FILTER_LIGHT` below drops
  * just the sharpen for exactly that case.
  */
-export const EXERCISE_ANIMATION_FILTER =
-  "url(#exercise-gif-sharpen) invert(1) hue-rotate(188deg) saturate(2.2) contrast(1.05)"
+export const EXERCISE_ANIMATION_FILTER = isNative()
+  ? "invert(1) hue-rotate(188deg) saturate(2.2) contrast(1.05)"
+  : "url(#exercise-gif-sharpen) invert(1) hue-rotate(188deg) saturate(2.2) contrast(1.05)"
 
 /** Same dark-theme treatment as {@link EXERCISE_ANIMATION_FILTER}, minus the
  *  SVG sharpen — for grids that can render many cards at once. */

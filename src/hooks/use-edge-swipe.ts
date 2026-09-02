@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef } from "react"
 
 /** How far in from a side edge a drag has to start to count as navigation. */
 const EDGE_WIDTH = 32
@@ -9,11 +9,6 @@ const COMMIT_RATIO = 0.32
 /** A quick flick commits even when it never crosses COMMIT_RATIO. */
 const COMMIT_VELOCITY = 0.45
 
-// Base UI leaves a dismissed drawer mounted through its exit animation (and
-// it can stay mounted if the view changes mid-animation), so presence alone
-// does not mean "open" — [data-closed] is what actually distinguishes them.
-const OPEN_DRAWER = '[data-slot="drawer-popup"]:not([data-closed])'
-
 export type SwipePeer = "prev" | "next" | null
 
 /**
@@ -23,8 +18,7 @@ export type SwipePeer = "prev" | "next" | null
  *
  * Deliberately edge-only. The stages are full of horizontally scrollable
  * strips, tappable cards and a swipeable body map, so a gesture that started
- * anywhere would steal from them. Drawers own the whole screen while they are
- * open, so navigation stands down entirely.
+ * anywhere would steal from them.
  */
 export function useEdgeSwipe({
   canGoBack,
@@ -37,9 +31,9 @@ export function useEdgeSwipe({
   onBack: () => void
   onForward: () => void
 }) {
-  const [offset, setOffset] = useState(0)
-  const [peer, setPeer] = useState<SwipePeer>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const offset = useRef(0)
+  const paintFrame = useRef<number | null>(null)
 
   // Everything the in-flight gesture needs lives in a ref: re-rendering on
   // each touchmove is already paid for by the offset state, and the rest
@@ -57,15 +51,32 @@ export function useEdgeSwipe({
   } | null>(null)
 
   const reset = useCallback(() => {
+    if (paintFrame.current !== null) cancelAnimationFrame(paintFrame.current)
+    paintFrame.current = null
     gesture.current = null
-    setOffset(0)
-    setPeer(null)
+    offset.current = 0
+    const element = containerRef.current
+    if (!element) return
+    delete element.dataset.dragging
+    delete element.dataset.swipePeer
+    element.style.removeProperty("--stack-drag-peer-x")
+    element.style.removeProperty("--stack-drag-x")
+  }, [])
+
+  const paintOffset = useCallback(() => {
+    paintFrame.current = null
+    const element = containerRef.current
+    if (!element) return
+    element.style.setProperty("--stack-drag-x", `${offset.current}px`)
+    element.style.setProperty(
+      "--stack-drag-peer-x",
+      `${offset.current * 0.1}px`
+    )
   }, [])
 
   const onTouchStart = useCallback(
     (event: React.TouchEvent<HTMLDivElement>) => {
       if (event.touches.length !== 1) return reset()
-      if (document.querySelector(OPEN_DRAWER)) return
 
       const touch = event.touches[0]
       const element = containerRef.current
@@ -105,13 +116,19 @@ export function useEdgeSwipe({
       const dy = touch.clientY - state.startY
 
       if (!state.decided) {
-        if (Math.abs(dx) < DIRECTION_LOCK && Math.abs(dy) < DIRECTION_LOCK) return
+        if (Math.abs(dx) < DIRECTION_LOCK && Math.abs(dy) < DIRECTION_LOCK)
+          return
         // A mostly-vertical start belongs to the scroller underneath.
         if (Math.abs(dy) > Math.abs(dx)) return reset()
         // So does a drag heading away from the page it would reveal.
         if (state.intent === "prev" ? dx <= 0 : dx >= 0) return reset()
         state.decided = true
-        setPeer(state.intent)
+        const element = containerRef.current
+        if (element) {
+          element.dataset.dragging = "true"
+          element.dataset.swipePeer =
+            state.intent === "prev" ? "prev" : "next"
+        }
       }
 
       const dt = event.timeStamp - state.lastT
@@ -125,9 +142,12 @@ export function useEdgeSwipe({
         state.intent === "prev"
           ? Math.max(0, Math.min(dx, state.width))
           : Math.min(0, Math.max(dx, -state.width))
-      setOffset(clamped)
+      offset.current = clamped
+      if (paintFrame.current === null) {
+        paintFrame.current = requestAnimationFrame(paintOffset)
+      }
     },
-    [reset]
+    [paintOffset, reset]
   )
 
   const onTouchEnd = useCallback(
@@ -135,7 +155,7 @@ export function useEdgeSwipe({
       const state = gesture.current
       if (!state?.active || !state.decided) return reset()
 
-      const travelled = Math.abs(offset) / state.width
+      const travelled = Math.abs(offset.current) / state.width
       const flicked =
         state.intent === "prev"
           ? state.velocity > COMMIT_VELOCITY
@@ -152,23 +172,18 @@ export function useEdgeSwipe({
       }
       event.stopPropagation()
     },
-    [offset, onBack, onForward, reset]
+    [onBack, onForward, reset]
   )
 
-  // A drawer opening mid-drag (or the app being backgrounded) must not leave
-  // the pages parked halfway.
+  // Backgrounding mid-drag must not leave the pages parked halfway.
   useEffect(() => {
-    if (!peer) return
     const cancel = () => reset()
     window.addEventListener("pagehide", cancel)
     return () => window.removeEventListener("pagehide", cancel)
-  }, [peer, reset])
+  }, [reset])
 
   return {
     containerRef,
-    dragging: peer !== null,
-    offset,
-    peer,
     handlers: {
       onTouchCancel: reset,
       onTouchEnd,

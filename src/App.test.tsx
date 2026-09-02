@@ -1,4 +1,11 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react"
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it } from "vitest"
 
@@ -23,12 +30,21 @@ async function goToExercises(
   muscles: string[],
   equipment: string[]
 ) {
-  useFilters.setState({
-    selectedMuscles: muscles as never,
-    selectedEquipment: equipment,
+  act(() => {
+    useFilters.setState({
+      selectedMuscles: muscles as never,
+      selectedEquipment: equipment,
+    })
   })
-  await user.click(screen.getByRole("button", { name: /choose equipment/i }))
-  await user.click(screen.getByRole("button", { name: /show exercises/i }))
+  const chooseEquipment = screen.getByRole("button", {
+    name: /choose equipment/i,
+  })
+  await waitFor(() => expect(chooseEquipment).toBeEnabled())
+  await user.click(chooseEquipment)
+  await screen.findByRole("heading", { name: "Equipment" })
+  await user.click(
+    await screen.findByRole("button", { name: /show exercises/i })
+  )
 }
 
 describe("App", () => {
@@ -42,7 +58,10 @@ describe("App", () => {
     useFavorites.setState({ favoriteIds: [] })
     useWorkouts.setState({ workouts: [] })
     useSettings.setState(DEFAULT_SETTINGS)
-    writeAppSession({ ...DEFAULT_APP_SESSION, view: { type: "flow" } })
+    writeAppSession({
+      ...DEFAULT_APP_SESSION,
+      pages: [{ type: "workouts" }, { type: "muscles" }],
+    })
   })
 
   it("opens on My workouts and starts creation from there", async () => {
@@ -60,17 +79,22 @@ describe("App", () => {
   it("keeps the rounded content surface separate from bottom controls", () => {
     render(<App />)
 
-    const screenShell = document.querySelector(".app-screen")
+    const screenShell = document.querySelector(".app-shell-frame")
     const surface = screenShell?.querySelector(".app-surface")
-    const header = screenShell?.querySelector(".app-shell-header")
-    const footer = document.querySelector('footer[data-slot="app-controls"]')
+    const header = surface?.querySelector(
+      '.app-page-layer[data-active="true"] .app-shell-header'
+    )
+    const footer = document.querySelector(
+      'footer[data-slot="app-controls"]:not([data-outgoing="true"])'
+    )
 
-    expect(screenShell).toHaveAttribute("data-bottom-controls", "true")
+    expect(document.querySelectorAll(".app-surface")).toHaveLength(1)
+    expect(screenShell).toHaveAttribute("data-commands", "visible")
     expect(surface).toContainElement(header as HTMLElement)
     expect(header).toContainElement(screen.getByRole("progressbar"))
     expect(surface).not.toContainElement(footer as HTMLElement)
-    expect(surface?.querySelector(".app-stage-frame")).toBeInTheDocument()
-    expect(document.querySelector(".app-drawer-host")).toBeInTheDocument()
+    expect(surface?.querySelector(".app-page-stack")).toBeInTheDocument()
+    expect(document.querySelector(".app-drawer-host")).not.toBeInTheDocument()
     expect(document.querySelector(".app-controls-host")).toBeInTheDocument()
   })
 
@@ -149,7 +173,27 @@ describe("App", () => {
     expect(fullGymPreset.closest(".app-surface")).toBe(equipmentSurface)
     expect(presetScroller).toHaveClass("px-5")
     expect(presetDock).not.toHaveAttribute("data-slot", "app-controls")
+    const createPreset = screen.getByRole("button", {
+      name: "Create equipment preset",
+    })
+    expect(
+      createPreset.closest('footer[data-slot="app-controls"]')
+    ).toContainElement(createPreset)
+    expect(createPreset).toBeDisabled()
     await user.click(screen.getByRole("checkbox", { name: "Body Weight" }))
+    const enabledCreatePreset = screen.getByRole("button", {
+      name: "Create equipment preset",
+    })
+    expect(enabledCreatePreset).toBeEnabled()
+    await user.click(enabledCreatePreset)
+    expect(
+      screen.queryByRole("button", { name: "Full gym" })
+    ).not.toBeInTheDocument()
+    const presetName = screen.getByLabelText("Preset name")
+    expect(presetDock).toContainElement(presetName)
+    await user.type(presetName, "Travel")
+    await user.click(screen.getByRole("button", { name: "Save preset" }))
+    expect(screen.getByRole("button", { name: "Travel" })).toBeInTheDocument()
     const showExercises = screen.getByRole("button", {
       name: /show exercises/i,
     })
@@ -238,26 +282,33 @@ describe("App", () => {
     act(() => {
       triggerIntersection(screen.getByTestId("load-more-sentinel"))
     })
-    expect(results.querySelectorAll("article")).toHaveLength(
-      EXERCISE_PAGE_SIZE * 2
+    await waitFor(() =>
+      expect(results.querySelectorAll("article")).toHaveLength(
+        EXERCISE_PAGE_SIZE * 2
+      )
     )
   })
 
   it("renders the zero-results state", async () => {
-    const user = userEvent.setup()
     useFilters.setState({
       selectedMuscles: ["chest"],
       selectedEquipment: ["not-real-equipment"],
     })
+    writeAppSession({
+      ...DEFAULT_APP_SESSION,
+      pages: [
+        { type: "workouts" },
+        { type: "muscles" },
+        { type: "equipment" },
+        { type: "exercises" },
+      ],
+    })
     render(<App />)
-
-    await user.click(screen.getByRole("button", { name: /choose equipment/i }))
-    await user.click(screen.getByRole("button", { name: /show exercises/i }))
 
     expect(screen.getByText("0 exercises")).toBeInTheDocument()
   })
 
-  it("opens an exercise detail drawer on click", async () => {
+  it("opens an exercise detail page on click", async () => {
     const user = userEvent.setup()
     const [first] = filterExercises(EXERCISES, ["chest"], ["body weight"])
     render(<App />)
@@ -267,21 +318,12 @@ describe("App", () => {
       screen.getByRole("button", { name: `View ${first.name} details` })
     )
 
-    const drawer = await screen.findByRole("dialog")
     expect(
-      within(drawer).getByRole("heading", { name: first.name })
+      await screen.findByRole("heading", { name: first.name })
     ).toBeInTheDocument()
-    expect(
-      within(
-        document.querySelector("[data-slot='drawer-controls']")!
-      ).getByRole("button", { name: "Select" })
-    ).toBeInTheDocument()
-    expect(
-      within(drawer).getByRole("button", { name: "Close drawer" })
-    ).toBeInTheDocument()
-    expect(
-      document.querySelector("[data-slot='drawer-swipe-handle']")
-    ).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Select" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument()
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
 
   it("toggles favorites and filters the list to favorites only", async () => {
@@ -332,12 +374,54 @@ describe("App", () => {
     expect(
       screen.getByTestId("exercise-results").querySelectorAll("article")
     ).toHaveLength(Math.min(matches.length, EXERCISE_PAGE_SIZE))
+    const addToWorkout = screen.getByRole("button", {
+      name: /add to workout/i,
+    })
+    expect(addToWorkout).toBeDisabled()
+    const selectionDock = addToWorkout.closest(".exercise-selection-dock")
+    expect(document.querySelector(".app-surface")).toContainElement(
+      selectionDock as HTMLElement
+    )
     expect(
-      screen.getByRole("button", { name: /add to workout/i })
-    ).toBeDisabled()
+      document.querySelector('footer[data-slot="app-controls"]')
+    ).not.toContainElement(addToWorkout)
   })
 
-  it("selects an exercise from its detail drawer without opening workout creation", async () => {
+  it("opens exercise search inside the content surface without replacing shell controls", async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await goToExercises(user, ["chest"], ["body weight"])
+
+    const footer = document.querySelector(
+      'footer[data-slot="app-controls"]:not([data-outgoing="true"])'
+    )
+    const searchButton = screen.getByRole("button", {
+      name: "Search exercises",
+    })
+    expect(footer).toContainElement(searchButton)
+
+    await user.click(searchButton)
+
+    const searchInput = screen.getByRole("textbox", {
+      name: "Search exercises",
+    })
+    const searchDock = searchInput.closest(".exercise-search-dock")
+    expect(document.querySelector(".app-surface")).toContainElement(
+      searchDock as HTMLElement
+    )
+    expect(footer).not.toContainElement(searchInput)
+    expect(footer).toContainElement(
+      screen.getByRole("button", { name: "Close search" })
+    )
+    expect(footer).toContainElement(
+      screen.getByRole("button", { name: "Show favorites only" })
+    )
+    expect(footer).toContainElement(
+      screen.getByRole("button", { name: "Select" })
+    )
+  })
+
+  it("selects an exercise from its detail page without opening workout creation", async () => {
     const user = userEvent.setup()
     const [exercise] = filterExercises(EXERCISES, ["chest"], ["body weight"])
     render(<App />)
@@ -349,11 +433,12 @@ describe("App", () => {
       })
     )
 
-    await user.click(
-      within(
-        document.querySelector("[data-slot='drawer-controls']")!
-      ).getByRole("button", { name: "Select" })
-    )
+    const detailLike = screen.getByRole("button", {
+      name: `Add ${exercise.name} to favorites`,
+    })
+    expect(detailLike).toHaveClass("border", "border-border", "bg-card")
+
+    await user.click(screen.getByRole("button", { name: "Select" }))
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     expect(
@@ -364,7 +449,7 @@ describe("App", () => {
     ).not.toBeInTheDocument()
   })
 
-  it("opens the detail drawer on long tap in selection mode without toggling selection", async () => {
+  it("opens the detail page on long tap in selection mode without toggling selection", async () => {
     const user = userEvent.setup()
     const [exercise] = filterExercises(EXERCISES, ["chest"], ["body weight"])
     render(<App />)
@@ -385,9 +470,8 @@ describe("App", () => {
     fireEvent.pointerUp(cardButton)
     fireEvent.click(cardButton)
 
-    const detailDrawer = await screen.findByRole("dialog")
     expect(
-      within(detailDrawer).getByRole("heading", { name: exercise.name })
+      await screen.findByRole("heading", { name: exercise.name })
     ).toBeInTheDocument()
     expect(cardButton).toHaveAttribute("aria-pressed", "false")
   })
@@ -409,10 +493,10 @@ describe("App", () => {
     )
     await user.click(screen.getByRole("button", { name: "Add to workout (1)" }))
 
-    const destination = await screen.findByRole("dialog")
-    await user.click(
-      within(destination).getByRole("button", { name: /tue, sep 8/i })
-    )
+    expect(
+      await screen.findByRole("heading", { name: "Add 1 exercise" })
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: /tue, sep 8/i }))
 
     expect(
       useWorkouts
@@ -445,24 +529,21 @@ describe("App", () => {
     expect(addToWorkout.querySelector("svg")).not.toBeInTheDocument()
     await user.click(addToWorkout)
 
-    const destinationDrawer = await screen.findByRole("dialog")
     expect(
-      within(destinationDrawer).getByRole("heading", {
+      await screen.findByRole("heading", {
         name: "Add 2 exercises",
       })
     ).toBeInTheDocument()
-    await user.click(
-      within(destinationDrawer).getByRole("button", { name: /new workout/i })
-    )
+    await user.click(screen.getByRole("button", { name: /new workout/i }))
 
     // The date picker trigger defaults to today — it doubles as the
     // workout's title, so there's no separate name field to fill in.
     const formHeading = await screen.findByRole("heading", {
       name: "New workout",
     })
-    const formDrawer = formHeading.closest<HTMLElement>("[role='dialog']")!
+    const formPage = formHeading.closest<HTMLElement>("[data-page-entry]")!
     const today = toISODate(new Date())
-    const trigger = within(formDrawer).getByRole("button", {
+    const trigger = within(formPage).getByRole("button", {
       name: formatDateLong(today),
     })
     expect(trigger).toBeInTheDocument()

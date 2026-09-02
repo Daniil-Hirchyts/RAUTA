@@ -13,7 +13,8 @@ import { useEffect, useRef, useState } from "react"
  */
 export function useLoadMoreOnScroll<T extends HTMLElement = HTMLElement>(
   totalCount: number,
-  pageSize: number
+  pageSize: number,
+  enabled = true
 ) {
   const [visibleCount, setVisibleCount] = useState(pageSize)
 
@@ -34,7 +35,7 @@ export function useLoadMoreOnScroll<T extends HTMLElement = HTMLElement>(
   useEffect(() => {
     const root = rootRef.current
     const sentinel = sentinelRef.current
-    if (!root || !sentinel || !hasMore) return
+    if (!enabled || !root || !sentinel || !hasMore) return
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -46,7 +47,7 @@ export function useLoadMoreOnScroll<T extends HTMLElement = HTMLElement>(
     )
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [hasMore, pageSize, totalCount])
+  }, [enabled, hasMore, pageSize, totalCount])
 
   return { hasMore, rootRef, sentinelRef, visibleCount }
 }

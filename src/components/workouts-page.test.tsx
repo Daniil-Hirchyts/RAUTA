@@ -9,6 +9,7 @@ function renderPage() {
   render(
     <WorkoutsPage
       onCreate={() => {}}
+      onDelete={() => {}}
       onSelect={() => {}}
       onSettings={() => {}}
     />

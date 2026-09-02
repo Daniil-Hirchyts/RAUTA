@@ -1,9 +1,27 @@
+import { useState } from "react"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it } from "vitest"
 
-import { EquipmentPresets } from "@/components/equipment-presets"
+import {
+  EquipmentPresetEditor,
+  EquipmentPresets,
+} from "@/components/equipment-presets"
 import { useFilters } from "@/store/use-filters"
+
+function PresetHarness() {
+  const [creating, setCreating] = useState(false)
+  return creating ? (
+    <EquipmentPresetEditor onSaved={() => setCreating(false)} />
+  ) : (
+    <>
+      <EquipmentPresets />
+      <button onClick={() => setCreating(true)} type="button">
+        Create equipment preset
+      </button>
+    </>
+  )
+}
 
 describe("EquipmentPresets", () => {
   beforeEach(() => {
@@ -37,17 +55,14 @@ describe("EquipmentPresets", () => {
 
   it("creates, reuses, toggles, and deletes a custom preset", async () => {
     const user = userEvent.setup()
-    render(<EquipmentPresets />)
+    render(<PresetHarness />)
 
     await user.click(
-      screen.getByRole("button", { name: "Save current selection as a preset" })
+      screen.getByRole("button", { name: "Create equipment preset" })
     )
     expect(
-      document.querySelector("[data-slot='drawer-swipe-handle']")
+      screen.queryByRole("button", { name: "Full gym" })
     ).not.toBeInTheDocument()
-    expect(
-      screen.getByRole("button", { name: "Close drawer" })
-    ).toBeInTheDocument()
     await user.type(screen.getByLabelText("Preset name"), "Travel")
     await user.click(screen.getByRole("button", { name: "Save preset" }))
 
@@ -69,8 +84,12 @@ describe("EquipmentPresets", () => {
     expect(useFilters.getState().selectedEquipment).toEqual([])
     expect(travelButton).toHaveAttribute("aria-pressed", "false")
 
-    await user.click(screen.getByRole("button", { name: "Delete Travel preset" }))
+    await user.click(
+      screen.getByRole("button", { name: "Delete Travel preset" })
+    )
     expect(useFilters.getState().equipmentPresets).toHaveLength(0)
-    expect(screen.queryByRole("button", { name: "Travel" })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "Travel" })
+    ).not.toBeInTheDocument()
   })
 })

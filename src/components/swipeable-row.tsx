@@ -1,4 +1,10 @@
-import { useRef, useState, type PointerEvent, type ReactNode } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type PointerEvent,
+  type ReactNode,
+} from "react"
 
 import { cn } from "@/lib/utils"
 
@@ -28,17 +34,45 @@ export function SwipeableRow({
   onOpenChange: (open: boolean) => void
   revealWidth?: number
 }) {
-  const [dragX, setDragX] = useState<number | null>(null)
-  // Drives the transition style, so it has to be state (render can't read
-  // refs); `locked` is the same "are we actually dragging" flag but as a
-  // ref, for synchronous checks inside the handlers themselves.
-  const [isDragging, setIsDragging] = useState(false)
   const start = useRef<{ x: number; y: number } | null>(null)
   const locked = useRef(false)
+  const dragX = useRef<number | null>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const actionRef = useRef<HTMLDivElement>(null)
+  const paintFrame = useRef<number | null>(null)
 
   const settledX = isOpen ? -revealWidth : 0
-  const x = dragX ?? settledX
-  const actionIsVisible = x < 0
+
+  const paint = useCallback((x: number) => {
+    paintFrame.current = null
+    if (contentRef.current) {
+      contentRef.current.style.transform = `translate3d(${x}px, 0, 0)`
+    }
+    if (actionRef.current) {
+      const visible = x < -1
+      actionRef.current.style.opacity = visible ? "1" : "0"
+      // Keep the action layer hit-testable for accessibility and keyboard
+      // discovery. The content layer is painted above it while closed, so it
+      // still cannot steal taps until the row is actually revealed.
+      actionRef.current.style.pointerEvents = "auto"
+    }
+  }, [])
+
+  const schedulePaint = useCallback((x: number) => {
+    if (paintFrame.current !== null) cancelAnimationFrame(paintFrame.current)
+    paintFrame.current = requestAnimationFrame(() => paint(x))
+  }, [paint])
+
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.style.transition =
+        "transform 280ms var(--ease-smooth-out)"
+    }
+    schedulePaint(settledX)
+    return () => {
+      if (paintFrame.current !== null) cancelAnimationFrame(paintFrame.current)
+    }
+  }, [schedulePaint, settledX])
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     start.current = { x: event.clientX, y: event.clientY }
@@ -58,7 +92,7 @@ export function SwipeableRow({
         return
       }
       locked.current = true
-      setIsDragging(true)
+      if (contentRef.current) contentRef.current.style.transition = "none"
       // Capture is a reliability nice-to-have (keeps the drag tracking even
       // if the finger leaves the element); a pointer some environments
       // consider inactive can reject it, but the gesture works fine without.
@@ -70,36 +104,31 @@ export function SwipeableRow({
     }
 
     event.preventDefault()
-    setDragX(Math.min(0, Math.max(-revealWidth, settledX + dx)))
+    dragX.current = Math.min(0, Math.max(-revealWidth, settledX + dx))
+    schedulePaint(dragX.current)
   }
 
   const endDrag = () => {
     if (locked.current) {
-      const finalX = dragX ?? settledX
-      onOpenChange(finalX <= -revealWidth / 2)
+      const finalX = dragX.current ?? settledX
+      const nextOpen = finalX <= -revealWidth / 2
+      onOpenChange(nextOpen)
+      if (contentRef.current) {
+        contentRef.current.style.transition =
+          "transform 280ms var(--ease-smooth-out)"
+      }
+      schedulePaint(nextOpen ? -revealWidth : 0)
     }
     start.current = null
     locked.current = false
-    setIsDragging(false)
-    setDragX(null)
+    dragX.current = null
   }
 
   return (
-    <div
-      className={cn("relative overflow-hidden", className)}
-      // Base UI's Drawer arbitrates swipe-to-dismiss vs. scrolling with its
-      // own document-level touch listener, entirely separate from React's
-      // pointer events — stopPropagation() above does nothing to it. This
-      // is Base UI's own documented opt-out, so a row's own drag/swipe
-      // gesture (inside a drawer's exercise list) doesn't fight the
-      // drawer's dismiss gesture too. Harmless outside a Drawer.
-      data-base-ui-swipe-ignore=""
-    >
+    <div className={cn("relative overflow-hidden", className)}>
       <div
-        className={cn(
-          "absolute inset-y-0 right-0 flex items-center justify-center transition-opacity duration-150",
-          actionIsVisible ? "opacity-100" : "pointer-events-none opacity-0"
-        )}
+        className="absolute inset-y-0 right-0 flex items-center justify-center opacity-0 transition-opacity duration-150"
+        ref={actionRef}
         style={{ width: revealWidth + actionInset }}
       >
         {action}
@@ -110,11 +139,10 @@ export function SwipeableRow({
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
+        ref={contentRef}
         style={{
-          transform: `translateX(${x}px)`,
-          transition: isDragging
-            ? "none"
-            : "transform 280ms var(--ease-smooth-out)",
+          transform: `translate3d(${settledX}px, 0, 0)`,
+          transition: "transform 280ms var(--ease-smooth-out)",
         }}
       >
         {children}

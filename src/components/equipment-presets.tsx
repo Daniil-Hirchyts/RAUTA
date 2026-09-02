@@ -1,23 +1,14 @@
-import { useState, type FormEvent } from "react"
-import { Plus, Trash2 } from "lucide-react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
+import { Check, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerControls,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer"
 import { Input } from "@/components/ui/input"
 import { EQUIPMENT_OPTIONS } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
 import { cn } from "@/lib/utils"
 import { useFilters } from "@/store/use-filters"
 
-const STARTER_PRESETS = [
+const STARTER_EQUIPMENT_PRESETS = [
   {
     id: "starter-home",
     name: "Home kit",
@@ -39,12 +30,9 @@ function sameSelection(left: readonly string[], right: readonly string[]) {
 }
 
 export function EquipmentPresets({ className }: { className?: string }) {
-  const [open, setOpen] = useState(false)
-  const [name, setName] = useState("")
   const selectedEquipment = useFilters((state) => state.selectedEquipment)
   const presets = useFilters((state) => state.equipmentPresets)
   const setEquipment = useFilters((state) => state.setEquipment)
-  const savePreset = useFilters((state) => state.saveEquipmentPreset)
   const deletePreset = useFilters((state) => state.deleteEquipmentPreset)
 
   const togglePreset = (equipment: readonly string[]) => {
@@ -56,15 +44,6 @@ export function EquipmentPresets({ className }: { className?: string }) {
     }
   }
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
-    if (!name.trim() || selectedEquipment.length === 0) return
-    savePreset(name)
-    triggerHaptic("success")
-    setName("")
-    setOpen(false)
-  }
-
   return (
     <div
       className={cn(
@@ -73,54 +52,7 @@ export function EquipmentPresets({ className }: { className?: string }) {
       )}
       data-swipe-ignore
     >
-      <Drawer onOpenChange={setOpen} open={open} swipeDirection="down">
-        <DrawerTrigger
-          aria-label="Save current selection as a preset"
-          disabled={selectedEquipment.length === 0}
-          render={
-            <button
-              className="interactive-spring grid size-11 shrink-0 place-items-center rounded-full border border-border bg-card text-primary shadow-[0_8px_24px_rgb(0_0_0/0.18)] active:bg-card/90 disabled:bg-muted disabled:text-muted-foreground"
-              type="button"
-            />
-          }
-        >
-          <Plus className="size-4.5" />
-        </DrawerTrigger>
-        <DrawerContent className="mx-auto max-w-[430px]">
-          <DrawerHeader className="px-5 pt-16 text-left">
-            <DrawerTitle className="text-xl font-bold">
-              Save equipment preset
-            </DrawerTitle>
-            <DrawerDescription>
-              {selectedEquipment.length} selected item
-              {selectedEquipment.length === 1 ? "" : "s"}
-            </DrawerDescription>
-          </DrawerHeader>
-          <form className="space-y-4 px-5 pt-4 pb-6" id="equipment-preset-form" onSubmit={submit}>
-            <Input
-              aria-label="Preset name"
-              autoFocus
-              maxLength={30}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Preset name"
-              value={name}
-            />
-            <DrawerControls>
-              <Button
-                className="w-full"
-                disabled={!name.trim()}
-                form="equipment-preset-form"
-                size="cta"
-                type="submit"
-              >
-                Save preset
-              </Button>
-            </DrawerControls>
-          </form>
-        </DrawerContent>
-      </Drawer>
-
-      {STARTER_PRESETS.map((preset) => (
+      {STARTER_EQUIPMENT_PRESETS.map((preset) => (
         <button
           aria-pressed={sameSelection(selectedEquipment, preset.equipment)}
           className="preset-chip shrink-0"
@@ -165,5 +97,63 @@ export function EquipmentPresets({ className }: { className?: string }) {
         )
       })}
     </div>
+  )
+}
+
+export function EquipmentPresetEditor({
+  className,
+  onSaved,
+}: {
+  className?: string
+  onSaved: () => void
+}) {
+  const [name, setName] = useState("")
+  const inputRef = useRef<HTMLInputElement>(null)
+  const selectedEquipmentCount = useFilters(
+    (state) => state.selectedEquipment.length
+  )
+  const savePreset = useFilters((state) => state.saveEquipmentPreset)
+  const canSave = name.trim().length > 0 && selectedEquipmentCount > 0
+
+  useEffect(() => {
+    inputRef.current?.focus({ preventScroll: true })
+  }, [])
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!canSave) return
+    savePreset(name)
+    triggerHaptic("success")
+    onSaved()
+  }
+
+  return (
+    <form
+      className={cn(
+        "t-search-reveal pointer-events-auto flex min-w-0 gap-2.5",
+        className
+      )}
+      data-swipe-ignore
+      onSubmit={handleSubmit}
+    >
+      <Input
+        aria-label="Preset name"
+        className="h-11 min-w-0 flex-1 rounded-full border-border bg-card px-4 shadow-[0_8px_24px_rgb(0_0_0/0.18)]"
+        enterKeyHint="done"
+        onChange={(event) => setName(event.target.value)}
+        placeholder="Preset name"
+        ref={inputRef}
+        value={name}
+      />
+      <Button
+        aria-label="Save preset"
+        disabled={!canSave}
+        size="icon"
+        type="submit"
+        variant="ghost"
+      >
+        <Check className="size-5" />
+      </Button>
+    </form>
   )
 }

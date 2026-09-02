@@ -1,5 +1,6 @@
 import { SkipForward } from "lucide-react"
 
+import { AppImage } from "@/components/app-image"
 import { Button } from "@/components/ui/button"
 import { triggerHaptic } from "@/lib/haptics"
 import { EXERCISE_ANIMATION_FILTER, exerciseAnimation } from "@/lib/visuals"
@@ -34,12 +35,13 @@ export function ActiveWorkoutHero({
         onClick={() => onOpenExercise(exercise)}
         type="button"
       >
-        <img
+        <AppImage
           alt={`${exercise.name} demonstration`}
           className="h-full w-full object-contain mix-blend-screen"
           decoding="async"
           draggable={false}
           fetchPriority="high"
+          loading="eager"
           src={exerciseAnimation(exercise)}
           style={{ filter: EXERCISE_ANIMATION_FILTER }}
         />

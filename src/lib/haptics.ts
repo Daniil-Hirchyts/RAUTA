@@ -91,8 +91,8 @@ function playSoundChime(input: "success" | "warning") {
 }
 
 const HAPTIC_TARGETS = "button:not([data-haptics=off])"
-const DRAWER_SURFACE = '[data-slot="drawer-popup"]'
-const UNSAFE_GESTURE_SURFACE = `${DRAWER_SURFACE}, [data-swipe-ignore], [draggable="true"]`
+const UNSAFE_GESTURE_SURFACE =
+  '[data-swipe-ignore], [draggable="true"], [inert]'
 const SCROLLABLE_OVERFLOW = new Set(["auto", "scroll"])
 
 function isIOS() {
@@ -101,13 +101,6 @@ function isIOS() {
     /iP(?:hone|ad|od)/.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
   )
-}
-
-function hasOpenDrawer() {
-  // A dismissed drawer stays mounted through its exit animation, and stays
-  // mounted indefinitely if the view changes before that animation finishes.
-  // Matching on presence alone would then suspend button haptics forever.
-  return document.querySelector(`${DRAWER_SURFACE}:not([data-closed])`) !== null
 }
 
 function getSwitchInput(button: HTMLButtonElement) {
@@ -154,7 +147,6 @@ function isDirectTouchSafe(button: HTMLButtonElement) {
 function enhanceButton(button: HTMLButtonElement) {
   if (!isIOS()) return
   if (button.disabled) return
-  if (hasOpenDrawer()) return
   if (!isDirectTouchSafe(button)) return
   if (button.dataset.hapticReady === "true") return
   button.dataset.hapticReady = "true"
@@ -205,17 +197,6 @@ function reconcileDirectTouchHaptics() {
     return
   }
 
-  // Base UI drawers are controlled gesture surfaces. Even a haptic switch on
-  // an underlying page button can participate in the same iOS touch sequence
-  // and make a drawer action close and immediately reopen. While any drawer is
-  // mounted, remove all direct-touch switches. Normal drawer buttons and swipe
-  // dismissal then operate without synthetic clicks. Stable-button haptics are
-  // restored automatically after the drawer unmounts.
-  if (hasOpenDrawer()) {
-    suspendAllDirectTouchHaptics()
-    return
-  }
-
   document
     .querySelectorAll<HTMLButtonElement>('button[data-haptic-ready="true"]')
     .forEach((button) => {
@@ -229,8 +210,8 @@ function reconcileDirectTouchHaptics() {
 
 /**
  * Installs direct-touch iOS haptics on current and future stable buttons.
- * Scrollable, draggable, swipeable, and drawer interaction surfaces are
- * deliberately left untouched.
+ * Scrollable, draggable, and swipeable interaction surfaces are deliberately
+ * left untouched.
  *
  * The native shell has no use for any of this: triggerHaptic() reaches UIKit
  * directly, so the transparent switch overlay would add its gesture-target
@@ -245,14 +226,13 @@ export function installDirectTouchHaptics() {
   if (!isIOS()) return () => undefined
 
   reconcileDirectTouchHaptics()
-  let drawerWasOpen = hasOpenDrawer()
 
   // Reconciling the whole document per mutation batch costs an ancestor walk
   // and a getComputedStyle per button, on every React render — hundreds of
   // forced style resolutions while a results grid scrolls. Only the subtrees
   // that actually changed need syncing; the document-wide pass is reserved for
-  // the two things that change what every button is allowed to do, a drawer
-  // opening or closing and haptics being switched off.
+  // the one setting that changes what every button is allowed to do: haptics
+  // being switched off.
   const pending = new Set<Element>()
   let reconcileQueued = false
 
@@ -276,14 +256,10 @@ export function installDirectTouchHaptics() {
       const roots = [...pending]
       pending.clear()
 
-      const drawerOpen = hasOpenDrawer()
-      const drawerChanged = drawerOpen !== drawerWasOpen
-      drawerWasOpen = drawerOpen
-      if (drawerChanged || !useSettings.getState().hapticsEnabled) {
+      if (!useSettings.getState().hapticsEnabled) {
         reconcileDirectTouchHaptics()
         return
       }
-      if (drawerOpen) return
 
       roots.forEach((root) => {
         if (root instanceof HTMLButtonElement) syncButton(root)
@@ -294,9 +270,7 @@ export function installDirectTouchHaptics() {
 
   const observer = new MutationObserver(queueReconcile)
   observer.observe(document.body, {
-    // data-closed marks a drawer playing its exit animation, which is what
-    // hands control of the whole document back.
-    attributeFilter: ["disabled", "data-haptics", "data-closed"],
+    attributeFilter: ["disabled", "data-haptics"],
     attributes: true,
     childList: true,
     subtree: true,

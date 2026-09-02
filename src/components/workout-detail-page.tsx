@@ -13,6 +13,7 @@ import {
 
 import { ActiveWorkoutHero } from "@/components/active-workout-hero"
 import { ActiveWorkoutTimer } from "@/components/active-workout-timer"
+import { ConfirmModal, type ConfirmationKind } from "@/components/confirm-modal"
 import {
   AppControls,
   AppHeaderButton,
@@ -20,15 +21,11 @@ import {
   AppShellHeader,
   AppSurface,
 } from "@/components/app-shell"
-import { DeleteWorkoutConfirmation } from "@/components/delete-workout-confirmation"
-import { EndWorkoutConfirmation } from "@/components/end-workout-confirmation"
-import { ExerciseSwapperDrawer } from "@/components/exercise-swapper-drawer"
-import { FinishWorkoutConfirmation } from "@/components/finish-workout-confirmation"
 import { SortableExerciseList } from "@/components/sortable-exercise-list"
 import { Button } from "@/components/ui/button"
 import { MatrixLoader } from "@/components/ui/matrix-loader"
 import { WorkoutCountdown } from "@/components/workout-countdown"
-import { WorkoutDateDrawer } from "@/components/workout-date-drawer"
+import { WorkoutDatePopover } from "@/components/workout-date-popover"
 import {
   currentExercise,
   exerciseStatus,
@@ -47,30 +44,36 @@ import type { ExerciseSummary } from "@/types"
 export function WorkoutDetailPage({
   onAddExercise,
   onBack,
+  onCountdownChange,
   onCopied,
-  onDeleted,
+  onFindAlternative,
+  onDelete,
+  onDiscard,
+  onFinish,
   onOpenExercise,
   workoutId,
 }: {
   onAddExercise: () => void
   onBack: () => void
+  onCountdownChange?: (countingDown: boolean) => void
   onCopied?: (workoutId: string) => void
-  onDeleted: () => void
+  onFindAlternative: (exercise: ExerciseSummary) => void
+  onDelete: () => void
+  onDiscard: () => void
+  onFinish: () => void
   onOpenExercise: (exercise: ExerciseSummary) => void
   workoutId: string
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [confirming, setConfirming] = useState<ConfirmationKind | null>(null)
   const workout = useWorkouts((state) =>
     state.workouts.find((item) => item.id === workoutId)
   )
   const updateWorkout = useWorkouts((state) => state.updateWorkout)
-  const deleteWorkout = useWorkouts((state) => state.deleteWorkout)
   const duplicateWorkout = useWorkouts((state) => state.duplicateWorkout)
 
   const runningSession = useActiveWorkout((state) => state.session)
   const startWorkout = useActiveWorkout((state) => state.start)
-  const finishWorkout = useActiveWorkout((state) => state.finish)
-  const cancelWorkout = useActiveWorkout((state) => state.cancel)
   const pauseWorkout = useActiveWorkout((state) => state.pause)
   const resumeWorkout = useActiveWorkout((state) => state.resume)
   const completeCurrent = useActiveWorkout((state) => state.completeCurrent)
@@ -85,11 +88,6 @@ export function WorkoutDetailPage({
     runningSession?.workoutId === workoutId ? runningSession : null
 
   const [countingDown, setCountingDown] = useState(false)
-  const [dateOpen, setDateOpen] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [discardOpen, setDiscardOpen] = useState(false)
-  const [finishOpen, setFinishOpen] = useState(false)
-  const [swapExercise, setSwapExercise] = useState<ExerciseSummary | null>(null)
   const [shareStatus, setShareStatus] = useState<"idle" | "sharing" | "copied">(
     "idle"
   )
@@ -162,17 +160,14 @@ export function WorkoutDetailPage({
             isPast ? (
               formatDateLong(workout.date)
             ) : (
-              <button
-                aria-label={`Change date, currently ${formatDateLong(workout.date)}`}
-                className="max-w-full truncate text-center"
-                onClick={() => {
-                  triggerHaptic("light")
-                  setDateOpen(true)
-                }}
-                type="button"
+              <WorkoutDatePopover
+                ariaLabel={`Change date, currently ${formatDateLong(workout.date)}`}
+                date={workout.date}
+                onSelect={(date) => updateWorkout(workout.id, { date })}
+                triggerClassName="max-w-full truncate text-center"
               >
                 {formatDateLong(workout.date)}
-              </button>
+              </WorkoutDatePopover>
             )
           }
         />
@@ -249,7 +244,7 @@ export function WorkoutDetailPage({
                     ? undefined
                     : (candidate) => {
                         triggerHaptic("light")
-                        setSwapExercise(candidate)
+                        onFindAlternative(candidate)
                       }
                 }
                 onOpenExercise={onOpenExercise}
@@ -293,14 +288,16 @@ export function WorkoutDetailPage({
         ) : null}
       </AppSurface>
 
-      <AppControls>
+      <AppControls
+        transitionKey={`workout:${session ? "running" : isPast ? "past" : "planned"}`}
+      >
         {session ? (
           <div className="flex items-center gap-2.5">
             <Button
               aria-label="Discard session"
               onClick={() => {
                 triggerHaptic("warning")
-                setDiscardOpen(true)
+                setConfirming("discard-session")
               }}
               size="icon-cta"
               variant="secondary"
@@ -320,7 +317,7 @@ export function WorkoutDetailPage({
               className="flex-1"
               onClick={() => {
                 triggerHaptic("medium")
-                setFinishOpen(true)
+                setConfirming("finish-workout")
               }}
             >
               Finish workout
@@ -332,7 +329,7 @@ export function WorkoutDetailPage({
               aria-label="Delete workout"
               onClick={() => {
                 triggerHaptic("warning")
-                setDeleteOpen(true)
+                setConfirming("delete-workout")
               }}
               size="icon-cta"
               variant="destructive"
@@ -358,7 +355,7 @@ export function WorkoutDetailPage({
               aria-label="Delete workout"
               onClick={() => {
                 triggerHaptic("warning")
-                setDeleteOpen(true)
+                setConfirming("delete-workout")
               }}
               size="icon-cta"
               variant="destructive"
@@ -388,6 +385,7 @@ export function WorkoutDetailPage({
                   onClick={() => {
                     triggerHaptic("heavy")
                     setCountingDown(true)
+                    onCountdownChange?.(true)
                   }}
                 >
                   Start workout
@@ -400,59 +398,27 @@ export function WorkoutDetailPage({
 
       {countingDown && (
         <WorkoutCountdown
-          onCancel={() => setCountingDown(false)}
+          onCancel={() => {
+            setCountingDown(false)
+            onCountdownChange?.(false)
+          }}
           onComplete={() => {
             setCountingDown(false)
+            onCountdownChange?.(false)
             startWorkout(workout)
           }}
         />
       )}
 
-      <WorkoutDateDrawer
-        date={workout.date}
-        onOpenChange={setDateOpen}
-        onSelect={(date) => updateWorkout(workout.id, { date })}
-        open={dateOpen}
-      />
-
-      <DeleteWorkoutConfirmation
+      <ConfirmModal
+        kind={confirming}
+        onCancel={() => setConfirming(null)}
         onConfirm={() => {
-          deleteWorkout(workout.id)
-          onDeleted()
+          setConfirming(null)
+          if (confirming === "delete-workout") onDelete()
+          else if (confirming === "discard-session") onDiscard()
+          else if (confirming === "finish-workout") onFinish()
         }}
-        onOpenChange={setDeleteOpen}
-        open={deleteOpen}
-      />
-
-      <EndWorkoutConfirmation
-        onConfirm={cancelWorkout}
-        onOpenChange={setDiscardOpen}
-        open={discardOpen}
-      />
-
-      <FinishWorkoutConfirmation
-        onConfirm={finishWorkout}
-        onOpenChange={setFinishOpen}
-        open={finishOpen}
-      />
-
-      <ExerciseSwapperDrawer
-        excludedExerciseIds={workout.exerciseIds}
-        exercise={swapExercise}
-        onOpenChange={(open) => {
-          if (!open) setSwapExercise(null)
-        }}
-        onSwap={(replacement) => {
-          if (!swapExercise) return
-          setExerciseIds(
-            workout.exerciseIds.map((id) =>
-              id === swapExercise.id ? replacement.id : id
-            )
-          )
-          triggerHaptic("success")
-          setSwapExercise(null)
-        }}
-        open={swapExercise !== null}
       />
     </AppScreen>
   )

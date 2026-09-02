@@ -19,7 +19,7 @@ export function ExerciseSearch({
   }, [])
 
   return (
-    <div className="min-w-0 flex-1" data-swipe-ignore>
+    <div className="pointer-events-auto min-w-0 flex-1" data-swipe-ignore>
       <form
         className="t-search-reveal relative"
         onSubmit={(event) => {

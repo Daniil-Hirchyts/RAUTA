@@ -1,8 +1,10 @@
 import {
   Fragment,
+  startTransition,
   useCallback,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
   type CSSProperties,
@@ -11,40 +13,50 @@ import {
   ChevronLeft,
   FlipHorizontal2,
   Home,
+  Plus,
   Search,
   SearchX,
   X,
 } from "lucide-react"
 
 import { AnimatedCheck } from "@/components/animated-check"
+import { AppImage } from "@/components/app-image"
 import {
   AppControls,
-  AppDrawerHost,
   AppHeaderButton,
   AppScreen,
+  AppShell,
   AppShellHeader,
   AppSurface,
+  PageLayerProvider,
 } from "@/components/app-shell"
 import { BodyMap } from "@/components/body-map"
-import { EquipmentPresets } from "@/components/equipment-presets"
+import {
+  EquipmentPresetEditor,
+  EquipmentPresets,
+} from "@/components/equipment-presets"
 import { ExerciseCard } from "@/components/exercise-card"
-import { ExerciseDetailDrawer } from "@/components/exercise-detail-drawer"
 import { ExerciseSearch } from "@/components/exercise-search"
 import { HapticLayer } from "@/components/haptic-layer"
 import { LikeButton } from "@/components/like-button"
+import {
+  EquipmentPresetPage,
+  ExerciseAlternativesPage,
+  ExerciseDetailPage,
+  WorkoutDestinationPage,
+  WorkoutFormPage,
+} from "@/components/secondary-pages"
 import { SettingsEffects } from "@/components/settings-effects"
 import { SettingsPage } from "@/components/settings-page"
 import { SvgFilterDefs } from "@/components/svg-filters"
-import { SwipeBackPage } from "@/components/swipe-back-page"
 import { Button } from "@/components/ui/button"
 import { DotPattern } from "@/components/ui/dot-pattern"
 import { MatrixLoader } from "@/components/ui/matrix-loader"
 import { WorkoutDetailPage } from "@/components/workout-detail-page"
-import { WorkoutDestinationDrawer } from "@/components/workout-destination-drawer"
-import { WorkoutFormDrawer } from "@/components/workout-form-drawer"
 import { WorkoutsPage } from "@/components/workouts-page"
 import { useEdgeSwipe } from "@/hooks/use-edge-swipe"
 import { useLoadMoreOnScroll } from "@/hooks/use-load-more-on-scroll"
+import { clearAllGymLibData } from "@/lib/app-backup"
 import {
   EQUIPMENT_OPTIONS,
   EXERCISE_PAGE_SIZE,
@@ -54,33 +66,48 @@ import {
   supportingFromIndex,
 } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
+import { isNative } from "@/lib/native"
+import { syncICloudNow } from "@/lib/icloud-sync"
 import { titleCase } from "@/lib/text"
 import { cn } from "@/lib/utils"
 import { equipmentImage } from "@/lib/visuals"
+import {
+  appNavigationReducer,
+  pageHasControls,
+  type AppPage,
+  type AppPageEntry,
+  type NavigationDirection,
+} from "@/store/app-navigation"
+import { readAppSession, writeAppSession } from "@/store/app-session"
+import { useActiveWorkout } from "@/store/use-active-workout"
 import { useFavorites } from "@/store/use-favorites"
 import { useFilters } from "@/store/use-filters"
-import {
-  readAppSession,
-  writeAppSession,
-  type AppStage as Stage,
-  type AppView as View,
-} from "@/store/app-session"
-import { useWorkouts, type Workout } from "@/store/use-workouts"
+import { useWorkouts } from "@/store/use-workouts"
 import type { ExerciseSummary, MuscleId } from "@/types"
 
-const STAGE_LABELS: Record<Stage, string> = {
+type PickerStage = 1 | 2 | 3
+
+const STAGE_LABELS: Record<PickerStage, string> = {
   1: "Muscles",
   2: "Equipment",
   3: "Exercises",
 }
 
-function StageHeading({ stage }: { stage: Stage }) {
-  // The label is React state, not a node an effect reaches in and rewrites.
-  // "shown" trails "stage" by the length of the exit leg, so the swap lands
-  // when the old word has finished leaving — and "exiting" is derived from the
-  // gap between them rather than tracked separately. A fast back-then-forward
-  // tap closes that gap on its own, which cancels the exit instead of leaving
-  // the header stuck invisible.
+let pageSequence = 0
+
+function createPageEntry(page: AppPage): AppPageEntry {
+  pageSequence += 1
+  return { id: `page-${pageSequence}`, page }
+}
+
+function stageForPage(page: AppPage): PickerStage | null {
+  if (page.type === "muscles") return 1
+  if (page.type === "equipment") return 2
+  if (page.type === "exercises") return 3
+  return null
+}
+
+function StageHeading({ stage }: { stage: PickerStage }) {
   const [shown, setShown] = useState(stage)
   const [entering, setEntering] = useState(false)
   const exiting = stage !== shown
@@ -102,8 +129,6 @@ function StageHeading({ stage }: { stage: Stage }) {
 
   useEffect(() => {
     if (!entering) return
-    // The new word paints offset with transitions off; clearing that on the
-    // next frame is what the forced reflow used to buy.
     const frame = requestAnimationFrame(() =>
       requestAnimationFrame(() => setEntering(false))
     )
@@ -123,7 +148,7 @@ function StageHeading({ stage }: { stage: Stage }) {
   )
 }
 
-function FlowProgress({ stage }: { stage: Stage }) {
+function FlowProgress({ stage }: { stage: PickerStage }) {
   return (
     <div
       aria-label={`Step ${stage} of 3`}
@@ -150,20 +175,212 @@ function FlowProgress({ stage }: { stage: Stage }) {
   )
 }
 
+function prefersReducedMotion() {
+  return (
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
+  )
+}
+
 export function App() {
   const [initialSession] = useState(readAppSession)
-  const [view, setView] = useState<View>(initialSession.view)
-  const [viewDirection, setViewDirection] = useState<"forward" | "back">(
-    "forward"
+  const [navigation, dispatchNavigation] = useReducer(
+    appNavigationReducer,
+    initialSession.pages,
+    (initialPages) => ({
+      direction: "forward" as const,
+      pages: initialPages.map(createPageEntry),
+    })
   )
-  const navigate = useCallback(
-    (nextView: View, direction: "forward" | "back" = "forward") => {
-      setViewDirection(direction)
-      setView(nextView)
+  const pages = navigation.pages
+  const pagesRef = useRef(pages)
+  const focusOrigins = useRef(new Map<string, HTMLElement>())
+  const popTimer = useRef<number | null>(null)
+  const entryFrame = useRef<number | null>(null)
+  const entryTimer = useRef<number | null>(null)
+  const entryCompletion = useRef<(() => void) | null>(null)
+  const [direction, setDirection] = useState<NavigationDirection>("forward")
+  const [enteringId, setEnteringId] = useState<string | null>(null)
+  const [leavingId, setLeavingId] = useState<string | null>(null)
+  const [countdownOpen, setCountdownOpen] = useState(false)
+
+  useEffect(() => {
+    pagesRef.current = pages
+  }, [pages])
+
+  useEffect(
+    () => () => {
+      if (popTimer.current !== null) window.clearTimeout(popTimer.current)
+      if (entryFrame.current !== null) cancelAnimationFrame(entryFrame.current)
+      if (entryTimer.current !== null) window.clearTimeout(entryTimer.current)
     },
     []
   )
-  const [stage, setStage] = useState<Stage>(initialSession.stage)
+
+  const focusPage = useCallback((entryId: string) => {
+    requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(`[data-page-entry="${entryId}"] h1`)
+        ?.focus({ preventScroll: true })
+    })
+  }, [])
+
+  const cancelEntryTransition = useCallback(() => {
+    if (entryFrame.current !== null) cancelAnimationFrame(entryFrame.current)
+    if (entryTimer.current !== null) window.clearTimeout(entryTimer.current)
+    entryFrame.current = null
+    entryTimer.current = null
+    entryCompletion.current = null
+    const stack = document.querySelector<HTMLElement>(".app-page-stack")
+    if (stack) {
+      delete stack.dataset.transitionReady
+      stack
+        .querySelectorAll<HTMLElement>(".app-page-layer[data-ready]")
+        .forEach((layer) => delete layer.dataset.ready)
+    }
+  }, [])
+
+  const beginEntryTransition = useCallback(
+    (entryId: string, completion?: () => void) => {
+      cancelEntryTransition()
+      entryCompletion.current = completion ?? null
+      setEnteringId(entryId)
+
+      const finish = () => {
+        startTransition(() => {
+          setEnteringId((current) => (current === entryId ? null : current))
+        })
+        const stack = document.querySelector<HTMLElement>(".app-page-stack")
+        if (stack) {
+          delete stack.dataset.transitionReady
+          stack
+            .querySelectorAll<HTMLElement>(".app-page-layer[data-ready]")
+            .forEach((layer) => delete layer.dataset.ready)
+        }
+        entryCompletion.current?.()
+        entryCompletion.current = null
+        entryTimer.current = null
+        focusPage(entryId)
+      }
+
+      // The browser already composites the regular transform transition. The
+      // two-frame staging is only for the slower WKWebView path; keeping it
+      // out of the browser also prevents a focus click from racing a React
+      // page remount in tests and desktop Safari.
+      if (!isNative() || prefersReducedMotion()) {
+        entryTimer.current = window.setTimeout(finish, 0)
+        return
+      }
+
+      // Mount the next page at +100%, then give WKWebView two complete paint
+      // opportunities before moving either large page layer.
+      entryFrame.current = requestAnimationFrame(() => {
+        entryFrame.current = requestAnimationFrame(() => {
+          entryFrame.current = null
+          const stack = document.querySelector<HTMLElement>(".app-page-stack")
+          if (stack) {
+            stack.dataset.transitionReady = "true"
+            stack
+              .querySelector<HTMLElement>(`[data-page-entry="${entryId}"]`)
+              ?.setAttribute("data-ready", "true")
+          }
+          entryTimer.current = window.setTimeout(finish, 310)
+        })
+      })
+    },
+    [cancelEntryTransition, focusPage]
+  )
+
+  const pushPage = useCallback(
+    (page: AppPage) => {
+      if (leavingId) {
+        if (popTimer.current !== null) window.clearTimeout(popTimer.current)
+        dispatchNavigation({ type: "pop" })
+        focusOrigins.current.delete(leavingId)
+        setLeavingId(null)
+        popTimer.current = null
+      }
+      const entry = createPageEntry(page)
+      const activeElement = document.activeElement
+      if (activeElement instanceof HTMLElement) {
+        focusOrigins.current.set(entry.id, activeElement)
+      }
+      setDirection("forward")
+      beginEntryTransition(entry.id)
+      dispatchNavigation({ type: "push", entry })
+    },
+    [beginEntryTransition, leavingId]
+  )
+
+  const popPage = useCallback(() => {
+    const current = pagesRef.current
+    if (current.length <= 1 || leavingId) return
+    const leaving = current[current.length - 1]
+    setDirection("back")
+    setLeavingId(leaving.id)
+    popTimer.current = window.setTimeout(
+      () => {
+        dispatchNavigation({ type: "pop" })
+        setLeavingId(null)
+        popTimer.current = null
+        const origin = focusOrigins.current.get(leaving.id)
+        focusOrigins.current.delete(leaving.id)
+        requestAnimationFrame(() => origin?.focus({ preventScroll: true }))
+      },
+      prefersReducedMotion() ? 0 : 290
+    )
+  }, [leavingId])
+
+  const replacePage = useCallback(
+    (page: AppPage) => {
+      if (popTimer.current !== null) {
+        window.clearTimeout(popTimer.current)
+        popTimer.current = null
+      }
+      if (leavingId) {
+        dispatchNavigation({ type: "pop" })
+        focusOrigins.current.delete(leavingId)
+        setLeavingId(null)
+      }
+      const entry = createPageEntry(page)
+      const current = leavingId
+        ? pagesRef.current.slice(0, -1)
+        : pagesRef.current
+      const desired = [...current.slice(0, -1), entry]
+      setDirection("forward")
+      beginEntryTransition(entry.id, () =>
+        dispatchNavigation({ type: "reset", entries: desired })
+      )
+      dispatchNavigation({ type: "push", entry })
+    },
+    [beginEntryTransition, leavingId]
+  )
+
+  const resetPages = useCallback(
+    (nextPages: AppPage[]) => {
+      if (popTimer.current !== null) {
+        window.clearTimeout(popTimer.current)
+        popTimer.current = null
+      }
+      cancelEntryTransition()
+      const entries = nextPages.map(createPageEntry)
+      const active = entries.at(-1)
+      if (!active) return
+      setDirection("back")
+      setEnteringId(null)
+      setLeavingId(null)
+      focusOrigins.current.clear()
+      dispatchNavigation({ type: "reset", entries })
+      focusPage(active.id)
+    },
+    [cancelEntryTransition, focusPage]
+  )
+
+  const visualActiveIndex = leavingId
+    ? Math.max(0, pages.length - 2)
+    : pages.length - 1
+  const activeEntry = pages[visualActiveIndex] ?? pages[0]
+  const activePage = activeEntry.page
+
   const selectedMuscles = useFilters((state) => state.selectedMuscles)
   const muscleDotIntensity = Math.min(selectedMuscles.length / 6, 1)
   const selectedEquipment = useFilters((state) => state.selectedEquipment)
@@ -171,8 +388,9 @@ export function App() {
   const toggleEquipment = useFilters((state) => state.toggleEquipment)
   const setMuscles = useFilters((state) => state.setMuscles)
   const setEquipment = useFilters((state) => state.setEquipment)
-  const reset = useFilters((state) => state.reset)
+  const resetFilters = useFilters((state) => state.reset)
   const favoriteIds = useFavorites((state) => state.favoriteIds)
+  const workouts = useWorkouts((state) => state.workouts)
 
   const [favoritesOnly, setFavoritesOnly] = useState(
     initialSession.favoritesOnly
@@ -181,94 +399,16 @@ export function App() {
   const [selectedIds, setSelectedIds] = useState<string[]>(
     initialSession.selectedIds
   )
-
-  const [detailExercise, setDetailExercise] = useState<ExerciseSummary | null>(
-    initialSession.detailExerciseId
-      ? (EXERCISES_BY_ID.get(initialSession.detailExerciseId) ?? null)
-      : null
-  )
-  const [detailOpen, setDetailOpen] = useState(initialSession.detailOpen)
-
-  const [workoutFormOpen, setWorkoutFormOpen] = useState(
-    initialSession.workoutFormOpen
-  )
-  const [workoutDestinationOpen, setWorkoutDestinationOpen] = useState(false)
-  const [preferredWorkoutId, setPreferredWorkoutId] = useState<string | null>(
-    null
-  )
-  // Bumped on every "open the workout form" action so the drawer remounts
-  // with clean local state instead of reusing whatever was left over from
-  // the previous time it was open (see WorkoutFormDrawer).
-  const [workoutFormGeneration, setWorkoutFormGeneration] = useState(0)
-  const [workoutFormSeed, setWorkoutFormSeed] = useState<{
-    workout?: Workout | null
-    exerciseIds?: string[]
-  }>(() => ({
-    exerciseIds: initialSession.workoutFormExerciseIds,
-    workout: initialSession.workoutFormWorkoutId
-      ? (useWorkouts
-          .getState()
-          .workouts.find(
-            (workout) => workout.id === initialSession.workoutFormWorkoutId
-          ) ?? null)
-      : null,
-  }))
-
-  const appSession = useMemo(
-    () => ({
-      detailExerciseId: detailExercise?.id ?? null,
-      detailOpen,
-      favoritesOnly,
-      selectedIds,
-      selectMode,
-      stage,
-      view,
-      workoutFormExerciseIds: workoutFormSeed.exerciseIds ?? [],
-      workoutFormOpen,
-      workoutFormWorkoutId: workoutFormSeed.workout?.id ?? null,
-    }),
-    [
-      detailExercise?.id,
-      detailOpen,
-      favoritesOnly,
-      selectedIds,
-      selectMode,
-      stage,
-      view,
-      workoutFormOpen,
-      workoutFormSeed.exerciseIds,
-      workoutFormSeed.workout?.id,
-    ]
-  )
-
-  const latestSession = useRef(appSession)
-
-  useEffect(() => {
-    writeAppSession(appSession)
-    latestSession.current = appSession
-  }, [appSession])
-
-  useEffect(() => {
-    // Reads the latest session through a ref, so suspending the app is wired
-    // up once instead of on every stage change and every selection.
-    const saveBeforeSuspending = () => writeAppSession(latestSession.current)
-    window.addEventListener("pagehide", saveBeforeSuspending)
-    document.addEventListener("visibilitychange", saveBeforeSuspending)
-    return () => {
-      window.removeEventListener("pagehide", saveBeforeSuspending)
-      document.removeEventListener("visibilitychange", saveBeforeSuspending)
-    }
-  }, [])
+  const [search, setSearch] = useState("")
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [presetEditorOpen, setPresetEditorOpen] = useState(false)
+  const [bodySide, setBodySide] = useState<"front" | "back">("front")
+  const equipmentScrollRef = useRef<HTMLElement>(null)
 
   const exercises = useMemo(
     () => filterExercises(EXERCISES, selectedMuscles, selectedEquipment),
-    [selectedMuscles, selectedEquipment]
+    [selectedEquipment, selectedMuscles]
   )
-
-  const [search, setSearch] = useState("")
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [bodySide, setBodySide] = useState<"front" | "back">("front")
-  const equipmentScrollRef = useRef<HTMLElement>(null)
 
   const visibleExercises = useMemo(() => {
     const shortlist = favoritesOnly
@@ -279,421 +419,460 @@ export function App() {
     return shortlist.filter((exercise) =>
       exercise.name.toLowerCase().includes(query)
     )
-  }, [exercises, favoritesOnly, favoriteIds, search])
+  }, [exercises, favoriteIds, favoritesOnly, search])
 
   const {
     hasMore: hasMoreExercises,
     rootRef: exercisesScrollRef,
     sentinelRef: loadMoreSentinelRef,
     visibleCount,
-  } = useLoadMoreOnScroll(visibleExercises.length, EXERCISE_PAGE_SIZE)
+  } = useLoadMoreOnScroll(
+    visibleExercises.length,
+    EXERCISE_PAGE_SIZE,
+    activePage.type === "exercises"
+  )
   const pagedExercises = visibleExercises.slice(0, visibleCount)
-
-  // Results are ordered by how much of an exercise actually goes into the
-  // picked muscles, so everything past this index still involves them but is
-  // built around something else. Labelling the seam beats silently hiding the
-  // tail: the exercises stay reachable, they just stop pretending to be the
-  // answer.
   const supportingIndex = useMemo(
     () => supportingFromIndex(visibleExercises, selectedMuscles),
-    [visibleExercises, selectedMuscles]
+    [selectedMuscles, visibleExercises]
   )
 
-  const canContinue =
-    stage === 1
-      ? selectedMuscles.length > 0
-      : selectedEquipment.length > 0 && exercises.length > 0
+  const persistedPages = useMemo(
+    () => (leavingId ? pages.slice(0, Math.max(1, pages.length - 1)) : pages),
+    [leavingId, pages]
+  )
+  const appSession = useMemo(
+    () => ({
+      detailExerciseId:
+        activePage.type === "exercise-detail" ? activePage.exerciseId : null,
+      favoritesOnly,
+      pages: persistedPages.map((entry) => entry.page),
+      selectedIds,
+      selectMode,
+    }),
+    [activePage, favoritesOnly, persistedPages, selectedIds, selectMode]
+  )
+  const latestSession = useRef(appSession)
 
-  const goForward = () => {
-    triggerHaptic("medium")
-    setStage((current) => Math.min(3, current + 1) as Stage)
-  }
-  const goBack = () => {
-    triggerHaptic("medium")
-    setStage((current) => Math.max(1, current - 1) as Stage)
-  }
+  useEffect(() => {
+    writeAppSession(appSession)
+    latestSession.current = appSession
+  }, [appSession])
 
-  const toggleSearch = () => {
-    triggerHaptic("medium")
-    // Closing takes the query with it: a filter that keeps narrowing the
-    // results from behind a hidden field has no visible cause.
-    if (searchOpen) setSearch("")
-    setSearchOpen(!searchOpen)
-  }
+  useEffect(() => {
+    const saveBeforeSuspending = () => writeAppSession(latestSession.current)
+    window.addEventListener("pagehide", saveBeforeSuspending)
+    document.addEventListener("visibilitychange", saveBeforeSuspending)
+    return () => {
+      window.removeEventListener("pagehide", saveBeforeSuspending)
+      document.removeEventListener("visibilitychange", saveBeforeSuspending)
+    }
+  }, [])
 
-  const toggleMuscleWithHaptic = useCallback(
-    (muscle: MuscleId) => {
-      triggerHaptic("selection")
-      toggleMuscle(muscle)
+  const startExerciseFlow = useCallback(
+    (preferredWorkoutId?: string) => {
+      triggerHaptic("medium")
+      resetFilters()
+      setSearch("")
+      setSearchOpen(false)
+      setPresetEditorOpen(false)
+      setBodySide("front")
+      setSelectMode(false)
+      setSelectedIds([])
+      pushPage({
+        type: "muscles",
+        preferredWorkoutId: preferredWorkoutId ?? null,
+      })
     },
-    [toggleMuscle]
+    [pushPage, resetFilters]
   )
 
-  const toggleEquipmentWithHaptic = (equipment: string) => {
+  const cancelSelectMode = useCallback(() => {
     triggerHaptic("selection")
-    toggleEquipment(equipment)
-  }
+    setSelectMode(false)
+    setSelectedIds([])
+  }, [])
 
-  const openDetail = (exercise: ExerciseSummary) => {
-    triggerHaptic("light")
-    setDetailExercise(exercise)
-    setDetailOpen(true)
-  }
-
-  const toggleSelected = (id: string) => {
+  const toggleSelected = useCallback((id: string) => {
     triggerHaptic("selection")
     setSelectedIds((ids) =>
       ids.includes(id) ? ids.filter((current) => current !== id) : [...ids, id]
     )
-  }
+  }, [])
 
-  const cancelSelectMode = () => {
-    triggerHaptic("selection")
-    setSelectMode(false)
-    setSelectedIds([])
-  }
+  const selectExerciseFromDetail = useCallback(
+    (exercise: ExerciseSummary) => {
+      triggerHaptic("selection")
+      setSelectedIds((ids) =>
+        ids.includes(exercise.id) ? ids : [...ids, exercise.id]
+      )
+      setSelectMode(true)
+      popPage()
+    },
+    [popPage]
+  )
 
-  const openWorkoutForm = (seed: {
-    workout?: Workout | null
-    exerciseIds?: string[]
-  }) => {
-    setWorkoutFormSeed(seed)
-    setWorkoutFormGeneration((generation) => generation + 1)
-    setWorkoutFormOpen(true)
-  }
+  const addSelectionToWorkout = useCallback(
+    (preferredWorkoutId?: string | null) => {
+      if (selectedIds.length === 0) return
+      triggerHaptic("medium")
+      pushPage({
+        type: "workout-destination",
+        preferredWorkoutId: preferredWorkoutId ?? null,
+      })
+    },
+    [pushPage, selectedIds.length]
+  )
 
-  const addSelectionToWorkout = () => {
-    if (selectedIds.length === 0) return
+  const toggleSearch = useCallback(() => {
     triggerHaptic("medium")
-    setWorkoutDestinationOpen(true)
-  }
+    if (searchOpen) setSearch("")
+    setSearchOpen((value) => !value)
+  }, [searchOpen])
 
-  const selectExerciseFromDetail = (exercise: ExerciseSummary) => {
-    triggerHaptic("selection")
-    setSelectedIds((ids) =>
-      ids.includes(exercise.id) ? ids : [...ids, exercise.id]
-    )
-    setSelectMode(true)
-    setDetailOpen(false)
-  }
-
-  const startExerciseFlow = (workoutId?: string) => {
-    triggerHaptic("medium")
-    reset()
-    setSearch("")
-    setSearchOpen(false)
-    setBodySide("front")
-    setStage(1)
-    setSelectMode(false)
-    setSelectedIds([])
-    setPreferredWorkoutId(workoutId ?? null)
-    navigate({ type: "flow" })
-  }
-
-  const {
-    containerRef: swipeContainerRef,
-    dragging: swipeDragging,
-    handlers: swipeHandlers,
-    offset: swipeOffset,
-    peer: swipePeer,
-  } = useEdgeSwipe({
-    canGoBack: stage > 1,
-    // Forward only where the footer button would also allow it, so a swipe
-    // can never skip a step the flow still needs answered.
-    canGoForward: stage < 3 && canContinue,
-    onBack: goBack,
-    onForward: goForward,
+  const { containerRef, handlers } = useEdgeSwipe({
+    canGoBack: pages.length > 1 && !leavingId && !enteringId,
+    canGoForward: false,
+    onBack: popPage,
+    onForward: () => undefined,
   })
-  const peerStage =
-    swipePeer === "prev" ? stage - 1 : swipePeer === "next" ? stage + 1 : null
-  const viewKey =
-    view.type === "workout-detail"
-      ? `${view.type}-${view.workoutId}`
-      : view.type
+
+  const commandBandVisible = !countdownOpen && pageHasControls(activePage)
 
   return (
     <div className="min-h-(--app-viewport-height) bg-(--app-shell) text-foreground">
       <HapticLayer />
       <SettingsEffects />
       <SvgFilterDefs />
-      <main className="app-shell-frame relative mx-auto flex h-(--app-viewport-height) w-full touch-pan-y flex-col overflow-hidden bg-(--app-shell) sm:max-w-[430px]">
-        <AppDrawerHost>
-          <div
-            className="t-app-page flex min-h-0 flex-1 flex-col"
-            data-direction={viewDirection}
-            key={viewKey}
-          >
-            {view.type === "workouts" && (
-              <WorkoutsPage
-                onCreate={() => startExerciseFlow()}
-                onSelect={(workout) =>
-                  navigate({ type: "workout-detail", workoutId: workout.id })
-                }
-                onSettings={() => navigate({ type: "settings" })}
-              />
-            )}
+      <AppShell commandsVisible={commandBandVisible}>
+        <div
+          className="app-page-stack"
+          data-direction={direction}
+          data-entering={enteringId ? "true" : undefined}
+          ref={containerRef}
+          {...handlers}
+        >
+          {pages.map((entry, index) => {
+            const page = entry.page
+            const active = index === visualActiveIndex
+            const previous = index === visualActiveIndex - 1
+            // The incoming page becomes the semantic active page immediately
+            // (so VoiceOver and keyboard users can reach its heading); only
+            // its visual layer waits for the two-paint preparation above.
+            const interactive = active
+            const leaving = entry.id === leavingId
+            const stage = stageForPage(page)
+            let content = null
 
-            {view.type === "settings" && (
-              <SwipeBackPage
-                onBack={() => navigate({ type: "workouts" }, "back")}
-              >
-                <SettingsPage
-                  onBack={() => navigate({ type: "workouts" }, "back")}
-                  onDataCleared={() => navigate({ type: "workouts" }, "back")}
-                />
-              </SwipeBackPage>
-            )}
-
-            {view.type === "workout-detail" && (
-              <SwipeBackPage
-                onBack={() => navigate({ type: "workouts" }, "back")}
-              >
-                <WorkoutDetailPage
-                  onAddExercise={() => startExerciseFlow(view.workoutId)}
-                  onBack={() => navigate({ type: "workouts" }, "back")}
-                  onCopied={(workoutId) =>
-                    navigate({ type: "workout-detail", workoutId })
+            if (page.type === "workouts") {
+              content = (
+                <WorkoutsPage
+                  onCreate={() => startExerciseFlow()}
+                  onDelete={(workoutId) =>
+                    useWorkouts.getState().deleteWorkout(workoutId)
                   }
-                  onDeleted={() => navigate({ type: "workouts" }, "back")}
-                  onOpenExercise={openDetail}
-                  workoutId={view.workoutId}
+                  onSelect={(workout) =>
+                    pushPage({ type: "workout-detail", workoutId: workout.id })
+                  }
+                  onSettings={() => pushPage({ type: "settings" })}
                 />
-              </SwipeBackPage>
-            )}
+              )
+            } else if (page.type === "settings") {
+              content = (
+                <SettingsPage
+                  onBack={popPage}
+                  onClearData={() => {
+                    clearAllGymLibData()
+                    void syncICloudNow()
+                    resetPages([{ type: "workouts" }])
+                  }}
+                />
+              )
+            } else if (page.type === "workout-detail") {
+              content = (
+                <WorkoutDetailPage
+                  onAddExercise={() => startExerciseFlow(page.workoutId)}
+                  onBack={popPage}
+                  onDelete={() => {
+                    useWorkouts.getState().deleteWorkout(page.workoutId)
+                    resetPages([{ type: "workouts" }])
+                  }}
+                  onDiscard={() => useActiveWorkout.getState().cancel()}
+                  onFinish={() => useActiveWorkout.getState().finish()}
+                  onCopied={(workoutId) =>
+                    replacePage({ type: "workout-detail", workoutId })
+                  }
+                  onCountdownChange={setCountdownOpen}
+                  onFindAlternative={(exercise) =>
+                    pushPage({
+                      type: "exercise-alternatives",
+                      exerciseId: exercise.id,
+                      workoutId: page.workoutId,
+                    })
+                  }
+                  onOpenExercise={(exercise) =>
+                    pushPage({
+                      type: "exercise-detail",
+                      exerciseId: exercise.id,
+                      selectable: false,
+                    })
+                  }
+                  workoutId={page.workoutId}
+                />
+              )
+            } else if (stage !== null) {
+              const preferredWorkoutId =
+                page.type === "muscles" ||
+                page.type === "equipment" ||
+                page.type === "exercises"
+                  ? (page.preferredWorkoutId ?? null)
+                  : null
+              const canContinue =
+                stage === 1
+                  ? selectedMuscles.length > 0
+                  : selectedEquipment.length > 0 && exercises.length > 0
 
-            {view.type === "flow" && (
-              <AppScreen bottomControls>
-                <AppSurface>
-                  <AppShellHeader
-                    above={<FlowProgress stage={stage} />}
-                    left={
-                      <AppHeaderButton
-                        aria-label={
-                          stage === 1 ? "Back to workouts" : "Previous stage"
-                        }
-                        onClick={() => {
-                          if (stage === 1) {
-                            triggerHaptic("medium")
-                            navigate({ type: "workouts" }, "back")
-                          } else {
-                            goBack()
-                          }
-                        }}
-                      >
-                        <ChevronLeft className="size-5" />
-                      </AppHeaderButton>
-                    }
-                    right={
-                      <AppHeaderButton
-                        aria-label="My workouts"
-                        onClick={() => {
-                          triggerHaptic("medium")
-                          navigate({ type: "workouts" }, "back")
-                        }}
-                      >
-                        <Home className="size-5" />
-                      </AppHeaderButton>
-                    }
-                    scrollRef={
-                      stage === 2
-                        ? equipmentScrollRef
-                        : stage === 3
-                          ? exercisesScrollRef
-                          : undefined
-                    }
-                    title={<StageHeading stage={stage} />}
-                  />
+              content = (
+                <AppScreen bottomControls>
+                  <AppSurface>
+                    <AppShellHeader
+                      above={<FlowProgress stage={stage} />}
+                      left={
+                        <AppHeaderButton
+                          aria-label="Previous page"
+                          onClick={popPage}
+                        >
+                          <ChevronLeft className="size-5" />
+                        </AppHeaderButton>
+                      }
+                      right={
+                        <AppHeaderButton
+                          aria-label="My workouts"
+                          onClick={() => resetPages([{ type: "workouts" }])}
+                        >
+                          <Home className="size-5" />
+                        </AppHeaderButton>
+                      }
+                      scrollRef={
+                        stage === 2
+                          ? equipmentScrollRef
+                          : stage === 3
+                            ? exercisesScrollRef
+                            : undefined
+                      }
+                      title={<StageHeading stage={stage} />}
+                    />
 
-                  <div
-                    className="app-stage-frame t-page-slide min-h-0 flex-1"
-                    data-dragging={swipeDragging ? "true" : undefined}
-                    data-page={stage}
-                    ref={swipeContainerRef}
-                    style={
-                      swipeDragging
-                        ? ({
-                            "--drag-x": `${swipeOffset}px`,
-                          } as React.CSSProperties)
-                        : undefined
-                    }
-                    {...swipeHandlers}
-                  >
-                    <section
-                      aria-hidden={stage !== 1}
-                      aria-label="Choose muscles"
-                      className="t-page px-[clamp(0.75rem,4vw,1.25rem)] pt-[clamp(0.75rem,2vh,1.25rem)] pb-[clamp(0.75rem,2vh,1.25rem)]"
-                      data-drag-peer={peerStage === 1 ? "true" : undefined}
-                      data-page-id="1"
-                      inert={stage !== 1}
-                    >
-                      <div className="relative h-full min-h-0">
-                        <DotPattern
-                          className="[mask-image:radial-gradient(ellipse_at_center,black_15%,transparent_72%)] transition-[fill,fill-opacity] duration-500 ease-[var(--ease-smooth-out)]"
-                          cr={1}
-                          height={18}
-                          style={{
-                            fill: `color-mix(in oklch, var(--muted-foreground), var(--primary) ${25 + muscleDotIntensity * 55}%)`,
-                            fillOpacity: 0.3 + muscleDotIntensity * 0.3,
-                          }}
-                          width={18}
-                        />
-                        <div className="relative z-10 h-full">
-                          <BodyMap
-                            onSideChange={setBodySide}
-                            onToggle={toggleMuscleWithHaptic}
-                            selectedMuscles={selectedMuscles}
-                            showFlipButton={false}
-                            side={bodySide}
+                    {stage === 1 ? (
+                      <section
+                        aria-label="Choose muscles"
+                        className="min-h-0 flex-1 px-[clamp(0.75rem,4vw,1.25rem)] pt-[calc(4.25rem+env(safe-area-inset-top)+0.75rem)] pb-[clamp(0.75rem,2vh,1.25rem)]"
+                      >
+                        <div className="relative h-full min-h-0">
+                          <DotPattern
+                            className="[mask-image:radial-gradient(ellipse_at_center,black_15%,transparent_72%)] transition-[fill,fill-opacity] duration-500"
+                            cr={1}
+                            height={18}
+                            style={{
+                              fill: `color-mix(in oklch, var(--muted-foreground), var(--primary) ${25 + muscleDotIntensity * 55}%)`,
+                              fillOpacity: 0.3 + muscleDotIntensity * 0.3,
+                            }}
+                            width={18}
                           />
-                        </div>
-                      </div>
-                    </section>
-
-                    <section
-                      aria-hidden={stage !== 2}
-                      aria-label="Choose equipment"
-                      className="app-scroll-content t-page overflow-y-auto px-5 pt-4 pb-20"
-                      data-drag-peer={peerStage === 2 ? "true" : undefined}
-                      data-page-id="2"
-                      inert={stage !== 2}
-                      ref={equipmentScrollRef}
-                      tabIndex={-1}
-                    >
-                      <div className="grid grid-cols-2 gap-3">
-                        {EQUIPMENT_OPTIONS.map((equipment) => {
-                          const checked = selectedEquipment.includes(equipment)
-                          return (
-                            <button
-                              aria-checked={checked}
-                              className={`interactive-spring group relative overflow-hidden rounded-3xl border bg-card text-left shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-300 ease-[var(--ease-smooth-out)] ${
-                                checked
-                                  ? "border-primary/75 shadow-[0_0_0_1px_color-mix(in_oklch,var(--primary)_30%,transparent)]"
-                                  : "border-border"
-                              }`}
-                              key={equipment}
-                              onClick={() =>
-                                toggleEquipmentWithHaptic(equipment)
-                              }
-                              role="checkbox"
-                              type="button"
-                            >
-                              <span className="relative block aspect-[1.18] overflow-hidden bg-[#161618]">
-                                <img
-                                  alt=""
-                                  className="h-full w-full object-cover saturate-[1.65] transition-transform duration-250 ease-[var(--ease-smooth-out)]"
-                                  draggable={false}
-                                  loading="lazy"
-                                  src={equipmentImage(equipment)}
-                                />
-                              </span>
-                              <span className="flex min-h-13 items-center justify-center px-3.5 py-3 text-center text-base leading-tight font-semibold">
-                                {titleCase(equipment)}
-                              </span>
-                              <AnimatedCheck
-                                checked={checked}
-                                className="pointer-events-none absolute top-2.5 right-2.5 size-8"
-                              />
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </section>
-
-                    <section
-                      aria-hidden={stage !== 3}
-                      aria-label="Matching exercises"
-                      className="app-scroll-content t-page overflow-y-auto px-5 pt-4 pb-6"
-                      data-drag-peer={peerStage === 3 ? "true" : undefined}
-                      data-page-id="3"
-                      inert={stage !== 3}
-                      ref={exercisesScrollRef}
-                      tabIndex={-1}
-                    >
-                      {visibleExercises.length === 0 ? (
-                        <div className="flex min-h-[20rem] flex-col items-center justify-center gap-3 text-center">
-                          <SearchX className="size-7 text-[color-mix(in_oklch,var(--muted-foreground),var(--background)_35%)]" />
-                          <p className="max-w-[16rem] text-base text-muted-foreground">
-                            {search.trim()
-                              ? `No exercises match "${search.trim()}".`
-                              : favoritesOnly
-                                ? "No favorites yet. Tap the heart on an exercise to save it here."
-                                : "0 exercises"}
-                          </p>
-                        </div>
-                      ) : (
-                        <>
-                          <div
-                            className="t-stagger is-shown grid grid-cols-2 gap-3.5"
-                            data-testid="exercise-results"
-                          >
-                            {pagedExercises.map((exercise, index) => (
-                              <Fragment key={exercise.id}>
-                                {index === supportingIndex && (
-                                  <h2 className="col-span-2 flex items-center gap-3 pt-3 pb-0.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                                    <span className="h-px flex-1 bg-border" />
-                                    Also works these muscles
-                                    <span className="h-px flex-1 bg-border" />
-                                  </h2>
-                                )}
-                                <ExerciseCard
-                                  exercise={exercise}
-                                  index={index}
-                                  onOpenDetail={openDetail}
-                                  onToggleSelect={toggleSelected}
-                                  selectMode={selectMode}
-                                  selected={selectedIds.includes(exercise.id)}
-                                />
-                              </Fragment>
-                            ))}
+                          <div className="relative z-10 h-full">
+                            <BodyMap
+                              onSideChange={setBodySide}
+                              onToggle={(muscle: MuscleId) => {
+                                triggerHaptic("selection")
+                                toggleMuscle(muscle)
+                              }}
+                              selectedMuscles={selectedMuscles}
+                              showFlipButton={false}
+                              side={bodySide}
+                            />
                           </div>
-                          {hasMoreExercises && (
-                            <>
-                              <div className="flex justify-center py-6">
-                                <MatrixLoader
-                                  label="Loading more exercises"
-                                  style={
-                                    {
-                                      "--matrix-dot": "3px",
-                                      "--matrix-gap": "3px",
-                                    } as CSSProperties
-                                  }
-                                  variant="scan"
-                                />
-                              </div>
-                              <div
-                                aria-hidden="true"
-                                className="h-1"
-                                data-testid="load-more-sentinel"
-                                ref={loadMoreSentinelRef}
-                              />
-                            </>
-                          )}
-                        </>
-                      )}
-                    </section>
-                  </div>
+                        </div>
+                      </section>
+                    ) : null}
 
-                  {stage === 2 ? (
-                    <div className="app-surface-bottom-dock equipment-presets-dock">
-                      <EquipmentPresets className="px-5" />
-                    </div>
-                  ) : null}
-                </AppSurface>
-
-                <AppControls>
-                  {stage === 3 && searchOpen ? (
-                    <div className="relative flex gap-2.5">
-                      <ExerciseSearch onChange={setSearch} value={search} />
-                      <Button
-                        aria-label="Close search"
-                        onClick={toggleSearch}
-                        size="icon-cta"
-                        variant="secondary"
+                    {stage === 2 ? (
+                      <section
+                        aria-label="Choose equipment"
+                        className="app-scroll-content min-h-0 flex-1 overflow-y-auto px-5 pt-[calc(4.25rem+env(safe-area-inset-top)+0.75rem)] pb-20"
+                        ref={equipmentScrollRef}
+                        tabIndex={-1}
                       >
-                        <X className="size-5" />
-                      </Button>
-                    </div>
-                  ) : (
+                        <div className="grid grid-cols-2 gap-3">
+                          {EQUIPMENT_OPTIONS.map(
+                            (equipment, equipmentIndex) => {
+                              const checked =
+                                selectedEquipment.includes(equipment)
+                              return (
+                                <button
+                                  aria-checked={checked}
+                                  className={`interactive-spring group relative overflow-hidden rounded-3xl border bg-card text-left shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-300 ${
+                                    checked
+                                      ? "border-primary/75 shadow-[0_0_0_1px_color-mix(in_oklch,var(--primary)_30%,transparent)]"
+                                      : "border-border"
+                                  }`}
+                                  key={equipment}
+                                  onClick={() => {
+                                    triggerHaptic("selection")
+                                    toggleEquipment(equipment)
+                                  }}
+                                  role="checkbox"
+                                  type="button"
+                                >
+                                  <span className="relative block aspect-[1.18] overflow-hidden bg-[#161618]">
+                                    <AppImage
+                                      alt=""
+                                      className="h-full w-full object-cover saturate-[1.65]"
+                                      decoding="async"
+                                      draggable={false}
+                                      fetchPriority={
+                                        equipmentIndex < 4 ? "high" : "low"
+                                      }
+                                      loading={
+                                        equipmentIndex < 4 ? "eager" : "lazy"
+                                      }
+                                      src={equipmentImage(equipment)}
+                                    />
+                                  </span>
+                                  <span className="flex min-h-13 items-center justify-center px-3.5 py-3 text-center text-base leading-tight font-semibold">
+                                    {titleCase(equipment)}
+                                  </span>
+                                  <AnimatedCheck
+                                    checked={checked}
+                                    className="pointer-events-none absolute top-2.5 right-2.5 size-8"
+                                  />
+                                </button>
+                              )
+                            }
+                          )}
+                        </div>
+                      </section>
+                    ) : null}
+
+                    {stage === 3 ? (
+                      <section
+                        aria-label="Matching exercises"
+                        className={cn(
+                          "app-scroll-content min-h-0 flex-1 overflow-y-auto px-5 pt-[calc(4.25rem+env(safe-area-inset-top)+0.75rem)]",
+                          searchOpen || selectMode ? "pb-28" : "pb-6"
+                        )}
+                        ref={exercisesScrollRef}
+                        tabIndex={-1}
+                      >
+                        {visibleExercises.length === 0 ? (
+                          <div className="flex min-h-[20rem] flex-col items-center justify-center gap-3 text-center">
+                            <SearchX className="size-7 text-muted-foreground" />
+                            <p className="max-w-[16rem] text-base text-muted-foreground">
+                              {search.trim()
+                                ? `No exercises match "${search.trim()}".`
+                                : favoritesOnly
+                                  ? "No favorites yet. Tap the heart on an exercise to save it here."
+                                  : "0 exercises"}
+                            </p>
+                          </div>
+                        ) : (
+                          <>
+                            <div
+                              className="t-stagger is-shown grid grid-cols-2 gap-3.5"
+                              data-testid="exercise-results"
+                            >
+                              {pagedExercises.map((exercise, exerciseIndex) => (
+                                <Fragment key={exercise.id}>
+                                  {exerciseIndex === supportingIndex ? (
+                                    <h2 className="col-span-2 flex items-center gap-3 pt-3 pb-0.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                      <span className="h-px flex-1 bg-border" />
+                                      Also works these muscles
+                                      <span className="h-px flex-1 bg-border" />
+                                    </h2>
+                                  ) : null}
+                                  <ExerciseCard
+                                    exercise={exercise}
+                                    index={exerciseIndex}
+                                    onOpenDetail={(candidate) => {
+                                      triggerHaptic("light")
+                                      pushPage({
+                                        type: "exercise-detail",
+                                        exerciseId: candidate.id,
+                                        selectable: true,
+                                      })
+                                    }}
+                                    onToggleSelect={toggleSelected}
+                                    selectMode={selectMode}
+                                    selected={selectedIds.includes(exercise.id)}
+                                  />
+                                </Fragment>
+                              ))}
+                            </div>
+                            {hasMoreExercises ? (
+                              <>
+                                <div className="flex justify-center py-6">
+                                  <MatrixLoader
+                                    label="Loading more exercises"
+                                    style={
+                                      {
+                                        "--matrix-dot": "3px",
+                                        "--matrix-gap": "3px",
+                                      } as CSSProperties
+                                    }
+                                    variant="scan"
+                                  />
+                                </div>
+                                <div
+                                  aria-hidden="true"
+                                  className="h-1"
+                                  data-testid="load-more-sentinel"
+                                  ref={loadMoreSentinelRef}
+                                />
+                              </>
+                            ) : null}
+                          </>
+                        )}
+                      </section>
+                    ) : null}
+
+                    {stage === 2 ? (
+                      <div className="app-surface-bottom-dock equipment-presets-dock">
+                        {presetEditorOpen ? (
+                          <EquipmentPresetEditor
+                            className="px-5"
+                            onSaved={() => setPresetEditorOpen(false)}
+                          />
+                        ) : (
+                          <EquipmentPresets className="px-5" />
+                        )}
+                      </div>
+                    ) : null}
+
+                    {stage === 3 && searchOpen ? (
+                      <div className="app-surface-bottom-dock exercise-search-dock">
+                        <ExerciseSearch onChange={setSearch} value={search} />
+                      </div>
+                    ) : stage === 3 && selectMode ? (
+                      <div className="app-surface-bottom-dock exercise-selection-dock">
+                        <Button
+                          className="pointer-events-auto w-full"
+                          disabled={selectedIds.length === 0}
+                          onClick={() =>
+                            addSelectionToWorkout(preferredWorkoutId)
+                          }
+                          size="cta"
+                        >
+                          Add to workout
+                          {selectedIds.length > 0
+                            ? ` (${selectedIds.length})`
+                            : ""}
+                        </Button>
+                      </div>
+                    ) : null}
+                  </AppSurface>
+
+                  <AppControls
+                    transitionKey={`picker:${stage}:${selectMode}:${presetEditorOpen}:${selectedMuscles.length}:${selectedEquipment.length}`}
+                  >
                     <div className="relative flex gap-2.5">
                       {stage === 1 ? (
                         <Button
@@ -713,10 +892,7 @@ export function App() {
                       {stage === 1 && selectedMuscles.length > 0 ? (
                         <Button
                           aria-label="Clear muscle selection"
-                          onClick={() => {
-                            triggerHaptic("selection")
-                            setMuscles([])
-                          }}
+                          onClick={() => setMuscles([])}
                           size="icon-cta"
                           variant="secondary"
                         >
@@ -726,14 +902,27 @@ export function App() {
                       {stage === 2 && selectedEquipment.length > 0 ? (
                         <Button
                           aria-label="Clear equipment selection"
-                          onClick={() => {
-                            triggerHaptic("selection")
-                            setEquipment([])
-                          }}
+                          onClick={() => setEquipment([])}
                           size="icon-cta"
                           variant="secondary"
                         >
                           <X className="size-5" />
+                        </Button>
+                      ) : null}
+                      {stage === 2 ? (
+                        <Button
+                          aria-expanded={presetEditorOpen}
+                          aria-label={
+                            presetEditorOpen
+                              ? "Close preset editor"
+                              : "Create equipment preset"
+                          }
+                          disabled={selectedEquipment.length === 0}
+                          onClick={() => setPresetEditorOpen((open) => !open)}
+                          size="icon-cta"
+                          variant="secondary"
+                        >
+                          <Plus className="size-5" />
                         </Button>
                       ) : null}
                       {stage === 3 && selectMode ? (
@@ -748,7 +937,10 @@ export function App() {
                       ) : null}
                       {stage === 3 ? (
                         <Button
-                          aria-label="Search exercises"
+                          aria-expanded={searchOpen}
+                          aria-label={
+                            searchOpen ? "Close search" : "Search exercises"
+                          }
                           onClick={toggleSearch}
                           size="icon-cta"
                           variant="secondary"
@@ -766,109 +958,156 @@ export function App() {
                           }
                           className={`interactive-spring grid size-(--app-controls-height) shrink-0 place-items-center rounded-2xl border ${
                             favoritesOnly
-                              ? "border-primary bg-[color-mix(in_oklch,var(--card),var(--primary)_22%)] text-primary active:border-(--primary-softer)"
-                              : "border-border bg-card text-primary active:bg-card/90"
+                              ? "border-primary bg-[color-mix(in_oklch,var(--card),var(--primary)_22%)] text-primary"
+                              : "border-border bg-card text-primary"
                           }`}
                           iconClassName="size-5"
                           liked={favoritesOnly}
-                          onClick={() => {
-                            triggerHaptic("selection")
-                            setFavoritesOnly((value) => !value)
-                          }}
+                          onClick={() => setFavoritesOnly((value) => !value)}
                         />
                       ) : null}
                       {stage < 3 ? (
                         <Button
-                          size="cta"
                           className="min-w-0 flex-1"
                           disabled={!canContinue}
-                          onClick={goForward}
+                          onClick={() => {
+                            triggerHaptic("medium")
+                            pushPage({
+                              type: stage === 1 ? "equipment" : "exercises",
+                              preferredWorkoutId,
+                            })
+                          }}
+                          size="cta"
                         >
                           {stage === 1
                             ? "Choose equipment"
                             : `Show exercises (${exercises.length})`}
                         </Button>
-                      ) : selectMode ? (
+                      ) : selectMode ? null : (
                         <Button
-                          size="cta"
                           className="min-w-0 flex-1"
-                          disabled={selectedIds.length === 0}
-                          onClick={addSelectionToWorkout}
-                        >
-                          Add to workout
-                          {selectedIds.length > 0 && ` (${selectedIds.length})`}
-                        </Button>
-                      ) : (
-                        <Button
+                          onClick={() => setSelectMode(true)}
                           size="cta"
-                          className="min-w-0 flex-1"
-                          onClick={() => {
-                            triggerHaptic("medium")
-                            setSelectMode(true)
-                          }}
                         >
                           Select
                         </Button>
                       )}
                     </div>
-                  )}
-                </AppControls>
-              </AppScreen>
-            )}
-          </div>
-
-          <ExerciseDetailDrawer
-            exercise={detailExercise}
-            onSelectExercise={
-              view.type === "flow" ? selectExerciseFromDetail : undefined
+                  </AppControls>
+                </AppScreen>
+              )
+            } else if (page.type === "exercise-detail") {
+              const exercise = EXERCISES_BY_ID.get(page.exerciseId)
+              content = exercise ? (
+                <ExerciseDetailPage
+                  exercise={exercise}
+                  onBack={popPage}
+                  onSelect={selectExerciseFromDetail}
+                  selectable={page.selectable}
+                  selected={selectedIds.includes(page.exerciseId)}
+                />
+              ) : null
+            } else if (page.type === "workout-destination") {
+              content = (
+                <WorkoutDestinationPage
+                  exerciseIds={selectedIds}
+                  onAddToExisting={(workoutId) => {
+                    const workout = useWorkouts
+                      .getState()
+                      .workouts.find((item) => item.id === workoutId)
+                    if (!workout) return
+                    useWorkouts.getState().updateWorkout(workoutId, {
+                      exerciseIds: [
+                        ...new Set([...workout.exerciseIds, ...selectedIds]),
+                      ],
+                    })
+                    triggerHaptic("success")
+                    cancelSelectMode()
+                    resetPages([
+                      { type: "workouts" },
+                      { type: "workout-detail", workoutId },
+                    ])
+                  }}
+                  onBack={popPage}
+                  onCreateNew={() =>
+                    pushPage({
+                      type: "workout-form",
+                      exerciseIds: selectedIds,
+                      workoutId: null,
+                    })
+                  }
+                  preferredWorkoutId={page.preferredWorkoutId}
+                />
+              )
+            } else if (page.type === "workout-form") {
+              const workout = page.workoutId
+                ? workouts.find((item) => item.id === page.workoutId)
+                : null
+              content = (
+                <WorkoutFormPage
+                  initialExerciseIds={page.exerciseIds}
+                  onBack={popPage}
+                  onSaved={(workoutId) => {
+                    cancelSelectMode()
+                    resetPages([
+                      { type: "workouts" },
+                      { type: "workout-detail", workoutId },
+                    ])
+                  }}
+                  workout={workout}
+                />
+              )
+            } else if (page.type === "equipment-preset") {
+              content = (
+                <EquipmentPresetPage onBack={popPage} onSaved={popPage} />
+              )
+            } else if (page.type === "exercise-alternatives") {
+              const workout = workouts.find(
+                (item) => item.id === page.workoutId
+              )
+              const exercise = EXERCISES_BY_ID.get(page.exerciseId)
+              content =
+                workout && exercise ? (
+                  <ExerciseAlternativesPage
+                    excludedExerciseIds={workout.exerciseIds}
+                    exercise={exercise}
+                    onBack={popPage}
+                    onSwap={(replacement) => {
+                      useWorkouts.getState().updateWorkout(workout.id, {
+                        exerciseIds: workout.exerciseIds.map((id) =>
+                          id === exercise.id ? replacement.id : id
+                        ),
+                      })
+                      triggerHaptic("success")
+                      popPage()
+                    }}
+                  />
+                ) : null
             }
-            onOpenChange={setDetailOpen}
-            open={detailOpen}
-            selected={
-              detailExercise ? selectedIds.includes(detailExercise.id) : false
-            }
-          />
 
-          <WorkoutFormDrawer
-            initialExerciseIds={workoutFormSeed.exerciseIds}
-            key={workoutFormGeneration}
-            onOpenChange={setWorkoutFormOpen}
-            onSaved={(workoutId) => {
-              cancelSelectMode()
-              setPreferredWorkoutId(null)
-              navigate({ type: "workout-detail", workoutId })
-            }}
-            open={workoutFormOpen}
-            workout={workoutFormSeed.workout}
-          />
-
-          <WorkoutDestinationDrawer
-            exerciseIds={selectedIds}
-            onAddToExisting={(workoutId) => {
-              const workout = useWorkouts
-                .getState()
-                .workouts.find((item) => item.id === workoutId)
-              if (!workout) return
-              useWorkouts.getState().updateWorkout(workoutId, {
-                exerciseIds: [
-                  ...new Set([...workout.exerciseIds, ...selectedIds]),
-                ],
-              })
-              setWorkoutDestinationOpen(false)
-              cancelSelectMode()
-              setPreferredWorkoutId(null)
-              navigate({ type: "workout-detail", workoutId })
-            }}
-            onCreateNew={() => {
-              setWorkoutDestinationOpen(false)
-              openWorkoutForm({ exerciseIds: selectedIds })
-            }}
-            onOpenChange={setWorkoutDestinationOpen}
-            open={workoutDestinationOpen}
-            preferredWorkoutId={preferredWorkoutId}
-          />
-        </AppDrawerHost>
-      </main>
+            return (
+              <PageLayerProvider
+                active={interactive}
+                entryId={entry.id}
+                key={entry.id}
+              >
+                <section
+                  aria-hidden={!interactive}
+                  className="app-page-layer"
+                  data-active={active ? "true" : undefined}
+                  data-entering={entry.id === enteringId ? "true" : undefined}
+                  data-leaving={leaving ? "true" : undefined}
+                  data-page-entry={entry.id}
+                  data-previous={previous ? "true" : undefined}
+                  inert={!interactive}
+                >
+                  {content}
+                </section>
+              </PageLayerProvider>
+            )
+          })}
+        </div>
+      </AppShell>
     </div>
   )
 }

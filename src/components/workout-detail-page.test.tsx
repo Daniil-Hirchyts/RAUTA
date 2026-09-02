@@ -1,15 +1,40 @@
-import { useState } from "react"
+import { useState, type ComponentProps } from "react"
 import { act, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { WorkoutDetailPage } from "@/components/workout-detail-page"
-import { formatDateLong } from "@/lib/date"
 import { shareWorkout } from "@/lib/workout-sharing"
 import { useActiveWorkout } from "@/store/use-active-workout"
 import { useWorkouts } from "@/store/use-workouts"
 
 vi.mock("@/lib/workout-sharing", () => ({ shareWorkout: vi.fn() }))
+
+type DetailCallbacks = Pick<
+  ComponentProps<typeof WorkoutDetailPage>,
+  | "onAddExercise"
+  | "onBack"
+  | "onFindAlternative"
+  | "onOpenExercise"
+  | "onDelete"
+  | "onDiscard"
+  | "onFinish"
+>
+
+function detailCallbacks(
+  overrides: Partial<DetailCallbacks> = {}
+): DetailCallbacks {
+  return {
+    onAddExercise: () => {},
+    onBack: () => {},
+    onFindAlternative: () => {},
+    onOpenExercise: () => {},
+    onDelete: () => {},
+    onDiscard: () => {},
+    onFinish: () => {},
+    ...overrides,
+  }
+}
 
 function MissingWorkoutHarness() {
   const [showDetail, setShowDetail] = useState(true)
@@ -18,10 +43,7 @@ function MissingWorkoutHarness() {
 
   return (
     <WorkoutDetailPage
-      onAddExercise={() => {}}
-      onBack={() => setShowDetail(false)}
-      onDeleted={() => {}}
-      onOpenExercise={() => {}}
+      {...detailCallbacks({ onBack: () => setShowDetail(false) })}
       workoutId="missing"
     />
   )
@@ -42,7 +64,10 @@ describe("WorkoutDetailPage", () => {
     await user.click(screen.getByRole("button", { name: "Start now" }))
   }
 
-  function renderWorkout(exerciseIds: string[]) {
+  function renderWorkout(
+    exerciseIds: string[],
+    callbacks: Partial<DetailCallbacks> = {}
+  ) {
     const workoutId = useWorkouts.getState().createWorkout({
       name: "Workout",
       date: "2026-09-01",
@@ -51,10 +76,7 @@ describe("WorkoutDetailPage", () => {
 
     render(
       <WorkoutDetailPage
-        onAddExercise={() => {}}
-        onBack={() => {}}
-        onDeleted={() => {}}
-        onOpenExercise={() => {}}
+        {...detailCallbacks(callbacks)}
         workoutId={workoutId}
       />
     )
@@ -76,43 +98,36 @@ describe("WorkoutDetailPage", () => {
     consoleError.mockRestore()
   })
 
-  it("requires confirmation before deleting a workout", async () => {
+  it("confirms a delete in a popover before touching the workout", async () => {
     const user = userEvent.setup()
     const workoutId = useWorkouts.getState().createWorkout({
       name: "Workout",
       date: "2026-09-01",
       exerciseIds: ["0001"],
     })
-    const onDeleted = vi.fn()
+    const onDelete = vi.fn()
 
     render(
       <WorkoutDetailPage
-        onAddExercise={() => {}}
-        onBack={() => {}}
-        onDeleted={onDeleted}
-        onOpenExercise={() => {}}
+        {...detailCallbacks({ onDelete })}
         workoutId={workoutId}
       />
     )
 
     await user.click(screen.getByRole("button", { name: "Delete workout" }))
-    expect(useWorkouts.getState().workouts).toHaveLength(1)
-
-    const confirmation = await screen.findByRole("dialog")
-    expect(
-      within(confirmation).getByRole("heading", { name: "Delete workout?" })
-    ).toBeInTheDocument()
-
-    const confirmDelete = within(confirmation).getByRole("button", {
-      name: "Delete workout",
+    const confirm = await screen.findByRole("dialog", {
+      name: "Delete workout?",
     })
-    expect(confirmDelete.querySelector("svg")).not.toBeInTheDocument()
-    await user.click(confirmDelete)
-    expect(useWorkouts.getState().workouts).toEqual([])
-    expect(onDeleted).toHaveBeenCalledOnce()
+    expect(useWorkouts.getState().workouts).toHaveLength(1)
+    expect(onDelete).not.toHaveBeenCalled()
+
+    await user.click(
+      within(confirm).getByRole("button", { name: "Delete workout" })
+    )
+    expect(onDelete).toHaveBeenCalledOnce()
   })
 
-  it("swaps a busy exercise for an exact muscle match", async () => {
+  it("opens the alternatives page for a busy exercise", async () => {
     const user = userEvent.setup()
     const workoutId = useWorkouts.getState().createWorkout({
       name: "Workout",
@@ -120,35 +135,26 @@ describe("WorkoutDetailPage", () => {
       exerciseIds: ["0001"],
     })
 
+    const onFindAlternative = vi.fn()
     render(
       <WorkoutDetailPage
-        onAddExercise={() => {}}
-        onBack={() => {}}
-        onDeleted={() => {}}
-        onOpenExercise={() => {}}
+        {...detailCallbacks({ onFindAlternative })}
         workoutId={workoutId}
       />
     )
 
     await user.click(screen.getByRole("button", { name: "Find alternative" }))
-    const swapper = await screen.findByRole("dialog", {
-      name: "Find alternative",
-    })
-    const firstAlternative = within(swapper).getAllByRole("button", {
-      name: /swap to/i,
-    })[0]
-    await user.click(firstAlternative)
-
-    expect(
-      useWorkouts
-        .getState()
-        .workouts.find((workout) => workout.id === workoutId)?.exerciseIds
-    ).toEqual(["0010"])
+    expect(onFindAlternative).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "0001" })
+    )
+    expect(useWorkouts.getState().workouts[0].exerciseIds).toEqual(["0001"])
   })
 
   it("starts a session on the first exercise and tracks it through to the end", async () => {
     const user = userEvent.setup()
-    const workoutId = renderWorkout(["0001", "0002"])
+    const workoutId = renderWorkout(["0001", "0002"], {
+      onFinish: () => useActiveWorkout.getState().finish(),
+    })
 
     await startNow(user)
 
@@ -156,12 +162,12 @@ describe("WorkoutDetailPage", () => {
     expect(session).toMatchObject({ workoutId, currentExerciseId: "0001" })
     const timer = screen.getByRole("timer")
     const timerPanel = timer.closest(".active-workout-timer")
-    const surface = document.querySelector(".app-surface")
+    const pageSurface = document.querySelector(".app-page-surface")
     const scroller = document.querySelector(".app-scroll-region")
     const footer = document.querySelector('footer[data-slot="app-controls"]')
 
     expect(timer).toHaveTextContent("00:00")
-    expect(surface).toContainElement(timerPanel as HTMLElement)
+    expect(pageSurface).toContainElement(timerPanel as HTMLElement)
     expect(scroller).not.toContainElement(timerPanel as HTMLElement)
     expect(footer).not.toContainElement(timerPanel as HTMLElement)
 
@@ -175,14 +181,11 @@ describe("WorkoutDetailPage", () => {
     })
 
     await user.click(screen.getByRole("button", { name: "Finish workout" }))
-    const finishConfirmation = await screen.findByRole("dialog")
-    expect(
-      within(finishConfirmation).getByRole("heading", {
-        name: "Finish workout?",
-      })
-    ).toBeInTheDocument()
+    const confirm = await screen.findByRole("dialog", {
+      name: "Finish workout?",
+    })
     await user.click(
-      within(finishConfirmation).getByRole("button", { name: "Finish workout" })
+      within(confirm).getByRole("button", { name: "Finish workout" })
     )
     expect(useActiveWorkout.getState()).toMatchObject({
       session: null,
@@ -192,25 +195,22 @@ describe("WorkoutDetailPage", () => {
     expect(screen.queryByRole("timer")).not.toBeInTheDocument()
   })
 
-  it("requires confirmation before finishing a running session", async () => {
+  it("asks before finishing a running session, and cancelling leaves it alone", async () => {
     const user = userEvent.setup()
-    renderWorkout(["0001"])
+    const onFinish = vi.fn()
+    renderWorkout(["0001"], { onFinish })
 
     await startNow(user)
     await user.click(screen.getByRole("button", { name: "Finish workout" }))
-    expect(useActiveWorkout.getState().session).not.toBeNull()
-
-    const confirmation = await screen.findByRole("dialog")
-    expect(
-      within(confirmation).getByRole("heading", { name: "Finish workout?" })
-    ).toBeInTheDocument()
-    await user.click(
-      within(confirmation).getByRole("button", { name: "Finish workout" })
-    )
-    expect(useActiveWorkout.getState()).toMatchObject({
-      session: null,
-      lastOutcome: "finished",
+    const confirm = await screen.findByRole("dialog", {
+      name: "Finish workout?",
     })
+    expect(useActiveWorkout.getState().session).not.toBeNull()
+    expect(onFinish).not.toHaveBeenCalled()
+
+    await user.click(within(confirm).getByRole("button", { name: "Cancel" }))
+    expect(useActiveWorkout.getState().session).not.toBeNull()
+    expect(onFinish).not.toHaveBeenCalled()
   })
 
   it("pauses and resumes the workout clock", async () => {
@@ -251,22 +251,23 @@ describe("WorkoutDetailPage", () => {
     )
   })
 
-  it("requires confirmation before discarding a running session", async () => {
+  it("asks before discarding a running session", async () => {
     const user = userEvent.setup()
-    renderWorkout(["0001"])
+    const onDiscard = vi.fn()
+    renderWorkout(["0001"], { onDiscard })
 
     await startNow(user)
     await user.click(screen.getByRole("button", { name: "Discard session" }))
-    expect(useActiveWorkout.getState().session).not.toBeNull()
-
-    const confirmation = await screen.findByRole("dialog")
-    await user.click(
-      within(confirmation).getByRole("button", { name: "Discard session" })
-    )
-    expect(useActiveWorkout.getState()).toMatchObject({
-      session: null,
-      lastOutcome: "cancelled",
+    const confirm = await screen.findByRole("dialog", {
+      name: "Discard this session?",
     })
+    expect(useActiveWorkout.getState().session).not.toBeNull()
+    expect(onDiscard).not.toHaveBeenCalled()
+
+    await user.click(
+      within(confirm).getByRole("button", { name: "Discard session" })
+    )
+    expect(onDiscard).toHaveBeenCalledOnce()
   })
 
   it("shows a loader while a share is in flight", async () => {
@@ -346,10 +347,7 @@ describe("WorkoutDetailPage", () => {
 
     render(
       <WorkoutDetailPage
-        onAddExercise={onAddExercise}
-        onBack={() => {}}
-        onDeleted={() => {}}
-        onOpenExercise={() => {}}
+        {...detailCallbacks({ onAddExercise })}
         workoutId={workoutId}
       />
     )
@@ -367,7 +365,7 @@ describe("WorkoutDetailPage", () => {
     })
   })
 
-  it("moves the workout to another day", async () => {
+  it("changes the date from a popover without leaving the page", async () => {
     const user = userEvent.setup()
     const workoutId = renderWorkout(["0001"])
 
@@ -377,16 +375,22 @@ describe("WorkoutDetailPage", () => {
       })
     )
 
-    const picker = await screen.findByRole("dialog", { name: "Change date" })
+    const calendar = await screen.findByRole("dialog", {
+      name: "Choose workout date",
+    })
+    // The page it was opened from is still the page underneath.
+    expect(screen.getByRole("button", { name: "Add exercise" })).toBeVisible()
+
     await user.click(
-      within(picker).getByRole("button", { name: /September 4/ })
+      within(calendar).getByRole("button", { name: /September 4/ })
     )
 
-    expect(
-      useWorkouts.getState().workouts.find((item) => item.id === workoutId)
-        ?.date
-    ).toBe("2026-09-04")
-    expect(screen.getByText(formatDateLong("2026-09-04"))).toBeInTheDocument()
+    await waitFor(() =>
+      expect(
+        useWorkouts.getState().workouts.find((item) => item.id === workoutId)
+          ?.date
+      ).toBe("2026-09-04")
+    )
   })
 
   it("offers no skip once this is the last exercise left", async () => {

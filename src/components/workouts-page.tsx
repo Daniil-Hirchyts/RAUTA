@@ -2,7 +2,9 @@ import { useMemo, useRef, useState } from "react"
 import {
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   Clock3,
   Copy,
   Settings,
@@ -17,7 +19,7 @@ import {
   AppSurface,
 } from "@/components/app-shell"
 import { BodyPreview } from "@/components/body-map"
-import { DeleteWorkoutConfirmation } from "@/components/delete-workout-confirmation"
+import { ConfirmModal } from "@/components/confirm-modal"
 import { SwipeableRow } from "@/components/swipeable-row"
 import { Button } from "@/components/ui/button"
 import { WorkoutHeatmap } from "@/components/workout-heatmap"
@@ -32,6 +34,10 @@ import { useWorkouts, type Workout } from "@/store/use-workouts"
 
 type ActiveSession = ReturnType<typeof useActiveWorkout.getState>["session"]
 
+/** A workout row is tall and carries a body map; a screenful is roughly this
+ *  many. Longer histories grow a page at a time from the button below. */
+const WORKOUT_PAGE_SIZE = 6
+
 function SectionHeading({ count, title }: { count: number; title: string }) {
   return (
     <div className="mx-5 mb-2.5 flex items-center justify-between">
@@ -41,6 +47,44 @@ function SectionHeading({ count, title }: { count: number; title: string }) {
       <span className="text-xs font-semibold text-muted-foreground tabular-nums">
         {count}
       </span>
+    </div>
+  )
+}
+
+function SectionFooter({
+  onLess,
+  onMore,
+  remaining,
+  showLess,
+}: {
+  onLess: () => void
+  onMore: () => void
+  remaining: number
+  showLess: boolean
+}) {
+  if (remaining === 0 && !showLess) return null
+
+  return (
+    <div className="mx-5 mt-3 flex gap-2">
+      {remaining > 0 ? (
+        <Button className="flex-1" onClick={onMore} variant="ghost">
+          Load more
+          <span className="text-muted-foreground tabular-nums">
+            ({remaining})
+          </span>
+          <ChevronDown className="size-4" data-icon="inline-end" />
+        </Button>
+      ) : null}
+      {showLess ? (
+        <Button
+          className={remaining > 0 ? "" : "flex-1"}
+          onClick={onLess}
+          variant="ghost"
+        >
+          Show less
+          <ChevronUp className="size-4" data-icon="inline-end" />
+        </Button>
+      ) : null}
     </div>
   )
 }
@@ -180,19 +224,22 @@ function WorkoutRow({
 
 export function WorkoutsPage({
   onCreate,
+  onDelete,
   onSelect,
   onSettings,
 }: {
   onCreate: () => void
+  onDelete: (workoutId: string) => void
   onSelect: (workout: Workout) => void
   onSettings: () => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const workouts = useWorkouts((state) => state.workouts)
-  const deleteWorkout = useWorkouts((state) => state.deleteWorkout)
   const duplicateWorkout = useWorkouts((state) => state.duplicateWorkout)
   const [openRowId, setOpenRowId] = useState<string | null>(null)
-  const [pendingDelete, setPendingDelete] = useState<Workout | null>(null)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const [upcomingLimit, setUpcomingLimit] = useState(WORKOUT_PAGE_SIZE)
+  const [pastLimit, setPastLimit] = useState(WORKOUT_PAGE_SIZE)
 
   const session = useActiveWorkout((state) => state.session)
   const elapsed = useElapsedMs(session)
@@ -231,8 +278,7 @@ export function WorkoutsPage({
             onCopy={() => copyWorkout(workout)}
             onDelete={() => {
               triggerHaptic("warning")
-              setOpenRowId(null)
-              setPendingDelete(workout)
+              setPendingDeleteId(workout.id)
             }}
             onOpenChange={(open) => {
               if (open) triggerHaptic("selection")
@@ -274,7 +320,15 @@ export function WorkoutsPage({
                     title="Next workouts"
                   />
                 </div>
-                {renderRows(upcoming, false)}
+                {renderRows(upcoming.slice(0, upcomingLimit), false)}
+                <SectionFooter
+                  onLess={() => setUpcomingLimit(WORKOUT_PAGE_SIZE)}
+                  onMore={() =>
+                    setUpcomingLimit((limit) => limit + WORKOUT_PAGE_SIZE)
+                  }
+                  remaining={Math.max(0, upcoming.length - upcomingLimit)}
+                  showLess={upcomingLimit > WORKOUT_PAGE_SIZE}
+                />
               </section>
             ) : null}
 
@@ -288,7 +342,15 @@ export function WorkoutsPage({
                 <div id="past-workouts-heading">
                   <SectionHeading count={past.length} title="Past workouts" />
                 </div>
-                {renderRows(past, true)}
+                {renderRows(past.slice(0, pastLimit), true)}
+                <SectionFooter
+                  onLess={() => setPastLimit(WORKOUT_PAGE_SIZE)}
+                  onMore={() =>
+                    setPastLimit((limit) => limit + WORKOUT_PAGE_SIZE)
+                  }
+                  remaining={Math.max(0, past.length - pastLimit)}
+                  showLess={pastLimit > WORKOUT_PAGE_SIZE}
+                />
               </section>
             ) : null}
 
@@ -305,7 +367,17 @@ export function WorkoutsPage({
         </div>
       </AppSurface>
 
-      <AppControls>
+      <ConfirmModal
+        kind={pendingDeleteId ? "delete-workout" : null}
+        onCancel={() => setPendingDeleteId(null)}
+        onConfirm={() => {
+          if (pendingDeleteId) onDelete(pendingDeleteId)
+          setPendingDeleteId(null)
+          setOpenRowId(null)
+        }}
+      />
+
+      <AppControls transitionKey="workouts:add">
         <Button
           size="cta"
           className="w-full shadow-xl shadow-black/25"
@@ -314,16 +386,6 @@ export function WorkoutsPage({
           Add workout
         </Button>
       </AppControls>
-
-      <DeleteWorkoutConfirmation
-        onConfirm={() => {
-          if (pendingDelete) deleteWorkout(pendingDelete.id)
-        }}
-        onOpenChange={(open) => {
-          if (!open) setPendingDelete(null)
-        }}
-        open={pendingDelete !== null}
-      />
     </AppScreen>
   )
 }

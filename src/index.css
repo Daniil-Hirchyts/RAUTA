@@ -92,14 +92,6 @@
   --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-bounce-release: cubic-bezier(0.34, 1.75, 0.5, 1);
-  --page-slide-dur: 250ms;
-  --page-fade-dur: 250ms;
-  --page-slide-distance: 8px;
-  --page-blur: 3px;
-  --page-stagger: 0ms;
-  --page-exit-enabled: 1;
-  --page-slide-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --page-fade-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --digit-dur: 500ms;
   --digit-distance: 8px;
   --digit-stagger: 70ms;
@@ -271,26 +263,23 @@
   }
 }
 
-/* Every top-level route uses the same three-part shell: a screen tinted a step
-   above the surface it frames, one real clipped content surface, and bottom
-   controls outside that surface.
-   Keeping the surface as an element (rather than a pseudo-element under page
-   padding) gives scrolling content its own clean viewport. */
-.app-screen {
+/* The frame owns the only rounded surface and the only command row. Pages are
+   layers inside it; changing pages can never move or remount the frame. */
+.app-shell-frame {
   position: relative;
-  display: flex;
-  min-height: 0;
-  flex: 1;
-  flex-direction: column;
-  padding: var(--app-surface-gutter);
+  display: block;
+  padding: 0;
 }
 
-.app-screen[data-bottom-controls="true"] {
-  padding-bottom: var(--app-controls-space);
+.app-screen,
+.app-page-surface {
+  display: contents;
 }
 
 .app-surface {
-  position: relative;
+  position: absolute;
+  inset: var(--app-surface-gutter) var(--app-surface-gutter)
+    calc(var(--app-surface-gutter) + var(--app-controls-space));
   isolation: isolate;
   display: flex;
   min-height: 0;
@@ -300,20 +289,84 @@
   border: 1px solid var(--border);
   border-radius: var(--app-surface-radius);
   background: var(--background);
+  transition: bottom 320ms var(--ease-smooth-out);
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
-/* The top edge fade belongs to the surface, not to the title. It remains in
-   place when the title slides away, mirroring the fixed fade behind the
-   bottom controls without painting a full header-height band. */
+.app-shell-frame[data-commands="hidden"] .app-surface {
+  bottom: var(--app-surface-gutter);
+}
+
+/* One shell-sized raster keeps the texture organic without asking WebKit to
+   run an SVG turbulence filter or exposing a repeating tile boundary. */
+.app-grain {
+  position: absolute;
+  z-index: 90;
+  inset: 0;
+  background-image: url("/assets/grain.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  opacity: 0.22;
+  mix-blend-mode: overlay;
+  border-radius: inherit;
+}
+
+/* Keep the texture outside the page compositor. dnd-kit promotes a dragged
+   row to a fixed GPU layer; as a sibling of the surface, this layer caps the
+   entire page compositor instead of competing with that promoted descendant.
+   Its geometry still matches only the dark rounded surface, never the shell. */
+.app-surface-grain {
+  inset: var(--app-surface-gutter) var(--app-surface-gutter)
+    calc(var(--app-surface-gutter) + var(--app-controls-space));
+  border-radius: var(--app-surface-radius);
+  transition: bottom 320ms var(--ease-smooth-out);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.app-shell-frame[data-commands="hidden"] .app-surface-grain {
+  bottom: var(--app-surface-gutter);
+}
+
+/* WKWebView composites mix-blend-mode separately from the fixed drag layer.
+   Paint the same grain inside the moving card as well, so that card can never
+   visually jump above the texture while it is being reordered. */
+.app-drag-grain {
+  display: none;
+  border-radius: inherit;
+}
+
+html[data-native="ios"] .app-drag-grain {
+  display: block;
+}
+
+/* dnd-kit promotes the active row with an infinite z-index. Keep that row in
+   the surface's normal stacking order so the shell grain remains the final
+   visual treatment during a drag. The row is still above every page layer,
+   while the outer gray shell remains outside this clipped surface. */
+.app-shell-frame .app-surface [data-dnd-dragging] {
+  z-index: 80 !important;
+}
+
+/* The top edge fade belongs to the page, not to the title. It stays put when
+   the title slides away, mirroring the fixed fade behind the bottom controls
+   without painting a full header-height band. */
 .app-top-scrim {
   position: absolute;
+  /* Above the page scroller, below the title that floats over it (z 30). */
   z-index: 20;
   inset: 0 0 auto;
-  height: 2.25rem;
+  /* Deliberately deeper than the 2rem bottom fade: the top edge has a title
+     floating over it and a notch above it, so it needs more room to hand
+     content off to the background than the plain bottom edge does. */
+  height: calc(4.5rem + env(safe-area-inset-top));
   background: linear-gradient(
     to bottom,
     var(--background) 0%,
-    color-mix(in oklch, var(--background) 55%, transparent) 55%,
+    var(--background) 30%,
+    color-mix(in oklch, var(--background) 62%, transparent) 62%,
     transparent 100%
   );
   pointer-events: none;
@@ -333,16 +386,21 @@
   background: transparent;
   opacity: 1;
   transform: translateY(0);
+  /* One duration and one curve for both properties, so leaving and returning
+     are mirror images of each other rather than a quick fade against a slow
+     slide. */
   transition:
-    opacity 180ms ease,
-    transform 260ms var(--ease-smooth-out);
+    opacity 520ms var(--ease-smooth-out),
+    transform 520ms var(--ease-smooth-out);
   will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
 }
 
 .app-shell-header[data-hidden="true"] {
   pointer-events: none;
   opacity: 0;
-  transform: translateY(-100%);
+  transform: translate3d(0, calc(-100% - 8px), 0);
 }
 
 .app-shell-header-row {
@@ -409,10 +467,6 @@
   padding-top: calc(4.25rem + env(safe-area-inset-top) + 1.25rem);
 }
 
-.app-shell-header + .app-stage-frame > .t-page {
-  padding-top: calc(4.25rem + env(safe-area-inset-top) + 0.75rem);
-}
-
 .app-surface-bottom-dock {
   position: relative;
   z-index: 20;
@@ -420,7 +474,9 @@
   background: transparent;
 }
 
-.equipment-presets-dock {
+.equipment-presets-dock,
+.exercise-selection-dock,
+.exercise-search-dock {
   position: absolute;
   z-index: 20;
   inset: auto 0 0;
@@ -435,6 +491,11 @@
   pointer-events: none;
 }
 
+.exercise-selection-dock,
+.exercise-search-dock {
+  padding-inline: 1.25rem;
+}
+
 .active-workout-dock {
   position: absolute;
   z-index: 20;
@@ -447,22 +508,6 @@
     var(--background) 100%
   );
   pointer-events: none;
-}
-
-/* Drawers portal in here rather than into the body, so they open inside the
-   shell: the host is the surface's box, and its overflow clip gives a sheet
-   the same corners the shell has. It is inert until a drawer fills it. */
-.app-drawer-host {
-  position: absolute;
-  z-index: 50;
-  inset: var(--app-surface-gutter);
-  overflow: hidden;
-  border-radius: var(--app-surface-radius);
-  pointer-events: none;
-}
-
-.app-shell-frame:has(.app-controls-host > *) .app-drawer-host {
-  bottom: var(--app-controls-space);
 }
 
 /* A scroll viewport ends before the shell's lower curve. The subtle fade makes
@@ -487,6 +532,13 @@
   );
 }
 
+html[data-native="ios"] .app-scroll-region,
+html[data-native="ios"] .app-scroll-content {
+  -webkit-mask-image: none;
+  mask-image: none;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* A page scroller stops short of the surface edge. The staged flow's scrollers
    fill a page frame that is already inset, so they take no margin of their
    own — the only thing that ever separated these two treatments. */
@@ -494,18 +546,27 @@
   margin-bottom: var(--app-surface-gutter);
 }
 
-.app-stage-frame {
-  margin-block: 0;
-}
-
-/* Every set of bottom actions renders into this band — a screen's own and a
-   drawer's alike. It sits above the drawer layer, so a sheet slides up behind
-   the buttons instead of covering them. */
+/* Every active page renders its actions into this fixed shell band. */
 .app-controls-host {
   position: absolute;
   z-index: 60;
-  inset: auto 0 0;
+  inset: auto var(--app-surface-gutter) var(--app-surface-gutter);
+  height: var(--app-controls-space);
+  min-height: 0;
+  overflow: hidden;
+  opacity: 1;
+  transform: translateY(0);
   pointer-events: none;
+  transition:
+    opacity 220ms ease,
+    transform 320ms var(--ease-smooth-out);
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+
+.app-shell-frame[data-commands="hidden"] .app-controls-host {
+  opacity: 0;
+  transform: translate3d(0, calc(100% + var(--app-surface-gutter)), 0);
 }
 
 /* Both sets occupy the same box, so which one shows is a matter of opacity
@@ -513,31 +574,37 @@
 .app-controls-host > * {
   position: absolute;
   inset: auto 0 0;
+  width: 100%;
+  opacity: 0;
+  transform: translate3d(0, 8px, 0) scale(0.985);
+  transform-origin: 50% 100%;
+  pointer-events: none;
+  transition:
+    opacity 200ms var(--ease-smooth-out),
+    transform 200ms var(--ease-smooth-out);
+}
+
+.app-controls-host > [data-active="true"] {
+  z-index: 2;
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
   pointer-events: auto;
+  animation: app-controls-enter 200ms var(--ease-smooth-out) both;
+}
+
+@keyframes app-controls-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.985);
+  }
 }
 
 /* Flat and fully opaque: the band is a piece of the shell, so it paints the
-   shell's own colour. Opacity is what makes a sheet read as passing behind it —
-   the z-order above the drawer layer only decides who paints last. */
-.app-controls,
-.app-drawer-controls {
+   shell's own colour. */
+.app-controls {
   background: var(--app-shell);
   padding: 1rem 1.25rem calc(1rem + env(safe-area-inset-bottom));
-  transition: opacity 200ms var(--ease-smooth-out);
 }
-
-/* A drawer's actions take the band over from the screen's while it is open. */
-.app-controls-host:has([data-slot="drawer-controls"])
-  [data-slot="app-controls"] {
-  opacity: 0;
-}
-
-/* A screen's buttons stay visible behind an open drawer — the sheet is behind
-   them, not over them — but the drawer owns the interaction while it is up. */
-.app-shell-frame:has([data-slot="drawer-popup"]) [data-slot="app-controls"] {
-  pointer-events: none;
-}
-
 
 .body-silhouette path {
   fill: #2a2a2d;
@@ -586,128 +653,93 @@
   stroke: none;
 }
 
-.t-page-slide {
-  position: relative;
-}
-
-.t-page-slide .t-page[data-page-id="1"] {
-  --t-page-from-x: calc(var(--page-slide-distance) * -1);
-}
-
-.t-page-slide .t-page[data-page-id="2"],
-.t-page-slide .t-page[data-page-id="3"] {
-  --t-page-from-x: var(--page-slide-distance);
-}
-
-.t-page-slide .t-page {
+/* Pages are retained inside the one clipped surface. Only the active page and
+   its immediate parent paint; deeper history stays mounted and inert so local
+   state and scroll positions survive a back navigation. */
+.app-page-stack {
   position: absolute;
   inset: 0;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  opacity: 0;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.app-page-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--background);
+  visibility: hidden;
+  transform: translate3d(100%, 0, 0);
   pointer-events: none;
-  transform: translateX(
-    calc(var(--t-page-from-x, 0px) * var(--page-exit-enabled))
-  );
-  filter: blur(calc(var(--page-blur) * var(--page-exit-enabled)));
-  transition:
-    opacity var(--page-fade-dur) var(--page-fade-ease),
-    transform var(--page-slide-dur) var(--page-slide-ease),
-    filter var(--page-slide-dur) var(--page-slide-ease);
-  will-change: opacity, transform, filter;
-}
-
-.t-page-slide[data-page="1"] .t-page[data-page-id="1"],
-.t-page-slide[data-page="2"] .t-page[data-page-id="2"],
-.t-page-slide[data-page="3"] .t-page[data-page-id="3"] {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(0);
-  filter: none;
-  will-change: opacity, transform;
-  transition-delay: var(--page-stagger);
-}
-
-/* Standalone pages (workouts, workout detail) carry the same back gesture as
-   the staged flow. They track the finger with transitions off, then settle
-   back with the flow's own slide timing once the drag ends. */
-.t-swipe-back {
-  transition: transform var(--page-slide-dur) var(--page-slide-ease);
+  transition: transform 300ms var(--ease-smooth-out);
   will-change: transform;
+  contain: layout paint style;
+  backface-visibility: hidden;
 }
 
-.t-swipe-back[data-dragging="true"] {
-  transition: none;
+.app-page-layer[data-active="true"] {
+  visibility: visible;
+  transform: translate3d(0, 0, 0);
+  pointer-events: auto;
 }
 
-@keyframes t-app-page-forward {
-  from {
-    opacity: 0.55;
-    transform: translate3d(16px, 0, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
+.app-page-layer[data-previous="true"] {
+  visibility: visible;
+  transform: translate3d(-10%, 0, 0);
 }
 
-@keyframes t-app-page-back {
-  from {
-    opacity: 0.55;
-    transform: translate3d(-12px, 0, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
+.app-page-layer[data-leaving="true"] {
+  visibility: visible;
+  z-index: 2;
+  transform: translate3d(100%, 0, 0);
 }
 
-/* Every top-level surface enters through the same motion grammar. The
-   interactive edge swipe still owns its transform while a finger is down. */
-.t-app-page {
-  animation: t-app-page-forward 280ms var(--ease-smooth-out) both;
-  will-change: transform, opacity;
+/* A pushed page first mounts offscreen and inert. React gives WebKit two paint
+   frames to build its layer, then flips data-ready and lets this transform run
+   without competing with the initial DOM/image work. */
+html[data-native="ios"]
+  .app-page-layer[data-active="true"][data-entering="true"] {
+  transform: translate3d(100%, 0, 0);
 }
 
-.t-app-page[data-direction="back"] {
-  animation-name: t-app-page-back;
+html[data-native="ios"]
+  .app-page-layer[data-active="true"][data-entering="true"][data-ready="true"] {
+  transform: translate3d(0, 0, 0);
 }
 
-/* Interactive edge-swipe navigation.
-
-   While a drag is in flight both the outgoing and incoming pages are pinned
-   to the finger through --drag-x, with transitions off so they track it
-   exactly. Releasing removes [data-dragging], which restores the transitions
-   above — the pages then animate from wherever the finger left them to their
-   resting positions, so a committed swipe and a cancelled one use the same
-   motion as a button tap. */
-.t-page-slide[data-dragging="true"] .t-page {
-  transition: none;
+html[data-native="ios"]
+  .app-page-stack[data-direction="forward"][data-entering="true"]:not(
+    [data-transition-ready="true"]
+  )
+  .app-page-layer[data-previous="true"] {
+  transform: translate3d(0, 0, 0);
 }
 
-.t-page-slide[data-dragging="true"][data-page="1"] .t-page[data-page-id="1"],
-.t-page-slide[data-dragging="true"][data-page="2"] .t-page[data-page-id="2"],
-.t-page-slide[data-dragging="true"][data-page="3"] .t-page[data-page-id="3"] {
-  transform: translateX(var(--drag-x, 0px));
-}
-
-.t-page-slide[data-dragging="true"] .t-page[data-drag-peer="true"] {
-  opacity: 1;
-  filter: none;
+html[data-native="ios"] .app-page-layer::after {
+  position: absolute;
+  z-index: 18;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2rem;
+  background: linear-gradient(to bottom, transparent, var(--background));
+  content: "";
   pointer-events: none;
-  /* Parked exactly one screen away on the side it is being pulled in from,
-     so it meets the outgoing page edge to edge with no gap. */
-  transform: translateX(
-    calc(var(--drag-x, 0px) + var(--drag-peer-offset, 100%))
-  );
 }
 
-.t-page-slide[data-dragging="true"][data-page="2"]
-  .t-page[data-drag-peer="true"][data-page-id="1"],
-.t-page-slide[data-dragging="true"][data-page="3"]
-  .t-page[data-drag-peer="true"][data-page-id="2"] {
-  --drag-peer-offset: -100%;
+.app-page-stack[data-dragging="true"] .app-page-layer {
+  transition: none;
+}
+
+.app-page-stack[data-dragging="true"] .app-page-layer[data-active="true"] {
+  transform: translate3d(var(--stack-drag-x, 0px), 0, 0);
+}
+
+.app-page-stack[data-dragging="true"] .app-page-layer[data-previous="true"] {
+  transform: translate3d(calc(-10% + var(--stack-drag-peer-x, 0px)), 0, 0);
 }
 
 @keyframes t-digit-pop-in {
@@ -937,19 +969,8 @@
 
 .t-stagger-line {
   display: block;
-  opacity: 0;
-  transform: translateY(var(--stagger-distance));
-  filter: blur(var(--stagger-blur));
-  transition:
-    opacity var(--stagger-dur) var(--stagger-ease),
-    transform var(--stagger-dur) var(--stagger-ease),
-    filter var(--stagger-dur) var(--stagger-ease);
-  will-change: transform, opacity, filter;
-}
-
-.exercise-card {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 224px;
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
 }
 
 .t-stagger-line--2 {
@@ -957,9 +978,19 @@
 }
 
 .t-stagger.is-shown .t-stagger-line {
-  opacity: 1;
-  transform: translateY(0);
-  filter: blur(0);
+  animation: t-stagger-enter 380ms var(--stagger-ease) both;
+}
+
+@keyframes t-stagger-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, var(--stagger-distance), 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 .t-stagger.is-hiding .t-stagger-line {
@@ -971,6 +1002,17 @@
     transform 0s linear,
     filter 0s linear;
   transition-delay: 0s;
+}
+
+/* Media boxes already reserve their final dimensions. The decoded pixels
+   dissolve into that box instead of popping in on a later WebKit paint. */
+.app-media {
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+
+.app-media[data-loaded="true"] {
+  opacity: 1;
 }
 
 @keyframes t-press-spring {
@@ -1084,32 +1126,6 @@
   animation: t-muscle-selection-pop 200ms var(--ease-smooth-out);
 }
 
-/* Resting rows can skip offscreen rendering, but the dragged row must stay
-   fully painted while its transform moves beyond its original layout box. */
-.workout-exercise-card:not(.is-dragging) {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 96px;
-}
-
-[data-slot="drawer-content"],
-[data-slot="drawer-content"] * {
-  scrollbar-width: none;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-[data-slot="drawer-content"]::-webkit-scrollbar,
-[data-slot="drawer-content"] *::-webkit-scrollbar {
-  display: none;
-}
-
-[data-slot="drawer-content"] input,
-[data-slot="drawer-content"] textarea,
-[data-slot="drawer-content"] [contenteditable="true"] {
-  -webkit-user-select: text;
-  user-select: text;
-}
-
 @keyframes t-flip-in {
   from {
     opacity: 0;
@@ -1173,8 +1189,17 @@
     animation-iteration-count: 1 !important;
   }
 
-  .t-page-slide .t-page {
+  .app-shell-frame,
+  .app-surface,
+  .app-controls-host,
+  .app-controls-host > *,
+  .app-page-layer {
     transition: none !important;
+    animation: none !important;
+  }
+
+  .app-page-layer[data-active="true"] {
+    transform: translate3d(0, 0, 0) !important;
   }
 
   .t-digit-group .t-digit {
@@ -1185,7 +1210,6 @@
   .t-check-box .t-check-mark path,
   .t-countdown-digit,
   .t-countdown-ring,
-  .t-app-page,
   .t-matrix i,
   .t-like-icon,
   .t-like-particles i,

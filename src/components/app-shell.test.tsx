@@ -30,13 +30,24 @@ describe("AppShellHeader", () => {
     render(<HeaderHarness />)
     const header = screen.getByRole("banner")
     const scroller = screen.getByTestId("scroller")
-    setScrollMetrics(scroller, { clientHeight: 100, scrollHeight: 300 })
+    setScrollMetrics(scroller, { clientHeight: 400, scrollHeight: 1200 })
 
-    scroller.scrollTop = 40
+    scroller.scrollTop = 120
     fireEvent.scroll(scroller)
     await waitFor(() => expect(header).toHaveAttribute("data-hidden", "true"))
 
-    scroller.scrollTop = 20
+    scroller.scrollTop = 60
+    fireEvent.scroll(scroller)
+    await waitFor(() => expect(header).not.toHaveAttribute("data-hidden"))
+  })
+
+  it("ignores a scroll too short to read as a deliberate one", async () => {
+    render(<HeaderHarness />)
+    const header = screen.getByRole("banner")
+    const scroller = screen.getByTestId("scroller")
+    setScrollMetrics(scroller, { clientHeight: 400, scrollHeight: 1200 })
+
+    scroller.scrollTop = 40
     fireEvent.scroll(scroller)
     await waitFor(() => expect(header).not.toHaveAttribute("data-hidden"))
   })

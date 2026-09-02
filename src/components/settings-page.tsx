@@ -30,15 +30,11 @@ import {
   AppShellHeader,
   AppSurface,
 } from "@/components/app-shell"
-import { ClearDataConfirmation } from "@/components/clear-data-confirmation"
+import { ConfirmModal } from "@/components/confirm-modal"
 import { Button } from "@/components/ui/button"
 import { MatrixLoader } from "@/components/ui/matrix-loader"
 import { Switch } from "@/components/ui/switch"
-import {
-  clearAllGymLibData,
-  exportGymLibData,
-  importGymLibData,
-} from "@/lib/app-backup"
+import { exportGymLibData, importGymLibData } from "@/lib/app-backup"
 import { openAppleHealthSettings, requestAppleHealthAccess } from "@/lib/health"
 import { triggerHaptic } from "@/lib/haptics"
 import { syncICloudNow, useICloudSync } from "@/lib/icloud-sync"
@@ -155,20 +151,20 @@ function SettingsAction({
 
 export function SettingsPage({
   onBack,
-  onDataCleared,
+  onClearData,
 }: {
   onBack: () => void
-  onDataCleared: () => void
+  onClearData: () => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const settings = useSettings()
   const iCloud = useICloudSync()
   const setPreference = settings.setPreference
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [clearOpen, setClearOpen] = useState(false)
   const [healthBusy, setHealthBusy] = useState(false)
   const [notice, setNotice] = useState("")
   const [appVersion, setAppVersion] = useState(packageJson.version)
+  const [clearing, setClearing] = useState(false)
 
   useEffect(() => {
     if (!isNative()) return
@@ -427,7 +423,7 @@ export function SettingsPage({
               icon={<Trash2 />}
               onClick={() => {
                 triggerHaptic("warning")
-                setClearOpen(true)
+                setClearing(true)
               }}
               title="Clear all data"
               tone="destructive"
@@ -463,14 +459,13 @@ export function SettingsPage({
         </div>
       </AppSurface>
 
-      <ClearDataConfirmation
+      <ConfirmModal
+        kind={clearing ? "clear-data" : null}
+        onCancel={() => setClearing(false)}
         onConfirm={() => {
-          clearAllGymLibData()
-          void syncICloudNow()
-          onDataCleared()
+          setClearing(false)
+          onClearData()
         }}
-        onOpenChange={setClearOpen}
-        open={clearOpen}
       />
     </AppScreen>
   )

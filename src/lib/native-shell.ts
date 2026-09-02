@@ -14,14 +14,20 @@ import { isNative } from "@/lib/native"
 export async function initNativeShell() {
   if (!isNative()) return
 
+  // Mark the bundled WKWebView before React mounts. A few rendering choices
+  // deliberately differ from Safari: the native shell has a permanently
+  // clipped viewport and is much more sensitive to masks and live SVG
+  // filters while large layers are moving.
+  document.documentElement.dataset.native = "ios"
+
   await Promise.allSettled([
     // Light glyphs, and the web view keeps the space behind the status bar so
     // the rounded app surface can paint underneath it while its content uses
     // env(safe-area-inset-top) as the single source of inset truth.
     StatusBar.setStyle({ style: Style.Dark }),
     StatusBar.setOverlaysWebView({ overlay: true }),
-    // Drawer forms scroll their own content, so the web view must not also
-    // scroll itself out from under the keyboard.
+    // Forms scroll inside the stationary surface, so the web view must not
+    // also scroll itself out from under the keyboard.
     Keyboard.setScroll({ isDisabled: true }),
   ])
 }

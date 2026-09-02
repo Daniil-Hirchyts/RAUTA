@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react"
 
 import { AnimatedCheck } from "@/components/animated-check"
+import { AppImage } from "@/components/app-image"
 import { LikeButton } from "@/components/like-button"
 import { triggerHaptic } from "@/lib/haptics"
+import { isNative } from "@/lib/native"
 import { cn } from "@/lib/utils"
 import {
   EXERCISE_ANIMATION_FILTER_LIGHT,
@@ -29,6 +31,7 @@ export function ExerciseCard({
   selected?: boolean
   selectMode?: boolean
 }) {
+  const native = isNative()
   const isFavorite = useFavorites((state) =>
     state.favoriteIds.includes(exercise.id)
   )
@@ -108,7 +111,7 @@ export function ExerciseCard({
           ? "border-primary/75 shadow-[0_0_0_1px_color-mix(in_oklch,var(--primary)_30%,transparent)]"
           : "border-border"
       )}
-      style={{ transitionDelay: `${Math.min(index, 6) * 40}ms` }}
+      style={{ animationDelay: `${Math.min(index, 6) * 40}ms` }}
     >
       <button
         aria-label={
@@ -128,13 +131,13 @@ export function ExerciseCard({
         type="button"
       >
         <div className="isolate aspect-square overflow-hidden bg-card">
-          <img
+          <AppImage
             alt={`${exercise.name} demonstration`}
             className="h-full w-full object-contain mix-blend-screen"
             decoding="async"
             draggable={false}
-            fetchPriority="low"
-            loading="lazy"
+            fetchPriority={native && index < 4 ? "high" : "low"}
+            loading={native && index < 4 ? "eager" : "lazy"}
             src={exerciseAnimation(exercise)}
             style={{ filter: EXERCISE_ANIMATION_FILTER_LIGHT }}
           />

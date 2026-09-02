@@ -4,6 +4,8 @@ import { ArrowLeftRight, GripVertical, Trash2 } from "lucide-react"
 import { useState, type Ref } from "react"
 
 import { AnimatedCheck } from "@/components/animated-check"
+import { AppGrain } from "@/components/app-grain"
+import { AppImage } from "@/components/app-image"
 import { SwipeableRow } from "@/components/swipeable-row"
 import type { ExerciseStatus } from "@/lib/active-workout"
 import { EXERCISES_BY_ID } from "@/lib/exercises"
@@ -48,7 +50,7 @@ function SortableExerciseRow({
 
   const row = (
     <div
-      className={`mx-4 flex h-32 w-[calc(100%-2rem)] overflow-hidden rounded-3xl border bg-card shadow-sm shadow-black/10 transition-[border-color,box-shadow,opacity] ${
+      className={`relative isolate mx-4 flex h-32 w-[calc(100%-2rem)] overflow-hidden rounded-3xl border bg-card shadow-sm shadow-black/10 transition-[border-color,box-shadow,opacity] ${
         isDragSource
           ? "border-primary/70 opacity-90 shadow-xl shadow-black/30"
           : status === "active"
@@ -85,12 +87,13 @@ function SortableExerciseRow({
         onClick={() => onOpen?.(exercise)}
         type="button"
       >
-        <img
+        <AppImage
           alt={`${exercise.name} demonstration`}
           className="h-full w-full object-contain mix-blend-screen"
           decoding="async"
           draggable={false}
-          loading="lazy"
+          fetchPriority={index < 3 ? "high" : "low"}
+          loading={index < 3 ? "eager" : "lazy"}
           src={exerciseAnimation(exercise)}
           style={{ filter: EXERCISE_ANIMATION_FILTER_LIGHT }}
         />
@@ -123,6 +126,7 @@ function SortableExerciseRow({
           <GripVertical className="size-6" />
         </button>
       ) : null}
+      {isDragSource ? <AppGrain className="app-drag-grain" /> : null}
     </div>
   )
 
