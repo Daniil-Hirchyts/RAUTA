@@ -63,7 +63,7 @@ describe("App", () => {
     const screenShell = document.querySelector(".app-screen")
     const surface = screenShell?.querySelector(".app-surface")
     const header = screenShell?.querySelector(".app-shell-header")
-    const footer = screenShell?.querySelector("footer.bottom-controls-scrim")
+    const footer = document.querySelector('footer[data-slot="app-controls"]')
 
     expect(screenShell).toHaveAttribute("data-bottom-controls", "true")
     expect(surface).toContainElement(header as HTMLElement)
@@ -136,7 +136,7 @@ describe("App", () => {
     ).toBeInTheDocument()
     const equipmentSurface = document.querySelector(".app-surface")
     const equipmentFooter = document.querySelector(
-      "footer.bottom-controls-scrim"
+      'footer[data-slot="app-controls"]'
     )
     const presetDock = document.querySelector(".equipment-presets-dock")
 
@@ -146,7 +146,7 @@ describe("App", () => {
     const presetScroller = fullGymPreset.closest("[data-swipe-ignore]")
     expect(fullGymPreset.closest(".app-surface")).toBe(equipmentSurface)
     expect(presetScroller).toHaveClass("px-5")
-    expect(presetDock).not.toHaveClass("bottom-controls-scrim")
+    expect(presetDock).not.toHaveAttribute("data-slot", "app-controls")
     await user.click(screen.getByRole("checkbox", { name: "Body Weight" }))
     const showExercises = screen.getByRole("button", {
       name: /show exercises/i,
@@ -465,9 +465,7 @@ describe("App", () => {
     })
     expect(trigger).toBeInTheDocument()
 
-    await user.click(
-      screen.getByRole("button", { name: "Create workout" })
-    )
+    await user.click(screen.getByRole("button", { name: "Create workout" }))
 
     expect(useWorkouts.getState().workouts).toHaveLength(1)
     expect(useWorkouts.getState().workouts[0]).toMatchObject({

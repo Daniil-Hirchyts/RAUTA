@@ -512,9 +512,12 @@
   pointer-events: auto;
 }
 
+/* Flat and fully opaque: the band is a piece of the shell, so it paints the
+   shell's own colour. Opacity is what makes a sheet read as passing behind it —
+   the z-order above the drawer layer only decides who paints last. */
 .app-controls,
 .app-drawer-controls {
-  --bottom-controls-color: var(--app-shell);
+  background: var(--app-shell);
   padding: 1rem 1.25rem calc(1rem + env(safe-area-inset-bottom));
   transition: opacity 200ms var(--ease-smooth-out);
 }
@@ -536,24 +539,6 @@
    content stops short of it, the same room a screen leaves for its own. */
 .app-shell-frame:has(.app-controls-host > *) [data-slot="drawer-content"] {
   padding-bottom: var(--app-controls-space);
-}
-
-/* A plain color scrim keeps fixed bottom actions readable over scrolling
-   content. It intentionally uses no backdrop filter or progressive blur. */
-.bottom-controls-scrim {
-  --bottom-controls-color: var(--background);
-  isolation: isolate;
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    transparent 15%,
-    color-mix(in oklch, var(--bottom-controls-color) 55%, transparent) 45%,
-    var(--bottom-controls-color) 100%
-  );
-}
-
-.bottom-controls-scrim::before {
-  content: none;
 }
 
 .body-silhouette path {

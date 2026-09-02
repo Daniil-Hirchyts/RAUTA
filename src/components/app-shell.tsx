@@ -89,7 +89,7 @@ export function AppControls({
   const host = useControlsHost()
   const controls = (
     <footer
-      className={cn("bottom-controls-scrim app-controls", className)}
+      className={cn("app-controls", className)}
       data-slot="app-controls"
     >
       {children}

@@ -158,7 +158,7 @@ describe("WorkoutDetailPage", () => {
     const timerPanel = timer.closest(".active-workout-timer")
     const surface = document.querySelector(".app-surface")
     const scroller = document.querySelector(".app-scroll-region")
-    const footer = document.querySelector("footer.bottom-controls-scrim")
+    const footer = document.querySelector('footer[data-slot="app-controls"]')
 
     expect(timer).toHaveTextContent("00:00")
     expect(surface).toContainElement(timerPanel as HTMLElement)

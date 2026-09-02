@@ -195,7 +195,7 @@ function DrawerControls({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="drawer-controls"
       className={cn(
-        "bottom-controls-scrim app-drawer-controls flex flex-col gap-2.5",
+        "app-drawer-controls flex flex-col gap-2.5",
         className
       )}
       {...props}
