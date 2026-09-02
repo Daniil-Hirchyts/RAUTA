@@ -70,6 +70,8 @@ describe("App", () => {
     expect(header).toContainElement(screen.getByRole("progressbar"))
     expect(surface).not.toContainElement(footer as HTMLElement)
     expect(surface?.querySelector(".app-stage-frame")).toBeInTheDocument()
+    expect(document.querySelector(".app-drawer-host")).toBeInTheDocument()
+    expect(document.querySelector(".app-controls-host")).toBeInTheDocument()
   })
 
   it("opens settings from the workouts header and persists preferences", async () => {

@@ -268,7 +268,7 @@ function DrawerContent({
               // The sheet, and the only part of the drawer that is skinned.
               // The popup around it is a transparent frame so the actions
               // below can sit on the shell rather than inside the sheet.
-              "relative flex min-h-0 flex-1 flex-col overflow-hidden overscroll-contain rounded-(--app-surface-radius) border-t border-popover bg-popover shadow-xl transition-opacity duration-300 ease-[cubic-bezier(0.45,1.005,0,1.005)] select-none group-data-nested-drawer-open/drawer-popup:opacity-0 group-data-nested-drawer-swiping/drawer-popup:opacity-100 group-data-swiping/drawer-popup:select-none dark:border-border"
+              "relative flex min-h-0 flex-1 flex-col overflow-hidden overscroll-contain rounded-(--app-surface-radius) border-t border-t-popover bg-popover shadow-xl transition-opacity duration-300 ease-[cubic-bezier(0.45,1.005,0,1.005)] select-none group-data-nested-drawer-open/drawer-popup:opacity-0 group-data-nested-drawer-swiping/drawer-popup:opacity-100 group-data-swiping/drawer-popup:select-none dark:border-border"
             )}
             ref={setContentRef}
           >

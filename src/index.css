@@ -461,6 +461,10 @@
   pointer-events: none;
 }
 
+.app-shell-frame:has(.app-controls-host > *) .app-drawer-host {
+  bottom: var(--app-controls-space);
+}
+
 /* A scroll viewport ends before the shell's lower curve. The subtle fade makes
    partially visible rows read as continuing content instead of looking as if
    the rounded mask accidentally sliced them. Bottom padding lets the final
@@ -534,12 +538,6 @@
   pointer-events: none;
 }
 
-/* A sheet reaches the shell's floor and passes behind the band, so whenever the
-   band holds anything — the screen's buttons or the drawer's — the sheet's
-   content stops short of it, the same room a screen leaves for its own. */
-.app-shell-frame:has(.app-controls-host > *) [data-slot="drawer-content"] {
-  padding-bottom: var(--app-controls-space);
-}
 
 .body-silhouette path {
   fill: #2a2a2d;
