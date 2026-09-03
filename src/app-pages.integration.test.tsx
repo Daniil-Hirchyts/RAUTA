@@ -13,6 +13,7 @@ import { useWorkouts } from "@/store/use-workouts"
 
 function renderWorkoutDetail(exerciseIds = ["0001"]) {
   const workoutId = useWorkouts.getState().createWorkout({
+    name: "Workout",
     date: "2026-09-02",
     exerciseIds,
   })
@@ -64,6 +65,7 @@ describe("page-based app flows", () => {
   it("uses a two-step confirmation popover to clear all data", async () => {
     const user = userEvent.setup()
     useWorkouts.getState().createWorkout({
+      name: "Saved workout",
       date: "2026-09-02",
       exerciseIds: ["0001"],
     })

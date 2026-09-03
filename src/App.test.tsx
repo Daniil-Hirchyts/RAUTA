@@ -184,7 +184,7 @@ describe("App", () => {
     const fullGymPreset = screen.getByRole("button", { name: "Full gym" })
     const presetScroller = fullGymPreset.closest("[data-swipe-ignore]")
     expect(fullGymPreset.closest(".app-surface")).toBe(equipmentSurface)
-    expect(presetScroller).toHaveClass("px-5")
+    expect(presetScroller).toHaveClass("px-4")
     expect(presetDock).not.toHaveAttribute("data-slot", "app-controls")
     const createPreset = screen.getByRole("button", {
       name: "Create equipment preset",
@@ -556,6 +556,7 @@ describe("App", () => {
     const user = userEvent.setup()
     const [exercise] = filterExercises(EXERCISES, ["chest"], ["body weight"])
     const workoutId = useWorkouts.getState().createWorkout({
+      name: "Workout",
       date: "2026-09-08",
       exerciseIds: [],
     })

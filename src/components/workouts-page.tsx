@@ -40,7 +40,7 @@ const WORKOUT_PAGE_SIZE = 6
 
 function SectionHeading({ count, title }: { count: number; title: string }) {
   return (
-    <div className="mx-5 mb-2.5 flex items-center justify-between">
+    <div className="mx-4 mb-2.5 flex items-center justify-between">
       <h2 className="text-xs font-bold tracking-[0.15em] text-muted-foreground uppercase">
         {title}
       </h2>
@@ -65,7 +65,7 @@ function SectionFooter({
   if (remaining === 0 && !showLess) return null
 
   return (
-    <div className="mx-5 mt-3 flex gap-2">
+    <div className="mx-4 mt-3 flex gap-2">
       {remaining > 0 ? (
         <Button className="flex-1" onClick={onMore} variant="ghost">
           Load more
@@ -170,7 +170,7 @@ function WorkoutRow({
       onOpenChange={onOpenChange}
     >
       <div
-        className={`mx-5 flex w-[calc(100%-2.5rem)] items-center gap-2 rounded-3xl border p-2 pr-2.5 transition-[border-color,background-color] duration-200 ${
+        className={`mx-4 flex w-[calc(100%-2rem)] items-center gap-2 rounded-3xl border p-2 pr-2.5 transition-[border-color,background-color] duration-200 ${
           isRunning
             ? "border-primary/55 bg-[color-mix(in_oklch,var(--card),var(--primary)_7%)]"
             : "border-border bg-card"
@@ -355,7 +355,7 @@ export function WorkoutsPage({
             ) : null}
 
             {workouts.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 px-5 text-center">
+              <div className="flex flex-col items-center gap-3 px-4 text-center">
                 <CalendarDays className="size-7 text-[color-mix(in_oklch,var(--muted-foreground),var(--background)_35%)]" />
                 <p className="max-w-[24rem] text-base text-muted-foreground">
                   No workouts yet. Create one, choose muscles, and add your

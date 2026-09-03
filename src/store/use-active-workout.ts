@@ -54,6 +54,7 @@ function sanitizeSession(value: unknown): ActiveWorkoutSession | null {
 
   return {
     workoutId,
+    workoutName: validString(value.workoutName, "Workout").trim() || "Workout",
     workoutDate: validString(value.workoutDate),
     exerciseIds,
     completedIds,
@@ -115,6 +116,7 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
           lastOutcome: null,
           session: {
             workoutId: workout.id,
+            workoutName: workout.name,
             workoutDate: workout.date,
             exerciseIds,
             completedIds: [],
@@ -295,11 +297,15 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
         // The date is on the Lock Screen card, so moving a workout has to
         // reach the session too — otherwise the card keeps naming the day the
         // workout used to be on.
-        if (session.workoutDate !== workout.date) {
+        if (
+          session.workoutDate !== workout.date ||
+          session.workoutName !== workout.name
+        ) {
           set(
             patchSession((current) => ({
               ...current,
               workoutDate: workout.date,
+              workoutName: workout.name,
             }))
           )
         }

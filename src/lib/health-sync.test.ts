@@ -19,6 +19,7 @@ const session = {
   startedAt: new Date("2026-08-31T10:00:00Z").getTime(),
   workoutDate: "2026-08-31",
   workoutId: "workout-1",
+  workoutName: "Push day",
 }
 
 describe("Apple Health sync", () => {
@@ -31,6 +32,7 @@ describe("Apple Health sync", () => {
           date: "2026-08-31",
           exerciseIds: ["0001"],
           id: "workout-1",
+          name: "Push day",
           updatedAt: "2026-08-31T09:00:00.000Z",
         },
       ],
@@ -54,6 +56,7 @@ describe("Apple Health sync", () => {
         endDate: "2026-08-31T10:15:00.000Z",
         startDate: "2026-08-31T10:00:00.000Z",
         workoutId: "workout-1",
+        workoutName: "Push day",
       })
     })
     expect(

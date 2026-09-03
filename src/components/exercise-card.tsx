@@ -130,7 +130,7 @@ export function ExerciseCard({
         onPointerUp={handlePointerUp}
         type="button"
       >
-        <div className="isolate aspect-square overflow-hidden bg-[#111113]">
+        <div className="isolate aspect-square overflow-hidden bg-card">
           <AppImage
             alt={`${exercise.name} demonstration`}
             className={cn(

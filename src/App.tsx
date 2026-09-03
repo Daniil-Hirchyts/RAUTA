@@ -584,7 +584,7 @@ export function App() {
                     {stage === 1 ? (
                       <section
                         aria-label="Choose muscles"
-                        className="min-h-0 flex-1 px-[clamp(0.75rem,4vw,1.25rem)] pt-[calc(4.25rem+env(safe-area-inset-top)+0.75rem)] pb-[clamp(0.75rem,2vh,1.25rem)]"
+                        className="min-h-0 flex-1 px-[clamp(0.75rem,4vw,1rem)] pt-[calc(4.25rem+env(safe-area-inset-top)+0.75rem)] pb-[clamp(0.75rem,2vh,1.25rem)]"
                       >
                         <div className="relative h-full min-h-0">
                           <DotPattern
@@ -616,7 +616,7 @@ export function App() {
                     {stage === 2 ? (
                       <section
                         aria-label="Choose equipment"
-                        className="app-scroll-content min-h-0 flex-1 overflow-y-auto px-5 pt-[calc(4.25rem+env(safe-area-inset-top)+0.75rem)] pb-20"
+                        className="app-scroll-content min-h-0 flex-1 overflow-y-auto px-4 pt-[calc(4.25rem+env(safe-area-inset-top)+0.75rem)] pb-20"
                         ref={equipmentScrollRef}
                         tabIndex={-1}
                       >
@@ -641,10 +641,10 @@ export function App() {
                                   role="checkbox"
                                   type="button"
                                 >
-                                  <span className="relative block aspect-[1.18] overflow-hidden bg-[#161618]">
+                                  <span className="relative block aspect-square overflow-hidden bg-card">
                                     <AppImage
                                       alt=""
-                                      className="h-full w-full object-cover saturate-[1.65]"
+                                      className="h-full w-full object-cover object-center saturate-[1.65]"
                                       decoding="async"
                                       draggable={false}
                                       fetchPriority={
@@ -675,7 +675,7 @@ export function App() {
                       <section
                         aria-label="Matching exercises"
                         className={cn(
-                          "app-scroll-content min-h-0 flex-1 overflow-y-auto px-5 pt-[calc(4.25rem+env(safe-area-inset-top)+0.75rem)]",
+                          "app-scroll-content min-h-0 flex-1 overflow-y-auto px-4 pt-[calc(4.25rem+env(safe-area-inset-top)+0.75rem)]",
                           searchOpen || selectMode ? "pb-28" : "pb-6"
                         )}
                         ref={exercisesScrollRef}
@@ -752,10 +752,13 @@ export function App() {
                       </section>
                     ) : null}
 
-                    {stage === 3 && showBackToTop ? (
+                    {stage === 3 ? (
                       <button
                         aria-label="Back to top"
+                        aria-hidden={!showBackToTop}
                         className="exercise-back-to-top interactive-spring"
+                        data-visible={showBackToTop ? "true" : undefined}
+                        disabled={!showBackToTop}
                         onClick={() => {
                           triggerHaptic("light")
                           exercisesScrollRef.current?.scrollTo({
@@ -767,6 +770,7 @@ export function App() {
                             top: 0,
                           })
                         }}
+                        tabIndex={showBackToTop ? 0 : -1}
                         type="button"
                       >
                         <ArrowUp className="size-5" />
@@ -775,7 +779,7 @@ export function App() {
 
                     {stage === 2 && !presetEditorOpen ? (
                       <div className="app-surface-bottom-dock equipment-presets-dock">
-                        <EquipmentPresets className="px-5" />
+                        <EquipmentPresets className="px-4" />
                       </div>
                     ) : null}
                   </AppSurface>
@@ -879,9 +883,10 @@ export function App() {
                             aria-label={
                               searchOpen ? "Close search" : "Search exercises"
                             }
+                            className="rounded-2xl"
                             onClick={toggleSearch}
                             size="icon-cta"
-                            variant="secondary"
+                            variant="ghost"
                           >
                             <Search className="size-5" />
                           </Button>

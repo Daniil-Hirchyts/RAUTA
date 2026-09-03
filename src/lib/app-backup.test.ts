@@ -30,6 +30,7 @@ describe("Gym Lib backup", () => {
     })
     useSettings.setState({ ...DEFAULT_SETTINGS, soundChimesEnabled: true })
     useWorkouts.getState().createWorkout({
+      name: "Core day",
       date: "2026-08-31",
       exerciseIds: [exerciseId],
     })
@@ -42,6 +43,7 @@ describe("Gym Lib backup", () => {
     expect(useFilters.getState().equipmentPresets).toHaveLength(1)
     expect(useSettings.getState().soundChimesEnabled).toBe(true)
     expect(useWorkouts.getState().workouts[0]).toMatchObject({
+      name: "Core day",
       exerciseIds: [exerciseId],
     })
   })

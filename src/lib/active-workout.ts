@@ -9,6 +9,7 @@ import { EXERCISES_BY_ID } from "@/lib/exercises"
  */
 export type ActiveWorkoutSession = {
   workoutId: string
+  workoutName: string
   workoutDate: string
   exerciseIds: string[]
   completedIds: string[]

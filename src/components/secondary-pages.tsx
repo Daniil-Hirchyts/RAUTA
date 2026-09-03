@@ -161,7 +161,7 @@ export function WorkoutDestinationPage({
           left={<PageBack label="Back to exercises" onBack={onBack} />}
           title={`Add ${exerciseIds.length} exercise${exerciseIds.length === 1 ? "" : "s"}`}
         />
-        <div className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-6">
+        <div className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-6">
           <p className="text-sm text-muted-foreground">
             Start fresh or add them to a workout you already use.
           </p>
@@ -251,7 +251,7 @@ export function WorkoutFormPage({
     setSubmitting(true)
     const id = workout
       ? (updateWorkout(workout.id, { date, exerciseIds }), workout.id)
-      : createWorkout({ date, exerciseIds })
+      : createWorkout({ name: "", date, exerciseIds })
     triggerHaptic("success")
     onSaved(id)
   }
@@ -335,7 +335,7 @@ export function EquipmentPresetPage({
           title="Save preset"
         />
         <form
-          className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-6"
+          className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-6"
           id="equipment-preset-form"
           onSubmit={submit}
         >
@@ -409,9 +409,9 @@ export function ExerciseAlternativesPage({
           left={<PageBack label="Back to workout" onBack={onBack} />}
           title="Find alternative"
         />
-        <div className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-6">
+        <div className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-6">
           <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3">
-            <div className="isolate size-16 shrink-0 overflow-hidden rounded-2xl bg-[#111113]">
+            <div className="isolate size-16 shrink-0 overflow-hidden rounded-2xl bg-card">
               <AppImage
                 alt=""
                 className="h-full w-full object-contain mix-blend-screen"
@@ -433,7 +433,7 @@ export function ExerciseAlternativesPage({
           </div>
 
           {equipmentOptions.length > 1 ? (
-            <div className="-mx-5 mt-4 flex gap-2 overflow-x-auto px-5 pb-1">
+            <div className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1">
               {[null, ...equipmentOptions].map((option) => (
                 <button
                   aria-pressed={equipment === option}
@@ -466,7 +466,7 @@ export function ExerciseAlternativesPage({
                   onClick={() => onSwap(alternative)}
                   type="button"
                 >
-                  <span className="isolate size-20 shrink-0 overflow-hidden rounded-2xl bg-[#111113]">
+                  <span className="isolate size-20 shrink-0 overflow-hidden rounded-2xl bg-card">
                     <AppImage
                       alt=""
                       className="h-full w-full object-contain mix-blend-screen"

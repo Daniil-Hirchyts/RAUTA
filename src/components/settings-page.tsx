@@ -260,7 +260,7 @@ export function SettingsPage({
         />
 
         <div
-          className="app-scroll-region min-h-0 flex-1 space-y-6 overflow-y-auto px-5 pt-5 pb-6"
+          className="app-scroll-region min-h-0 flex-1 space-y-6 overflow-y-auto px-4 pt-5 pb-6"
           ref={scrollRef}
           tabIndex={-1}
         >

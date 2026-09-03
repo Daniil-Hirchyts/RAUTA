@@ -72,7 +72,9 @@ public class LiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     @available(iOS 16.1, *)
     private func attributes(from call: CAPPluginCall) -> WorkoutActivityAttributes {
         WorkoutActivityAttributes(
-            workoutId: call.getString("workoutId", "")
+            workoutId: call.getString("workoutId", ""),
+            workoutName: call.getString("workoutName", "Workout"),
+            workoutDate: call.getString("workoutDate", "")
         )
     }
 
@@ -81,7 +83,6 @@ public class LiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         let timerStart = call.getDouble("timerStartEpochMs", 0)
 
         return WorkoutActivityAttributes.ContentState(
-            workoutDate: call.getString("workoutDate", ""),
             exerciseName: call.getString("exerciseName", ""),
             completedCount: call.getInt("completedCount", 0),
             totalCount: call.getInt("totalCount", 0),

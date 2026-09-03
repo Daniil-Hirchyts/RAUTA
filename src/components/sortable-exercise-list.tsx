@@ -69,20 +69,20 @@ function SortableExerciseRow({
               : `Mark ${exercise.name} as done`
           }
           aria-pressed={status === "completed"}
-          className="interactive-spring grid w-12 shrink-0 place-items-center border-r border-border bg-muted/35 active:bg-muted/80"
+          className="interactive-spring grid w-12 shrink-0 place-items-center border-r border-border bg-card active:bg-muted/80"
           onClick={() => onToggleComplete(exercise.id)}
           type="button"
         >
           <AnimatedCheck checked={status === "completed"} className="size-7" />
         </button>
       ) : (
-        <div className="grid w-12 shrink-0 place-items-center border-r border-border bg-muted/35 text-base font-black text-primary tabular-nums">
+        <div className="grid w-12 shrink-0 place-items-center border-r border-border bg-card text-base font-black text-primary tabular-nums">
           {String(index + 1).padStart(2, "0")}
         </div>
       )}
       <button
         aria-label={`Open ${exercise.name} demonstration`}
-        className="interactive-spring isolate aspect-square h-32 shrink-0 bg-[#111113]"
+        className="interactive-spring isolate aspect-square h-32 shrink-0 bg-card"
         disabled={!onOpen}
         onClick={() => onOpen?.(exercise)}
         type="button"

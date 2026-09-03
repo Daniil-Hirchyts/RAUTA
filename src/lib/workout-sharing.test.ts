@@ -7,6 +7,7 @@ describe("workout sharing", () => {
   it("exports an ordered, readable exercise list", () => {
     const workout: Workout = {
       id: "workout",
+      name: "Workout",
       date: "2026-09-01",
       exerciseIds: ["0001", "0002"],
       completion: null,

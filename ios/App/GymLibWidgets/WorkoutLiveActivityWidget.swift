@@ -10,7 +10,10 @@ import WidgetKit
 struct WorkoutLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: WorkoutActivityAttributes.self) { context in
-            LockScreenCard(state: context.state)
+            LockScreenCard(
+                workoutDate: context.attributes.workoutDate,
+                state: context.state
+            )
                 .activityBackgroundTint(Color(WorkoutActivityPalette.background))
                 .activitySystemActionForegroundColor(Color(WorkoutActivityPalette.accent))
         } dynamicIsland: { context in
@@ -20,7 +23,7 @@ struct WorkoutLiveActivityWidget: Widget {
                         HStack(spacing: 5) {
                             WorkoutGlyph(isPaused: context.state.isPaused)
                                 .font(.system(size: 12, weight: .bold))
-                            Text(context.state.workoutDate)
+                            Text(context.attributes.workoutDate)
                                 .font(.system(size: 13, weight: .semibold))
                                 .lineLimit(1)
                         }
@@ -95,13 +98,14 @@ private struct StatusLabel: View {
 /// it has room to be useful.
 @available(iOS 16.1, *)
 private struct LockScreenCard: View {
+    var workoutDate: String
     var state: WorkoutActivityAttributes.ContentState
 
     var body: some View {
         VStack(spacing: 10) {
             HStack(spacing: 7) {
                 Image(systemName: "calendar")
-                Text(state.workoutDate)
+                Text(workoutDate)
                     .lineLimit(1)
                 Spacer(minLength: 8)
                 StatusLabel(state: state)

@@ -18,6 +18,7 @@ export type WorkoutCompletion = {
 
 export type Workout = {
   id: string
+  name: string
   date: string
   exerciseIds: string[]
   completion: WorkoutCompletion | null
@@ -27,10 +28,14 @@ export type Workout = {
 
 export type WorkoutsState = {
   workouts: Workout[]
-  createWorkout: (input: { date: string; exerciseIds: string[] }) => string
+  createWorkout: (input: {
+    name: string
+    date: string
+    exerciseIds: string[]
+  }) => string
   updateWorkout: (
     id: string,
-    patch: Partial<Pick<Workout, "date" | "exerciseIds">>
+    patch: Partial<Pick<Workout, "name" | "date" | "exerciseIds">>
   ) => void
   deleteWorkout: (id: string) => void
   duplicateWorkout: (id: string) => string | null
@@ -77,6 +82,7 @@ export function sanitizeWorkoutsState(value: unknown): PersistedWorkoutsState {
       return [
         {
           id,
+          name: validString(value.name, "Workout").trim() || "Workout",
           date,
           exerciseIds,
           completion:
@@ -132,11 +138,12 @@ export const useWorkouts = create<WorkoutsState>()(
   persist<WorkoutsState, [], [], PersistedWorkoutsState>(
     (set, get) => ({
       workouts: [],
-      createWorkout: ({ date, exerciseIds }) => {
+      createWorkout: ({ name, date, exerciseIds }) => {
         const id = makeId()
         const now = new Date().toISOString()
         const workout: Workout = {
           id,
+          name: name.trim() || "Workout",
           date,
           exerciseIds: [...new Set(exerciseIds)],
           completion: null,
@@ -153,6 +160,7 @@ export const useWorkouts = create<WorkoutsState>()(
               ? {
                   ...workout,
                   ...patch,
+                  name: patch.name?.trim() || workout.name,
                   updatedAt: new Date().toISOString(),
                 }
               : workout
@@ -170,6 +178,7 @@ export const useWorkouts = create<WorkoutsState>()(
         const copy: Workout = {
           ...source,
           id: newId,
+          name: `${source.name} copy`,
           date: toISODate(new Date()),
           completion: null,
           createdAt: now,
@@ -205,7 +214,7 @@ export const useWorkouts = create<WorkoutsState>()(
     }),
     {
       name: "gym-lib-workouts",
-      version: 3,
+      version: 2,
       migrate: (persistedState) => sanitizeWorkoutsState(persistedState),
       merge: (persistedState, currentState) => ({
         ...currentState,
