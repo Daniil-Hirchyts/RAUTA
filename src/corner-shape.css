@@ -1,0 +1,22 @@
+@plugin "@toolwind/corner-shape";
+
+/* Keep the existing radius system as the fallback, then soften rounded-square
+   components with a continuous curve between a circle and a squircle. */
+@layer base {
+  :where(*, *::before, *::after) {
+    corner-shape: superellipse(1.5);
+  }
+
+  :where(
+    button,
+    .rounded-full,
+    .app-surface,
+    .app-surface-grain,
+    .app-shell-header-button,
+    .exercise-back-to-top,
+    .preset-chip,
+    .t-like-particles i
+  ) {
+    @apply corner-round;
+  }
+}
