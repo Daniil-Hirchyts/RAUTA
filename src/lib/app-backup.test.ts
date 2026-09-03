@@ -32,7 +32,6 @@ describe("Gym Lib backup", () => {
     useWorkouts.getState().createWorkout({
       date: "2026-08-31",
       exerciseIds: [exerciseId],
-      name: "Core day",
     })
 
     const backup = createGymLibBackup()
@@ -44,7 +43,6 @@ describe("Gym Lib backup", () => {
     expect(useSettings.getState().soundChimesEnabled).toBe(true)
     expect(useWorkouts.getState().workouts[0]).toMatchObject({
       exerciseIds: [exerciseId],
-      name: "Core day",
     })
   })
 

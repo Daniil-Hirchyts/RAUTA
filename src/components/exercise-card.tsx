@@ -130,14 +130,18 @@ export function ExerciseCard({
         onPointerUp={handlePointerUp}
         type="button"
       >
-        <div className="isolate aspect-square overflow-hidden bg-card">
+        <div className="isolate aspect-square overflow-hidden bg-[#111113]">
           <AppImage
             alt={`${exercise.name} demonstration`}
-            className="h-full w-full object-contain mix-blend-screen"
+            className={cn(
+              "h-full w-full object-contain",
+              !native && "mix-blend-screen"
+            )}
             decoding="async"
             draggable={false}
             fetchPriority={native && index < 4 ? "high" : "low"}
             loading={native && index < 4 ? "eager" : "lazy"}
+            recycleOffscreen={native}
             src={exerciseAnimation(exercise)}
             style={{ filter: EXERCISE_ANIMATION_FILTER_LIGHT }}
           />

@@ -25,7 +25,6 @@ async function syncSession(session: ActiveWorkoutSession) {
     endDate: new Date(session.startedAt + durationMs).toISOString(),
     startDate: new Date(session.startedAt).toISOString(),
     workoutId: session.workoutId,
-    workoutName: session.workoutName,
   })
   useWorkouts
     .getState()

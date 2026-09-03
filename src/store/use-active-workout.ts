@@ -28,7 +28,7 @@ export type ActiveWorkoutState = {
   toggleComplete: (exerciseId: string) => void
   completeCurrent: () => void
   /** Keeps a running session aligned with edits made to the saved workout. */
-  syncExercises: (exerciseIds: string[]) => void
+  syncExercises: (exerciseIds: string[], movedExerciseId?: string) => void
   /** The same, for every part of the workout the session mirrors. */
   syncWorkout: (workout: Workout) => void
 }
@@ -54,7 +54,6 @@ function sanitizeSession(value: unknown): ActiveWorkoutSession | null {
 
   return {
     workoutId,
-    workoutName: validString(value.workoutName, "Workout").trim() || "Workout",
     workoutDate: validString(value.workoutDate),
     exerciseIds,
     completedIds,
@@ -116,7 +115,6 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
           lastOutcome: null,
           session: {
             workoutId: workout.id,
-            workoutName: workout.name,
             workoutDate: workout.date,
             exerciseIds,
             completedIds: [],
@@ -238,7 +236,7 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
             }
           })
         ),
-      syncExercises: (exerciseIds) =>
+      syncExercises: (exerciseIds, movedExerciseId) =>
         set((state) => {
           const { session } = state
           if (!session) return {}
@@ -253,11 +251,33 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
           const completedIds = session.completedIds.filter((id) =>
             next.includes(id)
           )
-          const currentExerciseId =
+          let currentExerciseId =
             session.currentExerciseId &&
             next.includes(session.currentExerciseId)
               ? session.currentExerciseId
               : (next.find((id) => !completedIds.includes(id)) ?? null)
+
+          // The active marker represents the current position in the workout.
+          // If that row itself is moved, keep the position active and advance
+          // to the first unfinished exercise now occupying/after that slot.
+          if (
+            movedExerciseId === session.currentExerciseId &&
+            session.currentExerciseId
+          ) {
+            const previousIndex = session.exerciseIds.indexOf(
+              session.currentExerciseId
+            )
+            const startIndex = Math.min(
+              Math.max(previousIndex, 0),
+              next.length - 1
+            )
+            const fromCurrentSlot = [
+              ...next.slice(startIndex),
+              ...next.slice(0, startIndex),
+            ]
+            currentExerciseId =
+              fromCurrentSlot.find((id) => !completedIds.includes(id)) ?? null
+          }
 
           return {
             session: {
@@ -275,15 +295,11 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
         // The date is on the Lock Screen card, so moving a workout has to
         // reach the session too — otherwise the card keeps naming the day the
         // workout used to be on.
-        if (
-          session.workoutDate !== workout.date ||
-          session.workoutName !== workout.name
-        ) {
+        if (session.workoutDate !== workout.date) {
           set(
             patchSession((current) => ({
               ...current,
               workoutDate: workout.date,
-              workoutName: workout.name,
             }))
           )
         }

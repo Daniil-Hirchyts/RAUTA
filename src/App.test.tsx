@@ -7,7 +7,8 @@ import {
   within,
 } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { beforeEach, describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { Capacitor } from "@capacitor/core"
 
 import { App } from "@/App"
 import { formatDateLong, formatDateShort, toISODate } from "@/lib/date"
@@ -76,6 +77,18 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Muscles" })).toBeInTheDocument()
   })
 
+  it("always uses workouts as the native launch page", () => {
+    const native = vi
+      .spyOn(Capacitor, "isNativePlatform")
+      .mockReturnValueOnce(true)
+    render(<App />)
+
+    expect(
+      screen.getByRole("heading", { name: "My workouts" })
+    ).toBeInTheDocument()
+    native.mockRestore()
+  })
+
   it("keeps the rounded content surface separate from bottom controls", () => {
     render(<App />)
 
@@ -85,7 +98,7 @@ describe("App", () => {
       '.app-page-layer[data-active="true"] .app-shell-header'
     )
     const footer = document.querySelector(
-      'footer[data-slot="app-controls"]:not([data-outgoing="true"])'
+      'footer[data-slot="app-controls"][data-active="true"]'
     )
 
     expect(document.querySelectorAll(".app-surface")).toHaveLength(1)
@@ -189,8 +202,15 @@ describe("App", () => {
     expect(
       screen.queryByRole("button", { name: "Full gym" })
     ).not.toBeInTheDocument()
+    // Naming a preset takes over the command band; the chip row it replaces
+    // steps out of the way while it does.
     const presetName = screen.getByLabelText("Preset name")
-    expect(presetDock).toContainElement(presetName)
+    expect(
+      document.querySelector(
+        'footer[data-slot="app-controls"][data-active="true"]'
+      )
+    ).toContainElement(presetName)
+    expect(document.querySelector(".equipment-presets-dock")).toBeNull()
     await user.type(presetName, "Travel")
     await user.click(screen.getByRole("button", { name: "Save preset" }))
     expect(screen.getByRole("button", { name: "Travel" })).toBeInTheDocument()
@@ -350,6 +370,56 @@ describe("App", () => {
     ).toBeInTheDocument()
   })
 
+  it("resets the favorites-only filter after leaving exercises", async () => {
+    const user = userEvent.setup()
+    const matches = filterExercises(EXERCISES, ["chest"], ["body weight"])
+    const [first] = matches
+    render(<App />)
+    await goToExercises(user, ["chest"], ["body weight"])
+
+    await user.click(
+      screen.getByRole("button", { name: `Add ${first.name} to favorites` })
+    )
+    await user.click(
+      screen.getByRole("button", { name: "Show favorites only" })
+    )
+    await user.click(
+      screen.getByRole("button", { name: `View ${first.name} details` })
+    )
+    await user.click(screen.getByRole("button", { name: "Back" }))
+
+    expect(
+      screen.getByRole("button", { name: "Show favorites only" })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByTestId("exercise-results").querySelectorAll("article")
+    ).toHaveLength(Math.min(matches.length, EXERCISE_PAGE_SIZE))
+    expect(
+      JSON.parse(localStorage.getItem("gym-lib-app-session") ?? "{}").state
+    ).not.toHaveProperty("favoritesOnly")
+  })
+
+  it("shows a floating back-to-top action after scrolling exercises", async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await goToExercises(user, ["chest"], ["body weight"])
+    const scroller = screen.getByLabelText("Matching exercises")
+    const scrollTo = vi.fn()
+    Object.defineProperties(scroller, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollTop: { configurable: true, value: 700, writable: true },
+      scrollTo: { configurable: true, value: scrollTo },
+    })
+
+    fireEvent.scroll(scroller)
+    const backToTop = await screen.findByRole("button", {
+      name: "Back to top",
+    })
+    await user.click(backToTop)
+
+    expect(scrollTo).toHaveBeenCalledWith({ behavior: "smooth", top: 0 })
+  })
+
   it("keeps the favorites filter available while selecting exercises", async () => {
     const user = userEvent.setup()
     const matches = filterExercises(EXERCISES, ["chest"], ["body weight"])
@@ -378,22 +448,23 @@ describe("App", () => {
       name: /add to workout/i,
     })
     expect(addToWorkout).toBeDisabled()
-    const selectionDock = addToWorkout.closest(".exercise-selection-dock")
-    expect(document.querySelector(".app-surface")).toContainElement(
-      selectionDock as HTMLElement
-    )
+    // The selection CTA sits in the command band with the rest of the row,
+    // not in a dock of its own above it.
     expect(
-      document.querySelector('footer[data-slot="app-controls"]')
-    ).not.toContainElement(addToWorkout)
+      document.querySelector(
+        'footer[data-slot="app-controls"][data-active="true"]'
+      )
+    ).toContainElement(addToWorkout)
+    expect(addToWorkout.closest(".app-surface")).toBeNull()
   })
 
-  it("opens exercise search inside the content surface without replacing shell controls", async () => {
+  it("opens exercise search into the shell band, in place of its buttons", async () => {
     const user = userEvent.setup()
     render(<App />)
     await goToExercises(user, ["chest"], ["body weight"])
 
     const footer = document.querySelector(
-      'footer[data-slot="app-controls"]:not([data-outgoing="true"])'
+      'footer[data-slot="app-controls"][data-active="true"]'
     )
     const searchButton = screen.getByRole("button", {
       name: "Search exercises",
@@ -405,17 +476,22 @@ describe("App", () => {
     const searchInput = screen.getByRole("textbox", {
       name: "Search exercises",
     })
-    const searchDock = searchInput.closest(".exercise-search-dock")
-    expect(document.querySelector(".app-surface")).toContainElement(
-      searchDock as HTMLElement
-    )
-    expect(footer).not.toContainElement(searchInput)
+    expect(footer).toContainElement(searchInput)
+    expect(searchInput.closest(".app-surface")).toBeNull()
+
+    // The field is the row now: the buttons it replaced are gone, all but the
+    // one that puts them back.
     expect(footer).toContainElement(
       screen.getByRole("button", { name: "Close search" })
     )
-    expect(footer).toContainElement(
-      screen.getByRole("button", { name: "Show favorites only" })
-    )
+    expect(
+      screen.queryByRole("button", { name: "Show favorites only" })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "Select" })
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Close search" }))
     expect(footer).toContainElement(
       screen.getByRole("button", { name: "Select" })
     )
@@ -480,7 +556,6 @@ describe("App", () => {
     const user = userEvent.setup()
     const [exercise] = filterExercises(EXERCISES, ["chest"], ["body weight"])
     const workoutId = useWorkouts.getState().createWorkout({
-      name: "Workout",
       date: "2026-09-08",
       exerciseIds: [],
     })

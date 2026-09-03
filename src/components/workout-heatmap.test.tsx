@@ -15,7 +15,6 @@ function daysAgo(days: number) {
 function makeWorkout(date: string, exercises: number): Workout {
   return {
     id: `workout-${date}`,
-    name: "Session",
     date,
     exerciseIds: Array.from({ length: exercises }, (_, index) => `${index}`),
     completion: null,

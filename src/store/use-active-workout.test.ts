@@ -6,7 +6,6 @@ import { useWorkouts, type Workout } from "@/store/use-workouts"
 
 const workout: Workout = {
   id: "workout-1",
-  name: "Push day",
   date: "2026-09-01",
   exerciseIds: ["0001", "0002", "0003"],
   completion: null,
@@ -36,7 +35,6 @@ describe("useActiveWorkout", () => {
 
     expect(session()).toMatchObject({
       workoutId: "workout-1",
-      workoutName: "Push day",
       exerciseIds: ["0001", "0002", "0003"],
       completedIds: [],
       currentExerciseId: "0001",
@@ -197,6 +195,16 @@ describe("useActiveWorkout", () => {
     })
   })
 
+  it("keeps the active position when the active exercise is reordered", () => {
+    state().start(workout)
+
+    state().syncExercises(["0002", "0003", "0001"], "0001")
+    expect(session()).toMatchObject({
+      exerciseIds: ["0002", "0003", "0001"],
+      currentExerciseId: "0002",
+    })
+  })
+
   it("ends the session when the workout is emptied out", () => {
     state().start(workout)
     state().syncExercises([])
@@ -233,7 +241,7 @@ describe("useActiveWorkout", () => {
         state: {
           session: {
             workoutId: "workout-1",
-            workoutName: "  ",
+            workoutName: "Legacy name",
             workoutDate: "2026-09-01",
             exerciseIds: ["0001", "0002", "nope"],
             completedIds: ["0001", "0099"],
@@ -249,7 +257,6 @@ describe("useActiveWorkout", () => {
 
     useActiveWorkout.persist.rehydrate()
     expect(session()).toMatchObject({
-      workoutName: "Workout",
       exerciseIds: ["0001", "0002"],
       completedIds: ["0001"],
       currentExerciseId: null,
@@ -260,7 +267,6 @@ describe("useActiveWorkout", () => {
 
   it("ends a session whose workout is deleted from anywhere in the app", () => {
     const workoutId = useWorkouts.getState().createWorkout({
-      name: "Push day",
       date: "2026-09-01",
       exerciseIds: ["0001", "0002"],
     })
@@ -272,7 +278,6 @@ describe("useActiveWorkout", () => {
 
   it("follows the workout to another date while it is being performed", () => {
     const workoutId = useWorkouts.getState().createWorkout({
-      name: "Push day",
       date: "2026-09-01",
       exerciseIds: ["0001", "0002"],
     })
@@ -284,7 +289,6 @@ describe("useActiveWorkout", () => {
 
   it("picks up an exercise added to the workout from elsewhere", () => {
     const workoutId = useWorkouts.getState().createWorkout({
-      name: "Push day",
       date: "2026-09-01",
       exerciseIds: ["0001"],
     })
@@ -301,12 +305,10 @@ describe("useActiveWorkout", () => {
 
   it("leaves the session alone when a different workout is deleted", () => {
     const running = useWorkouts.getState().createWorkout({
-      name: "Push day",
       date: "2026-09-01",
       exerciseIds: ["0001"],
     })
     const other = useWorkouts.getState().createWorkout({
-      name: "Pull day",
       date: "2026-09-02",
       exerciseIds: ["0002"],
     })

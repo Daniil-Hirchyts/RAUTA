@@ -25,7 +25,7 @@ import { SortableExerciseList } from "@/components/sortable-exercise-list"
 import { Button } from "@/components/ui/button"
 import { MatrixLoader } from "@/components/ui/matrix-loader"
 import { WorkoutCountdown } from "@/components/workout-countdown"
-import { WorkoutDatePopover } from "@/components/workout-date-popover"
+import { WorkoutDatePicker } from "@/components/workout-date-picker"
 import {
   currentExercise,
   exerciseStatus,
@@ -80,6 +80,7 @@ export function WorkoutDetailPage({
   const setCurrentExercise = useActiveWorkout(
     (state) => state.setCurrentExercise
   )
+  const syncExercises = useActiveWorkout((state) => state.syncExercises)
   const toggleComplete = useActiveWorkout((state) => state.toggleComplete)
 
   // A session belongs to exactly one workout: another workout's run must not
@@ -103,7 +104,8 @@ export function WorkoutDetailPage({
 
   // A running session mirrors the saved workout through the store, so an edit
   // made here — or from the find-an-exercise flow — reaches it either way.
-  const setExerciseIds = (exerciseIds: string[]) => {
+  const setExerciseIds = (exerciseIds: string[], movedExerciseId?: string) => {
+    if (movedExerciseId) syncExercises(exerciseIds, movedExerciseId)
     updateWorkout(workout.id, { exerciseIds })
   }
 
@@ -160,14 +162,14 @@ export function WorkoutDetailPage({
             isPast ? (
               formatDateLong(workout.date)
             ) : (
-              <WorkoutDatePopover
+              <WorkoutDatePicker
                 ariaLabel={`Change date, currently ${formatDateLong(workout.date)}`}
+                className="max-w-full truncate text-center"
                 date={workout.date}
                 onSelect={(date) => updateWorkout(workout.id, { date })}
-                triggerClassName="max-w-full truncate text-center"
               >
                 {formatDateLong(workout.date)}
-              </WorkoutDatePopover>
+              </WorkoutDatePicker>
             )
           }
         />

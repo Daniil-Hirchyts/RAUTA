@@ -16,7 +16,6 @@ export type LiveActivityContent = {
   /** Identifies the card: a different workout replaces it rather than
    *  updating it, because ActivityKit attributes are immutable. */
   workoutId: string
-  workoutName: string
   workoutDate: string
   /** Shown on the Lock Screen only; Dynamic Island stays workout-level. */
   exerciseName: string

@@ -4,7 +4,6 @@ import { isRecord, validString, validUniqueStrings } from "@/store/persistence"
 
 export type AppSession = {
   detailExerciseId: string | null
-  favoritesOnly: boolean
   pages: AppPage[]
   selectedIds: string[]
   selectMode: boolean
@@ -15,7 +14,6 @@ const APP_SESSION_VERSION = 3
 
 export const DEFAULT_APP_SESSION: AppSession = {
   detailExerciseId: null,
-  favoritesOnly: false,
   pages: [{ type: "workouts" }],
   selectedIds: [],
   selectMode: false,
@@ -96,7 +94,6 @@ function sanitizeSession(value: unknown): AppSession {
 
   return {
     detailExerciseId: validDetailExerciseId,
-    favoritesOnly: state.favoritesOnly === true,
     pages: sanitizePages(state.pages),
     selectedIds: validUniqueStrings(state.selectedIds, isExerciseId),
     selectMode: state.selectMode === true,

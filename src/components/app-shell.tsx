@@ -22,9 +22,11 @@ import { cn } from "@/lib/utils"
 export function AppShell({
   children,
   commandsVisible,
+  pageSwitching,
 }: {
   children: ReactNode
   commandsVisible: boolean
+  pageSwitching: boolean
 }) {
   const [controlsHost, setControlsHost] = useState<HTMLDivElement | null>(null)
 
@@ -32,6 +34,7 @@ export function AppShell({
     <main
       className="app-shell-frame relative mx-auto grid h-(--app-viewport-height) w-full touch-pan-y overflow-hidden bg-(--app-shell) sm:max-w-[430px]"
       data-commands={commandsVisible ? "visible" : "hidden"}
+      data-page-switching={pageSwitching ? "true" : undefined}
     >
       <ControlsHostContext.Provider value={controlsHost}>
         <div className="app-surface">{children}</div>
@@ -93,51 +96,22 @@ export function AppControls({
 }) {
   const host = useControlsHost()
   const page = usePageLayer()
-  const currentLayer = useRef({ children, key: transitionKey })
-  const [seenKey, setSeenKey] = useState(transitionKey)
-  const [outgoing, setOutgoing] = useState<{
-    children: ReactNode
-    key: string
-  } | null>(null)
 
-  if (seenKey !== transitionKey) {
-    setSeenKey(transitionKey)
-    setOutgoing(currentLayer.current)
-    currentLayer.current = { children, key: transitionKey }
-  } else {
-    currentLayer.current = { children, key: transitionKey }
-  }
-
-  useEffect(() => {
-    if (!outgoing) return
-    const timeout = window.setTimeout(() => setOutgoing(null), 200)
-    return () => window.clearTimeout(timeout)
-  }, [outgoing])
-
-  const footer = (
-    layer: { children: ReactNode; key: string },
-    active: boolean
-  ) => (
+  // No crossfade between action sets, and so no outgoing layer to keep around
+  // for one: the band shows the active page's buttons and nothing else, which
+  // makes them hittable the instant the page is.
+  const controls = (
     <footer
-      aria-hidden={!active}
+      aria-hidden={!page.active}
       className={cn("app-controls", className)}
-      data-active={active ? "true" : undefined}
-      data-outgoing={!active ? "true" : undefined}
+      data-active={page.active ? "true" : undefined}
       data-page-entry={page.entryId}
       data-slot="app-controls"
-      data-transition-key={layer.key}
-      inert={!active}
-      key={layer.key}
+      data-transition-key={transitionKey}
+      inert={!page.active}
     >
-      {layer.children}
+      {children}
     </footer>
-  )
-
-  const controls = (
-    <>
-      {outgoing ? footer(outgoing, false) : null}
-      {footer(currentLayer.current, page.active)}
-    </>
   )
 
   return host ? createPortal(controls, host) : controls

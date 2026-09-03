@@ -11,6 +11,7 @@ struct WorkoutActivityAttributes: ActivityAttributes {
     /// system can tell two consecutive updates apart cheaply; the web layer
     /// already skips updates that would not change anything here.
     struct ContentState: Codable, Hashable {
+        var workoutDate: String
         var exerciseName: String
         var completedCount: Int
         var totalCount: Int
@@ -24,8 +25,6 @@ struct WorkoutActivityAttributes: ActivityAttributes {
     }
 
     var workoutId: String
-    var workoutName: String
-    var workoutDate: String
 }
 
 @available(iOS 16.1, *)

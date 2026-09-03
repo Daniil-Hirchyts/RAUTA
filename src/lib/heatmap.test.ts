@@ -9,7 +9,6 @@ const TODAY = new Date(2026, 7, 31)
 function makeWorkout(date: string, exercises = 1): Workout {
   return {
     id: `${date}-${exercises}`,
-    name: "Session",
     date,
     exerciseIds: Array.from({ length: exercises }, (_, index) => `${index}`),
     completion: null,

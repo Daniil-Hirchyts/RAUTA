@@ -56,7 +56,6 @@ export async function saveCompletedWorkoutToHealth(input: {
   endDate: string
   activeCalories?: number
   workoutId: string
-  workoutName: string
 }) {
   if (!isNative()) return false
   const result = await Health.saveWorkout({
@@ -66,7 +65,6 @@ export async function saveCompletedWorkoutToHealth(input: {
     calories: input.activeCalories,
     metadata: {
       gymLibWorkoutId: input.workoutId,
-      workoutName: input.workoutName,
     },
   })
   return result.success

@@ -21,7 +21,6 @@ const { liveActivity } = await import("@/lib/live-activity")
 
 const workout: Workout = {
   id: "workout-1",
-  name: "Push day",
   date: "2026-09-01",
   exerciseIds: ["0001", "0002", "0003"],
   completion: null,
@@ -32,7 +31,6 @@ const workout: Workout = {
 function session(patch: Partial<ActiveWorkoutSession> = {}) {
   return {
     workoutId: "workout-1",
-    workoutName: "Push day",
     workoutDate: "2026-09-01",
     exerciseIds: ["0001", "0002", "0003"],
     completedIds: [],
@@ -50,7 +48,7 @@ describe("liveActivityContent", () => {
   it("describes the exercise in progress without sending artwork", () => {
     expect(liveActivityContent(session())).toMatchObject({
       workoutId: "workout-1",
-      workoutName: "Push day",
+      workoutDate: "Tuesday, September 1",
       exerciseName: "3/4 Sit-Up",
       completedCount: 0,
       totalCount: 3,
@@ -182,16 +180,13 @@ describe("startLiveActivitySync", () => {
 
   it("starts a new card when a different workout takes over", () => {
     useActiveWorkout.getState().start(workout)
-    useActiveWorkout
-      .getState()
-      .start({ ...workout, id: "workout-2", name: "Pull day" })
+    useActiveWorkout.getState().start({ ...workout, id: "workout-2" })
 
     expect(liveActivity.update).not.toHaveBeenCalled()
     expect(liveActivity.start).toHaveBeenCalledTimes(2)
     expect(liveActivity.start).toHaveBeenLastCalledWith(
       expect.objectContaining({
         workoutId: "workout-2",
-        workoutName: "Pull day",
       })
     )
   })

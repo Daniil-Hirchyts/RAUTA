@@ -19,7 +19,6 @@ export function liveActivityContent(
 
   return {
     workoutId: session.workoutId,
-    workoutName: session.workoutName,
     workoutDate: formatDateLong(session.workoutDate),
     exerciseName: exercise ? titleCase(exercise.name) : "All exercises done",
     completedCount: completed,

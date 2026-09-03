@@ -69,7 +69,6 @@ describe("app session v3", () => {
         state: {
           detailExerciseId: "0001",
           detailOpen: true,
-          favoritesOnly: true,
           selectedIds: ["0001"],
           selectMode: true,
           stage: 3,
@@ -80,7 +79,6 @@ describe("app session v3", () => {
     )
 
     expect(readAppSession()).toMatchObject({
-      favoritesOnly: true,
       pages: [
         { type: "workouts" },
         { type: "muscles", preferredWorkoutId: null },

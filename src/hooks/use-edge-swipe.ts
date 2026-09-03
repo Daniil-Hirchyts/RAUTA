@@ -12,9 +12,8 @@ const COMMIT_VELOCITY = 0.45
 export type SwipePeer = "prev" | "next" | null
 
 /**
- * iOS-style interactive page navigation: a drag that starts at either side
- * edge pulls the neighbouring page along with the finger, and releasing it
- * either commits the change or springs back.
+ * Edge-swipe navigation without visual page motion. A drag that starts at an
+ * edge is measured invisibly and commits an immediate page switch on release.
  *
  * Deliberately edge-only. The stages are full of horizontally scrollable
  * strips, tappable cards and a swipeable body map, so a gesture that started
@@ -33,7 +32,6 @@ export function useEdgeSwipe({
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const offset = useRef(0)
-  const paintFrame = useRef<number | null>(null)
 
   // Everything the in-flight gesture needs lives in a ref: re-rendering on
   // each touchmove is already paid for by the offset state, and the rest
@@ -51,27 +49,8 @@ export function useEdgeSwipe({
   } | null>(null)
 
   const reset = useCallback(() => {
-    if (paintFrame.current !== null) cancelAnimationFrame(paintFrame.current)
-    paintFrame.current = null
     gesture.current = null
     offset.current = 0
-    const element = containerRef.current
-    if (!element) return
-    delete element.dataset.dragging
-    delete element.dataset.swipePeer
-    element.style.removeProperty("--stack-drag-peer-x")
-    element.style.removeProperty("--stack-drag-x")
-  }, [])
-
-  const paintOffset = useCallback(() => {
-    paintFrame.current = null
-    const element = containerRef.current
-    if (!element) return
-    element.style.setProperty("--stack-drag-x", `${offset.current}px`)
-    element.style.setProperty(
-      "--stack-drag-peer-x",
-      `${offset.current * 0.1}px`
-    )
   }, [])
 
   const onTouchStart = useCallback(
@@ -123,12 +102,6 @@ export function useEdgeSwipe({
         // So does a drag heading away from the page it would reveal.
         if (state.intent === "prev" ? dx <= 0 : dx >= 0) return reset()
         state.decided = true
-        const element = containerRef.current
-        if (element) {
-          element.dataset.dragging = "true"
-          element.dataset.swipePeer =
-            state.intent === "prev" ? "prev" : "next"
-        }
       }
 
       const dt = event.timeStamp - state.lastT
@@ -143,11 +116,8 @@ export function useEdgeSwipe({
           ? Math.max(0, Math.min(dx, state.width))
           : Math.min(0, Math.max(dx, -state.width))
       offset.current = clamped
-      if (paintFrame.current === null) {
-        paintFrame.current = requestAnimationFrame(paintOffset)
-      }
     },
-    [paintOffset, reset]
+    [reset]
   )
 
   const onTouchEnd = useCallback(
@@ -162,9 +132,6 @@ export function useEdgeSwipe({
           : state.velocity < -COMMIT_VELOCITY
       const commit = travelled > COMMIT_RATIO || flicked
 
-      // Drop the drag first: the pages keep their current on-screen transform
-      // and CSS animates them the rest of the way, whether that is onward to
-      // the new stage or back to the old one.
       reset()
       if (commit) {
         if (state.intent === "prev") onBack()

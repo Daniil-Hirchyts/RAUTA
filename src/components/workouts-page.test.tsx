@@ -25,12 +25,10 @@ describe("WorkoutsPage", () => {
 
   it("marks the workout being performed and leaves the others alone", () => {
     const running = useWorkouts.getState().createWorkout({
-      name: "Push day",
       date: "2026-09-01",
       exerciseIds: ["0001", "0002"],
     })
     useWorkouts.getState().createWorkout({
-      name: "Pull day",
       date: "2026-09-02",
       exerciseIds: ["0003"],
     })
@@ -51,7 +49,6 @@ describe("WorkoutsPage", () => {
 
   it("says so when the session is paused", () => {
     const id = useWorkouts.getState().createWorkout({
-      name: "Push day",
       date: "2026-09-01",
       exerciseIds: ["0001"],
     })
@@ -66,7 +63,6 @@ describe("WorkoutsPage", () => {
 
   it("shows plain exercise counts when nothing is running", () => {
     useWorkouts.getState().createWorkout({
-      name: "Push day",
       date: "2026-09-01",
       exerciseIds: ["0001", "0002"],
     })
@@ -79,7 +75,6 @@ describe("WorkoutsPage", () => {
 
   it("separates past workouts and shows their completion stats", () => {
     const pastId = useWorkouts.getState().createWorkout({
-      name: "Past session",
       date: "2026-08-31",
       exerciseIds: ["0001", "0002"],
     })
@@ -92,7 +87,6 @@ describe("WorkoutsPage", () => {
       startedAt: "2026-08-31T10:00:00.000Z",
     })
     useWorkouts.getState().createWorkout({
-      name: "Next session",
       date: "2026-09-02",
       exerciseIds: ["0003"],
     })

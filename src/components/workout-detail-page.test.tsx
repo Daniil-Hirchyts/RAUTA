@@ -69,7 +69,6 @@ describe("WorkoutDetailPage", () => {
     callbacks: Partial<DetailCallbacks> = {}
   ) {
     const workoutId = useWorkouts.getState().createWorkout({
-      name: "Workout",
       date: "2026-09-01",
       exerciseIds,
     })
@@ -101,7 +100,6 @@ describe("WorkoutDetailPage", () => {
   it("confirms a delete in a popover before touching the workout", async () => {
     const user = userEvent.setup()
     const workoutId = useWorkouts.getState().createWorkout({
-      name: "Workout",
       date: "2026-09-01",
       exerciseIds: ["0001"],
     })
@@ -130,7 +128,6 @@ describe("WorkoutDetailPage", () => {
   it("opens the alternatives page for a busy exercise", async () => {
     const user = userEvent.setup()
     const workoutId = useWorkouts.getState().createWorkout({
-      name: "Workout",
       date: "2026-09-01",
       exerciseIds: ["0001"],
     })
@@ -231,7 +228,6 @@ describe("WorkoutDetailPage", () => {
     useActiveWorkout.setState({
       session: {
         workoutId: "some-other-workout",
-        workoutName: "Pull day",
         workoutDate: "2026-09-02",
         exerciseIds: ["0002"],
         completedIds: [],
@@ -340,7 +336,6 @@ describe("WorkoutDetailPage", () => {
     const user = userEvent.setup()
     const onAddExercise = vi.fn()
     const workoutId = useWorkouts.getState().createWorkout({
-      name: "Workout",
       date: "2026-09-01",
       exerciseIds: ["0001"],
     })

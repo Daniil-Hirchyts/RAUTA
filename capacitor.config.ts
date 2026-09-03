@@ -14,6 +14,8 @@ const config: CapacitorConfig = {
     // areas with env(safe-area-inset-*), so let it draw edge to edge and keep
     // WebKit from adding scroll-view insets of its own.
     contentInset: "never",
+    // The same black the shell paints (--app-shell): what shows around and
+    // behind the web view is the app's own surround, not a mismatched edge.
     backgroundColor: "#000000",
     // The shell itself is overflow-hidden and every scrolling region is an
     // inner container, so the web view's own scroll view only ever produces

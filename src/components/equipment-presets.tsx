@@ -138,7 +138,7 @@ export function EquipmentPresetEditor({
     >
       <Input
         aria-label="Preset name"
-        className="h-11 min-w-0 flex-1 rounded-full border-border bg-card px-4 shadow-[0_8px_24px_rgb(0_0_0/0.18)]"
+        className="h-(--app-controls-height) min-w-0 flex-1 rounded-full border-border bg-card px-4 shadow-[0_8px_24px_rgb(0_0_0/0.18)]"
         enterKeyHint="done"
         onChange={(event) => setName(event.target.value)}
         placeholder="Preset name"
@@ -148,9 +148,9 @@ export function EquipmentPresetEditor({
       <Button
         aria-label="Save preset"
         disabled={!canSave}
-        size="icon"
+        size="icon-cta"
         type="submit"
-        variant="ghost"
+        variant="secondary"
       >
         <Check className="size-5" />
       </Button>

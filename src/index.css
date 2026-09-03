@@ -49,8 +49,8 @@
      shell, so size it from the large viewport instead. Older browsers fall
      back to the long-established 100vh behavior. */
   --app-viewport-height: 100vh;
-  --app-shell: oklch(0.32 0 0);
-  --app-surface-gutter: 0.25rem;
+  --app-shell: oklch(0 0 0);
+  --app-surface-gutter: 0.125rem;
   /* The display's own corner radius, set per device by the block below. The
      surface is inset by the gutter, so its corners are concentric with the
      hardware only when they curve by that much less — that is what keeps the
@@ -330,6 +330,17 @@
   bottom: var(--app-surface-gutter);
 }
 
+/* A page change is an intentional hard cut. Shell geometry and command
+   visibility adopt the destination state in the same paint instead of
+   animating because a different page happens to expose different controls. */
+.app-shell-frame[data-page-switching="true"] .app-surface,
+.app-shell-frame[data-page-switching="true"] .app-surface-grain,
+.app-shell-frame[data-page-switching="true"] .app-controls-host,
+.app-shell-frame[data-page-switching="true"] .app-controls-host > * {
+  transition: none !important;
+  animation: none !important;
+}
+
 /* WKWebView composites mix-blend-mode separately from the fixed drag layer.
    Paint the same grain inside the moving card as well, so that card can never
    visually jump above the texture while it is being reordered. */
@@ -474,9 +485,7 @@ html[data-native="ios"] .app-drag-grain {
   background: transparent;
 }
 
-.equipment-presets-dock,
-.exercise-selection-dock,
-.exercise-search-dock {
+.equipment-presets-dock {
   position: absolute;
   z-index: 20;
   inset: auto 0 0;
@@ -491,9 +500,22 @@ html[data-native="ios"] .app-drag-grain {
   pointer-events: none;
 }
 
-.exercise-selection-dock,
-.exercise-search-dock {
-  padding-inline: 1.25rem;
+.exercise-back-to-top {
+  position: absolute;
+  z-index: 25;
+  right: 1rem;
+  bottom: 1rem;
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border: 1px solid color-mix(in oklch, var(--primary) 55%, var(--border));
+  border-radius: 9999px;
+  background: color-mix(in oklch, var(--card) 90%, transparent);
+  color: var(--primary);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 0.4);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 
 .active-workout-dock {
@@ -569,34 +591,21 @@ html[data-native="ios"] .app-scroll-content {
   transform: translate3d(0, calc(100% + var(--app-surface-gutter)), 0);
 }
 
-/* Both sets occupy the same box, so which one shows is a matter of opacity
-   rather than of which happened to render first. */
+/* Every mounted page keeps its actions here; which set shows is a matter of
+   opacity rather than of which happened to render first. The active set is
+   simply there — buttons never animate in. */
 .app-controls-host > * {
   position: absolute;
   inset: auto 0 0;
   width: 100%;
   opacity: 0;
-  transform: translate3d(0, 8px, 0) scale(0.985);
-  transform-origin: 50% 100%;
   pointer-events: none;
-  transition:
-    opacity 200ms var(--ease-smooth-out),
-    transform 200ms var(--ease-smooth-out);
 }
 
 .app-controls-host > [data-active="true"] {
   z-index: 2;
   opacity: 1;
-  transform: translate3d(0, 0, 0) scale(1);
   pointer-events: auto;
-  animation: app-controls-enter 200ms var(--ease-smooth-out) both;
-}
-
-@keyframes app-controls-enter {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 8px, 0) scale(0.985);
-  }
 }
 
 /* Flat and fully opaque: the band is a piece of the shell, so it paints the
@@ -653,9 +662,9 @@ html[data-native="ios"] .app-scroll-content {
   stroke: none;
 }
 
-/* Pages are retained inside the one clipped surface. Only the active page and
-   its immediate parent paint; deeper history stays mounted and inert so local
-   state and scroll positions survive a back navigation. */
+/* Pages stay mounted and inert so back navigation preserves local state and
+   scroll position. Switching pages is a hard cut with no transform, staging,
+   or compositor transition. */
 .app-page-stack {
   position: absolute;
   inset: 0;
@@ -672,50 +681,13 @@ html[data-native="ios"] .app-scroll-content {
   overflow: hidden;
   background: var(--background);
   visibility: hidden;
-  transform: translate3d(100%, 0, 0);
   pointer-events: none;
-  transition: transform 300ms var(--ease-smooth-out);
-  will-change: transform;
   contain: layout paint style;
-  backface-visibility: hidden;
 }
 
 .app-page-layer[data-active="true"] {
   visibility: visible;
-  transform: translate3d(0, 0, 0);
   pointer-events: auto;
-}
-
-.app-page-layer[data-previous="true"] {
-  visibility: visible;
-  transform: translate3d(-10%, 0, 0);
-}
-
-.app-page-layer[data-leaving="true"] {
-  visibility: visible;
-  z-index: 2;
-  transform: translate3d(100%, 0, 0);
-}
-
-/* A pushed page first mounts offscreen and inert. React gives WebKit two paint
-   frames to build its layer, then flips data-ready and lets this transform run
-   without competing with the initial DOM/image work. */
-html[data-native="ios"]
-  .app-page-layer[data-active="true"][data-entering="true"] {
-  transform: translate3d(100%, 0, 0);
-}
-
-html[data-native="ios"]
-  .app-page-layer[data-active="true"][data-entering="true"][data-ready="true"] {
-  transform: translate3d(0, 0, 0);
-}
-
-html[data-native="ios"]
-  .app-page-stack[data-direction="forward"][data-entering="true"]:not(
-    [data-transition-ready="true"]
-  )
-  .app-page-layer[data-previous="true"] {
-  transform: translate3d(0, 0, 0);
 }
 
 html[data-native="ios"] .app-page-layer::after {
@@ -728,18 +700,6 @@ html[data-native="ios"] .app-page-layer::after {
   background: linear-gradient(to bottom, transparent, var(--background));
   content: "";
   pointer-events: none;
-}
-
-.app-page-stack[data-dragging="true"] .app-page-layer {
-  transition: none;
-}
-
-.app-page-stack[data-dragging="true"] .app-page-layer[data-active="true"] {
-  transform: translate3d(var(--stack-drag-x, 0px), 0, 0);
-}
-
-.app-page-stack[data-dragging="true"] .app-page-layer[data-previous="true"] {
-  transform: translate3d(calc(-10% + var(--stack-drag-peer-x, 0px)), 0, 0);
 }
 
 @keyframes t-digit-pop-in {

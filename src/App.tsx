@@ -1,6 +1,5 @@
 import {
   Fragment,
-  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -10,6 +9,7 @@ import {
   type CSSProperties,
 } from "react"
 import {
+  ArrowUp,
   ChevronLeft,
   FlipHorizontal2,
   Home,
@@ -66,8 +66,8 @@ import {
   supportingFromIndex,
 } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
-import { isNative } from "@/lib/native"
 import { syncICloudNow } from "@/lib/icloud-sync"
+import { isNative } from "@/lib/native"
 import { titleCase } from "@/lib/text"
 import { cn } from "@/lib/utils"
 import { equipmentImage } from "@/lib/visuals"
@@ -76,9 +76,12 @@ import {
   pageHasControls,
   type AppPage,
   type AppPageEntry,
-  type NavigationDirection,
 } from "@/store/app-navigation"
-import { readAppSession, writeAppSession } from "@/store/app-session"
+import {
+  DEFAULT_APP_SESSION,
+  readAppSession,
+  writeAppSession,
+} from "@/store/app-session"
 import { useActiveWorkout } from "@/store/use-active-workout"
 import { useFavorites } from "@/store/use-favorites"
 import { useFilters } from "@/store/use-filters"
@@ -175,17 +178,11 @@ function FlowProgress({ stage }: { stage: PickerStage }) {
   )
 }
 
-function prefersReducedMotion() {
-  return (
-    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
-  )
-}
-
 export function App() {
   const [initialSession] = useState(readAppSession)
   const [navigation, dispatchNavigation] = useReducer(
     appNavigationReducer,
-    initialSession.pages,
+    isNative() ? DEFAULT_APP_SESSION.pages : initialSession.pages,
     (initialPages) => ({
       direction: "forward" as const,
       pages: initialPages.map(createPageEntry),
@@ -194,14 +191,11 @@ export function App() {
   const pages = navigation.pages
   const pagesRef = useRef(pages)
   const focusOrigins = useRef(new Map<string, HTMLElement>())
-  const popTimer = useRef<number | null>(null)
-  const entryFrame = useRef<number | null>(null)
-  const entryTimer = useRef<number | null>(null)
-  const entryCompletion = useRef<(() => void) | null>(null)
-  const [direction, setDirection] = useState<NavigationDirection>("forward")
-  const [enteringId, setEnteringId] = useState<string | null>(null)
-  const [leavingId, setLeavingId] = useState<string | null>(null)
+  const pageSwitchFrame = useRef<number | null>(null)
+  const [pageSwitching, setPageSwitching] = useState(false)
   const [countdownOpen, setCountdownOpen] = useState(false)
+  const [favoritesOnly, setFavoritesOnly] = useState(false)
+  const [showBackToTop, setShowBackToTop] = useState(false)
 
   useEffect(() => {
     pagesRef.current = pages
@@ -209,9 +203,9 @@ export function App() {
 
   useEffect(
     () => () => {
-      if (popTimer.current !== null) window.clearTimeout(popTimer.current)
-      if (entryFrame.current !== null) cancelAnimationFrame(entryFrame.current)
-      if (entryTimer.current !== null) window.clearTimeout(entryTimer.current)
+      if (pageSwitchFrame.current !== null) {
+        cancelAnimationFrame(pageSwitchFrame.current)
+      }
     },
     []
   )
@@ -224,160 +218,74 @@ export function App() {
     })
   }, [])
 
-  const cancelEntryTransition = useCallback(() => {
-    if (entryFrame.current !== null) cancelAnimationFrame(entryFrame.current)
-    if (entryTimer.current !== null) window.clearTimeout(entryTimer.current)
-    entryFrame.current = null
-    entryTimer.current = null
-    entryCompletion.current = null
-    const stack = document.querySelector<HTMLElement>(".app-page-stack")
-    if (stack) {
-      delete stack.dataset.transitionReady
-      stack
-        .querySelectorAll<HTMLElement>(".app-page-layer[data-ready]")
-        .forEach((layer) => delete layer.dataset.ready)
+  const suppressPageSwitchMotion = useCallback(() => {
+    if (pageSwitchFrame.current !== null) {
+      cancelAnimationFrame(pageSwitchFrame.current)
     }
+    setPageSwitching(true)
+    pageSwitchFrame.current = requestAnimationFrame(() => {
+      pageSwitchFrame.current = null
+      setPageSwitching(false)
+    })
   }, [])
-
-  const beginEntryTransition = useCallback(
-    (entryId: string, completion?: () => void) => {
-      cancelEntryTransition()
-      entryCompletion.current = completion ?? null
-      setEnteringId(entryId)
-
-      const finish = () => {
-        startTransition(() => {
-          setEnteringId((current) => (current === entryId ? null : current))
-        })
-        const stack = document.querySelector<HTMLElement>(".app-page-stack")
-        if (stack) {
-          delete stack.dataset.transitionReady
-          stack
-            .querySelectorAll<HTMLElement>(".app-page-layer[data-ready]")
-            .forEach((layer) => delete layer.dataset.ready)
-        }
-        entryCompletion.current?.()
-        entryCompletion.current = null
-        entryTimer.current = null
-        focusPage(entryId)
-      }
-
-      // The browser already composites the regular transform transition. The
-      // two-frame staging is only for the slower WKWebView path; keeping it
-      // out of the browser also prevents a focus click from racing a React
-      // page remount in tests and desktop Safari.
-      if (!isNative() || prefersReducedMotion()) {
-        entryTimer.current = window.setTimeout(finish, 0)
-        return
-      }
-
-      // Mount the next page at +100%, then give WKWebView two complete paint
-      // opportunities before moving either large page layer.
-      entryFrame.current = requestAnimationFrame(() => {
-        entryFrame.current = requestAnimationFrame(() => {
-          entryFrame.current = null
-          const stack = document.querySelector<HTMLElement>(".app-page-stack")
-          if (stack) {
-            stack.dataset.transitionReady = "true"
-            stack
-              .querySelector<HTMLElement>(`[data-page-entry="${entryId}"]`)
-              ?.setAttribute("data-ready", "true")
-          }
-          entryTimer.current = window.setTimeout(finish, 310)
-        })
-      })
-    },
-    [cancelEntryTransition, focusPage]
-  )
 
   const pushPage = useCallback(
     (page: AppPage) => {
-      if (leavingId) {
-        if (popTimer.current !== null) window.clearTimeout(popTimer.current)
-        dispatchNavigation({ type: "pop" })
-        focusOrigins.current.delete(leavingId)
-        setLeavingId(null)
-        popTimer.current = null
+      if (pagesRef.current.at(-1)?.page.type === "exercises") {
+        setFavoritesOnly(false)
       }
       const entry = createPageEntry(page)
       const activeElement = document.activeElement
       if (activeElement instanceof HTMLElement) {
         focusOrigins.current.set(entry.id, activeElement)
       }
-      setDirection("forward")
-      beginEntryTransition(entry.id)
+      suppressPageSwitchMotion()
       dispatchNavigation({ type: "push", entry })
+      focusPage(entry.id)
     },
-    [beginEntryTransition, leavingId]
+    [focusPage, suppressPageSwitchMotion]
   )
 
   const popPage = useCallback(() => {
     const current = pagesRef.current
-    if (current.length <= 1 || leavingId) return
+    if (current.length <= 1) return
     const leaving = current[current.length - 1]
-    setDirection("back")
-    setLeavingId(leaving.id)
-    popTimer.current = window.setTimeout(
-      () => {
-        dispatchNavigation({ type: "pop" })
-        setLeavingId(null)
-        popTimer.current = null
-        const origin = focusOrigins.current.get(leaving.id)
-        focusOrigins.current.delete(leaving.id)
-        requestAnimationFrame(() => origin?.focus({ preventScroll: true }))
-      },
-      prefersReducedMotion() ? 0 : 290
-    )
-  }, [leavingId])
+    if (leaving.page.type === "exercises") setFavoritesOnly(false)
+    suppressPageSwitchMotion()
+    dispatchNavigation({ type: "pop" })
+    const origin = focusOrigins.current.get(leaving.id)
+    focusOrigins.current.delete(leaving.id)
+    requestAnimationFrame(() => origin?.focus({ preventScroll: true }))
+  }, [suppressPageSwitchMotion])
 
   const replacePage = useCallback(
     (page: AppPage) => {
-      if (popTimer.current !== null) {
-        window.clearTimeout(popTimer.current)
-        popTimer.current = null
-      }
-      if (leavingId) {
-        dispatchNavigation({ type: "pop" })
-        focusOrigins.current.delete(leavingId)
-        setLeavingId(null)
+      if (pagesRef.current.at(-1)?.page.type === "exercises") {
+        setFavoritesOnly(false)
       }
       const entry = createPageEntry(page)
-      const current = leavingId
-        ? pagesRef.current.slice(0, -1)
-        : pagesRef.current
-      const desired = [...current.slice(0, -1), entry]
-      setDirection("forward")
-      beginEntryTransition(entry.id, () =>
-        dispatchNavigation({ type: "reset", entries: desired })
-      )
-      dispatchNavigation({ type: "push", entry })
+      suppressPageSwitchMotion()
+      dispatchNavigation({ type: "replace", entry })
+      focusPage(entry.id)
     },
-    [beginEntryTransition, leavingId]
+    [focusPage, suppressPageSwitchMotion]
   )
 
   const resetPages = useCallback(
     (nextPages: AppPage[]) => {
-      if (popTimer.current !== null) {
-        window.clearTimeout(popTimer.current)
-        popTimer.current = null
-      }
-      cancelEntryTransition()
       const entries = nextPages.map(createPageEntry)
       const active = entries.at(-1)
       if (!active) return
-      setDirection("back")
-      setEnteringId(null)
-      setLeavingId(null)
+      setFavoritesOnly(false)
+      suppressPageSwitchMotion()
       focusOrigins.current.clear()
       dispatchNavigation({ type: "reset", entries })
       focusPage(active.id)
     },
-    [cancelEntryTransition, focusPage]
+    [focusPage, suppressPageSwitchMotion]
   )
 
-  const visualActiveIndex = leavingId
-    ? Math.max(0, pages.length - 2)
-    : pages.length - 1
+  const visualActiveIndex = pages.length - 1
   const activeEntry = pages[visualActiveIndex] ?? pages[0]
   const activePage = activeEntry.page
 
@@ -392,9 +300,6 @@ export function App() {
   const favoriteIds = useFavorites((state) => state.favoriteIds)
   const workouts = useWorkouts((state) => state.workouts)
 
-  const [favoritesOnly, setFavoritesOnly] = useState(
-    initialSession.favoritesOnly
-  )
   const [selectMode, setSelectMode] = useState(initialSession.selectMode)
   const [selectedIds, setSelectedIds] = useState<string[]>(
     initialSession.selectedIds
@@ -431,26 +336,47 @@ export function App() {
     EXERCISE_PAGE_SIZE,
     activePage.type === "exercises"
   )
+
+  useEffect(() => {
+    if (activePage.type !== "exercises") return
+
+    const scroller = exercisesScrollRef.current
+    if (!scroller) return
+    let frame: number | null = null
+    const update = () => {
+      frame = null
+      setShowBackToTop(
+        scroller.scrollTop > Math.max(480, scroller.clientHeight)
+      )
+    }
+    const onScroll = () => {
+      if (frame === null) frame = requestAnimationFrame(update)
+    }
+
+    update()
+    scroller.addEventListener("scroll", onScroll, { passive: true })
+    return () => {
+      if (frame !== null) cancelAnimationFrame(frame)
+      scroller.removeEventListener("scroll", onScroll)
+    }
+  }, [activePage.type, exercisesScrollRef])
+
   const pagedExercises = visibleExercises.slice(0, visibleCount)
   const supportingIndex = useMemo(
     () => supportingFromIndex(visibleExercises, selectedMuscles),
     [selectedMuscles, visibleExercises]
   )
 
-  const persistedPages = useMemo(
-    () => (leavingId ? pages.slice(0, Math.max(1, pages.length - 1)) : pages),
-    [leavingId, pages]
-  )
+  const persistedPages = pages
   const appSession = useMemo(
     () => ({
       detailExerciseId:
         activePage.type === "exercise-detail" ? activePage.exerciseId : null,
-      favoritesOnly,
       pages: persistedPages.map((entry) => entry.page),
       selectedIds,
       selectMode,
     }),
-    [activePage, favoritesOnly, persistedPages, selectedIds, selectMode]
+    [activePage, persistedPages, selectedIds, selectMode]
   )
   const latestSession = useRef(appSession)
 
@@ -531,7 +457,7 @@ export function App() {
   }, [searchOpen])
 
   const { containerRef, handlers } = useEdgeSwipe({
-    canGoBack: pages.length > 1 && !leavingId && !enteringId,
+    canGoBack: pages.length > 1,
     canGoForward: false,
     onBack: popPage,
     onForward: () => undefined,
@@ -544,23 +470,15 @@ export function App() {
       <HapticLayer />
       <SettingsEffects />
       <SvgFilterDefs />
-      <AppShell commandsVisible={commandBandVisible}>
-        <div
-          className="app-page-stack"
-          data-direction={direction}
-          data-entering={enteringId ? "true" : undefined}
-          ref={containerRef}
-          {...handlers}
-        >
+      <AppShell
+        commandsVisible={commandBandVisible}
+        pageSwitching={pageSwitching}
+      >
+        <div className="app-page-stack" ref={containerRef} {...handlers}>
           {pages.map((entry, index) => {
             const page = entry.page
             const active = index === visualActiveIndex
-            const previous = index === visualActiveIndex - 1
-            // The incoming page becomes the semantic active page immediately
-            // (so VoiceOver and keyboard users can reach its heading); only
-            // its visual layer waits for the two-paint preparation above.
             const interactive = active
-            const leaving = entry.id === leavingId
             const stage = stageForPage(page)
             let content = null
 
@@ -834,38 +752,30 @@ export function App() {
                       </section>
                     ) : null}
 
-                    {stage === 2 ? (
-                      <div className="app-surface-bottom-dock equipment-presets-dock">
-                        {presetEditorOpen ? (
-                          <EquipmentPresetEditor
-                            className="px-5"
-                            onSaved={() => setPresetEditorOpen(false)}
-                          />
-                        ) : (
-                          <EquipmentPresets className="px-5" />
-                        )}
-                      </div>
+                    {stage === 3 && showBackToTop ? (
+                      <button
+                        aria-label="Back to top"
+                        className="exercise-back-to-top interactive-spring"
+                        onClick={() => {
+                          triggerHaptic("light")
+                          exercisesScrollRef.current?.scrollTo({
+                            behavior: window.matchMedia?.(
+                              "(prefers-reduced-motion: reduce)"
+                            ).matches
+                              ? "auto"
+                              : "smooth",
+                            top: 0,
+                          })
+                        }}
+                        type="button"
+                      >
+                        <ArrowUp className="size-5" />
+                      </button>
                     ) : null}
 
-                    {stage === 3 && searchOpen ? (
-                      <div className="app-surface-bottom-dock exercise-search-dock">
-                        <ExerciseSearch onChange={setSearch} value={search} />
-                      </div>
-                    ) : stage === 3 && selectMode ? (
-                      <div className="app-surface-bottom-dock exercise-selection-dock">
-                        <Button
-                          className="pointer-events-auto w-full"
-                          disabled={selectedIds.length === 0}
-                          onClick={() =>
-                            addSelectionToWorkout(preferredWorkoutId)
-                          }
-                          size="cta"
-                        >
-                          Add to workout
-                          {selectedIds.length > 0
-                            ? ` (${selectedIds.length})`
-                            : ""}
-                        </Button>
+                    {stage === 2 && !presetEditorOpen ? (
+                      <div className="app-surface-bottom-dock equipment-presets-dock">
+                        <EquipmentPresets className="px-5" />
                       </div>
                     ) : null}
                   </AppSurface>
@@ -873,126 +783,170 @@ export function App() {
                   <AppControls
                     transitionKey={`picker:${stage}:${selectMode}:${presetEditorOpen}:${selectedMuscles.length}:${selectedEquipment.length}`}
                   >
-                    <div className="relative flex gap-2.5">
-                      {stage === 1 ? (
+                    {stage === 2 && presetEditorOpen ? (
+                      <div className="flex items-center gap-2.5">
+                        <EquipmentPresetEditor
+                          className="flex-1"
+                          onSaved={() => setPresetEditorOpen(false)}
+                        />
                         <Button
-                          aria-label={`Show ${bodySide === "front" ? "back" : "front"}`}
-                          onClick={() => {
-                            triggerHaptic("selection")
-                            setBodySide((side) =>
-                              side === "front" ? "back" : "front"
-                            )
-                          }}
-                          size="icon-cta"
-                          variant="secondary"
-                        >
-                          <FlipHorizontal2 className="size-5" />
-                        </Button>
-                      ) : null}
-                      {stage === 1 && selectedMuscles.length > 0 ? (
-                        <Button
-                          aria-label="Clear muscle selection"
-                          onClick={() => setMuscles([])}
+                          aria-label="Close preset editor"
+                          onClick={() => setPresetEditorOpen(false)}
                           size="icon-cta"
                           variant="secondary"
                         >
                           <X className="size-5" />
                         </Button>
-                      ) : null}
-                      {stage === 2 && selectedEquipment.length > 0 ? (
+                      </div>
+                    ) : stage === 3 && searchOpen ? (
+                      <div className="flex items-center gap-2.5">
+                        <ExerciseSearch onChange={setSearch} value={search} />
                         <Button
-                          aria-label="Clear equipment selection"
-                          onClick={() => setEquipment([])}
-                          size="icon-cta"
-                          variant="secondary"
-                        >
-                          <X className="size-5" />
-                        </Button>
-                      ) : null}
-                      {stage === 2 ? (
-                        <Button
-                          aria-expanded={presetEditorOpen}
-                          aria-label={
-                            presetEditorOpen
-                              ? "Close preset editor"
-                              : "Create equipment preset"
-                          }
-                          disabled={selectedEquipment.length === 0}
-                          onClick={() => setPresetEditorOpen((open) => !open)}
-                          size="icon-cta"
-                          variant="secondary"
-                        >
-                          <Plus className="size-5" />
-                        </Button>
-                      ) : null}
-                      {stage === 3 && selectMode ? (
-                        <Button
-                          aria-label="Cancel selection"
-                          onClick={cancelSelectMode}
-                          size="icon-cta"
-                          variant="secondary"
-                        >
-                          <X />
-                        </Button>
-                      ) : null}
-                      {stage === 3 ? (
-                        <Button
-                          aria-expanded={searchOpen}
-                          aria-label={
-                            searchOpen ? "Close search" : "Search exercises"
-                          }
+                          aria-label="Close search"
                           onClick={toggleSearch}
                           size="icon-cta"
                           variant="secondary"
                         >
-                          <Search className="size-5" />
+                          <X className="size-5" />
                         </Button>
-                      ) : null}
-                      {stage === 3 ? (
-                        <LikeButton
-                          animated={false}
-                          aria-label={
-                            favoritesOnly
-                              ? "Show all exercises"
-                              : "Show favorites only"
-                          }
-                          className={`interactive-spring grid size-(--app-controls-height) shrink-0 place-items-center rounded-2xl border ${
-                            favoritesOnly
-                              ? "border-primary bg-[color-mix(in_oklch,var(--card),var(--primary)_22%)] text-primary"
-                              : "border-border bg-card text-primary"
-                          }`}
-                          iconClassName="size-5"
-                          liked={favoritesOnly}
-                          onClick={() => setFavoritesOnly((value) => !value)}
-                        />
-                      ) : null}
-                      {stage < 3 ? (
-                        <Button
-                          className="min-w-0 flex-1"
-                          disabled={!canContinue}
-                          onClick={() => {
-                            triggerHaptic("medium")
-                            pushPage({
-                              type: stage === 1 ? "equipment" : "exercises",
-                              preferredWorkoutId,
-                            })
-                          }}
-                          size="cta"
-                        >
-                          {stage === 1
-                            ? "Choose equipment"
-                            : `Show exercises (${exercises.length})`}
-                        </Button>
-                      ) : selectMode ? null : (
-                        <Button
-                          className="min-w-0 flex-1"
-                          onClick={() => setSelectMode(true)}
-                          size="cta"
-                        >
-                          Select
-                        </Button>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="relative flex gap-2.5">
+                        {stage === 1 ? (
+                          <Button
+                            aria-label={`Show ${bodySide === "front" ? "back" : "front"}`}
+                            onClick={() => {
+                              triggerHaptic("selection")
+                              setBodySide((side) =>
+                                side === "front" ? "back" : "front"
+                              )
+                            }}
+                            size="icon-cta"
+                            variant="secondary"
+                          >
+                            <FlipHorizontal2 className="size-5" />
+                          </Button>
+                        ) : null}
+                        {stage === 1 && selectedMuscles.length > 0 ? (
+                          <Button
+                            aria-label="Clear muscle selection"
+                            onClick={() => setMuscles([])}
+                            size="icon-cta"
+                            variant="secondary"
+                          >
+                            <X className="size-5" />
+                          </Button>
+                        ) : null}
+                        {stage === 2 && selectedEquipment.length > 0 ? (
+                          <Button
+                            aria-label="Clear equipment selection"
+                            onClick={() => setEquipment([])}
+                            size="icon-cta"
+                            variant="secondary"
+                          >
+                            <X className="size-5" />
+                          </Button>
+                        ) : null}
+                        {stage === 2 ? (
+                          <Button
+                            aria-expanded={presetEditorOpen}
+                            aria-label={
+                              presetEditorOpen
+                                ? "Close preset editor"
+                                : "Create equipment preset"
+                            }
+                            disabled={selectedEquipment.length === 0}
+                            onClick={() => setPresetEditorOpen((open) => !open)}
+                            size="icon-cta"
+                            variant="secondary"
+                          >
+                            <Plus className="size-5" />
+                          </Button>
+                        ) : null}
+                        {stage === 3 && selectMode ? (
+                          <Button
+                            aria-label="Cancel selection"
+                            onClick={cancelSelectMode}
+                            size="icon-cta"
+                            variant="secondary"
+                          >
+                            <X />
+                          </Button>
+                        ) : null}
+                        {stage === 3 ? (
+                          <Button
+                            aria-expanded={searchOpen}
+                            aria-label={
+                              searchOpen ? "Close search" : "Search exercises"
+                            }
+                            onClick={toggleSearch}
+                            size="icon-cta"
+                            variant="secondary"
+                          >
+                            <Search className="size-5" />
+                          </Button>
+                        ) : null}
+                        {stage === 3 ? (
+                          <LikeButton
+                            animated={false}
+                            aria-label={
+                              favoritesOnly
+                                ? "Show all exercises"
+                                : "Show favorites only"
+                            }
+                            className={`interactive-spring grid size-(--app-controls-height) shrink-0 place-items-center rounded-2xl border ${
+                              favoritesOnly
+                                ? "border-primary bg-[color-mix(in_oklch,var(--card),var(--primary)_22%)] text-primary"
+                                : "border-border bg-card text-primary"
+                            }`}
+                            iconClassName="size-5"
+                            liked={favoritesOnly}
+                            onClick={() => setFavoritesOnly((value) => !value)}
+                          />
+                        ) : null}
+                        {stage === 3 && selectMode ? (
+                          <Button
+                            className="min-w-0 flex-1"
+                            disabled={selectedIds.length === 0}
+                            onClick={() =>
+                              addSelectionToWorkout(preferredWorkoutId)
+                            }
+                            size="cta"
+                          >
+                            Add to workout
+                            {selectedIds.length > 0
+                              ? ` (${selectedIds.length})`
+                              : ""}
+                          </Button>
+                        ) : null}
+                        {stage < 3 ? (
+                          <Button
+                            className="min-w-0 flex-1"
+                            disabled={!canContinue}
+                            onClick={() => {
+                              triggerHaptic("medium")
+                              pushPage({
+                                type: stage === 1 ? "equipment" : "exercises",
+                                preferredWorkoutId,
+                              })
+                            }}
+                            size="cta"
+                          >
+                            {stage === 1
+                              ? "Choose equipment"
+                              : `Show exercises (${exercises.length})`}
+                          </Button>
+                        ) : selectMode ? null : (
+                          <Button
+                            className="min-w-0 flex-1"
+                            onClick={() => setSelectMode(true)}
+                            size="cta"
+                          >
+                            Select
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </AppControls>
                 </AppScreen>
               )
@@ -1095,10 +1049,7 @@ export function App() {
                   aria-hidden={!interactive}
                   className="app-page-layer"
                   data-active={active ? "true" : undefined}
-                  data-entering={entry.id === enteringId ? "true" : undefined}
-                  data-leaving={leaving ? "true" : undefined}
                   data-page-entry={entry.id}
-                  data-previous={previous ? "true" : undefined}
                   inert={!interactive}
                 >
                   {content}

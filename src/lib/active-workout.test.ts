@@ -13,7 +13,6 @@ import {
 function session(patch: Partial<ActiveWorkoutSession> = {}) {
   return {
     workoutId: "workout-1",
-    workoutName: "Push day",
     workoutDate: "2026-09-01",
     exerciseIds: ["0001", "0002", "0003"],
     completedIds: [],

@@ -11,14 +11,12 @@ describe("workouts store", () => {
 
   it("creates a workout", () => {
     const id = useWorkouts.getState().createWorkout({
-      name: "Push day",
       date: "2026-09-01",
       exerciseIds: ["0001", "0002", "0001"],
     })
 
     const workout = useWorkouts.getState().workouts.find((w) => w.id === id)
     expect(workout).toMatchObject({
-      name: "Push day",
       date: "2026-09-01",
       exerciseIds: ["0001", "0002"],
     })
@@ -26,23 +24,18 @@ describe("workouts store", () => {
 
   it("updates a workout", () => {
     const id = useWorkouts.getState().createWorkout({
-      name: "Push day",
       date: "2026-09-01",
       exerciseIds: ["0001"],
     })
 
-    useWorkouts
-      .getState()
-      .updateWorkout(id, { name: "Push day v2", date: "2026-09-05" })
+    useWorkouts.getState().updateWorkout(id, { date: "2026-09-05" })
 
     const workout = useWorkouts.getState().workouts.find((w) => w.id === id)
-    expect(workout?.name).toBe("Push day v2")
     expect(workout?.date).toBe("2026-09-05")
   })
 
   it("deletes a workout", () => {
     const id = useWorkouts.getState().createWorkout({
-      name: "Push day",
       date: "2026-09-01",
       exerciseIds: ["0001"],
     })
@@ -53,7 +46,6 @@ describe("workouts store", () => {
 
   it("duplicates a workout as a new copy", () => {
     const id = useWorkouts.getState().createWorkout({
-      name: "Push day",
       date: "2026-09-01",
       exerciseIds: ["0001", "0002"],
     })
@@ -63,7 +55,6 @@ describe("workouts store", () => {
     expect(useWorkouts.getState().workouts).toHaveLength(2)
 
     const copy = useWorkouts.getState().workouts.find((w) => w.id === copyId)
-    expect(copy?.name).toBe("Push day copy")
     expect(copy?.exerciseIds).toEqual(["0001", "0002"])
     expect(copy?.date).toBe(toISODate(new Date()))
     expect(copy?.completion).toBeNull()
@@ -81,7 +72,7 @@ describe("workouts store", () => {
           workouts: [
             {
               id: "valid",
-              name: "  Training  ",
+              name: "Legacy name is discarded",
               date: "2026-09-01",
               exerciseIds: ["0001", "missing", "0001"],
               createdAt: "2026-08-01T00:00:00.000Z",
@@ -96,11 +87,10 @@ describe("workouts store", () => {
 
     await useWorkouts.persist.rehydrate()
 
-    expect(useWorkouts.persist.getOptions().version).toBe(2)
+    expect(useWorkouts.persist.getOptions().version).toBe(3)
     expect(useWorkouts.getState().workouts).toEqual([
       {
         id: "valid",
-        name: "Training",
         date: "2026-09-01",
         exerciseIds: ["0001"],
         completion: null,
@@ -112,7 +102,6 @@ describe("workouts store", () => {
 
   it("records completion stats and clears them when copied to today", () => {
     const id = useWorkouts.getState().createWorkout({
-      name: "Push day",
       date: "2026-09-01",
       exerciseIds: ["0001", "0002"],
     })

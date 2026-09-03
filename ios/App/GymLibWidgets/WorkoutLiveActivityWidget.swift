@@ -10,7 +10,7 @@ import WidgetKit
 struct WorkoutLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: WorkoutActivityAttributes.self) { context in
-            LockScreenCard(attributes: context.attributes, state: context.state)
+            LockScreenCard(state: context.state)
                 .activityBackgroundTint(Color(WorkoutActivityPalette.background))
                 .activitySystemActionForegroundColor(Color(WorkoutActivityPalette.accent))
         } dynamicIsland: { context in
@@ -20,7 +20,7 @@ struct WorkoutLiveActivityWidget: Widget {
                         HStack(spacing: 5) {
                             WorkoutGlyph(isPaused: context.state.isPaused)
                                 .font(.system(size: 12, weight: .bold))
-                            Text(context.attributes.workoutName)
+                            Text(context.state.workoutDate)
                                 .font(.system(size: 13, weight: .semibold))
                                 .lineLimit(1)
                         }
@@ -95,43 +95,63 @@ private struct StatusLabel: View {
 /// it has room to be useful.
 @available(iOS 16.1, *)
 private struct LockScreenCard: View {
-    var attributes: WorkoutActivityAttributes
     var state: WorkoutActivityAttributes.ContentState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack(spacing: 8) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(attributes.workoutDate)
-                        .font(.system(size: 11, weight: .bold))
-                        .tracking(1.1)
-                    Text(attributes.workoutName)
-                        .font(.system(size: 13, weight: .semibold))
-                }
-                .foregroundStyle(Color(WorkoutActivityPalette.accent))
-                .lineLimit(1)
+        VStack(spacing: 10) {
+            HStack(spacing: 7) {
+                Image(systemName: "calendar")
+                Text(state.workoutDate)
+                    .lineLimit(1)
                 Spacer(minLength: 8)
                 StatusLabel(state: state)
             }
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(Color(WorkoutActivityPalette.accent))
 
             WorkoutTimerText(state: state)
                 .font(.system(size: 44, weight: .heavy))
                 .foregroundStyle(Color(WorkoutActivityPalette.text))
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
 
-            Text(state.exerciseName)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color(WorkoutActivityPalette.text))
-                .lineLimit(1)
+            HStack(spacing: 9) {
+                WorkoutGlyph(isPaused: state.isPaused)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Color(WorkoutActivityPalette.accent))
+                Text(state.exerciseName)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color(WorkoutActivityPalette.text))
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 11)
+            .padding(.vertical, 9)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.white.opacity(0.055))
+            )
 
             HStack(spacing: 7) {
                 ProgressDots(state: state)
+                Spacer(minLength: 6)
                 Text(state.progressText)
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Color(WorkoutActivityPalette.mutedText))
                     .lineLimit(1)
             }
+            .frame(maxWidth: .infinity)
         }
         .padding(14)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white.opacity(0.035))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color(WorkoutActivityPalette.accent).opacity(0.22), lineWidth: 1)
+        }
+        .padding(6)
     }
 }

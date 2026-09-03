@@ -13,7 +13,7 @@ import { LikeButton } from "@/components/like-button"
 import { SortableExerciseList } from "@/components/sortable-exercise-list"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { WorkoutDatePopover } from "@/components/workout-date-popover"
+import { WorkoutDatePicker } from "@/components/workout-date-picker"
 import { formatDateLong, formatDateShort, toISODate } from "@/lib/date"
 import { findExerciseAlternatives } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
@@ -251,7 +251,7 @@ export function WorkoutFormPage({
     setSubmitting(true)
     const id = workout
       ? (updateWorkout(workout.id, { date, exerciseIds }), workout.id)
-      : createWorkout({ name: "", date, exerciseIds })
+      : createWorkout({ date, exerciseIds })
     triggerHaptic("success")
     onSaved(id)
   }
@@ -268,15 +268,14 @@ export function WorkoutFormPage({
           id="workout-form"
           onSubmit={submit}
         >
-          <WorkoutDatePopover
-            className="w-full shrink-0"
+          <WorkoutDatePicker
+            className="flex h-14 w-full shrink-0 items-center gap-2.5 rounded-2xl bg-input px-4 text-left text-lg font-bold"
             date={date}
             onSelect={setDate}
-            triggerClassName="flex h-14 w-full items-center gap-2.5 rounded-2xl bg-input px-4 text-left text-lg font-bold"
           >
             <CalendarDays className="size-5 text-muted-foreground" />
             <span className="truncate">{formatDateLong(date)}</span>
-          </WorkoutDatePopover>
+          </WorkoutDatePicker>
 
           <div className="relative -mx-4 mt-2 min-h-0 flex-1">
             <div className="app-scroll-content h-full overflow-y-auto pt-2 pb-3">

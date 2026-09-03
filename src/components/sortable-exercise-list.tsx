@@ -186,7 +186,7 @@ export function SortableExerciseList({
   onFindAlternative?: (exercise: ExerciseSummary) => void
   onOpenExercise?: (exercise: ExerciseSummary) => void
   onRemove?: (id: string) => void
-  onReorder?: (exerciseIds: string[]) => void
+  onReorder?: (exerciseIds: string[], movedExerciseId: string) => void
   /** Pass both to add check-off and status to the list of a running workout.
    *  Reordering, removing and swapping stay available either way. */
   onToggleComplete?: (id: string) => void
@@ -207,7 +207,7 @@ export function SortableExerciseList({
         const next = [...exerciseIds]
         const [moved] = next.splice(initialIndex, 1)
         next.splice(index, 0, moved)
-        onReorder?.(next)
+        onReorder?.(next, moved)
         triggerHaptic("success")
       }}
       onDragStart={() => triggerHaptic("selection")}
