@@ -173,8 +173,11 @@ describe("WorkoutDetailPage", () => {
 
     const hero = screen.getByRole("region", { name: "Current exercise" })
     expect(within(hero).getByText("3/4 sit-up")).toBeInTheDocument()
+    expect(
+      within(hero).queryByRole("button", { name: "Mark done" })
+    ).not.toBeInTheDocument()
 
-    await user.click(within(hero).getByRole("button", { name: "Mark done" }))
+    await user.click(screen.getByRole("button", { name: "Mark done" }))
     expect(useActiveWorkout.getState().session).toMatchObject({
       completedIds: ["0001"],
       currentExerciseId: "0002",
@@ -401,5 +404,16 @@ describe("WorkoutDetailPage", () => {
     expect(
       screen.getByRole("button", { name: "Skip 3/4 sit-up" })
     ).toHaveAttribute("aria-disabled", "true")
+  })
+
+  it("skips to the next exercise from the in-progress dock", async () => {
+    const user = userEvent.setup()
+    renderWorkout(["0001", "0002", "0003"])
+
+    await startNow(user)
+    expect(useActiveWorkout.getState().session?.currentExerciseId).toBe("0001")
+
+    await user.click(screen.getByRole("button", { name: "Skip 3/4 sit-up" }))
+    expect(useActiveWorkout.getState().session?.currentExerciseId).toBe("0002")
   })
 })

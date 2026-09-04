@@ -99,7 +99,7 @@ export function ConfirmModal({
     body = (
       <>
         <div className="px-3 pt-3 pb-1 text-center">
-          <h2 className="text-lg font-black tracking-[-0.02em]">{title}</h2>
+          <h2 className="font-heading text-lg font-black tracking-[-0.02em]">{title}</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             {description}
           </p>

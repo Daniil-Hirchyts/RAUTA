@@ -123,18 +123,47 @@ function StageHeading({ stage }: { stage: PickerStage }) {
   return <TextSwap>{STAGE_LABELS[stage]}</TextSwap>
 }
 
-/** The tally a command carries: "(131)" after "Show exercises".
- *
- *  Hidden from assistive technology because the button spells the whole thing
- *  out in its `aria-label` — which it has to, since the narrowest slots drop
- *  the brackets to keep the words (see `.app-cta-count`), and what a button
- *  announces should not depend on how much room it was given. */
-function CommandCount({ value }: { value: number }) {
-  return (
-    <span aria-hidden="true" className="app-cta-count">
-      (<AnimatedNumber value={value} />)
-    </span>
-  )
+function StageSubtitle({
+  exerciseCount,
+  selectMode,
+  selectedEquipmentCount,
+  selectedExercisesCount,
+  selectedMusclesCount,
+  stage,
+}: {
+  exerciseCount: number
+  selectMode: boolean
+  selectedEquipmentCount: number
+  selectedExercisesCount: number
+  selectedMusclesCount: number
+  stage: PickerStage
+}) {
+  if (stage === 1 && selectedMusclesCount > 0) {
+    return (
+      <span>
+        <AnimatedNumber value={selectedMusclesCount} /> selected
+      </span>
+    )
+  }
+
+  if (stage === 2 && selectedEquipmentCount > 0 && exerciseCount > 0) {
+    return (
+      <span>
+        <AnimatedNumber value={exerciseCount} />{" "}
+        {exerciseCount === 1 ? "exercise" : "exercises"}
+      </span>
+    )
+  }
+
+  if (stage === 3 && selectMode) {
+    return (
+      <span>
+        <AnimatedNumber value={selectedExercisesCount} /> selected
+      </span>
+    )
+  }
+
+  return null
 }
 
 function FlowProgress({ stage }: { stage: PickerStage }) {
@@ -152,7 +181,7 @@ function FlowProgress({ stage }: { stage: PickerStage }) {
           aria-hidden="true"
           className={`h-1 rounded-full transition-[width,background-color] duration-250 ${
             step === stage
-              ? "w-7 bg-primary"
+              ? "w-7 bg-primary-gradient"
               : step < stage
                 ? "w-3.5 bg-primary/35"
                 : "w-3.5 bg-white/10"
@@ -568,6 +597,23 @@ export function App() {
                             ? exercisesScrollRef
                             : undefined
                       }
+                      subtitle={
+                        (stage === 1 && selectedMuscles.length > 0) ||
+                        (stage === 2 &&
+                          selectedEquipment.length > 0 &&
+                          exercises.length > 0) ||
+                        (stage === 3 && selectMode) ? (
+                          <StageSubtitle
+                            exerciseCount={exercises.length}
+                            key={stage}
+                            selectMode={selectMode}
+                            selectedEquipmentCount={selectedEquipment.length}
+                            selectedExercisesCount={selectedIds.length}
+                            selectedMusclesCount={selectedMuscles.length}
+                            stage={stage}
+                          />
+                        ) : null
+                      }
                       title={<StageHeading stage={stage} />}
                     />
 
@@ -910,11 +956,7 @@ export function App() {
                           >
                             <Button
                               aria-label={
-                                selectMode
-                                  ? selectedIds.length > 0
-                                    ? `Add to workout (${selectedIds.length})`
-                                    : "Add to workout"
-                                  : "Select"
+                                selectMode ? "Add to workout" : "Select"
                               }
                               className="w-full"
                               disabled={selectMode && selectedIds.length === 0}
@@ -928,9 +970,6 @@ export function App() {
                               size="cta"
                             >
                               {selectMode ? "Add to workout" : "Select"}
-                              {selectMode && selectedIds.length > 0 ? (
-                                <CommandCount value={selectedIds.length} />
-                              ) : null}
                             </Button>
                           </AppControlMorph>
                         ) : null}
@@ -943,9 +982,7 @@ export function App() {
                               aria-label={
                                 stage === 1
                                   ? "Choose equipment"
-                                  : exercises.length > 0
-                                    ? `Show exercises (${exercises.length})`
-                                    : "Show exercises"
+                                  : "Show exercises"
                               }
                               className="w-full"
                               disabled={!canContinue}
@@ -961,13 +998,6 @@ export function App() {
                               {stage === 1
                                 ? "Choose equipment"
                                 : "Show exercises"}
-                              {/* Nothing to count is not a count of nothing:
-                                  a bracketed zero beside a dead button reads
-                                  as a broken tally rather than as "narrow
-                                  your filters". */}
-                              {stage === 2 && exercises.length > 0 ? (
-                                <CommandCount value={exercises.length} />
-                              ) : null}
                             </Button>
                           </AppControlMorph>
                         ) : null}

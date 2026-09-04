@@ -76,7 +76,7 @@ function SortableExerciseRow({
           <AnimatedCheck checked={status === "completed"} className="size-7" />
         </button>
       ) : (
-        <div className="grid w-12 shrink-0 place-items-center border-r border-border bg-card text-base font-black text-primary tabular-nums">
+        <div className="grid w-12 shrink-0 place-items-center border-r border-border bg-card text-lg font-black text-primary tabular-nums">
           {String(index + 1).padStart(2, "0")}
         </div>
       )}
@@ -106,10 +106,10 @@ function SortableExerciseRow({
           onClick={() => onOpen?.(exercise)}
           type="button"
         >
-          <p className="line-clamp-3 text-base leading-snug font-semibold capitalize">
+          <p className="line-clamp-3 text-[17px] leading-snug font-semibold capitalize">
             {exercise.name}
           </p>
-          <p className="mt-1.5 text-sm text-muted-foreground">
+          <p className="mt-1.5 text-sm font-medium text-muted-foreground">
             {titleCase(exercise.equipment)}
           </p>
         </button>

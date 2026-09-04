@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   Clock3,
+  Flag,
   Plus,
   Share,
   Trash2,
@@ -197,30 +198,30 @@ export function WorkoutDetailPage({
             >
               <div className="rounded-2xl bg-muted/45 p-3 text-center">
                 <Clock3 className="mx-auto size-4 text-primary" />
-                <p className="mt-1.5 text-base font-black tabular-nums">
+                <p className="mt-1.5 text-xl font-black tracking-tight tabular-nums">
                   {completion ? formatDuration(completion.durationMs) : "—"}
                 </p>
-                <p className="text-[11px] font-semibold text-muted-foreground">
+                <p className="text-xs font-semibold text-muted-foreground">
                   Duration
                 </p>
               </div>
               <div className="rounded-2xl bg-muted/45 p-3 text-center">
                 <Activity className="mx-auto size-4 text-primary" />
-                <p className="mt-1.5 text-base font-black tabular-nums">
+                <p className="mt-1.5 text-xl font-black tracking-tight tabular-nums">
                   {completion ? completion.activeCalories : "—"}
                 </p>
-                <p className="text-[11px] font-semibold text-muted-foreground">
+                <p className="text-xs font-semibold text-muted-foreground">
                   kcal
                 </p>
               </div>
               <div className="rounded-2xl bg-muted/45 p-3 text-center">
                 <CheckCircle2 className="mx-auto size-4 text-primary" />
-                <p className="mt-1.5 text-base font-black tabular-nums">
+                <p className="mt-1.5 text-xl font-black tracking-tight tabular-nums">
                   {completion
                     ? `${completion.completedExerciseIds.length}/${workout.exerciseIds.length}`
                     : "—"}
                 </p>
-                <p className="text-[11px] font-semibold text-muted-foreground">
+                <p className="text-xs font-semibold text-muted-foreground">
                   Completed
                 </p>
               </div>
@@ -237,13 +238,7 @@ export function WorkoutDetailPage({
               {session && exercise && (
                 <ActiveWorkoutHero
                   exercise={exercise}
-                  onComplete={completeCurrent}
                   onOpenExercise={onOpenExercise}
-                  onSkip={
-                    skipTarget
-                      ? () => setCurrentExercise(skipTarget)
-                      : undefined
-                  }
                 />
               )}
 
@@ -290,6 +285,12 @@ export function WorkoutDetailPage({
         {session ? (
           <div className="app-surface-bottom-dock active-workout-dock">
             <ActiveWorkoutTimer
+              exercise={exercise}
+              onNext={
+                skipTarget
+                  ? () => setCurrentExercise(skipTarget)
+                  : undefined
+              }
               onPause={pauseWorkout}
               onResume={resumeWorkout}
               session={session}
@@ -315,16 +316,26 @@ export function WorkoutDetailPage({
             <AppControlButton aria-label="Add exercise" onClick={onAddExercise}>
               <Plus />
             </AppControlButton>
+            <AppControlButton
+              aria-label="Finish workout"
+              onClick={() => {
+                triggerHaptic("medium")
+                setConfirming("finish-workout")
+              }}
+            >
+              <Flag />
+            </AppControlButton>
             <AppControlMorph className="app-command-fill" role="primary">
               <Button
                 size="cta"
                 className="w-full"
+                disabled={!exercise}
                 onClick={() => {
-                  triggerHaptic("medium")
-                  setConfirming("finish-workout")
+                  triggerHaptic("success")
+                  completeCurrent()
                 }}
               >
-                Finish workout
+                Mark done
               </Button>
             </AppControlMorph>
           </div>

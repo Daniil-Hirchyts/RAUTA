@@ -42,10 +42,10 @@ const WORKOUT_PAGE_SIZE = 6
 function SectionHeading({ count, title }: { count: number; title: string }) {
   return (
     <div className="mx-(--app-content-inset) mb-2.5 flex items-center justify-between">
-      <h2 className="text-xs font-bold tracking-[0.15em] text-muted-foreground uppercase">
+      <h2 className="text-[13px] font-bold tracking-[0.15em] text-muted-foreground uppercase">
         {title}
       </h2>
-      <span className="text-xs font-semibold text-muted-foreground tabular-nums">
+      <span className="text-[13px] font-semibold text-muted-foreground tabular-nums">
         {count}
       </span>
     </div>
@@ -94,7 +94,7 @@ function PastStats({ workout }: { workout: Workout }) {
   const completion = workout.completion
   if (!completion) {
     return (
-      <p className="mt-1 text-sm font-medium text-muted-foreground">
+      <p className="mt-1 text-[15px] font-medium text-muted-foreground">
         Not completed · {workout.exerciseIds.length} exercise
         {workout.exerciseIds.length === 1 ? "" : "s"}
       </p>
@@ -102,7 +102,7 @@ function PastStats({ workout }: { workout: Workout }) {
   }
 
   return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-muted-foreground tabular-nums">
+    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[15px] font-semibold text-muted-foreground tabular-nums">
       <span className="flex items-center gap-1">
         <Clock3 className="size-3.5" />
         {formatDuration(completion.durationMs)}
@@ -187,11 +187,11 @@ function WorkoutRow({
         type="button"
       >
         <div className="min-w-0 flex-1">
-          <p className="text-lg font-bold tracking-[-0.01em]">
+          <p className="text-xl font-bold tracking-[-0.01em]">
             {formatDateShort(workout.date)}
           </p>
           {isRunning && session ? (
-            <p className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold text-primary tabular-nums">
+            <p className="mt-0.5 flex items-center gap-1.5 text-[15px] font-semibold text-primary tabular-nums">
               <span
                 aria-hidden="true"
                 className="size-1.5 animate-pulse rounded-full bg-primary"
@@ -203,7 +203,7 @@ function WorkoutRow({
           ) : isPast ? (
             <PastStats workout={workout} />
           ) : (
-            <p className="mt-0.5 text-sm font-medium text-muted-foreground">
+            <p className="mt-0.5 text-[15px] font-medium text-muted-foreground">
               {workout.exerciseIds.length} exercise
               {workout.exerciseIds.length === 1 ? "" : "s"}
             </p>

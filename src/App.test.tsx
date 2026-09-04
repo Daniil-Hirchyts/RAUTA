@@ -279,7 +279,12 @@ describe("App", () => {
       screen.getByRole("heading", { name: "Exercises" })
     ).toBeInTheDocument()
     expect(
-      screen.getByRole("button", { name: "Add to workout (1)" })
+      document.querySelector(
+        '.app-page-layer[data-active="true"] [data-testid="stage-subtitle"]'
+      )
+    ).toHaveTextContent("1 selected")
+    expect(
+      screen.getByRole("button", { name: "Add to workout" })
     ).toBeInTheDocument()
     expect(
       screen.getByRole("button", { name: `Select ${exercise.name}` })
@@ -612,7 +617,12 @@ describe("App", () => {
     await user.click(
       screen.getByRole("button", { name: `Select ${exercise.name}` })
     )
-    await user.click(screen.getByRole("button", { name: "Add to workout (1)" }))
+    expect(
+      document.querySelector(
+        '.app-page-layer[data-active="true"] [data-testid="stage-subtitle"]'
+      )
+    ).toHaveTextContent("1 selected")
+    await user.click(screen.getByRole("button", { name: "Add to workout" }))
 
     expect(
       await screen.findByRole("heading", { name: "Add 1 exercise" })
@@ -644,8 +654,13 @@ describe("App", () => {
       screen.getByRole("button", { name: `Select ${second.name}` })
     )
 
+    expect(
+      document.querySelector(
+        '.app-page-layer[data-active="true"] [data-testid="stage-subtitle"]'
+      )
+    ).toHaveTextContent("2 selected")
     const addToWorkout = screen.getByRole("button", {
-      name: /add to workout \(2\)/i,
+      name: "Add to workout",
     })
     expect(addToWorkout.querySelector("svg")).not.toBeInTheDocument()
     await user.click(addToWorkout)
@@ -706,5 +721,70 @@ describe("App", () => {
     const dateLabel = formatDateShort(today)
     expect(screen.getByText(dateLabel)).toBeInTheDocument()
     expect(screen.getByText("2 exercises")).toBeInTheDocument()
+  })
+
+  it("displays equipment and exercise counts under the page title instead of in buttons", async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    // Stage 1: Muscles has no subtitle initially
+    expect(screen.getByRole("heading", { name: "Muscles" })).toBeInTheDocument()
+    const activeLayerSubtitle = () =>
+      document.querySelector(
+        '.app-page-layer[data-active="true"] [data-testid="stage-subtitle"]'
+      )
+    expect(activeLayerSubtitle()).toBeNull()
+
+    // In muscles: under the title number of selected
+    fireEvent.click(screen.getByRole("button", { name: "Front Chest" }))
+    expect(activeLayerSubtitle()).toHaveTextContent("1 selected")
+
+    // Move to Stage 2: Equipment
+    await user.click(screen.getByRole("button", { name: /choose equipment/i }))
+
+    expect(
+      await screen.findByRole("heading", { name: "Equipment" })
+    ).toBeInTheDocument()
+    // In equipment: don't show "select equipment" text before choosing equipment
+    expect(activeLayerSubtitle()).toBeNull()
+
+    // Button should not contain numbers
+    const showExercises = screen.getByRole("button", { name: "Show exercises" })
+    expect(showExercises.textContent?.trim()).toBe("Show exercises")
+
+    // Select equipment: in equipment, don't show the number of selected, only the number of exercises
+    await user.click(screen.getByRole("checkbox", { name: "Body Weight" }))
+    const expected = filterExercises(EXERCISES, ["chest"], ["body weight"])
+    expect(activeLayerSubtitle()).toHaveTextContent(
+      `${expected.length} exercises`
+    )
+    expect(activeLayerSubtitle()).not.toHaveTextContent("selected")
+    expect(showExercises.textContent?.trim()).toBe("Show exercises")
+
+    // Move to Stage 3: Exercises
+    await user.click(showExercises)
+    expect(
+      await screen.findByRole("heading", { name: "Exercises" })
+    ).toBeInTheDocument()
+    // In exercises: don't show the number of total exercises when browsing
+    expect(activeLayerSubtitle()).toBeNull()
+
+    // Primary button should be "Select"
+    const selectBtn = screen.getByRole("button", { name: "Select" })
+    expect(selectBtn.textContent?.trim()).toBe("Select")
+
+    // Enter select mode: in exercises, show only the selected count
+    await user.click(selectBtn)
+    expect(activeLayerSubtitle()).toHaveTextContent("0 selected")
+
+    const addToWorkout = screen.getByRole("button", { name: "Add to workout" })
+    expect(addToWorkout.textContent?.trim()).toBe("Add to workout")
+
+    // Select first exercise
+    await user.click(
+      screen.getByRole("button", { name: `Select ${expected[0].name}` })
+    )
+    expect(activeLayerSubtitle()).toHaveTextContent("1 selected")
+    expect(addToWorkout.textContent?.trim()).toBe("Add to workout")
   })
 })

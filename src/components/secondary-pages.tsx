@@ -77,7 +77,9 @@ export function ExerciseDetailPage({
               }}
             />
           }
-          title="Exercise"
+          title={exercise.name}
+          titleClassName="capitalize"
+          titleMultiline
         />
 
         <div className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-(--app-content-inset) pt-5 pb-6">
@@ -97,9 +99,6 @@ export function ExerciseDetailPage({
               style={{ filter: EXERCISE_ANIMATION_FILTER }}
             />
           </AppMorph>
-          <h2 className="mt-4 text-xl leading-snug font-bold capitalize">
-            {exercise.name}
-          </h2>
           {exercise.instructions.length > 0 ? (
             <ol className="mt-4 list-decimal space-y-2.5 pl-5 text-base text-muted-foreground marker:font-semibold marker:text-primary">
               {exercise.instructions.map((step, index) => (
@@ -157,7 +156,7 @@ export function WorkoutDestinationPage({
             onClick={onCreateNew}
             type="button"
           >
-            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary-gradient text-primary-foreground shadow-xs">
               <Plus className="size-5" />
             </span>
             <span className="min-w-0 flex-1">
@@ -426,7 +425,7 @@ export function ExerciseAlternativesPage({
                   aria-pressed={equipment === option}
                   className={`shrink-0 rounded-full border px-3.5 py-2 text-sm font-semibold ${
                     equipment === option
-                      ? "border-primary bg-primary text-primary-foreground"
+                      ? "border-primary/80 bg-primary-gradient text-primary-foreground shadow-xs"
                       : "border-border bg-card text-muted-foreground"
                   }`}
                   key={option ?? "all"}

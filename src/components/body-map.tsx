@@ -22,6 +22,7 @@ type BodyMapProps = {
   selectedMuscles: MuscleId[]
   onToggle: (muscle: MuscleId) => void
   onSideChange?: (side: Side) => void
+  showCornerCount?: boolean
   showFlipButton?: boolean
   side?: Side
 }
@@ -172,6 +173,7 @@ export function BodyMap({
   onSideChange,
   onToggle,
   selectedMuscles,
+  showCornerCount = false,
   showFlipButton = true,
   side: controlledSide,
 }: BodyMapProps) {
@@ -180,11 +182,6 @@ export function BodyMap({
   const label = side === "front" ? "Front" : "Back"
   const view = side === "front" ? body.front : body.back
   const swipeStartX = useRef<number | null>(null)
-  // The figure is keyed on the side, so turning the body around builds a new
-  // one and the settle animation plays. But that key is satisfied by the very
-  // first figure too, which is not a turn — and the map scaling up as the page
-  // arrives reads as the whole screen shifting under the finger. So the
-  // animation waits for a side change to have actually happened.
   const [shownSide, setShownSide] = useState(side)
   const [turned, setTurned] = useState(false)
 
@@ -195,6 +192,7 @@ export function BodyMap({
 
   const flipSide = () => {
     triggerHaptic("selection")
+    setTurned(true)
     const next = side === "front" ? "back" : "front"
     if (controlledSide === undefined) setInternalSide(next)
     onSideChange?.(next)
@@ -228,20 +226,16 @@ export function BodyMap({
   }
 
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-col">
-      <p className="pointer-events-auto absolute top-3.5 left-3.5 z-20 text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase sm:top-4 sm:left-4">
-        <span className="t-text-swap" key={label}>
-          {label}
-        </span>
-      </p>
-
-      <output
-        aria-live="polite"
-        className="pointer-events-auto absolute top-3.5 right-3.5 z-20 text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase tabular-nums sm:top-4 sm:right-4"
-        data-testid="stage-count"
-      >
-        <AnimatedNumber value={selectedMuscles.length} /> selected
-      </output>
+    <div className="relative flex h-full min-h-0 w-full flex-col items-center">
+      {showCornerCount && selectedMuscles.length > 0 ? (
+        <output
+          aria-live="polite"
+          className="pointer-events-auto absolute top-3.5 right-3.5 z-20 text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase tabular-nums sm:top-4 sm:right-4"
+          data-testid="stage-count"
+        >
+          <AnimatedNumber value={selectedMuscles.length} /> selected
+        </output>
+      ) : null}
 
       {showFlipButton ? (
         <button
@@ -273,6 +267,12 @@ export function BodyMap({
           view={view}
         />
       </div>
+
+      <p className="pointer-events-auto shrink-0 pb-1 text-center text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase">
+        <span className="t-text-swap" key={label}>
+          {label}
+        </span>
+      </p>
     </div>
   )
 }

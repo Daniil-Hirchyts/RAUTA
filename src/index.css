@@ -7,7 +7,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-heading: var(--font-sans);
+  --font-heading: "Plus Jakarta Sans", var(--font-sans);
   --font-sans: "Geist Variable", sans-serif;
   --color-ring: var(--ring);
   --color-input: var(--input);
@@ -66,9 +66,7 @@
      Cards inside the surface are inset by --app-content-inset, so their
      corner radius adapts to the shell's curve: inner r = outer r - padding. */
   --app-content-inset: 0.75rem;
-  --app-card-radius: calc(
-    var(--app-surface-radius) - var(--app-content-inset)
-  );
+  --app-card-radius: calc(var(--app-surface-radius) - var(--app-content-inset));
   /* The command row is pills, so half the button box, measured from the
      display corner: the band paints the shell's own colour, so the curve it
      sits in is the hardware's, not the surface's. */
@@ -100,6 +98,20 @@
      the whole ramp instead of leaving hard-coded hexes behind. */
   --primary-soft: color-mix(in oklch, var(--primary), white 18%);
   --primary-softer: color-mix(in oklch, var(--primary), white 34%);
+  /* Subtle orange gradient for full-orange elements & buttons.
+     Luminous warm orange top crest, rich sunset orange base. */
+  --primary-gradient-start: oklch(0.745 0.245 47);
+  --primary-gradient-end: oklch(0.665 0.245 39);
+  --primary-gradient: linear-gradient(
+    180deg,
+    var(--primary-gradient-start) 0%,
+    var(--primary-gradient-end) 100%
+  );
+  --primary-gradient-active: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--primary-gradient-start), white 18%) 0%,
+    color-mix(in oklch, var(--primary-gradient-end), white 12%) 100%
+  );
   --primary-foreground: oklch(0.12 0 0);
   --secondary: oklch(0.255 0 0);
   --secondary-foreground: oklch(0.9 0 0);
@@ -156,6 +168,18 @@
   --matrix-base: color-mix(in oklch, var(--primary) 25%, transparent);
   --matrix-active: var(--primary);
   --matrix-ease: ease-in-out;
+}
+
+@utility bg-primary-gradient {
+  background-image: var(--primary-gradient);
+  background-color: var(--primary);
+}
+
+@utility bg-primary-gradient-active {
+  background-image: var(--primary-gradient-active);
+  background-color: color-mix(in oklch, var(--primary), white 20%);
+}
+
 .exercise-card,
 .equipment-card {
   border-radius: var(--app-card-radius);
@@ -573,8 +597,9 @@ html[data-native="ios"] .app-drag-grain {
 /* Without backdrop-filter there is nothing to band, and seven empty layers
    would leave the title sitting on bare content. Fall back to the flat fade
    this replaced. */
-@supports not ((backdrop-filter: blur(1px)) or
-  (-webkit-backdrop-filter: blur(1px))) {
+@supports not (
+  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
   .app-top-scrim-tint {
     background: linear-gradient(
       to bottom,
@@ -636,6 +661,8 @@ html[data-native="ios"] .app-drag-grain {
   position: relative;
   display: flex;
   min-width: 0;
+  height: 100%;
+  align-self: stretch;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -643,7 +670,7 @@ html[data-native="ios"] .app-drag-grain {
 
 .app-shell-header-above {
   position: absolute;
-  bottom: calc(100% + 4px);
+  bottom: calc(50% + 0.75rem);
   left: 0;
   right: 0;
   display: flex;
@@ -656,13 +683,65 @@ html[data-native="ios"] .app-drag-grain {
   max-width: 100%;
   overflow: hidden;
   color: var(--foreground);
+  font-family: var(--font-heading);
   font-size: 1.25rem;
-  font-weight: 850;
-  line-height: 1.1;
+  font-weight: 800;
+  line-height: 1.15;
   letter-spacing: -0.025em;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.app-shell-header-title[data-multiline="true"] {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  text-wrap: balance;
+}
+
+.app-shell-header-title[data-size="md"] {
+  font-size: 1.125rem;
+  line-height: 1.15;
+}
+
+.app-shell-header-title[data-size="sm"] {
+  font-size: 1.0625rem;
+  line-height: 1.15;
+}
+
+.app-shell-header-title[data-size="xs"] {
+  font-size: 1rem;
+  line-height: 1.15;
+}
+
+.app-shell-header-subtitle {
+  position: absolute;
+  top: calc(50% + 0.8125rem);
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  will-change: transform, opacity, filter;
+  animation: t-digit-pop-in var(--digit-dur) var(--digit-ease) both;
 }
 
 .app-shell-header-button {
@@ -673,6 +752,12 @@ html[data-native="ios"] .app-drag-grain {
   display: flex;
   justify-content: center;
   padding-top: 0.625rem;
+}
+
+[role="dialog"] h1,
+[role="dialog"] h2,
+[role="dialog"] h3 {
+  font-family: var(--font-heading);
 }
 
 /* The scroller now runs underneath the fixed gradient. Its leading padding
@@ -909,25 +994,31 @@ html[data-native="ios"] .app-scroll-content {
    already legible on the cards. `overflow: hidden` is the floor: even if a
    translation outruns the last step, the label stops at the button's edge. */
 .app-cta {
+  font-family: "Plus Jakarta Sans", var(--font-sans);
+  font-weight: 700;
+  font-size: 1.125rem;
+  letter-spacing: -0.015em;
   min-width: 0;
   overflow: hidden;
 }
 
 .app-cta-count {
+  font-family: "Plus Jakarta Sans", var(--font-sans);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
 @container command (max-width: 13rem) {
   .app-cta {
     padding-inline: 1rem;
-    font-size: 0.9375rem;
+    font-size: 1rem;
   }
 }
 
 @container command (max-width: 10.5rem) {
   .app-cta {
     padding-inline: 0.75rem;
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
     letter-spacing: -0.01em;
   }
 
@@ -939,7 +1030,7 @@ html[data-native="ios"] .app-scroll-content {
 @container command (max-width: 8.75rem) {
   .app-cta {
     padding-inline: 0.5rem;
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
   }
 }
 
@@ -1168,7 +1259,7 @@ html[data-native="ios"] .app-page-layer::after {
 
 .t-check-box[data-checked="true"] {
   border-color: var(--primary);
-  background: var(--primary);
+  background: var(--primary-gradient);
   color: var(--primary-foreground);
   box-shadow: 0 0 0 1px var(--primary);
 }
@@ -1421,9 +1512,28 @@ html[data-native="ios"] .app-page-layer::after {
 .interactive-spring:active {
   animation: t-press-spring 280ms cubic-bezier(0.22, 1, 0.36, 1);
   filter: brightness(1.2);
-  position: relative;
   z-index: 20;
   transition: z-index 0s;
+}
+
+.interactive-spring:not(
+    .absolute,
+    [class*="absolute"],
+    [class*="fixed"],
+    .exercise-back-to-top
+  ):active {
+  position: relative;
+}
+
+.interactive-spring.absolute:active,
+.interactive-spring[class*="absolute"]:active,
+.exercise-back-to-top.interactive-spring:active {
+  position: absolute;
+}
+
+.interactive-spring.fixed:active,
+.interactive-spring[class*="fixed"]:active {
+  position: fixed;
 }
 
 li:has(.interactive-spring),
@@ -1615,6 +1725,7 @@ li:has(.interactive-spring:active),
     visibility: hidden !important;
   }
 
+  .app-shell-header-subtitle,
   .t-digit-group .t-digit {
     animation: none !important;
   }

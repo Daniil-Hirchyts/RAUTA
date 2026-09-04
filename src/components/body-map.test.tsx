@@ -82,8 +82,14 @@ describe("BodyMap", () => {
     expect(onToggle).toHaveBeenCalledWith("upper-back")
   })
 
-  it("renders the count of selected muscles in the corner", () => {
-    render(<BodyMap onToggle={() => {}} selectedMuscles={["chest", "upper-back"]} />)
+  it("renders the count of selected muscles in the corner when enabled", () => {
+    render(
+      <BodyMap
+        onToggle={() => {}}
+        selectedMuscles={["chest", "upper-back"]}
+        showCornerCount
+      />
+    )
     expect(screen.getByTestId("stage-count")).toHaveTextContent("2 selected")
   })
 })

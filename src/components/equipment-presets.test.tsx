@@ -92,4 +92,11 @@ describe("EquipmentPresets", () => {
       screen.queryByRole("button", { name: "Travel" })
     ).not.toBeInTheDocument()
   })
+
+  it("renders presets centered horizontally inside the scroll container", () => {
+    render(<EquipmentPresets />)
+    const homeButton = screen.getByRole("button", { name: "Home kit" })
+    const presetsRow = homeButton.parentElement
+    expect(presetsRow).toHaveClass("justify-center")
+  })
 })

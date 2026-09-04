@@ -1,4 +1,5 @@
 import {
+  isValidElement,
   useEffect,
   useRef,
   useState,
@@ -154,7 +155,11 @@ export function AppShellHeader({
   left,
   right,
   scrollRef,
+  subtitle,
   title,
+  titleClassName,
+  titleMultiline,
+  titleSize,
 }: {
   above?: ReactNode
   below?: ReactNode
@@ -162,11 +167,27 @@ export function AppShellHeader({
   left?: ReactNode
   right?: ReactNode
   scrollRef?: RefObject<HTMLElement | null>
+  subtitle?: ReactNode
   title: ReactNode
+  titleClassName?: string
+  titleMultiline?: boolean
+  titleSize?: "default" | "md" | "sm" | "xs"
 }) {
   const [hidden, setHidden] = useState(false)
   const lastScrollTop = useRef(0)
   const travel = useRef(0)
+
+  const effectiveSize =
+    titleSize ??
+    (titleMultiline && typeof title === "string"
+      ? title.length > 50
+        ? "xs"
+        : title.length > 34
+          ? "sm"
+          : title.length > 22
+            ? "md"
+            : "default"
+      : undefined)
 
   useEffect(() => {
     const scroller = scrollRef?.current
@@ -238,9 +259,31 @@ export function AppShellHeader({
         <div className="app-shell-header-action">{left}</div>
         <div className="app-shell-header-center">
           {above ? <div className="app-shell-header-above">{above}</div> : null}
-          <h1 className="app-shell-header-title" tabIndex={-1}>
+          <h1
+            className={cn("app-shell-header-title", titleClassName)}
+            data-multiline={titleMultiline ? "true" : undefined}
+            data-size={
+              effectiveSize && effectiveSize !== "default"
+                ? effectiveSize
+                : undefined
+            }
+            tabIndex={-1}
+          >
             {title}
           </h1>
+          {subtitle ? (
+            <p
+              className="app-shell-header-subtitle"
+              data-testid="stage-subtitle"
+              key={
+                isValidElement(subtitle) && subtitle.key != null
+                  ? String(subtitle.key)
+                  : undefined
+              }
+            >
+              {subtitle}
+            </p>
+          ) : null}
         </div>
         <div className="app-shell-header-action">{right}</div>
       </div>

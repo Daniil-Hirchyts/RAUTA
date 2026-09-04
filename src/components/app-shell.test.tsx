@@ -62,4 +62,66 @@ describe("AppShellHeader", () => {
     fireEvent.scroll(scroller)
     await waitFor(() => expect(header).not.toHaveAttribute("data-hidden"))
   })
+
+  it("supports multiline titles and adapts size based on length", () => {
+    const { rerender } = render(
+      <AppShellHeader title="Short title" titleMultiline />
+    )
+    const heading = screen.getByRole("heading", { name: "Short title" })
+    expect(heading).toHaveAttribute("data-multiline", "true")
+    expect(heading).not.toHaveAttribute("data-size")
+
+    rerender(
+      <AppShellHeader title="Barbell Bent Arm Pullover" titleMultiline />
+    )
+    const mdHeading = screen.getByRole("heading", {
+      name: "Barbell Bent Arm Pullover",
+    })
+    expect(mdHeading).toHaveAttribute("data-multiline", "true")
+    expect(mdHeading).toHaveAttribute("data-size", "md")
+
+    rerender(
+      <AppShellHeader
+        title="Vertical Leg Raise (On Parallel Bars)"
+        titleMultiline
+      />
+    )
+    const smHeading = screen.getByRole("heading", {
+      name: "Vertical Leg Raise (On Parallel Bars)",
+    })
+    expect(smHeading).toHaveAttribute("data-multiline", "true")
+    expect(smHeading).toHaveAttribute("data-size", "sm")
+
+    rerender(
+      <AppShellHeader
+        title="Assisted Seated Pectoralis Major Stretch With Stability Ball"
+        titleMultiline
+      />
+    )
+    const xsHeading = screen.getByRole("heading", {
+      name: "Assisted Seated Pectoralis Major Stretch With Stability Ball",
+    })
+    expect(xsHeading).toHaveAttribute("data-multiline", "true")
+    expect(xsHeading).toHaveAttribute("data-size", "xs")
+  })
+
+  it("renders subtitle with proper styling without affecting title structure", () => {
+    const { rerender } = render(<AppShellHeader title="Muscles" />)
+    const heading = screen.getByRole("heading", { name: "Muscles" })
+    expect(heading).toBeInTheDocument()
+    expect(screen.queryByTestId("stage-subtitle")).toBeNull()
+
+    rerender(
+      <AppShellHeader
+        subtitle={<span key="count">2 selected</span>}
+        title="Muscles"
+      />
+    )
+
+    expect(screen.getByRole("heading", { name: "Muscles" })).toBe(heading)
+    const subtitle = screen.getByTestId("stage-subtitle")
+    expect(subtitle).toBeInTheDocument()
+    expect(subtitle).toHaveClass("app-shell-header-subtitle")
+    expect(subtitle).toHaveTextContent("2 selected")
+  })
 })

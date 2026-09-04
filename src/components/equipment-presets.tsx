@@ -48,55 +48,57 @@ export function EquipmentPresets({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "pointer-events-auto flex min-w-0 [scrollbar-width:none] gap-2 overflow-x-auto py-0.5 [&::-webkit-scrollbar]:hidden",
+        "pointer-events-auto flex min-w-0 [scrollbar-width:none] overflow-x-auto py-0.5 [&::-webkit-scrollbar]:hidden",
         className
       )}
       data-swipe-ignore
     >
-      {STARTER_EQUIPMENT_PRESETS.map((preset) => (
-        <button
-          aria-pressed={sameSelection(selectedEquipment, preset.equipment)}
-          className="preset-chip shrink-0"
-          data-haptics="off"
-          key={preset.id}
-          onClick={() => togglePreset(preset.equipment)}
-          type="button"
-        >
-          {preset.name}
-        </button>
-      ))}
-      {presets.map((preset) => {
-        const isSelected = sameSelection(selectedEquipment, preset.equipment)
-        return (
-          <div
-            className="preset-chip preset-chip--custom flex shrink-0 items-center"
-            data-pressed={isSelected ? "true" : undefined}
+      <div className="flex w-max min-w-full shrink-0 justify-center gap-2">
+        {STARTER_EQUIPMENT_PRESETS.map((preset) => (
+          <button
+            aria-pressed={sameSelection(selectedEquipment, preset.equipment)}
+            className="preset-chip shrink-0"
+            data-haptics="off"
             key={preset.id}
+            onClick={() => togglePreset(preset.equipment)}
+            type="button"
           >
-            <button
-              aria-pressed={isSelected}
-              className="flex h-full items-center font-semibold text-inherit outline-none"
-              data-haptics="off"
-              onClick={() => togglePreset(preset.equipment)}
-              type="button"
+            {preset.name}
+          </button>
+        ))}
+        {presets.map((preset) => {
+          const isSelected = sameSelection(selectedEquipment, preset.equipment)
+          return (
+            <div
+              className="preset-chip preset-chip--custom flex shrink-0 items-center"
+              data-pressed={isSelected ? "true" : undefined}
+              key={preset.id}
             >
-              {preset.name}
-            </button>
-            <button
-              aria-label={`Delete ${preset.name} preset`}
-              className="interactive-spring hit-target ml-1.5 grid size-8 shrink-0 place-items-center rounded-full text-primary opacity-65 hover:opacity-100 active:opacity-100"
-              data-haptics="off"
-              onClick={() => {
-                triggerHaptic("warning")
-                deletePreset(preset.id)
-              }}
-              type="button"
-            >
-              <Trash2 className="size-4" />
-            </button>
-          </div>
-        )
-      })}
+              <button
+                aria-pressed={isSelected}
+                className="flex h-full items-center font-semibold text-inherit outline-none"
+                data-haptics="off"
+                onClick={() => togglePreset(preset.equipment)}
+                type="button"
+              >
+                {preset.name}
+              </button>
+              <button
+                aria-label={`Delete ${preset.name} preset`}
+                className="interactive-spring hit-target ml-1.5 grid size-8 shrink-0 place-items-center rounded-full text-primary opacity-65 hover:opacity-100 active:opacity-100"
+                data-haptics="off"
+                onClick={() => {
+                  triggerHaptic("warning")
+                  deletePreset(preset.id)
+                }}
+                type="button"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
