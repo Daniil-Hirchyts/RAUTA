@@ -8,7 +8,7 @@
   }
 
   :where(
-    button,
+    button:not(.equipment-card),
     .rounded-full,
     .app-surface,
     .app-surface-grain,

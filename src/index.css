@@ -37,6 +37,7 @@
   --radius-2xl: 30px;
   --radius-3xl: 36px;
   --radius-4xl: 42px;
+  --radius-card: var(--app-card-radius);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-bounce: cubic-bezier(0.34, 1.85, 0.64, 1);
 }
@@ -60,19 +61,14 @@
     var(--app-device-radius) - var(--app-surface-gutter)
   );
   --app-controls-height: 3.25rem;
-  /* Concentric corners. A rounded box nested inside another one only keeps an
-     even frame around itself when the two radii differ by exactly the gap
-     between them: outer r = inner r + padding. Both insets below are that
-     subtraction, so they track the display's own curve per device the same way
-     --app-device-radius does — and a pill counts as half its height, whatever
-     radius token it asks for.
-
-     Page content is rounded-3xl (36px) cards inside the surface; the theme's
-     radius tokens are inlined into the utilities rather than emitted as
-     variables, so the subtraction has to name the number. The floor keeps
-     the smallest-radius phones from squeezing the column against the edge; on
-     those the cards are simply rounder than their frame can answer. */
-  --app-content-inset: max(0.875rem, calc(var(--app-surface-radius) - 36px));
+  /* Concentric corners: outer r = inner r + padding.
+     The shell curve (--app-surface-radius) is fixed by the device hardware.
+     Cards inside the surface are inset by --app-content-inset, so their
+     corner radius adapts to the shell's curve: inner r = outer r - padding. */
+  --app-content-inset: 0.75rem;
+  --app-card-radius: calc(
+    var(--app-surface-radius) - var(--app-content-inset)
+  );
   /* The command row is pills, so half the button box, measured from the
      display corner: the band paints the shell's own colour, so the curve it
      sits in is the hardware's, not the surface's. */
@@ -160,6 +156,9 @@
   --matrix-base: color-mix(in oklch, var(--primary) 25%, transparent);
   --matrix-active: var(--primary);
   --matrix-ease: ease-in-out;
+.exercise-card,
+.equipment-card {
+  border-radius: var(--app-card-radius);
 }
 
 .equipment-card-media {
@@ -708,8 +707,8 @@ html[data-native="ios"] .app-drag-grain {
 .exercise-back-to-top {
   position: absolute;
   z-index: 25;
-  /* A 3rem circle, so half of that away from the surface's own curve. */
-  right: calc(var(--app-surface-radius) - 1.5rem);
+  /* Centered horizontally: 50% minus half the 3rem width. */
+  left: calc(50% - 1.5rem);
   bottom: calc(var(--app-surface-radius) - 1.5rem);
   display: grid;
   width: 3rem;
@@ -1403,7 +1402,8 @@ html[data-native="ios"] .app-page-layer::after {
     background-color 150ms ease,
     border-color 150ms ease,
     color 150ms ease,
-    box-shadow 150ms ease;
+    box-shadow 150ms ease,
+    z-index 0s 280ms;
   will-change: transform;
 }
 
@@ -1421,6 +1421,23 @@ html[data-native="ios"] .app-page-layer::after {
 .interactive-spring:active {
   animation: t-press-spring 280ms cubic-bezier(0.22, 1, 0.36, 1);
   filter: brightness(1.2);
+  position: relative;
+  z-index: 20;
+  transition: z-index 0s;
+}
+
+li:has(.interactive-spring),
+.swipeable-row:has(.interactive-spring),
+.swipeable-row-content:has(.interactive-spring) {
+  transition: z-index 0s 280ms;
+}
+
+li:has(.interactive-spring:active),
+.swipeable-row:has(.interactive-spring:active),
+.swipeable-row-content:has(.interactive-spring:active) {
+  position: relative;
+  z-index: 20;
+  transition: z-index 0s;
 }
 
 /* A disabled control keeps its press: it stays hittable (aria-disabled rather

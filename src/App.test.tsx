@@ -379,7 +379,9 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", { name: first.name })
     ).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Select" })).toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "Select" })
+    ).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument()
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
@@ -535,7 +537,7 @@ describe("App", () => {
     )
   })
 
-  it("selects an exercise from its detail page without opening workout creation", async () => {
+  it("keeps the exercise detail page informative only", async () => {
     const user = userEvent.setup()
     const [exercise] = filterExercises(EXERCISES, ["chest"], ["body weight"])
     render(<App />)
@@ -552,15 +554,20 @@ describe("App", () => {
     })
     expect(detailLike).toHaveClass("border", "border-border", "bg-card")
 
-    await user.click(screen.getByRole("button", { name: "Select" }))
-
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     expect(
-      screen.getByRole("button", { name: "Add to workout (1)" })
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole("button", { name: "Create workout" })
+      screen.queryByRole("button", { name: "Select" })
     ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "Selected" })
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Back" }))
+
+    expect(
+      await screen.findByRole("button", {
+        name: `View ${exercise.name} details`,
+      })
+    ).toBeInTheDocument()
   })
 
   it("opens the detail page on long tap in selection mode without toggling selection", async () => {

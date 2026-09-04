@@ -90,7 +90,7 @@ import { useActiveWorkout } from "@/store/use-active-workout"
 import { useFavorites } from "@/store/use-favorites"
 import { useFilters } from "@/store/use-filters"
 import { useWorkouts } from "@/store/use-workouts"
-import type { ExerciseSummary, MuscleId } from "@/types"
+import type { MuscleId } from "@/types"
 
 type PickerStage = 1 | 2 | 3
 
@@ -417,18 +417,6 @@ export function App() {
     )
   }, [])
 
-  const selectExerciseFromDetail = useCallback(
-    (exercise: ExerciseSummary) => {
-      triggerHaptic("selection")
-      setSelectedIds((ids) =>
-        ids.includes(exercise.id) ? ids : [...ids, exercise.id]
-      )
-      setSelectMode(true)
-      popPage()
-    },
-    [popPage]
-  )
-
   const addSelectionToWorkout = useCallback(
     (preferredWorkoutId?: string | null) => {
       if (selectedIds.length === 0) return
@@ -535,7 +523,6 @@ export function App() {
                     pushPage({
                       type: "exercise-detail",
                       exerciseId: exercise.id,
-                      selectable: false,
                     })
                   }
                   workoutId={page.workoutId}
@@ -591,12 +578,14 @@ export function App() {
                       >
                         <div className="relative h-full min-h-0">
                           <DotPattern
-                            className="[mask-image:radial-gradient(ellipse_at_center,black_15%,transparent_72%)] transition-[fill,fill-opacity] duration-500"
-                            cr={1}
+                            className="[mask-image:radial-gradient(ellipse_at_center,black_28%,transparent_80%)] transition-[fill,fill-opacity] duration-500"
+                            cr={1.1}
+                            cx={9}
+                            cy={9}
                             height={18}
                             style={{
-                              fill: `color-mix(in oklch, var(--muted-foreground), var(--primary) ${25 + muscleDotIntensity * 55}%)`,
-                              fillOpacity: 0.3 + muscleDotIntensity * 0.3,
+                              fill: `color-mix(in oklch, var(--muted-foreground), var(--primary) ${25 + muscleDotIntensity * 50}%)`,
+                              fillOpacity: 0.36 + muscleDotIntensity * 0.28,
                             }}
                             width={18}
                           />
@@ -631,7 +620,7 @@ export function App() {
                               return (
                                 <button
                                   aria-checked={checked}
-                                  className={`interactive-spring group relative overflow-hidden rounded-3xl border bg-[var(--equipment-card)] text-left shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-300 ${
+                                  className={`equipment-card interactive-spring group relative overflow-hidden rounded-(--app-card-radius) border bg-[var(--equipment-card)] text-left shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-300 ${
                                     checked
                                       ? "border-primary/75 shadow-[0_0_0_1px_color-mix(in_oklch,var(--primary)_30%,transparent)]"
                                       : "border-border"
@@ -718,7 +707,6 @@ export function App() {
                                       pushPage({
                                         type: "exercise-detail",
                                         exerciseId: candidate.id,
-                                        selectable: true,
                                       })
                                     }}
                                     onToggleSelect={toggleSelected}
@@ -991,13 +979,7 @@ export function App() {
             } else if (page.type === "exercise-detail") {
               const exercise = EXERCISES_BY_ID.get(page.exerciseId)
               content = exercise ? (
-                <ExerciseDetailPage
-                  exercise={exercise}
-                  onBack={popPage}
-                  onSelect={selectExerciseFromDetail}
-                  selectable={page.selectable}
-                  selected={selectedIds.includes(page.exerciseId)}
-                />
+                <ExerciseDetailPage exercise={exercise} onBack={popPage} />
               ) : null
             } else if (page.type === "workout-destination") {
               content = (

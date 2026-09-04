@@ -5,7 +5,7 @@ export type AppPage =
   | { type: "muscles"; preferredWorkoutId?: string | null }
   | { type: "equipment"; preferredWorkoutId?: string | null }
   | { type: "exercises"; preferredWorkoutId?: string | null }
-  | { type: "exercise-detail"; exerciseId: string; selectable: boolean }
+  | { type: "exercise-detail"; exerciseId: string }
   | { type: "workout-destination"; preferredWorkoutId?: string | null }
   | { type: "workout-form"; exerciseIds: string[]; workoutId?: string | null }
   | { type: "equipment-preset" }
@@ -107,9 +107,8 @@ export function pageHasControls(page: AppPage) {
     case "settings":
     case "workout-destination":
     case "exercise-alternatives":
-      return false
     case "exercise-detail":
-      return page.selectable
+      return false
     default:
       return true
   }
@@ -120,7 +119,7 @@ export function pageKey(page: AppPage) {
     case "workout-detail":
       return `${page.type}:${page.workoutId}`
     case "exercise-detail":
-      return `${page.type}:${page.exerciseId}:${page.selectable}`
+      return `${page.type}:${page.exerciseId}`
     case "exercise-alternatives":
       return `${page.type}:${page.workoutId}:${page.exerciseId}`
     case "workout-form":

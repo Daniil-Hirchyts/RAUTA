@@ -15,8 +15,8 @@ type DotPatternProps = SVGProps<SVGSVGElement> & {
 export function DotPattern({
   className,
   cr = 1,
-  cx = 1,
-  cy = 1,
+  cx = cr,
+  cy = cr,
   height = 16,
   width = 16,
   x = 0,

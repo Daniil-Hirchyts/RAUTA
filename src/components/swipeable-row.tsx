@@ -125,7 +125,7 @@ export function SwipeableRow({
   }
 
   return (
-    <div className={cn("relative overflow-hidden", className)}>
+    <div className={cn("swipeable-row relative", className)}>
       <div
         className="absolute inset-y-0 right-0 flex items-center justify-center opacity-0 transition-opacity duration-150"
         ref={actionRef}
@@ -134,7 +134,7 @@ export function SwipeableRow({
         {action}
       </div>
       <div
-        className="relative touch-pan-y"
+        className="swipeable-row-content relative touch-pan-y"
         onPointerCancel={endDrag}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}

@@ -50,11 +50,7 @@ function parsePage(value: unknown): AppPage | null {
     case "exercise-detail": {
       const exerciseId = validString(value.exerciseId)
       if (!exerciseId || !isExerciseId(exerciseId)) return null
-      return {
-        type: "exercise-detail",
-        exerciseId,
-        selectable: value.selectable === true,
-      }
+      return { type: "exercise-detail", exerciseId }
     }
     case "workout-form":
       return {
@@ -134,11 +130,7 @@ function migrateVersion2(value: unknown): AppSession {
     detailExerciseId &&
     isExerciseId(detailExerciseId)
   ) {
-    pages.push({
-      type: "exercise-detail",
-      exerciseId: detailExerciseId,
-      selectable: view.type === "flow",
-    })
+    pages.push({ type: "exercise-detail", exerciseId: detailExerciseId })
   }
 
   return sanitizeSession({ ...state, pages })

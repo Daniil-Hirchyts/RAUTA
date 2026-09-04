@@ -170,55 +170,51 @@ function WorkoutRow({
       isOpen={isOpen}
       onOpenChange={onOpenChange}
     >
-      <div
-        className={`mx-(--app-content-inset) flex w-[calc(100%_-_2_*_var(--app-content-inset))] items-center gap-2 rounded-3xl border p-1.5 transition-[border-color,background-color] duration-200 ${
+      <button
+        className={`interactive-spring mx-(--app-content-inset) flex w-[calc(100%_-_2_*_var(--app-content-inset))] items-center gap-3 rounded-3xl border p-3.5 text-left ${
           isRunning
-            ? "border-primary/55 bg-[color-mix(in_oklch,var(--card),var(--primary)_7%)]"
-            : "border-border bg-card"
+            ? "border-primary/55 bg-[color-mix(in_oklch,var(--card),var(--primary)_7%)] active:border-primary active:bg-[color-mix(in_oklch,var(--card),var(--primary)_12%)]"
+            : "border-border bg-card active:bg-muted/80"
         }`}
+        data-haptics="off"
+        onClick={() => {
+          if (isOpen) {
+            onOpenChange(false)
+            return
+          }
+          onSelect()
+        }}
+        type="button"
       >
-        <button
-          className="interactive-spring flex min-w-0 flex-1 items-center gap-3 rounded-2xl p-2 text-left active:bg-muted/80"
-          data-haptics="off"
-          onClick={() => {
-            if (isOpen) {
-              onOpenChange(false)
-              return
-            }
-            onSelect()
-          }}
-          type="button"
-        >
-          <div className="min-w-0 flex-1">
-            <p className="text-lg font-bold tracking-[-0.01em]">
-              {formatDateShort(workout.date)}
+        <div className="min-w-0 flex-1">
+          <p className="text-lg font-bold tracking-[-0.01em]">
+            {formatDateShort(workout.date)}
+          </p>
+          {isRunning && session ? (
+            <p className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold text-primary tabular-nums">
+              <span
+                aria-hidden="true"
+                className="size-1.5 animate-pulse rounded-full bg-primary"
+              />
+              {session.runningSince === null ? "Paused" : "In progress"} ·{" "}
+              {formatDuration(elapsed)} · {sessionProgress(session).completed}
+              /{sessionProgress(session).total}
             </p>
-            {isRunning && session ? (
-              <p className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold text-primary tabular-nums">
-                <span
-                  aria-hidden="true"
-                  className="size-1.5 animate-pulse rounded-full bg-primary"
-                />
-                {session.runningSince === null ? "Paused" : "In progress"} ·{" "}
-                {formatDuration(elapsed)} · {sessionProgress(session).completed}
-                /{sessionProgress(session).total}
-              </p>
-            ) : isPast ? (
-              <PastStats workout={workout} />
-            ) : (
-              <p className="mt-0.5 text-sm font-medium text-muted-foreground">
-                {workout.exerciseIds.length} exercise
-                {workout.exerciseIds.length === 1 ? "" : "s"}
-              </p>
-            )}
-          </div>
-          <BodyPreview
-            className="h-14 w-20 shrink-0"
-            selectedMuscles={targetMuscles}
-          />
-          <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
-        </button>
-      </div>
+          ) : isPast ? (
+            <PastStats workout={workout} />
+          ) : (
+            <p className="mt-0.5 text-sm font-medium text-muted-foreground">
+              {workout.exerciseIds.length} exercise
+              {workout.exerciseIds.length === 1 ? "" : "s"}
+            </p>
+          )}
+        </div>
+        <BodyPreview
+          className="h-14 w-20 shrink-0"
+          selectedMuscles={targetMuscles}
+        />
+        <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+      </button>
     </SwipeableRow>
   )
 }
@@ -270,7 +266,7 @@ export function WorkoutsPage({
   const renderRows = (items: Workout[], arePast: boolean) => (
     <ul className="space-y-3">
       {items.map((workout) => (
-        <li key={workout.id}>
+        <li className="relative" key={workout.id}>
           <WorkoutRow
             elapsed={elapsed}
             isOpen={openRowId === workout.id}

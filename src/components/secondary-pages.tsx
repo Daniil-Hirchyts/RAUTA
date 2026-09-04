@@ -9,7 +9,7 @@ import {
   AppSurface,
 } from "@/components/app-shell"
 import { AppImage } from "@/components/app-image"
-import { AppControlMorph, AppMorph } from "@/components/app-morph"
+import { AppMorph } from "@/components/app-morph"
 import { LikeButton } from "@/components/like-button"
 import { SortableExerciseList } from "@/components/sortable-exercise-list"
 import { Button } from "@/components/ui/button"
@@ -46,15 +46,9 @@ function PageBack({ label, onBack }: { label: string; onBack: () => void }) {
 export function ExerciseDetailPage({
   exercise,
   onBack,
-  onSelect,
-  selectable,
-  selected,
 }: {
   exercise: ExerciseSummary
   onBack: () => void
-  onSelect: (exercise: ExerciseSummary) => void
-  selectable: boolean
-  selected: boolean
 }) {
   const isFavorite = useFavorites((state) =>
     state.favoriteIds.includes(exercise.id)
@@ -62,7 +56,7 @@ export function ExerciseDetailPage({
   const toggleFavorite = useFavorites((state) => state.toggleFavorite)
 
   return (
-    <AppScreen bottomControls={selectable}>
+    <AppScreen>
       <AppSurface>
         <AppShellHeader
           left={<PageBack label="Back" onBack={onBack} />}
@@ -90,7 +84,7 @@ export function ExerciseDetailPage({
           <AppMorph
             className="isolate aspect-square w-full overflow-hidden bg-popover"
             morphId={exerciseMorphId(exercise.id)}
-            radius="var(--radius-3xl)"
+            radius="var(--app-card-radius)"
           >
             <AppImage
               alt={`${exercise.name} demonstration`}
@@ -117,21 +111,6 @@ export function ExerciseDetailPage({
           ) : null}
         </div>
       </AppSurface>
-
-      {selectable ? (
-        <AppControls transitionKey={`exercise-select:${selected}`}>
-          <AppControlMorph className="app-command-fill" role="primary">
-            <Button
-              className="w-full"
-              disabled={selected}
-              onClick={() => onSelect(exercise)}
-              size="cta"
-            >
-              {selected ? "Selected" : "Select"}
-            </Button>
-          </AppControlMorph>
-        </AppControls>
-      ) : null}
     </AppScreen>
   )
 }
