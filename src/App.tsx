@@ -616,7 +616,7 @@ export function App() {
                     {stage === 2 ? (
                       <section
                         aria-label="Choose equipment"
-                        className="app-scroll-content min-h-0 flex-1 overflow-y-auto px-4 pt-[calc(4.25rem+env(safe-area-inset-top)+0.75rem)] pb-20"
+                        className="app-scroll-content min-h-0 flex-1 overflow-y-auto px-(--app-content-inset) pt-[calc(4.25rem+env(safe-area-inset-top)+0.75rem)] pb-20"
                         ref={equipmentScrollRef}
                         tabIndex={-1}
                       >
@@ -661,7 +661,7 @@ export function App() {
                                   </span>
                                   <AnimatedCheck
                                     checked={checked}
-                                    className="pointer-events-none absolute top-2.5 right-2.5 size-8"
+                                    className="pointer-events-none absolute top-5 right-5 size-8"
                                   />
                                 </button>
                               )
@@ -675,7 +675,7 @@ export function App() {
                       <section
                         aria-label="Matching exercises"
                         className={cn(
-                          "app-scroll-content min-h-0 flex-1 overflow-y-auto px-4 pt-[calc(4.25rem+env(safe-area-inset-top)+0.75rem)]",
+                          "app-scroll-content min-h-0 flex-1 overflow-y-auto px-(--app-content-inset) pt-[calc(4.25rem+env(safe-area-inset-top)+0.75rem)]",
                           searchOpen || selectMode ? "pb-28" : "pb-6"
                         )}
                         ref={exercisesScrollRef}
@@ -779,7 +779,7 @@ export function App() {
 
                     {stage === 2 && !presetEditorOpen ? (
                       <div className="app-surface-bottom-dock equipment-presets-dock">
-                        <EquipmentPresets className="px-4" />
+                        <EquipmentPresets className="px-(--app-content-inset)" />
                       </div>
                     ) : null}
                   </AppSurface>

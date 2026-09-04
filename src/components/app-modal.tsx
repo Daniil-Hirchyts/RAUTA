@@ -74,7 +74,10 @@ export function AppModal({
               aria-label={label}
               aria-modal="true"
               className={cn(
-                "w-full max-w-[21.5rem] rounded-3xl border border-border bg-card p-3 shadow-[0_28px_64px_-16px_rgb(0_0_0/0.85)]",
+                // 14px of padding is what a 36px panel corner leaves around the 44px
+                // pill buttons a question ends with. A panel filled by one
+                // rounded box of its own passes its own inset instead.
+                "w-full max-w-[21.5rem] rounded-3xl border border-border bg-card p-3.5 shadow-[0_28px_64px_-16px_rgb(0_0_0/0.85)]",
                 panelClassName
               )}
               exit={{ opacity: 0, scale: 0.96, transition: CLOSE }}

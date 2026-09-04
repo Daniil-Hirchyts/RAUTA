@@ -56,6 +56,7 @@ export function WorkoutDatePicker({
         label="Choose workout date"
         onClose={() => setOpen(false)}
         open={open}
+        panelClassName="p-1.5"
       >
         <StableCalendar
           className="w-full overflow-hidden rounded-2xl bg-background [--cell-size:2.75rem]"

@@ -35,7 +35,12 @@ function Calendar({
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn(
-        "group/calendar bg-background p-3 [--cell-radius:var(--radius-4xl)] [--cell-size:--spacing(8)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent",
+        // The day cells sit in the corners of a 30px-cornered calendar with
+        // 12px of padding around them, so they curve by the 18px that
+        // difference leaves. (The theme inlines its radius tokens into the
+        // utilities instead of emitting variables, so the token this used to
+        // name resolved to nothing and the cells came out square.)
+        "group/calendar bg-background p-3 [--cell-radius:18px] [--cell-size:--spacing(8)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent",
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
         String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
         className

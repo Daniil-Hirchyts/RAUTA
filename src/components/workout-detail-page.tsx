@@ -185,7 +185,7 @@ export function WorkoutDetailPage({
           {isPast ? (
             <section
               aria-label="Workout stats"
-              className="mx-4 grid grid-cols-3 gap-2 rounded-3xl border border-border bg-card/70 p-3"
+              className="mx-(--app-content-inset) grid grid-cols-3 gap-1.5 rounded-3xl border border-border bg-card/70 p-1.5"
             >
               <div className="rounded-2xl bg-muted/45 p-3 text-center">
                 <Clock3 className="mx-auto size-4 text-primary" />

@@ -71,7 +71,7 @@ export function WorkoutHeatmap({
   return (
     <section
       aria-label="Training consistency"
-      className="mx-4 rounded-3xl border border-border bg-card/60 p-4"
+      className="mx-(--app-content-inset) rounded-3xl border border-border bg-card/60 p-4"
       style={{ "--cell": `${CELL}px` } as React.CSSProperties}
     >
       <div className="flex items-start justify-between gap-3">

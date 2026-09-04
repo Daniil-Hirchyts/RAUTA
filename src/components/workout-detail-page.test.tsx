@@ -400,6 +400,6 @@ describe("WorkoutDetailPage", () => {
     await startNow(user)
     expect(
       screen.getByRole("button", { name: "Skip 3/4 sit-up" })
-    ).toBeDisabled()
+    ).toHaveAttribute("aria-disabled", "true")
   })
 })

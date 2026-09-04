@@ -164,7 +164,8 @@ describe("App", () => {
     const chooseEquipment = screen.getByRole("button", {
       name: /choose equipment/i,
     })
-    expect(chooseEquipment).toBeDisabled()
+    // Refused, not inert: the control keeps its press so it can shake.
+    expect(chooseEquipment).toHaveAttribute("aria-disabled", "true")
     expect(chooseEquipment.querySelector("svg")).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole("button", { name: "Front Chest" }))
@@ -184,7 +185,7 @@ describe("App", () => {
     const fullGymPreset = screen.getByRole("button", { name: "Full gym" })
     const presetScroller = fullGymPreset.closest("[data-swipe-ignore]")
     expect(fullGymPreset.closest(".app-surface")).toBe(equipmentSurface)
-    expect(presetScroller).toHaveClass("px-4")
+    expect(presetScroller).toHaveClass("px-(--app-content-inset)")
     expect(presetDock).not.toHaveAttribute("data-slot", "app-controls")
     const createPreset = screen.getByRole("button", {
       name: "Create equipment preset",
@@ -192,7 +193,7 @@ describe("App", () => {
     expect(
       createPreset.closest('footer[data-slot="app-controls"]')
     ).toContainElement(createPreset)
-    expect(createPreset).toBeDisabled()
+    expect(createPreset).toHaveAttribute("aria-disabled", "true")
     await user.click(screen.getByRole("checkbox", { name: "Body Weight" }))
     const enabledCreatePreset = screen.getByRole("button", {
       name: "Create equipment preset",
@@ -447,7 +448,7 @@ describe("App", () => {
     const addToWorkout = screen.getByRole("button", {
       name: /add to workout/i,
     })
-    expect(addToWorkout).toBeDisabled()
+    expect(addToWorkout).toHaveAttribute("aria-disabled", "true")
     // The selection CTA sits in the command band with the rest of the row,
     // not in a dock of its own above it.
     expect(

@@ -84,7 +84,7 @@ export function ExerciseDetailPage({
           title="Exercise"
         />
 
-        <div className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-6">
+        <div className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-(--app-content-inset) pt-5 pb-6">
           <div className="isolate aspect-square w-full overflow-hidden rounded-3xl bg-popover">
             <AppImage
               alt={`${exercise.name} demonstration`}
@@ -161,7 +161,7 @@ export function WorkoutDestinationPage({
           left={<PageBack label="Back to exercises" onBack={onBack} />}
           title={`Add ${exerciseIds.length} exercise${exerciseIds.length === 1 ? "" : "s"}`}
         />
-        <div className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-6">
+        <div className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-(--app-content-inset) pt-5 pb-6">
           <p className="text-sm text-muted-foreground">
             Start fresh or add them to a workout you already use.
           </p>
@@ -264,7 +264,7 @@ export function WorkoutFormPage({
           title={isEdit ? "Edit workout" : "New workout"}
         />
         <form
-          className="app-scroll-region flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-5 pb-6"
+          className="app-scroll-region flex min-h-0 flex-1 flex-col overflow-y-auto px-(--app-content-inset) pt-5 pb-6"
           id="workout-form"
           onSubmit={submit}
         >
@@ -277,7 +277,7 @@ export function WorkoutFormPage({
             <span className="truncate">{formatDateLong(date)}</span>
           </WorkoutDatePicker>
 
-          <div className="relative -mx-4 mt-2 min-h-0 flex-1">
+          <div className="relative -mx-(--app-content-inset) mt-2 min-h-0 flex-1">
             <div className="app-scroll-content h-full overflow-y-auto pt-2 pb-3">
               <SortableExerciseList
                 exerciseIds={exerciseIds}
@@ -335,7 +335,7 @@ export function EquipmentPresetPage({
           title="Save preset"
         />
         <form
-          className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-6"
+          className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-(--app-content-inset) pt-5 pb-6"
           id="equipment-preset-form"
           onSubmit={submit}
         >
@@ -409,7 +409,7 @@ export function ExerciseAlternativesPage({
           left={<PageBack label="Back to workout" onBack={onBack} />}
           title="Find alternative"
         />
-        <div className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-6">
+        <div className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-(--app-content-inset) pt-5 pb-6">
           <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3">
             <div className="isolate size-16 shrink-0 overflow-hidden rounded-2xl bg-card">
               <AppImage
@@ -433,7 +433,7 @@ export function ExerciseAlternativesPage({
           </div>
 
           {equipmentOptions.length > 1 ? (
-            <div className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1">
+            <div className="-mx-(--app-content-inset) mt-4 flex gap-2 overflow-x-auto px-(--app-content-inset) pb-1">
               {[null, ...equipmentOptions].map((option) => (
                 <button
                   aria-pressed={equipment === option}
@@ -466,7 +466,7 @@ export function ExerciseAlternativesPage({
                   onClick={() => onSwap(alternative)}
                   type="button"
                 >
-                  <span className="isolate size-20 shrink-0 overflow-hidden rounded-2xl bg-card">
+                  <span className="isolate size-20 shrink-0 overflow-hidden rounded-lg bg-card">
                     <AppImage
                       alt=""
                       className="h-full w-full object-contain mix-blend-screen"

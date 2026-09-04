@@ -50,7 +50,7 @@ function SortableExerciseRow({
 
   const row = (
     <div
-      className={`relative isolate mx-4 flex h-32 w-[calc(100%-2rem)] overflow-hidden rounded-3xl border bg-card shadow-sm shadow-black/10 transition-[border-color,box-shadow,opacity] ${
+      className={`relative isolate mx-(--app-content-inset) flex h-32 w-[calc(100%_-_2_*_var(--app-content-inset))] overflow-hidden rounded-3xl border bg-card shadow-sm shadow-black/10 transition-[border-color,box-shadow,opacity] ${
         isDragSource
           ? "border-primary/70 opacity-90 shadow-xl shadow-black/30"
           : status === "active"

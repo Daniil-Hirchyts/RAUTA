@@ -161,7 +161,7 @@ export function ExerciseCard({
             ? `Remove ${exercise.name} from favorites`
             : `Add ${exercise.name} to favorites`
         }
-        className="interactive-spring hit-target absolute top-2.5 left-2.5 grid size-8 place-items-center rounded-full border border-border bg-background text-primary active:bg-card/90"
+        className="interactive-spring hit-target absolute top-5 left-5 grid size-8 place-items-center rounded-full border border-border bg-background text-primary active:bg-card/90"
         iconClassName="size-4"
         liked={isFavorite}
         onClick={(event) => {
@@ -174,7 +174,7 @@ export function ExerciseCard({
       <AnimatedCheck
         checked={selected}
         className={cn(
-          "pointer-events-none absolute top-2.5 right-2.5 size-8 transition-[opacity,transform] duration-250 ease-[var(--ease-smooth-out)]",
+          "pointer-events-none absolute top-5 right-5 size-8 transition-[opacity,transform] duration-250 ease-[var(--ease-smooth-out)]",
           selectMode
             ? "scale-100 opacity-100"
             : "pointer-events-none scale-75 opacity-0"
