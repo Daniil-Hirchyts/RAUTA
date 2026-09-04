@@ -82,9 +82,9 @@ describe("page-based app flows", () => {
     // Settings is still the page underneath — nothing was pushed over it.
     expect(screen.getByRole("heading", { name: "Settings" })).toBeVisible()
 
-    await user.click(within(confirm).getByRole("button", { name: "Continue" }))
+    await user.click(within(confirm).getByRole("button", { name: "Clear data" }))
     expect(
-      within(confirm).getByRole("heading", { name: "This cannot be undone" })
+      within(confirm).getByRole("heading", { name: "This clears iCloud too" })
     ).toBeVisible()
     expect(useWorkouts.getState().workouts).toHaveLength(1)
 

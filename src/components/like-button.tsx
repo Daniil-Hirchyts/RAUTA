@@ -1,6 +1,7 @@
 import { useState, type ButtonHTMLAttributes, type CSSProperties } from "react"
 import { Heart } from "lucide-react"
 
+import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 const PARTICLES = [
@@ -42,6 +43,7 @@ export function LikeButton({
     <button
       aria-pressed={liked}
       className={cn(
+        buttonVariants({ size: "icon-cta", variant: "ghost" }),
         "t-like relative",
         bursting && "is-bursting",
         !animated && "t-like-static",

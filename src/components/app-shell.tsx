@@ -65,6 +65,11 @@ export function PageLayerProvider({
   )
 }
 
+/** One band per blur step, softest last. The radii and the slice each one
+ *  covers live in index.css; all this has to do is put seven boxes there for
+ *  them to land on. */
+const BLUR_BANDS = [0, 1, 2, 3, 4, 5, 6]
+
 /** Compatibility wrapper for pages that predate the stationary shell. */
 export function AppScreen({
   children,
@@ -74,11 +79,19 @@ export function AppScreen({
 }) {
   return (
     <div className="app-screen">
-      {/* The top edge fade lives inside the page rather than on the shell: a
-          page layer is transformed, so it opens a stacking context the title
-          cannot escape, and a shell-owned scrim would paint over the very
-          title it is meant to sit behind. */}
-      <div aria-hidden="true" className="app-top-scrim" />
+      {/* The top edge treatment lives inside the page rather than on the
+          shell: a page layer is transformed, so it opens a stacking context
+          the title cannot escape, and a shell-owned scrim would paint over the
+          very title it is meant to sit behind. Being inside the layer is also
+          what gives the blur something to read — the layer carries
+          `contain: paint`, which makes it the backdrop root the bands sample
+          the scrolling content from. */}
+      <div aria-hidden="true" className="app-top-scrim">
+        {BLUR_BANDS.map((band) => (
+          <div className="app-top-scrim-blur" key={band} />
+        ))}
+        <div className="app-top-scrim-tint" />
+      </div>
       {children}
     </div>
   )

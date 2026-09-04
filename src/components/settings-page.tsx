@@ -225,7 +225,9 @@ export function SettingsPage({
     } catch {
       setPreference("appleHealthEnabled", false)
       setPreference("healthStatus", "error")
-      setNotice("Health access was not granted. You can try again.")
+      setNotice(
+        "Apple Health did not grant access. Allow it in Settings › Health › Data Access & Devices › Gym Lib, then turn this back on."
+      )
       triggerHaptic("warning")
     } finally {
       setHealthBusy(false)
@@ -238,10 +240,14 @@ export function SettingsPage({
     if (!file) return
     try {
       importGymLibData(await file.text())
-      setNotice("Backup restored successfully.")
+      setNotice("Backup restored. Your workouts, favorites and presets are back.")
       triggerHaptic("success")
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Import failed.")
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "That file is not a Gym Lib backup. Pick the .json file this app exported."
+      )
       triggerHaptic("warning")
     }
   }
@@ -270,7 +276,7 @@ export function SettingsPage({
                 settings.healthStatus === "connected"
                   ? settings.healthBodyWeightKg
                     ? `Connected · ${settings.healthBodyWeightKg} kg from Health`
-                    : "Connected · workout write access granted"
+                    : "Connected · finished workouts are saved to Health"
                   : "Save completed strength workouts to Health"
               }
               icon={<Apple />}
@@ -306,7 +312,7 @@ export function SettingsPage({
               />
             </SettingsRow>
             <SettingsRow
-              description="MET estimate using your latest Health weight when allowed"
+              description="Estimated from how long you trained, and your Health weight when you allow it"
               icon={<Activity />}
               title="Active calories"
             >
@@ -397,7 +403,7 @@ export function SettingsPage({
               ) : null}
             </SettingsRow>
             <SettingsAction
-              description="Save a JSON backup of everything"
+              description="Save one file holding every workout, favorite and preset"
               icon={<Download />}
               onClick={() => {
                 triggerHaptic("light")
@@ -406,7 +412,14 @@ export function SettingsPage({
                     setNotice("Backup ready to save or share.")
                     triggerHaptic("success")
                   })
-                  .catch(() => setNotice("Could not export your data."))
+                  .catch(() =>
+                    // Naming the likely cause and the other way to keep this
+                    // data — the iCloud row directly above — beats reporting
+                    // that it did not work and stopping there.
+                    setNotice(
+                      "The backup could not be written. Check the space left on this device, or leave iCloud backup on instead."
+                    )
+                  )
               }}
               title="Export data"
             />

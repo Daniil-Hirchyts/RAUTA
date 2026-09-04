@@ -89,7 +89,7 @@ function SortableExerciseRow({
       >
         <AppImage
           alt={`${exercise.name} demonstration`}
-          className="h-full w-full object-contain mix-blend-screen"
+          className="h-full w-full object-contain"
           decoding="async"
           draggable={false}
           fetchPriority={index < 3 ? "high" : "low"}

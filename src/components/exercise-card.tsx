@@ -133,10 +133,7 @@ export function ExerciseCard({
         <div className="isolate aspect-square overflow-hidden bg-card">
           <AppImage
             alt={`${exercise.name} demonstration`}
-            className={cn(
-              "h-full w-full object-contain",
-              !native && "mix-blend-screen"
-            )}
+            className="h-full w-full object-contain"
             decoding="async"
             draggable={false}
             fetchPriority={native && index < 4 ? "high" : "low"}

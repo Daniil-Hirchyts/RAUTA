@@ -73,7 +73,7 @@ describe("App", () => {
     expect(
       screen.getByRole("heading", { name: "My workouts" })
     ).toBeInTheDocument()
-    await user.click(screen.getByRole("button", { name: "Add workout" }))
+    await user.click(screen.getByRole("button", { name: "New workout" }))
     expect(screen.getByRole("heading", { name: "Muscles" })).toBeInTheDocument()
   })
 
@@ -227,6 +227,37 @@ describe("App", () => {
     expect(screen.getByTestId("exercise-results")).toBeInTheDocument()
   })
 
+  it("morphs optional controls without remounting the primary action", async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    const chooseEquipment = screen.getByRole("button", {
+      name: "Choose equipment",
+    })
+    const clearMuscles = document.querySelector<HTMLButtonElement>(
+      '[aria-label="Clear muscle selection"]'
+    )!
+    const slot = clearMuscles.closest(".morphing-action-slot")
+
+    expect(slot).not.toHaveAttribute("data-visible")
+    expect(slot).toHaveAttribute("inert")
+
+    fireEvent.click(screen.getByRole("button", { name: "Front Chest" }))
+    await waitFor(() => expect(slot).toHaveAttribute("data-visible", "true"))
+    expect(screen.getByRole("button", { name: "Choose equipment" })).toBe(
+      chooseEquipment
+    )
+
+    await user.click(
+      screen.getByRole("button", { name: "Clear muscle selection" })
+    )
+    await waitFor(() => expect(slot).not.toHaveAttribute("data-visible"))
+    expect(slot).toHaveAttribute("inert")
+    expect(screen.getByRole("button", { name: "Choose equipment" })).toBe(
+      chooseEquipment
+    )
+  })
+
   it("restores the in-progress flow after the app remounts", async () => {
     const user = userEvent.setup()
     const [exercise] = filterExercises(EXERCISES, ["chest"], ["body weight"])
@@ -275,6 +306,10 @@ describe("App", () => {
     expect(image).toHaveAttribute("loading", "lazy")
     expect(image).toHaveAttribute("decoding", "async")
     expect(image).toHaveAttribute("fetchpriority", "low")
+    expect((image as HTMLImageElement).style.filter).toContain(
+      "exercise-background-key"
+    )
+    expect(image).not.toHaveClass("mix-blend-screen")
   })
 
   it("paginates a large result set instead of mounting every card at once", async () => {
@@ -326,7 +361,9 @@ describe("App", () => {
     })
     render(<App />)
 
-    expect(screen.getByText("0 exercises")).toBeInTheDocument()
+    expect(
+      screen.getByText(/Nothing uses every muscle and every piece of equipment/)
+    ).toBeInTheDocument()
   })
 
   it("opens an exercise detail page on click", async () => {

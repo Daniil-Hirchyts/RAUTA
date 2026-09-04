@@ -4,6 +4,7 @@ import { ChevronRight, Flame } from "lucide-react"
 import { formatDateShort, formatWeekdayShort } from "@/lib/date"
 import { triggerHaptic } from "@/lib/haptics"
 import { buildHeatmap, HEATMAP_LEVELS, type HeatmapLevel } from "@/lib/heatmap"
+import { countLabel } from "@/lib/text"
 import type { Workout } from "@/store/use-workouts"
 
 /** Cell pitch. The square inside is smaller, so taps land on the gaps too. */
@@ -19,10 +20,6 @@ const LEVEL_FILL: Record<HeatmapLevel, string> = {
 
 /** Mon/Wed/Fri only — three labels is enough to read the rows by. */
 const LABELLED_WEEKDAYS = [0, 2, 4]
-
-function countLabel(count: number, noun: string) {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`
-}
 
 /**
  * A year of training as a contribution matrix: one column per week, one cell

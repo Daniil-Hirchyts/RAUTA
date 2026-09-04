@@ -37,7 +37,7 @@ export function ActiveWorkoutHero({
       >
         <AppImage
           alt={`${exercise.name} demonstration`}
-          className="h-full w-full object-contain mix-blend-screen"
+          className="h-full w-full object-contain"
           decoding="async"
           draggable={false}
           fetchPriority="high"

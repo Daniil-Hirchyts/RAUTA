@@ -13,13 +13,10 @@ export function exerciseAnimation(exercise: ExerciseSummary) {
 }
 
 /**
- * Dark-theme treatment for the white-background exercise animations: a live
- * unsharp-mask sharpen (see SvgFilterDefs), then invert + hue-rotate so the
- * white background becomes black and the red muscle highlight stays red.
- * Pair with the `mix-blend-screen` class over a matching background color
- * so that black becomes exactly the surrounding surface color — use the
- * surface token itself (bg-card, bg-popover), never a hardcoded hex, or the
- * animation sits in a visibly darker box.
+ * Dark-theme treatment for the white-background exercise animations. The
+ * first filter turns the near-white canvas into transparency; the remaining
+ * filters invert and recolor the figure. Unlike mix-blend-mode, this does not
+ * depend on a backdrop layer and remains stable in WKWebView.
  *
  * The rotation lands the source red on the app's primary orange: measured
  * in WebKit the highlight averages ~1 degree off the brand hue, against 22
@@ -35,10 +32,10 @@ export function exerciseAnimation(exercise: ExerciseSummary) {
  * just the sharpen for exactly that case.
  */
 export const EXERCISE_ANIMATION_FILTER = isNative()
-  ? "invert(1) hue-rotate(188deg) saturate(2.2) contrast(1.05)"
-  : "url(#exercise-gif-sharpen) invert(1) hue-rotate(188deg) saturate(2.2) contrast(1.05)"
+  ? "url(#exercise-background-key) invert(1) hue-rotate(188deg) saturate(2.2) contrast(1.05)"
+  : "url(#exercise-background-key) url(#exercise-gif-sharpen) invert(1) hue-rotate(188deg) saturate(2.2) contrast(1.05)"
 
 /** Same dark-theme treatment as {@link EXERCISE_ANIMATION_FILTER}, minus the
  *  SVG sharpen — for grids that can render many cards at once. */
 export const EXERCISE_ANIMATION_FILTER_LIGHT =
-  "invert(1) hue-rotate(188deg) saturate(2.2) contrast(1.05)"
+  "url(#exercise-background-key) invert(1) hue-rotate(188deg) saturate(2.2) contrast(1.05)"

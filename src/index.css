@@ -93,6 +93,9 @@
   --background: oklch(0.175 0 0);
   --foreground: oklch(0.96 0 0);
   --card: oklch(0.225 0 0);
+  /* Equipment renders use this near-black studio canvas. The same value on
+     the media and label areas removes the false edge between them. */
+  --equipment-card: rgb(30 30 30);
   --card-foreground: oklch(0.96 0 0);
   --popover: oklch(0.19 0 0);
   --popover-foreground: oklch(0.96 0 0);
@@ -398,14 +401,184 @@ html[data-native="ios"] .app-drag-grain {
      floating over it and a notch above it, so it needs more room to hand
      content off to the background than the plain bottom edge does. */
   height: calc(4.5rem + env(safe-area-inset-top));
-  background: linear-gradient(
+  pointer-events: none;
+  /* Nothing that would make this element a backdrop root of its own: the
+     layers inside have to sample the page layer beneath them, and that layer
+     is already the root (it carries `contain: paint`). */
+}
+
+/* Seven blur bands rather than one blurred pane. A single large blur moves
+   every pixel of the band by the same amount, so the boundary where it stops
+   is a visible seam; stepping the radius down band by band means each band is
+   only slightly sharper than the one above it, and detail dissolves on the way
+   up instead of the colour simply fading out.
+
+   Each band masks itself to a slice of the scrim, and each slice overlaps its
+   neighbours: a band is fully opaque across the middle eighth of its own range
+   and fades out over the eighth on either side, so no two steps ever meet at
+   an edge. The layers stack, so a band also blurs the output of the softer
+   ones already painted beneath it — that accumulation is what makes the
+   falloff read as continuous. */
+.app-top-scrim-blur {
+  position: absolute;
+  inset: 0;
+}
+
+.app-top-scrim-blur:nth-child(1) {
+  -webkit-backdrop-filter: blur(48px);
+  backdrop-filter: blur(48px);
+  -webkit-mask: linear-gradient(
     to bottom,
-    var(--background) 0%,
-    var(--background) 30%,
-    color-mix(in oklch, var(--background) 62%, transparent) 62%,
+    black 0%,
+    black 12.5%,
+    transparent 25%
+  );
+  mask: linear-gradient(to bottom, black 0%, black 12.5%, transparent 25%);
+}
+
+.app-top-scrim-blur:nth-child(2) {
+  -webkit-backdrop-filter: blur(32px);
+  backdrop-filter: blur(32px);
+  -webkit-mask: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 12.5%,
+    black 25%,
+    transparent 37.5%
+  );
+  mask: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 12.5%,
+    black 25%,
+    transparent 37.5%
+  );
+}
+
+.app-top-scrim-blur:nth-child(3) {
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  -webkit-mask: linear-gradient(
+    to bottom,
+    transparent 12.5%,
+    black 25%,
+    black 37.5%,
+    transparent 50%
+  );
+  mask: linear-gradient(
+    to bottom,
+    transparent 12.5%,
+    black 25%,
+    black 37.5%,
+    transparent 50%
+  );
+}
+
+.app-top-scrim-blur:nth-child(4) {
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  -webkit-mask: linear-gradient(
+    to bottom,
+    transparent 25%,
+    black 37.5%,
+    black 50%,
+    transparent 62.5%
+  );
+  mask: linear-gradient(
+    to bottom,
+    transparent 25%,
+    black 37.5%,
+    black 50%,
+    transparent 62.5%
+  );
+}
+
+.app-top-scrim-blur:nth-child(5) {
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  -webkit-mask: linear-gradient(
+    to bottom,
+    transparent 37.5%,
+    black 50%,
+    black 62.5%,
+    transparent 75%
+  );
+  mask: linear-gradient(
+    to bottom,
+    transparent 37.5%,
+    black 50%,
+    black 62.5%,
+    transparent 75%
+  );
+}
+
+.app-top-scrim-blur:nth-child(6) {
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  -webkit-mask: linear-gradient(
+    to bottom,
+    transparent 50%,
+    black 62.5%,
+    black 75%,
+    transparent 87.5%
+  );
+  mask: linear-gradient(
+    to bottom,
+    transparent 50%,
+    black 62.5%,
+    black 75%,
+    transparent 87.5%
+  );
+}
+
+.app-top-scrim-blur:nth-child(7) {
+  -webkit-backdrop-filter: blur(1px);
+  backdrop-filter: blur(1px);
+  -webkit-mask: linear-gradient(
+    to bottom,
+    transparent 62.5%,
+    black 75%,
+    black 87.5%,
     transparent 100%
   );
-  pointer-events: none;
+  mask: linear-gradient(
+    to bottom,
+    transparent 62.5%,
+    black 75%,
+    black 87.5%,
+    transparent 100%
+  );
+}
+
+/* Blur alone keeps a card's brightness, so a light row sliding under the title
+   would still fight it. The tint puts the surface colour back over the top of
+   the band — enough for the title to hold, and gone by the bottom so the blur
+   is the only thing doing the work there. */
+.app-top-scrim-tint {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklch, var(--background) 55%, transparent) 0%,
+    color-mix(in oklch, var(--background) 25%, transparent) 50%,
+    transparent 100%
+  );
+}
+
+/* Without backdrop-filter there is nothing to band, and seven empty layers
+   would leave the title sitting on bare content. Fall back to the flat fade
+   this replaced. */
+@supports not ((backdrop-filter: blur(1px)) or
+  (-webkit-backdrop-filter: blur(1px))) {
+  .app-top-scrim-tint {
+    background: linear-gradient(
+      to bottom,
+      var(--background) 0%,
+      var(--background) 30%,
+      color-mix(in oklch, var(--background) 62%, transparent) 62%,
+      transparent 100%
+    );
+  }
 }
 
 /* The title floats independently above the page scroller. Only its controls
@@ -652,6 +825,41 @@ html[data-native="ios"] .app-scroll-content {
      the way to its concentric distance from the display corner. */
   padding: 1rem calc(var(--app-controls-inset) - var(--app-surface-gutter))
     calc(var(--app-controls-gap) - var(--app-surface-gutter));
+}
+
+/* An optional icon reserves its width first, then appears. On removal the
+   icon fades before the neighboring CTA grows into the released space. */
+.morphing-action-slot {
+  width: 0;
+  min-width: 0;
+  flex: 0 0 auto;
+  overflow: hidden;
+  visibility: hidden;
+  opacity: 0;
+  transform: scale(0.78);
+  transform-origin: left center;
+  transition:
+    width 280ms var(--ease-smooth-out) 140ms,
+    opacity 140ms ease,
+    transform 160ms ease,
+    visibility 0s linear 420ms;
+}
+
+.morphing-action-slot[data-visible="true"] {
+  width: calc(var(--app-controls-height) + 0.625rem);
+  visibility: visible;
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    width 280ms var(--ease-smooth-out),
+    opacity 160ms ease 260ms,
+    transform 220ms var(--ease-spring) 240ms,
+    visibility 0s linear;
+}
+
+.morphing-action-slot-inner {
+  width: var(--app-controls-height);
+  height: var(--app-controls-height);
 }
 
 .body-silhouette path {
@@ -1260,6 +1468,7 @@ html[data-native="ios"] .app-page-layer::after {
   .t-matrix i,
   .t-like-icon,
   .t-like-particles i,
+  .morphing-action-slot,
   .t-text-swap,
   .t-stagger-line,
   .exercise-card,

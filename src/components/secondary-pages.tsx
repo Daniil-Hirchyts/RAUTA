@@ -88,7 +88,7 @@ export function ExerciseDetailPage({
           <div className="isolate aspect-square w-full overflow-hidden rounded-3xl bg-popover">
             <AppImage
               alt={`${exercise.name} demonstration`}
-              className="h-full w-full object-contain mix-blend-screen"
+              className="h-full w-full object-contain"
               decoding="async"
               draggable={false}
               fetchPriority="high"
@@ -170,7 +170,7 @@ export function WorkoutDestinationPage({
             onClick={onCreateNew}
             type="button"
           >
-            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground">
+            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
               <Plus className="size-5" />
             </span>
             <span className="min-w-0 flex-1">
@@ -414,7 +414,7 @@ export function ExerciseAlternativesPage({
             <div className="isolate size-16 shrink-0 overflow-hidden rounded-2xl bg-card">
               <AppImage
                 alt=""
-                className="h-full w-full object-contain mix-blend-screen"
+                className="h-full w-full object-contain"
                 draggable={false}
                 fetchPriority="high"
                 loading="eager"
@@ -455,7 +455,9 @@ export function ExerciseAlternativesPage({
           <div className="mt-4 space-y-2.5">
             {visibleAlternatives.length === 0 ? (
               <p className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm leading-relaxed text-muted-foreground">
-                No exact muscle match is available on different equipment.
+                Nothing else works the same muscles on the equipment you
+                have. Pick a different filter above, or keep the exercise you
+                are on.
               </p>
             ) : (
               visibleAlternatives.map((alternative, alternativeIndex) => (
@@ -469,7 +471,7 @@ export function ExerciseAlternativesPage({
                   <span className="isolate size-20 shrink-0 overflow-hidden rounded-lg bg-card">
                     <AppImage
                       alt=""
-                      className="h-full w-full object-contain mix-blend-screen"
+                      className="h-full w-full object-contain"
                       draggable={false}
                       fetchPriority={alternativeIndex < 3 ? "high" : "low"}
                       loading={alternativeIndex < 3 ? "eager" : "lazy"}

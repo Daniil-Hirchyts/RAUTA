@@ -21,6 +21,7 @@ import {
   AppShellHeader,
   AppSurface,
 } from "@/components/app-shell"
+import { MorphingActionSlot } from "@/components/morphing-action-slot"
 import { SortableExerciseList } from "@/components/sortable-exercise-list"
 import { Button } from "@/components/ui/button"
 import { MatrixLoader } from "@/components/ui/matrix-loader"
@@ -352,9 +353,10 @@ export function WorkoutDetailPage({
             </Button>
           </div>
         ) : (
-          <div className="flex items-center gap-2.5">
+          <div className="flex min-w-0 items-center">
             <Button
               aria-label="Delete workout"
+              className="mr-2.5"
               onClick={() => {
                 triggerHaptic("warning")
                 setConfirming("delete-workout")
@@ -364,36 +366,38 @@ export function WorkoutDetailPage({
             >
               <Trash2 />
             </Button>
-            {workout.exerciseIds.length === 0 ? (
-              <>
-                <Button size="cta" className="flex-1" onClick={onAddExercise}>
+            <MorphingActionSlot visible={workout.exerciseIds.length > 0}>
+              <Button
+                aria-label="Add exercise"
+                onClick={onAddExercise}
+                size="icon-cta"
+                variant="secondary"
+              >
+                <Plus className="size-5" />
+              </Button>
+            </MorphingActionSlot>
+            <Button
+              className="min-w-0 flex-1"
+              onClick={() => {
+                if (workout.exerciseIds.length === 0) {
+                  onAddExercise()
+                  return
+                }
+                triggerHaptic("heavy")
+                setCountingDown(true)
+                onCountdownChange?.(true)
+              }}
+              size="cta"
+            >
+              {workout.exerciseIds.length === 0 ? (
+                <>
                   <Plus className="size-5" />
                   Add exercise
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  aria-label="Add exercise"
-                  onClick={onAddExercise}
-                  size="icon-cta"
-                  variant="secondary"
-                >
-                  <Plus className="size-5" />
-                </Button>
-                <Button
-                  size="cta"
-                  className="flex-1"
-                  onClick={() => {
-                    triggerHaptic("heavy")
-                    setCountingDown(true)
-                    onCountdownChange?.(true)
-                  }}
-                >
-                  Start workout
-                </Button>
-              </>
-            )}
+                </>
+              ) : (
+                "Start workout"
+              )}
+            </Button>
           </div>
         )}
       </AppControls>

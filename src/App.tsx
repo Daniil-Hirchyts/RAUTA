@@ -39,6 +39,7 @@ import { ExerciseCard } from "@/components/exercise-card"
 import { ExerciseSearch } from "@/components/exercise-search"
 import { HapticLayer } from "@/components/haptic-layer"
 import { LikeButton } from "@/components/like-button"
+import { MorphingActionSlot } from "@/components/morphing-action-slot"
 import {
   EquipmentPresetPage,
   ExerciseAlternativesPage,
@@ -628,7 +629,7 @@ export function App() {
                               return (
                                 <button
                                   aria-checked={checked}
-                                  className={`interactive-spring group relative overflow-hidden rounded-3xl border bg-card text-left shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-300 ${
+                                  className={`interactive-spring group relative overflow-hidden rounded-3xl border bg-[var(--equipment-card)] text-left shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-300 ${
                                     checked
                                       ? "border-primary/75 shadow-[0_0_0_1px_color-mix(in_oklch,var(--primary)_30%,transparent)]"
                                       : "border-border"
@@ -641,7 +642,7 @@ export function App() {
                                   role="checkbox"
                                   type="button"
                                 >
-                                  <span className="relative block aspect-square overflow-hidden bg-card">
+                                  <span className="relative block aspect-square overflow-hidden bg-[var(--equipment-card)]">
                                     <AppImage
                                       alt=""
                                       className="h-full w-full object-cover object-center saturate-[1.65]"
@@ -686,10 +687,10 @@ export function App() {
                             <SearchX className="size-7 text-muted-foreground" />
                             <p className="max-w-[16rem] text-base text-muted-foreground">
                               {search.trim()
-                                ? `No exercises match "${search.trim()}".`
+                                ? `Nothing matches "${search.trim()}". Try a shorter word — the search reads exercise names only.`
                                 : favoritesOnly
-                                  ? "No favorites yet. Tap the heart on an exercise to save it here."
-                                  : "0 exercises"}
+                                  ? "No favorites yet. Tap the heart on an exercise to keep it here."
+                                  : "Nothing uses every muscle and every piece of equipment you picked. Go back and drop one of them."}
                             </p>
                           </div>
                         ) : (
@@ -815,7 +816,7 @@ export function App() {
                         </Button>
                       </div>
                     ) : (
-                      <div className="relative flex gap-2.5">
+                      <div className="relative flex min-w-0 items-center">
                         {stage === 1 ? (
                           <Button
                             aria-label={`Show ${bodySide === "front" ? "back" : "front"}`}
@@ -825,31 +826,40 @@ export function App() {
                                 side === "front" ? "back" : "front"
                               )
                             }}
+                            className="mr-2.5"
                             size="icon-cta"
                             variant="secondary"
                           >
                             <FlipHorizontal2 className="size-5" />
                           </Button>
                         ) : null}
-                        {stage === 1 && selectedMuscles.length > 0 ? (
-                          <Button
-                            aria-label="Clear muscle selection"
-                            onClick={() => setMuscles([])}
-                            size="icon-cta"
-                            variant="secondary"
+                        {stage === 1 ? (
+                          <MorphingActionSlot
+                            visible={selectedMuscles.length > 0}
                           >
-                            <X className="size-5" />
-                          </Button>
+                            <Button
+                              aria-label="Clear muscle selection"
+                              onClick={() => setMuscles([])}
+                              size="icon-cta"
+                              variant="secondary"
+                            >
+                              <X className="size-5" />
+                            </Button>
+                          </MorphingActionSlot>
                         ) : null}
-                        {stage === 2 && selectedEquipment.length > 0 ? (
-                          <Button
-                            aria-label="Clear equipment selection"
-                            onClick={() => setEquipment([])}
-                            size="icon-cta"
-                            variant="secondary"
+                        {stage === 2 ? (
+                          <MorphingActionSlot
+                            visible={selectedEquipment.length > 0}
                           >
-                            <X className="size-5" />
-                          </Button>
+                            <Button
+                              aria-label="Clear equipment selection"
+                              onClick={() => setEquipment([])}
+                              size="icon-cta"
+                              variant="secondary"
+                            >
+                              <X className="size-5" />
+                            </Button>
+                          </MorphingActionSlot>
                         ) : null}
                         {stage === 2 ? (
                           <Button
@@ -861,21 +871,24 @@ export function App() {
                             }
                             disabled={selectedEquipment.length === 0}
                             onClick={() => setPresetEditorOpen((open) => !open)}
+                            className="mr-2.5"
                             size="icon-cta"
                             variant="secondary"
                           >
                             <Plus className="size-5" />
                           </Button>
                         ) : null}
-                        {stage === 3 && selectMode ? (
-                          <Button
-                            aria-label="Cancel selection"
-                            onClick={cancelSelectMode}
-                            size="icon-cta"
-                            variant="secondary"
-                          >
-                            <X />
-                          </Button>
+                        {stage === 3 ? (
+                          <MorphingActionSlot visible={selectMode}>
+                            <Button
+                              aria-label="Cancel selection"
+                              onClick={cancelSelectMode}
+                              size="icon-cta"
+                              variant="secondary"
+                            >
+                              <X />
+                            </Button>
+                          </MorphingActionSlot>
                         ) : null}
                         {stage === 3 ? (
                           <Button
@@ -883,7 +896,7 @@ export function App() {
                             aria-label={
                               searchOpen ? "Close search" : "Search exercises"
                             }
-                            className="rounded-2xl"
+                            className="mr-2.5 rounded-full"
                             onClick={toggleSearch}
                             size="icon-cta"
                             variant="ghost"
@@ -899,27 +912,27 @@ export function App() {
                                 ? "Show all exercises"
                                 : "Show favorites only"
                             }
-                            className={`interactive-spring grid size-(--app-controls-height) shrink-0 place-items-center rounded-2xl border ${
-                              favoritesOnly
-                                ? "border-primary bg-[color-mix(in_oklch,var(--card),var(--primary)_22%)] text-primary"
-                                : "border-border bg-card text-primary"
-                            }`}
+                            className="interactive-spring mr-2.5 grid size-(--app-controls-height) shrink-0 place-items-center rounded-full border border-border bg-card text-primary active:bg-card/90 aria-pressed:bg-muted"
                             iconClassName="size-5"
                             liked={favoritesOnly}
                             onClick={() => setFavoritesOnly((value) => !value)}
                           />
                         ) : null}
-                        {stage === 3 && selectMode ? (
+                        {stage === 3 ? (
                           <Button
                             className="min-w-0 flex-1"
-                            disabled={selectedIds.length === 0}
-                            onClick={() =>
-                              addSelectionToWorkout(preferredWorkoutId)
-                            }
+                            disabled={selectMode && selectedIds.length === 0}
+                            onClick={() => {
+                              if (selectMode) {
+                                addSelectionToWorkout(preferredWorkoutId)
+                              } else {
+                                setSelectMode(true)
+                              }
+                            }}
                             size="cta"
                           >
-                            Add to workout
-                            {selectedIds.length > 0
+                            {selectMode ? "Add to workout" : "Select"}
+                            {selectMode && selectedIds.length > 0
                               ? ` (${selectedIds.length})`
                               : ""}
                           </Button>
@@ -941,15 +954,7 @@ export function App() {
                               ? "Choose equipment"
                               : `Show exercises (${exercises.length})`}
                           </Button>
-                        ) : selectMode ? null : (
-                          <Button
-                            className="min-w-0 flex-1"
-                            onClick={() => setSelectMode(true)}
-                            size="cta"
-                          >
-                            Select
-                          </Button>
-                        )}
+                        ) : null}
                       </div>
                     )}
                   </AppControls>
