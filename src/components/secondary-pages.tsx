@@ -9,6 +9,7 @@ import {
   AppSurface,
 } from "@/components/app-shell"
 import { AppImage } from "@/components/app-image"
+import { AppControlMorph, AppMorph } from "@/components/app-morph"
 import { LikeButton } from "@/components/like-button"
 import { SortableExerciseList } from "@/components/sortable-exercise-list"
 import { Button } from "@/components/ui/button"
@@ -22,6 +23,7 @@ import {
   EXERCISE_ANIMATION_FILTER,
   EXERCISE_ANIMATION_FILTER_LIGHT,
   exerciseAnimation,
+  exerciseMorphId,
 } from "@/lib/visuals"
 import { isPastWorkout } from "@/lib/workout-stats"
 import { useFavorites } from "@/store/use-favorites"
@@ -85,7 +87,11 @@ export function ExerciseDetailPage({
         />
 
         <div className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-(--app-content-inset) pt-5 pb-6">
-          <div className="isolate aspect-square w-full overflow-hidden rounded-3xl bg-popover">
+          <AppMorph
+            className="isolate aspect-square w-full overflow-hidden bg-popover"
+            morphId={exerciseMorphId(exercise.id)}
+            radius="var(--radius-3xl)"
+          >
             <AppImage
               alt={`${exercise.name} demonstration`}
               className="h-full w-full object-contain"
@@ -96,7 +102,7 @@ export function ExerciseDetailPage({
               src={exerciseAnimation(exercise)}
               style={{ filter: EXERCISE_ANIMATION_FILTER }}
             />
-          </div>
+          </AppMorph>
           <h2 className="mt-4 text-xl leading-snug font-bold capitalize">
             {exercise.name}
           </h2>
@@ -114,14 +120,16 @@ export function ExerciseDetailPage({
 
       {selectable ? (
         <AppControls transitionKey={`exercise-select:${selected}`}>
-          <Button
-            className="w-full"
-            disabled={selected}
-            onClick={() => onSelect(exercise)}
-            size="cta"
-          >
-            {selected ? "Selected" : "Select"}
-          </Button>
+          <AppControlMorph className="app-command-fill" role="primary">
+            <Button
+              className="w-full"
+              disabled={selected}
+              onClick={() => onSelect(exercise)}
+              size="cta"
+            >
+              {selected ? "Selected" : "Select"}
+            </Button>
+          </AppControlMorph>
         </AppControls>
       ) : null}
     </AppScreen>
@@ -455,9 +463,8 @@ export function ExerciseAlternativesPage({
           <div className="mt-4 space-y-2.5">
             {visibleAlternatives.length === 0 ? (
               <p className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm leading-relaxed text-muted-foreground">
-                Nothing else works the same muscles on the equipment you
-                have. Pick a different filter above, or keep the exercise you
-                are on.
+                Nothing else works the same muscles on the equipment you have.
+                Pick a different filter above, or keep the exercise you are on.
               </p>
             ) : (
               visibleAlternatives.map((alternative, alternativeIndex) => (

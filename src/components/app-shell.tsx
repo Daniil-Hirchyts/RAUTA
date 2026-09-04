@@ -8,6 +8,7 @@ import {
 } from "react"
 
 import { createPortal } from "react-dom"
+import { LayoutGroup, MotionConfig } from "motion/react"
 
 import { AppGrain } from "@/components/app-grain"
 import { Button } from "@/components/ui/button"
@@ -22,11 +23,9 @@ import { cn } from "@/lib/utils"
 export function AppShell({
   children,
   commandsVisible,
-  pageSwitching,
 }: {
   children: ReactNode
   commandsVisible: boolean
-  pageSwitching: boolean
 }) {
   const [controlsHost, setControlsHost] = useState<HTMLDivElement | null>(null)
 
@@ -34,17 +33,24 @@ export function AppShell({
     <main
       className="app-shell-frame relative mx-auto grid h-(--app-viewport-height) w-full touch-pan-y overflow-hidden bg-(--app-shell) sm:max-w-[430px]"
       data-commands={commandsVisible ? "visible" : "hidden"}
-      data-page-switching={pageSwitching ? "true" : undefined}
     >
-      <ControlsHostContext.Provider value={controlsHost}>
-        <div className="app-surface">{children}</div>
-        <AppGrain className="app-surface-grain" />
-        <div
-          aria-live="off"
-          className="app-controls-host"
-          ref={setControlsHost}
-        />
-      </ControlsHostContext.Provider>
+      {/* One group spanning both the page stack and the command band: the
+          band is a portal, so the pair only share a `layoutId` because they
+          share this React ancestor, not because they sit near each other in
+          the DOM. */}
+      <MotionConfig reducedMotion="user">
+        <LayoutGroup>
+          <ControlsHostContext.Provider value={controlsHost}>
+            <div className="app-surface">{children}</div>
+            <AppGrain className="app-surface-grain" />
+            <div
+              aria-live="off"
+              className="app-controls-host"
+              ref={setControlsHost}
+            />
+          </ControlsHostContext.Provider>
+        </LayoutGroup>
+      </MotionConfig>
     </main>
   )
 }
@@ -110,18 +116,19 @@ export function AppControls({
   const host = useControlsHost()
   const page = usePageLayer()
 
-  // No crossfade between action sets, and so no outgoing layer to keep around
-  // for one: the band shows the active page's buttons and nothing else, which
-  // makes them hittable the instant the page is.
+  // Only the page in view fills the band. Keeping every mounted page's
+  // buttons stacked here would be cheaper, but it would also mean several
+  // pages claiming the same command role at once — and a role can only be
+  // handed from one page to the next if exactly one page holds it.
+  if (!page.active) return null
+
   const controls = (
     <footer
-      aria-hidden={!page.active}
       className={cn("app-controls", className)}
-      data-active={page.active ? "true" : undefined}
+      data-active="true"
       data-page-entry={page.entryId}
       data-slot="app-controls"
       data-transition-key={transitionKey}
-      inert={!page.active}
     >
       {children}
     </footer>
@@ -252,6 +259,30 @@ export function AppHeaderButton({
       className={cn("app-shell-header-button", className)}
       size="icon"
       variant="ghost"
+    />
+  )
+}
+
+/** A round tool in the command band.
+ *
+ *  Which icon it carries and what pressing it does belong to the page; how
+ *  big the button is, what it is made of, and how big the icon inside it
+ *  draws belong to the band. Said once here because they had already drifted
+ *  apart — the same X in four places, in two greys and two icon sizes, so
+ *  that "cancel" looked like a different control depending on which step you
+ *  had reached. A page that means something stronger than a tool — deleting
+ *  a workout, say — still passes its own `variant`. */
+export function AppControlButton({
+  className,
+  variant = "ghost",
+  ...props
+}: ComponentProps<typeof Button>) {
+  return (
+    <Button
+      {...props}
+      className={cn("app-control-button", className)}
+      size="icon-cta"
+      variant={variant}
     />
   )
 }

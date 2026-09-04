@@ -1,10 +1,17 @@
 import { useEffect, useRef } from "react"
 import { Search, X } from "lucide-react"
 
+import { AppControlMorph } from "@/components/app-morph"
 import { Input } from "@/components/ui/input"
 import { triggerHaptic } from "@/lib/haptics"
 
-/** The bottom tool opens this inline field and moves focus into it. */
+/**
+ * The bottom tool opens this inline field and moves focus into it.
+ *
+ * The field claims the same command role as the magnifier that opened it, so
+ * the round button stretches into the box rather than being swapped for one —
+ * the two are the same control at two sizes, and the band should say so.
+ */
 export function ExerciseSearch({
   onChange,
   value,
@@ -19,9 +26,10 @@ export function ExerciseSearch({
   }, [])
 
   return (
-    <div className="pointer-events-auto min-w-0 flex-1" data-swipe-ignore>
+    <AppControlMorph className="app-command-fill" role="search">
       <form
-        className="t-search-reveal relative"
+        className="pointer-events-auto relative min-w-0 flex-1"
+        data-swipe-ignore
         onSubmit={(event) => {
           // A single-field form turns the keyboard's return key into
           // "search"; there is nothing to submit, so the useful thing it can
@@ -55,6 +63,6 @@ export function ExerciseSearch({
           </button>
         )}
       </form>
-    </div>
+    </AppControlMorph>
   )
 }

@@ -29,7 +29,7 @@
   --color-background: var(--background);
   /* Squircle corners need a little more radius than ordinary round corners to
      retain the same visual softness. */
-  --radius-xs: 5px;
+  --radius-xs: 2px;
   --radius-sm: 12px;
   --radius-md: 16px;
   --radius-lg: 20px;
@@ -139,6 +139,12 @@
   --like-particle-dur: 600ms;
   --like-particle-size: 2.5px;
   --like-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* A page arriving over the one it covers, and — going back — a page
+     dissolving off the one underneath. The exit is the shorter of the two:
+     leaving should feel quicker than arriving, and a shared element crossing
+     between the pages needs the layer it came from out of its way. */
+  --page-enter-dur: 300ms;
+  --page-exit-dur: 200ms;
   --text-swap-dur: 150ms;
   --text-swap-translate-y: 4px;
   --text-swap-blur: 2px;
@@ -154,6 +160,17 @@
   --matrix-base: color-mix(in oklch, var(--primary) 25%, transparent);
   --matrix-active: var(--primary);
   --matrix-ease: ease-in-out;
+}
+
+.equipment-card-media {
+  background:
+    radial-gradient(circle at 50% 42%, rgb(47 47 47 / 0.78), transparent 59%),
+    var(--equipment-card);
+}
+
+.equipment-card-image {
+  padding: 0.625rem;
+  filter: saturate(1.25);
 }
 
 @supports (height: 100lvh) {
@@ -356,17 +373,6 @@
 
 .app-shell-frame[data-commands="hidden"] .app-surface-grain {
   bottom: var(--app-surface-gutter);
-}
-
-/* A page change is an intentional hard cut. Shell geometry and command
-   visibility adopt the destination state in the same paint instead of
-   animating because a different page happens to expose different controls. */
-.app-shell-frame[data-page-switching="true"] .app-surface,
-.app-shell-frame[data-page-switching="true"] .app-surface-grain,
-.app-shell-frame[data-page-switching="true"] .app-controls-host,
-.app-shell-frame[data-page-switching="true"] .app-controls-host > * {
-  transition: none !important;
-  animation: none !important;
 }
 
 /* WKWebView composites mix-blend-mode separately from the fixed drag layer.
@@ -862,6 +868,93 @@ html[data-native="ios"] .app-scroll-content {
   height: var(--app-controls-height);
 }
 
+/* A command role, not a command: the box a page hands to the next page that
+   fills the same slot. Both levels are flex so a role declared `flex-1` by
+   its page still passes that width down to the button inside it. */
+.app-control-morph,
+.app-control-morph-inner {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.app-control-morph-inner {
+  flex: 1;
+}
+
+/* The slot the primary command lives in. It takes whatever width the tools
+   beside it leave, which is also why it — and not the button — is the query
+   container: the command has to size itself against the room it landed in,
+   and a box cannot query itself. Only ever put this on a slot whose width
+   comes from the layout (`flex: 1`, or a full-width block); inline-size
+   containment makes a shrink-to-fit box collapse to nothing. */
+.app-command-fill {
+  min-width: 0;
+  flex: 1;
+  container: command / inline-size;
+}
+
+/* One icon size for every tool in the band, whatever a page happened to pass
+   in. Four X buttons in two sizes is what this replaces. */
+.app-control-button svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* The primary command is the only thing in the band whose width is left over
+   rather than chosen, so it is the one that has to fit. Left alone it does
+   not: `white-space: nowrap` sends "Add to workout (2)" straight out through
+   the sides of its own pill and across its neighbours. Each step below gives
+   up type size, then shoulder, and only then the tally in brackets — in that
+   order, because the words are what the button is for, and the count is
+   already legible on the cards. `overflow: hidden` is the floor: even if a
+   translation outruns the last step, the label stops at the button's edge. */
+.app-cta {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.app-cta-count {
+  font-variant-numeric: tabular-nums;
+}
+
+@container command (max-width: 13rem) {
+  .app-cta {
+    padding-inline: 1rem;
+    font-size: 0.9375rem;
+  }
+}
+
+@container command (max-width: 10.5rem) {
+  .app-cta {
+    padding-inline: 0.75rem;
+    font-size: 0.875rem;
+    letter-spacing: -0.01em;
+  }
+
+  .app-cta-count {
+    display: none;
+  }
+}
+
+@container command (max-width: 8.75rem) {
+  .app-cta {
+    padding-inline: 0.5rem;
+    font-size: 0.8125rem;
+  }
+}
+
+/* Past the last step there is no type size left to give up, so the label is
+   allowed a second line instead. Only here: a wrapping command looks like a
+   mistake at any width where the words would have fitted on one. */
+@container command (max-width: 6rem) {
+  .app-cta {
+    line-height: 1.15;
+    white-space: normal;
+    text-wrap: balance;
+  }
+}
+
 .body-silhouette path {
   fill: #2a2a2d;
   stroke: #141416;
@@ -910,8 +1003,7 @@ html[data-native="ios"] .app-scroll-content {
 }
 
 /* Pages stay mounted and inert so back navigation preserves local state and
-   scroll position. Switching pages is a hard cut with no transform, staging,
-   or compositor transition. */
+   scroll position. Switching pages crossfades between two of these layers. */
 .app-page-stack {
   position: absolute;
   inset: 0;
@@ -919,6 +1011,16 @@ html[data-native="ios"] .app-scroll-content {
   touch-action: pan-y;
 }
 
+/* Opacity and nothing else. A layer that also slid or scaled would look
+   livelier on its own, but it would be a transformed ancestor of any shared
+   element crossing between two pages — and those are measured against the
+   viewport, so the flight would land wrong by however far the layer had
+   moved. The travelling element supplies the motion instead.
+
+   Only one layer is ever animating: the one that just arrived, or the one on
+   its way out. Every other layer stays fully opaque and merely stops being
+   painted, which is what keeps a page from dimming towards the shell while
+   another one crossfades on top of it. */
 .app-page-layer {
   position: absolute;
   inset: 0;
@@ -930,11 +1032,47 @@ html[data-native="ios"] .app-scroll-content {
   visibility: hidden;
   pointer-events: none;
   contain: layout paint style;
+  /* Stay painted until whatever replaced it has finished arriving. */
+  transition: visibility 0s linear var(--page-enter-dur);
 }
 
 .app-page-layer[data-active="true"] {
+  z-index: 1;
   visibility: visible;
   pointer-events: auto;
+  transition: visibility 0s linear;
+}
+
+/* A page that has been popped but is still dissolving. It outlives the
+   navigation that removed it by exactly one transition. */
+.app-page-layer[data-exiting="true"] {
+  visibility: visible;
+  transition: visibility 0s linear;
+}
+
+@keyframes app-page-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes app-page-exit {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Going forward, the new page fades up over the one it covers — which needs
+   no animation of its own, being hidden behind an opaque layer. */
+.app-page-stack[data-direction="forward"] .app-page-layer[data-active="true"] {
+  animation: app-page-enter var(--page-enter-dur) var(--ease-smooth-out) both;
+}
+
+/* Going back, the reverse: the page being left dissolves to reveal the one
+   underneath, which is already there at full strength. */
+.app-page-stack[data-direction="back"] .app-page-layer[data-exiting="true"] {
+  z-index: 2;
+  animation: app-page-exit var(--page-exit-dur) var(--ease-smooth-out) both;
 }
 
 html[data-native="ios"] .app-page-layer::after {
@@ -1453,8 +1591,11 @@ html[data-native="ios"] .app-page-layer::after {
     animation: none !important;
   }
 
-  .app-page-layer[data-active="true"] {
-    transform: translate3d(0, 0, 0) !important;
+  /* With the dissolve suppressed there is nothing for a leaving page to do
+     but stand in front of the one underneath, so it stops being painted the
+     moment it is popped. */
+  .app-page-layer[data-exiting="true"] {
+    visibility: hidden !important;
   }
 
   .t-digit-group .t-digit {

@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, MotionConfig, motion } from "motion/react"
 
+import { MODAL_CLOSE_TRANSITION, MODAL_OPEN_TRANSITION } from "@/lib/motion"
 import { cn } from "@/lib/utils"
 
 /**
@@ -11,9 +12,8 @@ import { cn } from "@/lib/utils"
  * smooth-out curve the rest of the shell already uses. The asymmetry is the
  * point: an answer should feel quicker than the question.
  */
-const EASE_SMOOTH_OUT = [0.22, 1, 0.36, 1] as const
-const OPEN = { duration: 0.25, ease: EASE_SMOOTH_OUT }
-const CLOSE = { duration: 0.15, ease: EASE_SMOOTH_OUT }
+const OPEN = MODAL_OPEN_TRANSITION
+const CLOSE = MODAL_CLOSE_TRANSITION
 
 /**
  * The app's one way to ask something on top of a page: a centred panel over a

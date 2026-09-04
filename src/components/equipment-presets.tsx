@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react"
 import { Check, Trash2 } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
+import { AppControlButton } from "@/components/app-shell"
+import { AppControlMorph } from "@/components/app-morph"
 import { Input } from "@/components/ui/input"
 import { EQUIPMENT_OPTIONS } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
@@ -130,30 +131,34 @@ export function EquipmentPresetEditor({
   return (
     <form
       className={cn(
-        "t-search-reveal pointer-events-auto flex min-w-0 gap-2.5",
+        "pointer-events-auto flex min-w-0 items-center gap-2.5",
         className
       )}
       data-swipe-ignore
       onSubmit={handleSubmit}
     >
-      <Input
-        aria-label="Preset name"
-        className="h-(--app-controls-height) min-w-0 flex-1 rounded-full border-border bg-card px-4 shadow-[0_8px_24px_rgb(0_0_0/0.18)]"
-        enterKeyHint="done"
-        onChange={(event) => setName(event.target.value)}
-        placeholder="Preset name"
-        ref={inputRef}
-        value={name}
-      />
-      <Button
+      {/* The field takes over the role the "+" tool was holding, so the round
+          button opens into the box you type in instead of handing the band to
+          a different control. */}
+      <AppControlMorph className="app-command-fill" role="preset">
+        <Input
+          aria-label="Preset name"
+          className="h-(--app-controls-height) min-w-0 flex-1 rounded-full border-border bg-card px-4 shadow-[0_8px_24px_rgb(0_0_0/0.18)]"
+          enterKeyHint="done"
+          onChange={(event) => setName(event.target.value)}
+          placeholder="Preset name"
+          ref={inputRef}
+          value={name}
+        />
+      </AppControlMorph>
+      <AppControlButton
         aria-label="Save preset"
+        className="t-search-reveal"
         disabled={!canSave}
-        size="icon-cta"
         type="submit"
-        variant="secondary"
       >
-        <Check className="size-5" />
-      </Button>
+        <Check />
+      </AppControlButton>
     </form>
   )
 }

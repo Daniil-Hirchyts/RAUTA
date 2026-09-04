@@ -11,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react"
 
+import { AppControlMorph } from "@/components/app-morph"
 import {
   AppControls,
   AppHeaderButton,
@@ -358,8 +359,8 @@ export function WorkoutsPage({
               <div className="flex flex-col items-center gap-3 px-4 text-center">
                 <CalendarDays className="size-7 text-[color-mix(in_oklch,var(--muted-foreground),var(--background)_35%)]" />
                 <p className="max-w-[24rem] text-base text-muted-foreground">
-                  No workouts yet. Start a new one, pick the muscles you
-                  want to train, and it will fill with exercises you can do.
+                  No workouts yet. Start a new one, pick the muscles you want to
+                  train, and it will fill with exercises you can do.
                 </p>
               </div>
             ) : null}
@@ -378,13 +379,15 @@ export function WorkoutsPage({
       />
 
       <AppControls transitionKey="workouts:add">
-        <Button
-          size="cta"
-          className="w-full shadow-xl shadow-black/25"
-          onClick={onCreate}
-        >
-          New workout
-        </Button>
+        <AppControlMorph className="w-full" role="primary">
+          <Button
+            size="cta"
+            className="w-full shadow-xl shadow-black/25"
+            onClick={onCreate}
+          >
+            New workout
+          </Button>
+        </AppControlMorph>
       </AppControls>
     </AppScreen>
   )

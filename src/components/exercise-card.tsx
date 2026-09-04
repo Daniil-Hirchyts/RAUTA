@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react"
 
 import { AnimatedCheck } from "@/components/animated-check"
 import { AppImage } from "@/components/app-image"
+import { AppMorph } from "@/components/app-morph"
 import { LikeButton } from "@/components/like-button"
 import { triggerHaptic } from "@/lib/haptics"
 import { isNative } from "@/lib/native"
@@ -9,6 +10,7 @@ import { cn } from "@/lib/utils"
 import {
   EXERCISE_ANIMATION_FILTER_LIGHT,
   exerciseAnimation,
+  exerciseMorphId,
 } from "@/lib/visuals"
 import { useFavorites } from "@/store/use-favorites"
 import type { ExerciseSummary } from "@/types"
@@ -130,7 +132,10 @@ export function ExerciseCard({
         onPointerUp={handlePointerUp}
         type="button"
       >
-        <div className="isolate aspect-square overflow-hidden bg-card">
+        <AppMorph
+          className="isolate aspect-square overflow-hidden bg-card"
+          morphId={exerciseMorphId(exercise.id)}
+        >
           <AppImage
             alt={`${exercise.name} demonstration`}
             className="h-full w-full object-contain"
@@ -142,7 +147,7 @@ export function ExerciseCard({
             src={exerciseAnimation(exercise)}
             style={{ filter: EXERCISE_ANIMATION_FILTER_LIGHT }}
           />
-        </div>
+        </AppMorph>
         {/* Fixed height (not content-driven) so every card is identical
             regardless of grid row or 1- vs 2-line exercise names. */}
         <div className="flex h-[4.5rem] items-center justify-center px-3.5">

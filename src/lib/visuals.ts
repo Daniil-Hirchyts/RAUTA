@@ -3,13 +3,17 @@ import type { ExerciseSummary } from "@/types"
 import { isNative } from "@/lib/native"
 
 export function equipmentImage(equipment: string) {
-  const revision =
-    equipment === "assisted" || equipment === "rope" ? "?v=2" : ""
-  return `/assets/equipment/${equipment.replaceAll(" ", "-")}.jpg${revision}`
+  return `/assets/equipment/${equipment.replaceAll(" ", "-")}.webp`
 }
 
 export function exerciseAnimation(exercise: ExerciseSummary) {
   return `/assets/exercises/webp/${exercise.id}.webp`
+}
+
+/** Ties an exercise's card thumbnail to its detail hero, so opening one
+ *  moves the animation into place rather than redrawing it there. */
+export function exerciseMorphId(exerciseId: string) {
+  return `exercise-media:${exerciseId}`
 }
 
 /**

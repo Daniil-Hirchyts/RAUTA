@@ -675,11 +675,16 @@ describe("App", () => {
       screen.queryByRole("button", { name: /add to workout/i })
     ).not.toBeInTheDocument()
 
-    // Saving opens the direct-manipulation detail view.
-    expect(screen.getByText(first.name)).toBeInTheDocument()
-    expect(screen.getByText(second.name)).toBeInTheDocument()
-    expect(screen.getByText("01")).toBeInTheDocument()
-    expect(screen.getByText("02")).toBeInTheDocument()
+    // Saving opens the direct-manipulation detail view. Scoped to the page on
+    // screen: the pages it replaced are still mounted for as long as they take
+    // to dissolve, and they name the same exercises.
+    const detailPage = document.querySelector<HTMLElement>(
+      '.app-page-layer[data-active="true"]'
+    )!
+    expect(within(detailPage).getByText(first.name)).toBeInTheDocument()
+    expect(within(detailPage).getByText(second.name)).toBeInTheDocument()
+    expect(within(detailPage).getByText("01")).toBeInTheDocument()
+    expect(within(detailPage).getByText("02")).toBeInTheDocument()
     expect(
       screen.queryByRole("button", { name: "Edit workout" })
     ).not.toBeInTheDocument()

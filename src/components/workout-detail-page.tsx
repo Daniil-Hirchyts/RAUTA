@@ -14,7 +14,10 @@ import {
 import { ActiveWorkoutHero } from "@/components/active-workout-hero"
 import { ActiveWorkoutTimer } from "@/components/active-workout-timer"
 import { ConfirmModal, type ConfirmationKind } from "@/components/confirm-modal"
+import { AppControlMorph } from "@/components/app-morph"
+import { usePageLayer } from "@/hooks/use-app-shell"
 import {
+  AppControlButton,
   AppControls,
   AppHeaderButton,
   AppScreen,
@@ -89,14 +92,18 @@ export function WorkoutDetailPage({
   const session =
     runningSession?.workoutId === workoutId ? runningSession : null
 
+  const page = usePageLayer()
   const [countingDown, setCountingDown] = useState(false)
   const [shareStatus, setShareStatus] = useState<"idle" | "sharing" | "copied">(
     "idle"
   )
 
+  // Only while this page is the one on screen. A deleted workout also empties
+  // this page on the frame it is dissolving away on, and a page on its way
+  // out asking to go back would pop whatever had already replaced it.
   useEffect(() => {
-    if (!workout) onBack()
-  }, [onBack, workout])
+    if (!workout && page.active) onBack()
+  }, [onBack, page.active, workout])
 
   if (!workout) return null
 
@@ -296,108 +303,103 @@ export function WorkoutDetailPage({
       >
         {session ? (
           <div className="flex items-center gap-2.5">
-            <Button
+            <AppControlButton
               aria-label="Discard session"
               onClick={() => {
                 triggerHaptic("warning")
                 setConfirming("discard-session")
               }}
-              size="icon-cta"
-              variant="secondary"
             >
               <X />
-            </Button>
-            <Button
-              aria-label="Add exercise"
-              onClick={onAddExercise}
-              size="icon-cta"
-              variant="secondary"
-            >
-              <Plus className="size-5" />
-            </Button>
-            <Button
-              size="cta"
-              className="flex-1"
-              onClick={() => {
-                triggerHaptic("medium")
-                setConfirming("finish-workout")
-              }}
-            >
-              Finish workout
-            </Button>
+            </AppControlButton>
+            <AppControlButton aria-label="Add exercise" onClick={onAddExercise}>
+              <Plus />
+            </AppControlButton>
+            <AppControlMorph className="app-command-fill" role="primary">
+              <Button
+                size="cta"
+                className="w-full"
+                onClick={() => {
+                  triggerHaptic("medium")
+                  setConfirming("finish-workout")
+                }}
+              >
+                Finish workout
+              </Button>
+            </AppControlMorph>
           </div>
         ) : isPast ? (
           <div className="flex items-center gap-2.5">
-            <Button
+            <AppControlButton
               aria-label="Delete workout"
               onClick={() => {
                 triggerHaptic("warning")
                 setConfirming("delete-workout")
               }}
-              size="icon-cta"
               variant="destructive"
             >
               <Trash2 />
-            </Button>
-            <Button
-              size="cta"
-              className="flex-1"
-              onClick={() => {
-                const copiedId = duplicateWorkout(workout.id)
-                if (!copiedId) return
-                triggerHaptic("success")
-                onCopied?.(copiedId)
-              }}
-            >
-              Copy to today
-            </Button>
+            </AppControlButton>
+            <AppControlMorph className="app-command-fill" role="primary">
+              <Button
+                size="cta"
+                className="w-full"
+                onClick={() => {
+                  const copiedId = duplicateWorkout(workout.id)
+                  if (!copiedId) return
+                  triggerHaptic("success")
+                  onCopied?.(copiedId)
+                }}
+              >
+                Copy to today
+              </Button>
+            </AppControlMorph>
           </div>
         ) : (
           <div className="flex min-w-0 items-center">
-            <Button
+            <AppControlButton
               aria-label="Delete workout"
               className="mr-2.5"
               onClick={() => {
                 triggerHaptic("warning")
                 setConfirming("delete-workout")
               }}
-              size="icon-cta"
               variant="destructive"
             >
               <Trash2 />
-            </Button>
+            </AppControlButton>
             <MorphingActionSlot visible={workout.exerciseIds.length > 0}>
-              <Button
+              <AppControlButton
                 aria-label="Add exercise"
                 onClick={onAddExercise}
-                size="icon-cta"
-                variant="secondary"
               >
-                <Plus className="size-5" />
-              </Button>
+                <Plus />
+              </AppControlButton>
             </MorphingActionSlot>
-            <Button
-              className="min-w-0 flex-1"
-              onClick={() => {
-                if (workout.exerciseIds.length === 0) {
-                  onAddExercise()
-                  return
-                }
-                triggerHaptic("heavy")
-                setCountingDown(true)
-                onCountdownChange?.(true)
-              }}
-              size="cta"
-            >
-              {workout.exerciseIds.length === 0 ? (
-                <>
-                  <Plus className="size-5" />
-                  Add exercise
-                </>
-              ) : (
-                "Start workout"
-              )}
-            </Button>
+            <AppControlMorph className="app-command-fill" role="primary">
+              <Button
+                className="w-full"
+                onClick={() => {
+                  if (workout.exerciseIds.length === 0) {
+                    onAddExercise()
+                    return
+                  }
+                  triggerHaptic("heavy")
+                  setCountingDown(true)
+                  onCountdownChange?.(true)
+                }}
+                size="cta"
+              >
+                {workout.exerciseIds.length === 0 ? (
+                  <>
+                    <Plus className="size-5" />
+                    Add exercise
+                  </>
+                ) : (
+                  "Start workout"
+                )}
+              </Button>
+            </AppControlMorph>
           </div>
         )}
       </AppControls>

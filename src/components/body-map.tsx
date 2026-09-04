@@ -180,6 +180,18 @@ export function BodyMap({
   const label = side === "front" ? "Front" : "Back"
   const view = side === "front" ? body.front : body.back
   const swipeStartX = useRef<number | null>(null)
+  // The figure is keyed on the side, so turning the body around builds a new
+  // one and the settle animation plays. But that key is satisfied by the very
+  // first figure too, which is not a turn — and the map scaling up as the page
+  // arrives reads as the whole screen shifting under the finger. So the
+  // animation waits for a side change to have actually happened.
+  const [shownSide, setShownSide] = useState(side)
+  const [turned, setTurned] = useState(false)
+
+  if (shownSide !== side) {
+    setShownSide(side)
+    setTurned(true)
+  }
 
   const flipSide = () => {
     triggerHaptic("selection")
@@ -242,7 +254,10 @@ export function BodyMap({
         </button>
       ) : null}
       <div
-        className="t-flip min-h-0 w-full flex-1 touch-pan-y p-3.5 sm:p-4"
+        className={cn(
+          "min-h-0 w-full flex-1 touch-pan-y p-3.5 sm:p-4",
+          turned && "t-flip"
+        )}
         data-swipe-ignore
         key={side}
         onPointerCancel={() => {

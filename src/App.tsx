@@ -20,8 +20,11 @@ import {
 } from "lucide-react"
 
 import { AnimatedCheck } from "@/components/animated-check"
+import { AnimatedNumber } from "@/components/animated-number"
 import { AppImage } from "@/components/app-image"
+import { AppControlMorph, TextSwap } from "@/components/app-morph"
 import {
+  AppControlButton,
   AppControls,
   AppHeaderButton,
   AppScreen,
@@ -97,6 +100,11 @@ const STAGE_LABELS: Record<PickerStage, string> = {
   3: "Exercises",
 }
 
+/** How long a popped page stays mounted after the navigation that removed it,
+ *  so it has something to dissolve during. Matches `--page-exit-dur` plus a
+ *  frame of slack. */
+const PAGE_EXIT_MS = 240
+
 let pageSequence = 0
 
 function createPageEntry(page: AppPage): AppPageEntry {
@@ -112,43 +120,20 @@ function stageForPage(page: AppPage): PickerStage | null {
 }
 
 function StageHeading({ stage }: { stage: PickerStage }) {
-  const [shown, setShown] = useState(stage)
-  const [entering, setEntering] = useState(false)
-  const exiting = stage !== shown
+  return <TextSwap>{STAGE_LABELS[stage]}</TextSwap>
+}
 
-  useEffect(() => {
-    if (!exiting) return
-    const reduceMotion = window.matchMedia?.(
-      "(prefers-reduced-motion: reduce)"
-    ).matches
-    const timeout = window.setTimeout(
-      () => {
-        setShown(stage)
-        setEntering(true)
-      },
-      reduceMotion ? 0 : 150
-    )
-    return () => window.clearTimeout(timeout)
-  }, [exiting, stage])
-
-  useEffect(() => {
-    if (!entering) return
-    const frame = requestAnimationFrame(() =>
-      requestAnimationFrame(() => setEntering(false))
-    )
-    return () => cancelAnimationFrame(frame)
-  }, [entering])
-
+/** The tally a command carries: "(131)" after "Show exercises".
+ *
+ *  Hidden from assistive technology because the button spells the whole thing
+ *  out in its `aria-label` — which it has to, since the narrowest slots drop
+ *  the brackets to keep the words (see `.app-cta-count`), and what a button
+ *  announces should not depend on how much room it was given. */
+function CommandCount({ value }: { value: number }) {
   return (
-    <div
-      className={cn(
-        "t-text-swap",
-        exiting && "is-exit",
-        entering && "is-enter-start"
-      )}
-    >
-      <span>{STAGE_LABELS[shown]}</span>
-    </div>
+    <span aria-hidden="true" className="app-cta-count">
+      (<AnimatedNumber value={value} />)
+    </span>
   )
 }
 
@@ -191,9 +176,30 @@ export function App() {
   )
   const pages = navigation.pages
   const pagesRef = useRef(pages)
+  // Popped pages outlive their removal by one transition. Worked out during
+  // render rather than in an effect: an effect would run after React had
+  // already detached the layer, so the page would blink out and be rebuilt
+  // from scratch — losing its scroll position and, with it, the very frame
+  // the fade is supposed to start from.
+  const [dissolving, setDissolving] = useState<{
+    entries: AppPageEntry[]
+    seen: AppPageEntry[]
+  }>({ entries: [], seen: pages })
+
+  if (dissolving.seen !== pages) {
+    const live = new Set(pages.map((entry) => entry.id))
+    setDissolving((current) => ({
+      entries: [
+        ...current.entries,
+        ...current.seen.filter((entry) => !live.has(entry.id)),
+      ],
+      seen: pages,
+    }))
+  }
+
+  const exitingEntries = dissolving.entries
+
   const focusOrigins = useRef(new Map<string, HTMLElement>())
-  const pageSwitchFrame = useRef<number | null>(null)
-  const [pageSwitching, setPageSwitching] = useState(false)
   const [countdownOpen, setCountdownOpen] = useState(false)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [showBackToTop, setShowBackToTop] = useState(false)
@@ -202,31 +208,20 @@ export function App() {
     pagesRef.current = pages
   }, [pages])
 
-  useEffect(
-    () => () => {
-      if (pageSwitchFrame.current !== null) {
-        cancelAnimationFrame(pageSwitchFrame.current)
-      }
-    },
-    []
-  )
+  useEffect(() => {
+    if (exitingEntries.length === 0) return
+    const timeout = window.setTimeout(
+      () => setDissolving((current) => ({ ...current, entries: [] })),
+      PAGE_EXIT_MS
+    )
+    return () => window.clearTimeout(timeout)
+  }, [exitingEntries])
 
   const focusPage = useCallback((entryId: string) => {
     requestAnimationFrame(() => {
       document
         .querySelector<HTMLElement>(`[data-page-entry="${entryId}"] h1`)
         ?.focus({ preventScroll: true })
-    })
-  }, [])
-
-  const suppressPageSwitchMotion = useCallback(() => {
-    if (pageSwitchFrame.current !== null) {
-      cancelAnimationFrame(pageSwitchFrame.current)
-    }
-    setPageSwitching(true)
-    pageSwitchFrame.current = requestAnimationFrame(() => {
-      pageSwitchFrame.current = null
-      setPageSwitching(false)
     })
   }, [])
 
@@ -240,11 +235,10 @@ export function App() {
       if (activeElement instanceof HTMLElement) {
         focusOrigins.current.set(entry.id, activeElement)
       }
-      suppressPageSwitchMotion()
       dispatchNavigation({ type: "push", entry })
       focusPage(entry.id)
     },
-    [focusPage, suppressPageSwitchMotion]
+    [focusPage]
   )
 
   const popPage = useCallback(() => {
@@ -252,12 +246,11 @@ export function App() {
     if (current.length <= 1) return
     const leaving = current[current.length - 1]
     if (leaving.page.type === "exercises") setFavoritesOnly(false)
-    suppressPageSwitchMotion()
     dispatchNavigation({ type: "pop" })
     const origin = focusOrigins.current.get(leaving.id)
     focusOrigins.current.delete(leaving.id)
     requestAnimationFrame(() => origin?.focus({ preventScroll: true }))
-  }, [suppressPageSwitchMotion])
+  }, [])
 
   const replacePage = useCallback(
     (page: AppPage) => {
@@ -265,11 +258,10 @@ export function App() {
         setFavoritesOnly(false)
       }
       const entry = createPageEntry(page)
-      suppressPageSwitchMotion()
       dispatchNavigation({ type: "replace", entry })
       focusPage(entry.id)
     },
-    [focusPage, suppressPageSwitchMotion]
+    [focusPage]
   )
 
   const resetPages = useCallback(
@@ -278,16 +270,14 @@ export function App() {
       const active = entries.at(-1)
       if (!active) return
       setFavoritesOnly(false)
-      suppressPageSwitchMotion()
       focusOrigins.current.clear()
       dispatchNavigation({ type: "reset", entries })
       focusPage(active.id)
     },
-    [focusPage, suppressPageSwitchMotion]
+    [focusPage]
   )
 
-  const visualActiveIndex = pages.length - 1
-  const activeEntry = pages[visualActiveIndex] ?? pages[0]
+  const activeEntry = pages.at(-1) ?? pages[0]
   const activePage = activeEntry.page
 
   const selectedMuscles = useFilters((state) => state.selectedMuscles)
@@ -466,19 +456,31 @@ export function App() {
 
   const commandBandVisible = !countdownOpen && pageHasControls(activePage)
 
+  const exitingIds = useMemo(
+    () => new Set(exitingEntries.map((entry) => entry.id)),
+    [exitingEntries]
+  )
+  const renderedEntries = useMemo(
+    () => [...pages, ...exitingEntries],
+    [exitingEntries, pages]
+  )
+
   return (
     <div className="min-h-(--app-viewport-height) bg-(--app-shell) text-foreground">
       <HapticLayer />
       <SettingsEffects />
       <SvgFilterDefs />
-      <AppShell
-        commandsVisible={commandBandVisible}
-        pageSwitching={pageSwitching}
-      >
-        <div className="app-page-stack" ref={containerRef} {...handlers}>
-          {pages.map((entry, index) => {
+      <AppShell commandsVisible={commandBandVisible}>
+        <div
+          className="app-page-stack"
+          data-direction={navigation.direction}
+          ref={containerRef}
+          {...handlers}
+        >
+          {renderedEntries.map((entry) => {
             const page = entry.page
-            const active = index === visualActiveIndex
+            const active = entry.id === activeEntry.id
+            const exiting = !active && exitingIds.has(entry.id)
             const interactive = active
             const stage = stageForPage(page)
             let content = null
@@ -642,10 +644,10 @@ export function App() {
                                   role="checkbox"
                                   type="button"
                                 >
-                                  <span className="relative block aspect-square overflow-hidden bg-[var(--equipment-card)]">
+                                  <span className="equipment-card-media relative block aspect-square overflow-hidden">
                                     <AppImage
                                       alt=""
-                                      className="h-full w-full object-cover object-center saturate-[1.65]"
+                                      className="equipment-card-image h-full w-full object-contain object-center"
                                       decoding="async"
                                       draggable={false}
                                       fetchPriority={
@@ -794,31 +796,34 @@ export function App() {
                           className="flex-1"
                           onSaved={() => setPresetEditorOpen(false)}
                         />
-                        <Button
-                          aria-label="Close preset editor"
-                          onClick={() => setPresetEditorOpen(false)}
-                          size="icon-cta"
-                          variant="secondary"
-                        >
-                          <X className="size-5" />
-                        </Button>
+                        {/* The command the band was showing collapses into the
+                            way out of the field that replaced it, rather than
+                            vanishing and leaving a new circle in its place. */}
+                        <AppControlMorph role="primary">
+                          <AppControlButton
+                            aria-label="Close preset editor"
+                            onClick={() => setPresetEditorOpen(false)}
+                          >
+                            <X />
+                          </AppControlButton>
+                        </AppControlMorph>
                       </div>
                     ) : stage === 3 && searchOpen ? (
                       <div className="flex items-center gap-2.5">
                         <ExerciseSearch onChange={setSearch} value={search} />
-                        <Button
-                          aria-label="Close search"
-                          onClick={toggleSearch}
-                          size="icon-cta"
-                          variant="secondary"
-                        >
-                          <X className="size-5" />
-                        </Button>
+                        <AppControlMorph role="primary">
+                          <AppControlButton
+                            aria-label="Close search"
+                            onClick={toggleSearch}
+                          >
+                            <X />
+                          </AppControlButton>
+                        </AppControlMorph>
                       </div>
                     ) : (
                       <div className="relative flex min-w-0 items-center">
                         {stage === 1 ? (
-                          <Button
+                          <AppControlButton
                             aria-label={`Show ${bodySide === "front" ? "back" : "front"}`}
                             onClick={() => {
                               triggerHaptic("selection")
@@ -827,82 +832,74 @@ export function App() {
                               )
                             }}
                             className="mr-2.5"
-                            size="icon-cta"
-                            variant="secondary"
                           >
-                            <FlipHorizontal2 className="size-5" />
-                          </Button>
+                            <FlipHorizontal2 />
+                          </AppControlButton>
                         ) : null}
                         {stage === 1 ? (
                           <MorphingActionSlot
                             visible={selectedMuscles.length > 0}
                           >
-                            <Button
+                            <AppControlButton
                               aria-label="Clear muscle selection"
                               onClick={() => setMuscles([])}
-                              size="icon-cta"
-                              variant="secondary"
                             >
-                              <X className="size-5" />
-                            </Button>
+                              <X />
+                            </AppControlButton>
                           </MorphingActionSlot>
                         ) : null}
                         {stage === 2 ? (
                           <MorphingActionSlot
                             visible={selectedEquipment.length > 0}
                           >
-                            <Button
+                            <AppControlButton
                               aria-label="Clear equipment selection"
                               onClick={() => setEquipment([])}
-                              size="icon-cta"
-                              variant="secondary"
                             >
-                              <X className="size-5" />
-                            </Button>
+                              <X />
+                            </AppControlButton>
                           </MorphingActionSlot>
                         ) : null}
                         {stage === 2 ? (
-                          <Button
-                            aria-expanded={presetEditorOpen}
-                            aria-label={
-                              presetEditorOpen
-                                ? "Close preset editor"
-                                : "Create equipment preset"
-                            }
-                            disabled={selectedEquipment.length === 0}
-                            onClick={() => setPresetEditorOpen((open) => !open)}
-                            className="mr-2.5"
-                            size="icon-cta"
-                            variant="secondary"
-                          >
-                            <Plus className="size-5" />
-                          </Button>
+                          <AppControlMorph className="mr-2.5" role="preset">
+                            <AppControlButton
+                              aria-expanded={presetEditorOpen}
+                              aria-label={
+                                presetEditorOpen
+                                  ? "Close preset editor"
+                                  : "Create equipment preset"
+                              }
+                              disabled={selectedEquipment.length === 0}
+                              onClick={() =>
+                                setPresetEditorOpen((open) => !open)
+                              }
+                            >
+                              <Plus />
+                            </AppControlButton>
+                          </AppControlMorph>
                         ) : null}
                         {stage === 3 ? (
                           <MorphingActionSlot visible={selectMode}>
-                            <Button
+                            <AppControlButton
                               aria-label="Cancel selection"
                               onClick={cancelSelectMode}
-                              size="icon-cta"
-                              variant="secondary"
                             >
                               <X />
-                            </Button>
+                            </AppControlButton>
                           </MorphingActionSlot>
                         ) : null}
                         {stage === 3 ? (
-                          <Button
-                            aria-expanded={searchOpen}
-                            aria-label={
-                              searchOpen ? "Close search" : "Search exercises"
-                            }
-                            className="mr-2.5 rounded-full"
-                            onClick={toggleSearch}
-                            size="icon-cta"
-                            variant="ghost"
-                          >
-                            <Search className="size-5" />
-                          </Button>
+                          <AppControlMorph className="mr-2.5" role="search">
+                            <AppControlButton
+                              aria-expanded={searchOpen}
+                              aria-label={
+                                searchOpen ? "Close search" : "Search exercises"
+                              }
+                              onClick={toggleSearch}
+                            >
+                              <Search />
+                            </AppControlButton>
+                          </AppControlMorph>
                         ) : null}
                         {stage === 3 ? (
                           <LikeButton
@@ -919,41 +916,72 @@ export function App() {
                           />
                         ) : null}
                         {stage === 3 ? (
-                          <Button
-                            className="min-w-0 flex-1"
-                            disabled={selectMode && selectedIds.length === 0}
-                            onClick={() => {
-                              if (selectMode) {
-                                addSelectionToWorkout(preferredWorkoutId)
-                              } else {
-                                setSelectMode(true)
-                              }
-                            }}
-                            size="cta"
+                          <AppControlMorph
+                            className="app-command-fill"
+                            role="primary"
                           >
-                            {selectMode ? "Add to workout" : "Select"}
-                            {selectMode && selectedIds.length > 0
-                              ? ` (${selectedIds.length})`
-                              : ""}
-                          </Button>
+                            <Button
+                              aria-label={
+                                selectMode
+                                  ? selectedIds.length > 0
+                                    ? `Add to workout (${selectedIds.length})`
+                                    : "Add to workout"
+                                  : "Select"
+                              }
+                              className="w-full"
+                              disabled={selectMode && selectedIds.length === 0}
+                              onClick={() => {
+                                if (selectMode) {
+                                  addSelectionToWorkout(preferredWorkoutId)
+                                } else {
+                                  setSelectMode(true)
+                                }
+                              }}
+                              size="cta"
+                            >
+                              {selectMode ? "Add to workout" : "Select"}
+                              {selectMode && selectedIds.length > 0 ? (
+                                <CommandCount value={selectedIds.length} />
+                              ) : null}
+                            </Button>
+                          </AppControlMorph>
                         ) : null}
                         {stage < 3 ? (
-                          <Button
-                            className="min-w-0 flex-1"
-                            disabled={!canContinue}
-                            onClick={() => {
-                              triggerHaptic("medium")
-                              pushPage({
-                                type: stage === 1 ? "equipment" : "exercises",
-                                preferredWorkoutId,
-                              })
-                            }}
-                            size="cta"
+                          <AppControlMorph
+                            className="app-command-fill"
+                            role="primary"
                           >
-                            {stage === 1
-                              ? "Choose equipment"
-                              : `Show exercises (${exercises.length})`}
-                          </Button>
+                            <Button
+                              aria-label={
+                                stage === 1
+                                  ? "Choose equipment"
+                                  : exercises.length > 0
+                                    ? `Show exercises (${exercises.length})`
+                                    : "Show exercises"
+                              }
+                              className="w-full"
+                              disabled={!canContinue}
+                              onClick={() => {
+                                triggerHaptic("medium")
+                                pushPage({
+                                  type: stage === 1 ? "equipment" : "exercises",
+                                  preferredWorkoutId,
+                                })
+                              }}
+                              size="cta"
+                            >
+                              {stage === 1
+                                ? "Choose equipment"
+                                : "Show exercises"}
+                              {/* Nothing to count is not a count of nothing:
+                                  a bracketed zero beside a dead button reads
+                                  as a broken tally rather than as "narrow
+                                  your filters". */}
+                              {stage === 2 && exercises.length > 0 ? (
+                                <CommandCount value={exercises.length} />
+                              ) : null}
+                            </Button>
+                          </AppControlMorph>
                         ) : null}
                       </div>
                     )}
@@ -1059,6 +1087,7 @@ export function App() {
                   aria-hidden={!interactive}
                   className="app-page-layer"
                   data-active={active ? "true" : undefined}
+                  data-exiting={exiting ? "true" : undefined}
                   data-page-entry={entry.id}
                   inert={!interactive}
                 >
