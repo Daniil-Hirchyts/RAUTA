@@ -83,3 +83,18 @@ switch-overlay fallback in `src/lib/haptics.ts`.
 Gym Lib uses React, TypeScript, Vite, Tailwind CSS, shadcn/ui, and Zustand. It has no backend and stores filter selections and equipment presets only in the browser's local storage.
 
 See [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) for dataset and anatomy-map attribution.
+
+## Deterministic training engine
+
+The independent offline TypeScript engine lives in `src/training`; no UI or
+persistence migration is required to run it. Start with
+[the architecture and API](docs/training-engine/ARCHITECTURE.md),
+[scientific evidence](docs/training-engine/EVIDENCE.md), and
+[supported boundaries](docs/training-engine/LIMITATIONS.md).
+
+```bash
+bun run training:example
+bun run training:test
+bun run training:audit
+bun run training:benchmark
+```
