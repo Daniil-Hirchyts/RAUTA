@@ -106,8 +106,8 @@ describe("generated invariants and metamorphic cases", () => {
       "1394",
     ]) {
       const metadata = index.byId.get(id)?.metadata
-      expect(metadata?.provenance).toBe("curated")
-      expect(metadata?.reviewStatus).toBe("partially_reviewed")
+      expect(metadata?.provenance).toBe("curated_video_and_text")
+      expect(metadata?.reviewStatus).toBe("fully_reviewed")
     }
     expect(index.byId.get("1371")?.metadata.duplicateOf).toBe("0088")
     expect(index.byId.get("0577")?.metadata.variantOf).toBe("0576")
@@ -115,8 +115,49 @@ describe("generated invariants and metamorphic cases", () => {
       "source_media_conflict"
     )
     expect(index.byId.get("0697")?.metadata.automaticProgramming).toBe(
-      "manual_only"
+      "specialized_only"
     )
+    expect(index.byId.get("0172")?.metadata.movementPatterns).toEqual([
+      "shoulder_extension",
+    ])
+    expect(index.byId.get("0172")?.metadata.movementPatterns).not.toContain(
+      "elbow_extension"
+    )
+    for (const id of ["0763", "1394"]) {
+      expect(index.byId.get(id)?.metadata.movementPatterns).toEqual(["calf_raise"])
+      expect(index.byId.get(id)?.metadata.movementPatterns).not.toContain(
+        "dorsiflexion"
+      )
+    }
+    expect(index.byId.get("1394")?.metadata.variantOf).toBe("0763")
+    expect(index.byId.get("1394")?.metadata.duplicateOf).toBeUndefined()
+    for (const id of ["0697", "1766"]) {
+      const metadata = index.byId.get(id)?.metadata
+      expect(metadata?.movementPatterns).toEqual(["knee_flexion"])
+      expect(metadata?.setRoles).toContainEqual({
+        muscleId: "hamstring",
+        role: "direct",
+        provenance: "curated",
+      })
+      expect(metadata?.requiredEquipment).toContain("bench")
+      expect(metadata?.skill).toBe("complex")
+      expect(metadata?.automaticProgramming).toBe("specialized_only")
+    }
+    expect(index.byId.get("1772")?.metadata.movementPatterns).toEqual([
+      "scapular_retraction",
+      "shoulder_extension",
+    ])
+    expect(index.byId.get("1772")?.metadata.requiredEquipment).toContain("bench")
+    expect(index.byId.get("2330")?.metadata.movementPatterns).toEqual([
+      "shoulder_extension",
+    ])
+    expect(index.byId.get("2330")?.metadata.laterality).toBe("unilateral")
+    for (const id of ["0551", "0677", "0727"])
+      expect(index.byId.get(id)?.metadata.automaticProgramming).toBe(
+        "specialized_only"
+      )
+    expect(index.byId.get("0677")?.metadata.requiredEquipment).toContain("rings")
+    expect(index.byId.get("1680")?.metadata.variantOf).toBe("0422")
   })
 
   it("rejects relationship cycles in explicit metadata", () => {
@@ -448,7 +489,7 @@ describe("generated invariants and metamorphic cases", () => {
       ["1370", "calf_raise", "isolation", "external_load", "bilateral", "calves"],
       ["0091", "vertical_push", "compound", "external_load", "bilateral", "deltoids"],
       ["0192", "shoulder_abduction", "isolation", "external_load", "unilateral", "deltoids"],
-      ["0075", "horizontal_pull", "isolation", "external_load", "bilateral", "deltoids"],
+      ["0075", "shoulder_abduction", "isolation", "external_load", "bilateral", "deltoids"],
       ["0031", "elbow_flexion", "isolation", "external_load", "bilateral", "biceps"],
       ["0201", "elbow_extension", "isolation", "external_load", "bilateral", "triceps"],
       ["1262", "horizontal_push", "isolation", "external_load", "unilateral", "chest"],

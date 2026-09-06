@@ -1,0 +1,5370 @@
+{
+  "generatedFromDatasetFingerprint": "db4f602c",
+  "count": 435,
+  "records": [
+    {
+      "exerciseId": "0001",
+      "name": "3/4 sit-up",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "sit_up",
+      "classificationConfidence": 0.94,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0003",
+      "name": "air bike",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "distance",
+      "familyId": "locomotion",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0010",
+      "name": "assisted hanging knee raise with throw down",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "assistance",
+      "familyId": "leg_raise",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0012",
+      "name": "assisted lying leg raise with lateral throw down",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "assistance",
+      "familyId": "leg_raise",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0013",
+      "name": "assisted lying leg raise with throw down",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "assistance",
+      "familyId": "leg_raise",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0028",
+      "name": "barbell clean and press",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "knee_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0029",
+      "name": "barbell clean-grip front squat",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "squat",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0047",
+      "name": "barbell incline bench press",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "horizontal_press",
+      "classificationConfidence": 0.95,
+      "variantOf": "0025",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0053",
+      "name": "barbell jump squat",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "squat",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0067",
+      "name": "barbell one arm snatch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "shoulder_abduction",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0077",
+      "name": "barbell rear lunge v. 2",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "barbell_reverse_lunge",
+      "classificationConfidence": 0.96,
+      "variantOf": "0078",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0085",
+      "name": "barbell romanian deadlift",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "hinge",
+      "classificationConfidence": 0.95,
+      "variantOf": "0032",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0098",
+      "name": "barbell side split squat",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "squat",
+      "classificationConfidence": 0.94,
+      "variantOf": "0097",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0119",
+      "name": "barbell upright row v. 2",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "barbell_upright_row",
+      "classificationConfidence": 0.92,
+      "variantOf": "0120",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0121",
+      "name": "barbell upright row v. 3",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "barbell_upright_row",
+      "classificationConfidence": 0.92,
+      "variantOf": "0120",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0123",
+      "name": "barbell wide-grip upright row",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "barbell_upright_row",
+      "classificationConfidence": 0.94,
+      "variantOf": "0120",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0126",
+      "name": "barbell wrist curl",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.94,
+      "variantOf": "0125",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0127",
+      "name": "barbell zercher squat",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "squat",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0151",
+      "name": "cable bench press",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "horizontal_press",
+      "classificationConfidence": 0.95,
+      "variantOf": "0025",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0157",
+      "name": "cable deadlift",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "hinge",
+      "classificationConfidence": 0.95,
+      "variantOf": "0032",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0170",
+      "name": "cable incline fly (on stability ball)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "incline_cable_fly",
+      "classificationConfidence": 0.86,
+      "variantOf": "0171",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0172",
+      "name": "cable incline pushdown",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "straight_arm_pulldown",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "resolved_source_conflict"
+      ]
+    },
+    {
+      "exerciseId": "0197",
+      "name": "cable pulldown (pro lat bar)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "cable_lat_pulldown",
+      "classificationConfidence": 0.97,
+      "variantOf": "0198",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0199",
+      "name": "cable pushdown (straight arm) v. 2",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "straight_arm_pulldown",
+      "classificationConfidence": 0.93,
+      "variantOf": "0238",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0200",
+      "name": "cable pushdown (with rope attachment)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "cable_triceps_pushdown",
+      "classificationConfidence": 0.99,
+      "variantOf": "0201",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0201",
+      "name": "cable pushdown",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "cable_triceps_pushdown",
+      "classificationConfidence": 0.99,
+      "variantOf": "0199",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0202",
+      "name": "cable rear delt row (stirrups)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "cable_rear_delt_row",
+      "classificationConfidence": 0.95,
+      "variantOf": "0203",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0211",
+      "name": "cable russian twists (on stability ball)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "trunk_flexion",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0221",
+      "name": "cable side bend crunch (bosu ball)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "crunch",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0225",
+      "name": "cable standing cross-over high reverse fly",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "rear_delt_fly",
+      "classificationConfidence": 0.97,
+      "reasons": [
+        "resolved_source_conflict"
+      ]
+    },
+    {
+      "exerciseId": "0237",
+      "name": "cable straight arm pulldown (with rope)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "cable_straight_arm_pulldown",
+      "classificationConfidence": 0.97,
+      "variantOf": "0238",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0241",
+      "name": "cable triceps pushdown (v-bar)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "cable_triceps_pushdown",
+      "classificationConfidence": 0.99,
+      "variantOf": "0201",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0257",
+      "name": "circles knee stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_calves",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0271",
+      "name": "crunch (on stability ball)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "crunch",
+      "classificationConfidence": 0.9,
+      "variantOf": "0267",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0272",
+      "name": "crunch (on stability ball, arms straight)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "crunch",
+      "classificationConfidence": 0.9,
+      "variantOf": "0267",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0289",
+      "name": "dumbbell bench press",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "horizontal_press",
+      "classificationConfidence": 0.95,
+      "variantOf": "0025",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0293",
+      "name": "dumbbell bent over row",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "horizontal_pull",
+      "classificationConfidence": 0.95,
+      "variantOf": "0027",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0294",
+      "name": "dumbbell biceps curl",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "elbow_flexion",
+      "classificationConfidence": 0.95,
+      "variantOf": "0031",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0295",
+      "name": "dumbbell clean",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "hip_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0305",
+      "name": "dumbbell decline shrug",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "shrug",
+      "classificationConfidence": 0.94,
+      "variantOf": "0304",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0310",
+      "name": "dumbbell front raise",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "front_raise",
+      "classificationConfidence": 0.94,
+      "variantOf": "0309",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0313",
+      "name": "dumbbell hammer curl",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.94,
+      "variantOf": "0312",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0318",
+      "name": "dumbbell incline curl",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.94,
+      "variantOf": "0317",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0334",
+      "name": "dumbbell lateral raise",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "shoulder_abduction",
+      "classificationConfidence": 0.95,
+      "variantOf": "0178",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0343",
+      "name": "dumbbell lying one arm press",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "horizontal_push",
+      "classificationConfidence": 0.94,
+      "variantOf": "0342",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0353",
+      "name": "dumbbell one arm concentration curl (on stability ball)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0354",
+      "name": "dumbbell one arm kickback",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "triceps_kickback",
+      "classificationConfidence": 0.97,
+      "variantOf": "0333",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0361",
+      "name": "dumbbell one arm shoulder press",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "shoulder_press",
+      "classificationConfidence": 0.94,
+      "variantOf": "0360",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0371",
+      "name": "dumbbell plyo squat",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "squat",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0380",
+      "name": "dumbbell rear lateral raise",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "lateral_raise",
+      "classificationConfidence": 0.94,
+      "variantOf": "0379",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0390",
+      "name": "dumbbell seated biceps curl (on stability ball)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0394",
+      "name": "dumbbell seated kickback",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "triceps_kickback",
+      "classificationConfidence": 0.97,
+      "variantOf": "0333",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0396",
+      "name": "dumbbell seated lateral raise",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "lateral_raise",
+      "classificationConfidence": 0.94,
+      "variantOf": "0395",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0398",
+      "name": "dumbbell seated one arm kickback",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "triceps_kickback",
+      "classificationConfidence": 0.97,
+      "variantOf": "0394",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0405",
+      "name": "dumbbell seated shoulder press",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "shoulder_press",
+      "classificationConfidence": 0.94,
+      "variantOf": "0404",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0408",
+      "name": "dumbbell side lying one hand raise",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "shoulder_abduction",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0420",
+      "name": "dumbbell standing kickback",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "triceps_kickback",
+      "classificationConfidence": 0.95,
+      "variantOf": "0333",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0454",
+      "name": "ez barbell spider curl",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "ez_bar_spider_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0457",
+      "name": "flexion leg sit up (straight arm)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "sit_up",
+      "classificationConfidence": 0.94,
+      "variantOf": "0456",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0464",
+      "name": "front plank with twist",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "plank",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0471",
+      "name": "handstand push-up",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "push_up",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0489",
+      "name": "hyperextension",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "back_extension",
+      "classificationConfidence": 0.94,
+      "variantOf": "0488",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0492",
+      "name": "incline push up depth jump",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "bodyweight",
+      "familyId": "push_up",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0496",
+      "name": "inverse leg curl (bench support)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.97,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0499",
+      "name": "inverted row",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "row",
+      "classificationConfidence": 0.94,
+      "variantOf": "0497",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0500",
+      "name": "isometric wipers",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "horizontal_push",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0501",
+      "name": "jack burpee",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "timed",
+      "familyId": "whole_body",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0513",
+      "name": "jump squat v. 2",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "bodyweight",
+      "familyId": "squat",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0514",
+      "name": "jump squat",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "bodyweight",
+      "familyId": "squat",
+      "classificationConfidence": 0.9,
+      "variantOf": "0513",
+      "reasons": [
+        "manual_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0518",
+      "name": "kettlebell alternating hang clean",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "grip",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0525",
+      "name": "kettlebell bottoms up clean from the hang position",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "elbow_flexion",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0526",
+      "name": "kettlebell double alternating hang clean",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "elbow_flexion",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0527",
+      "name": "kettlebell double jerk",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "shoulder_abduction",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0528",
+      "name": "kettlebell double push press",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "vertical_push",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0529",
+      "name": "kettlebell double snatch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "shoulder_abduction",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0535",
+      "name": "kettlebell hang clean",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "knee_flexion",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0537",
+      "name": "kettlebell one arm clean and jerk",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "shoulder_abduction",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0538",
+      "name": "kettlebell one arm jerk",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "shoulder_abduction",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0540",
+      "name": "kettlebell one arm push press",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "vertical_push",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0542",
+      "name": "kettlebell one arm snatch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "shoulder_abduction",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0544",
+      "name": "kettlebell pistol squat",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "squat",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0545",
+      "name": "kettlebell plyo push-up",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "push_up",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0550",
+      "name": "kettlebell thruster",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "vertical_push",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0551",
+      "name": "kettlebell turkish get up (squat style)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "turkish_get_up",
+      "classificationConfidence": 0.98,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0552",
+      "name": "kettlebell two arm clean",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "shoulder_abduction",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0558",
+      "name": "kipping muscle up",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "vertical_pull",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0571",
+      "name": "lever alternating narrow grip seated row",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "row",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0572",
+      "name": "lever assisted chin-up",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "assistance",
+      "familyId": "pull_up",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0573",
+      "name": "lever back extension",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "back_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0574",
+      "name": "lever bent over row",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "row",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0575",
+      "name": "lever bicep curl",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0576",
+      "name": "lever chest press",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "horizontal_press",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0577",
+      "name": "lever chest press",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "horizontal_press",
+      "classificationConfidence": 0.99,
+      "duplicateOf": "0576",
+      "variantOf": "0576",
+      "reasons": [
+        "specialized_only",
+        "duplicate",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0578",
+      "name": "lever deadlift",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "hinge",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0579",
+      "name": "lever front pulldown",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "pulldown",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0580",
+      "name": "lever gripless shrug",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "forearm",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0581",
+      "name": "lever high row",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "row",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0582",
+      "name": "lever kneeling leg curl",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0583",
+      "name": "lever kneeling twist",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "trunk_rotation",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0584",
+      "name": "lever lateral raise",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "lateral_raise",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0587",
+      "name": "lever military press",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "shoulder_press",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0588",
+      "name": "lever narrow grip seated row",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "row",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0589",
+      "name": "lever one arm bent over row",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "row",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0590",
+      "name": "lever one arm shoulder press",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "shoulder_press",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0591",
+      "name": "lever overhand triceps dip",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "dip",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0592",
+      "name": "lever preacher curl",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0593",
+      "name": "lever reverse hyperextension",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "reverse_hyperextension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0594",
+      "name": "lever seated calf raise",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0595",
+      "name": "lever seated crunch (chest pad)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "crunch",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0596",
+      "name": "lever seated fly",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "chest_fly",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0597",
+      "name": "lever seated hip abduction",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "hip_abduction",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0598",
+      "name": "lever seated hip adduction",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "hip_adduction",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0599",
+      "name": "lever seated leg curl",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0600",
+      "name": "lever seated leg raise crunch",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "crunch",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0602",
+      "name": "lever seated reverse fly",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "rear_delt_fly",
+      "classificationConfidence": 0.97,
+      "variantOf": "0601",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0603",
+      "name": "lever shoulder press",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "vertical_push",
+      "classificationConfidence": 0.85,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0604",
+      "name": "lever shrug",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "shrug",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0605",
+      "name": "lever standing calf raise",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0606",
+      "name": "lever t bar row",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "row",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0613",
+      "name": "lying (side) quads stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_quadriceps",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0631",
+      "name": "muscle up",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "vertical_pull",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0636",
+      "name": "olympic barbell hammer curl",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0637",
+      "name": "olympic barbell triceps extension",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "triceps_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0640",
+      "name": "one arm slam (with medicine ball)",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "throw",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0642",
+      "name": "outside leg kick push-up",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "push_up_leg_kick",
+      "classificationConfidence": 0.8,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0643",
+      "name": "overhead triceps stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "triceps_extension",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0648",
+      "name": "power clean",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "knee_flexion",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0650",
+      "name": "pull-in (on stability ball)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "trunk_flexion",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0652",
+      "name": "pull-up",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "pull_up",
+      "classificationConfidence": 0.94,
+      "variantOf": "0651",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0653",
+      "name": "push-up (bosu ball)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "push_up",
+      "classificationConfidence": 0.9,
+      "variantOf": "0662",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0655",
+      "name": "push-up (on stability ball)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "stability_ball_push_up",
+      "classificationConfidence": 0.9,
+      "variantOf": "0662",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0656",
+      "name": "push-up (on stability ball)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "stability_ball_push_up",
+      "classificationConfidence": 0.96,
+      "variantOf": "0655",
+      "reasons": [
+        "specialized_only",
+        "resolved_source_conflict",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0658",
+      "name": "push-up (wall) v. 2",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "push_up",
+      "classificationConfidence": 0.94,
+      "variantOf": "0659",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0659",
+      "name": "push-up (wall)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "push_up",
+      "classificationConfidence": 0.94,
+      "variantOf": "0662",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0661",
+      "name": "push-up inside leg kick",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "push_up_leg_kick",
+      "classificationConfidence": 0.75,
+      "variantOf": "0642",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0664",
+      "name": "push-up to side plank",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "push_up_side_plank",
+      "classificationConfidence": 0.82,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0669",
+      "name": "rear deltoid stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "rear_delt_fly",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0675",
+      "name": "reverse hyper extension (on stability ball)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "hip_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0677",
+      "name": "ring dips",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "dip",
+      "classificationConfidence": 0.98,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0684",
+      "name": "run (equipment)",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "distance",
+      "familyId": "locomotion",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0685",
+      "name": "run",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "distance",
+      "familyId": "locomotion",
+      "classificationConfidence": 0.94,
+      "variantOf": "0684",
+      "reasons": [
+        "manual_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0688",
+      "name": "scapular pull-up",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "scapular_pull_up",
+      "classificationConfidence": 0.92,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0690",
+      "name": "seated lower back stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_upper-back",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0696",
+      "name": "self assisted inverse leg curl (on floor)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "assistance",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.97,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0697",
+      "name": "self assisted inverse leg curl",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "inverse_leg_curl",
+      "classificationConfidence": 0.96,
+      "variantOf": "0696",
+      "reasons": [
+        "specialized_only",
+        "resolved_source_conflict",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0716",
+      "name": "side push neck stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_trapezius",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0721",
+      "name": "side wrist pull stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "forearm",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0727",
+      "name": "single leg calf raise (on a dumbbell)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0747",
+      "name": "smith behind neck press",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "shoulder_abduction",
+      "classificationConfidence": 0.97,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0748",
+      "name": "smith bench press",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "horizontal_press",
+      "classificationConfidence": 0.95,
+      "variantOf": "0025",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0760",
+      "name": "smith leg press",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "squat",
+      "classificationConfidence": 0.9,
+      "variantOf": "0770",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0763",
+      "name": "smith reverse calf raises",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "smith_calf_raise",
+      "classificationConfidence": 0.98,
+      "reasons": [
+        "resolved_source_conflict"
+      ]
+    },
+    {
+      "exerciseId": "0776",
+      "name": "snatch pull",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "knee_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0778",
+      "name": "spider crawl push up",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "spider_push_up",
+      "classificationConfidence": 0.8,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0786",
+      "name": "squat jerk",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "squat",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0788",
+      "name": "standing behind neck press",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "shoulder_abduction",
+      "classificationConfidence": 0.97,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0794",
+      "name": "standing lateral stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_upper-back",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0798",
+      "name": "stationary bike walk",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "distance",
+      "familyId": "locomotion",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0813",
+      "name": "triceps dip (between benches)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "dip",
+      "classificationConfidence": 0.94,
+      "variantOf": "0812",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0814",
+      "name": "triceps dip",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "dip",
+      "classificationConfidence": 0.94,
+      "variantOf": "0812",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0817",
+      "name": "triceps stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "triceps_extension",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0835",
+      "name": "weighted hyperextension (on stability ball)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "back_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0840",
+      "name": "weighted overhead crunch (on stability ball)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "crunch",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0846",
+      "name": "weighted russian twist",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "trunk_rotation",
+      "classificationConfidence": 0.94,
+      "variantOf": "0845",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0847",
+      "name": "weighted seated bicep curl (on stability ball)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0849",
+      "name": "weighted seated twist (on stability ball)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "trunk_rotation",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0850",
+      "name": "weighted side bend (on stability ball)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "trunk_lateral_flexion",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "0860",
+      "name": "cable kickback",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "triceps_kickback",
+      "classificationConfidence": 0.97,
+      "variantOf": "0354",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0861",
+      "name": "cable seated row",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "horizontal_pull",
+      "classificationConfidence": 0.95,
+      "variantOf": "0027",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0862",
+      "name": "cable twist (up-down)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "trunk_rotation",
+      "classificationConfidence": 0.94,
+      "variantOf": "0243",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0869",
+      "name": "lever shoulder press v. 2",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "shoulder_press",
+      "classificationConfidence": 0.9,
+      "variantOf": "0603",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "0874",
+      "name": "cable standing crunch (with rope attachment)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "crunch",
+      "classificationConfidence": 0.94,
+      "variantOf": "0226",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "1160",
+      "name": "burpee",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "timed",
+      "familyId": "whole_body",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1167",
+      "name": "dynamic chest stretch (male)",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_chest",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1201",
+      "name": "dumbbell burpee",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "timed",
+      "familyId": "whole_body",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1253",
+      "name": "lever donkey calf raise",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1259",
+      "name": "behind head chest stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_chest",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1263",
+      "name": "cable one arm fly on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "chest_fly",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1264",
+      "name": "cable one arm incline fly on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "chest_fly",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1266",
+      "name": "cable one arm incline press on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "horizontal_push",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1267",
+      "name": "cable one arm press on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "horizontal_push",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1268",
+      "name": "cable press on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "horizontal_push",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1271",
+      "name": "chest and front of shoulder stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_chest",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1272",
+      "name": "chest stretch with exercise ball",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_chest",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1277",
+      "name": "dumbbell fly on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "chest_fly",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1278",
+      "name": "dumbbell incline fly on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "chest_fly",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1280",
+      "name": "dumbbell incline one arm fly on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "chest_fly",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1282",
+      "name": "dumbbell incline one arm press on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "horizontal_push",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1283",
+      "name": "dumbbell incline press on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "horizontal_push",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1284",
+      "name": "dumbbell lying pullover on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "pullover",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1286",
+      "name": "dumbbell one arm chest fly on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "chest_fly",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1288",
+      "name": "dumbbell one arm fly on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "chest_fly",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1290",
+      "name": "dumbbell one arm press on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "horizontal_push",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1291",
+      "name": "dumbbell one arm pullover on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "pullover",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1292",
+      "name": "dumbbell one leg fly on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "chest_fly",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1293",
+      "name": "dumbbell press on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "horizontal_push",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1294",
+      "name": "dumbbell pullover hip extension on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "pullover",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1295",
+      "name": "dumbbell pullover on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "pullover",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1296",
+      "name": "exercise ball pike push up",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "push_up",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1297",
+      "name": "isometric chest squeeze",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "horizontal_push",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1299",
+      "name": "lever incline chest press",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "bench_press",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1300",
+      "name": "lever decline chest press",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "bench_press",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1302",
+      "name": "medicine ball chest pass",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "throw",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1306",
+      "name": "plyo push up",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "bodyweight",
+      "familyId": "push_up",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1307",
+      "name": "push up on bosu ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "push_up",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1312",
+      "name": "medicine ball chest push with run release",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "distance",
+      "familyId": "horizontal_push",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1313",
+      "name": "lever unilateral row",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "row",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1314",
+      "name": "back extension on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "back_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1325",
+      "name": "cable wide grip rear pulldown behind neck",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "pulldown",
+      "classificationConfidence": 0.97,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1332",
+      "name": "exercise ball alternating arm ups",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "horizontal_pull",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1333",
+      "name": "exercise ball back extension with arms extended",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "back_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1334",
+      "name": "exercise ball back extension with hands behind head",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "back_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1335",
+      "name": "exercise ball back extension with knees off ground",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "back_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1336",
+      "name": "exercise ball back extension with rotation",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "back_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1338",
+      "name": "exercise ball hug",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "trunk_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1339",
+      "name": "exercise ball lat stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_upper-back",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1341",
+      "name": "exercise ball lower back stretch (pyramid)",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_upper-back",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1342",
+      "name": "exercise ball lying side lat stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_upper-back",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1343",
+      "name": "exercise ball prone leg raise",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "leg_raise",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1346",
+      "name": "kneeling lat stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_upper-back",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1347",
+      "name": "lever one arm lateral wide pulldown",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "pulldown",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1348",
+      "name": "lever reverse grip vertical row",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "row",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1349",
+      "name": "lever reverse t-bar row",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "row",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1350",
+      "name": "lever seated row",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "row",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1351",
+      "name": "lever t-bar reverse grip row",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "row",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1353",
+      "name": "medicine ball catch and overhead throw",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "throw",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1354",
+      "name": "medicine ball overhead slam",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "throw",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1356",
+      "name": "lever one arm lateral high row",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "row",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1358",
+      "name": "side lying floor stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_upper-back",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1362",
+      "name": "sphinx",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_lower-back",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1363",
+      "name": "spine stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_lower-back",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1364",
+      "name": "standing pelvic tilt",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "mobility",
+      "tracking": "timed",
+      "familyId": "mobility",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1365",
+      "name": "upper back stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_upper-back",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1366",
+      "name": "upward facing dog",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1368",
+      "name": "ankle circles",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "mobility",
+      "tracking": "timed",
+      "familyId": "mobility",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1371",
+      "name": "barbell seated calf raise",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "seated_barbell_calf_raise",
+      "classificationConfidence": 0.99,
+      "duplicateOf": "0088",
+      "reasons": [
+        "duplicate"
+      ]
+    },
+    {
+      "exerciseId": "1374",
+      "name": "box jump down with one leg stabilization",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "bodyweight",
+      "familyId": "balance",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1377",
+      "name": "calf stretch with hands against wall",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1378",
+      "name": "calf stretch with rope",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1382",
+      "name": "exercise ball on the wall calf raise",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1385",
+      "name": "lever seated squat calf raise on leg press machine",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "squat",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1388",
+      "name": "peroneals stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_calves",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1389",
+      "name": "posterior tibialis stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_calves",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1390",
+      "name": "seated calf stretch (male)",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1394",
+      "name": "smith reverse calf raises",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "smith_calf_raise",
+      "classificationConfidence": 0.98,
+      "variantOf": "0763",
+      "reasons": [
+        "resolved_source_conflict",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "1398",
+      "name": "standing calves calf stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1401",
+      "name": "muscle-up (on vertical bar)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "vertical_pull",
+      "classificationConfidence": 0.9,
+      "variantOf": "0631",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "1403",
+      "name": "neck side stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_trapezius",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1405",
+      "name": "back pec stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_upper-back",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1407",
+      "name": "calf push stretch with hands against wall",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1416",
+      "name": "exercise ball one leg prone lower body rotation",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "trunk_rotation",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1417",
+      "name": "exercise ball one legged diagonal kick hamstring curl",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "stability_ball_hamstring_curl",
+      "classificationConfidence": 0.76,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1419",
+      "name": "iron cross stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_gluteal",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1420",
+      "name": "kneeling jump squat",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "squat",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1421",
+      "name": "modified push up to lower arms",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "forearm_transition_push_up",
+      "classificationConfidence": 0.8,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1422",
+      "name": "pelvic tilt into bridge",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "mobility",
+      "tracking": "timed",
+      "familyId": "mobility",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1424",
+      "name": "seated glute stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_gluteal",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1428",
+      "name": "wrist circles",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "mobility",
+      "tracking": "timed",
+      "familyId": "forearm",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1430",
+      "name": "chest dip (on dip-pull-up cage)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "chest_dip",
+      "classificationConfidence": 0.96,
+      "variantOf": "0251",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "1433",
+      "name": "smith front squat (clean grip)",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "squat",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1439",
+      "name": "lever gripless shrug v. 2",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "forearm",
+      "classificationConfidence": 0.9,
+      "variantOf": "0580",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "1451",
+      "name": "lever seated dip",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "elbow_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1452",
+      "name": "lever seated crunch",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "crunch",
+      "classificationConfidence": 0.9,
+      "variantOf": "0595",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "1461",
+      "name": "barbell full squat (back pov)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "barbell_back_squat",
+      "classificationConfidence": 0.97,
+      "duplicateOf": "0043",
+      "variantOf": "0043",
+      "reasons": [
+        "duplicate",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "1462",
+      "name": "barbell full squat (side pov)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "barbell_back_squat",
+      "classificationConfidence": 0.97,
+      "duplicateOf": "0043",
+      "variantOf": "0043",
+      "reasons": [
+        "duplicate",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "1463",
+      "name": "sled 45° leg press (side pov)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "leg_press",
+      "classificationConfidence": 0.99,
+      "duplicateOf": "0739",
+      "reasons": [
+        "duplicate"
+      ]
+    },
+    {
+      "exerciseId": "1464",
+      "name": "sled 45в° leg press (back pov)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "leg_press",
+      "classificationConfidence": 0.99,
+      "duplicateOf": "0739",
+      "reasons": [
+        "duplicate"
+      ]
+    },
+    {
+      "exerciseId": "1471",
+      "name": "inchworm",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "mobility",
+      "tracking": "timed",
+      "familyId": "trunk_flexion",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1472",
+      "name": "forward jump",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "bodyweight",
+      "familyId": "jump",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1473",
+      "name": "backward jump",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "bodyweight",
+      "familyId": "jump",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1479",
+      "name": "lever incline chest press v. 2",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "bench_press",
+      "classificationConfidence": 0.9,
+      "variantOf": "1299",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "1494",
+      "name": "butterfly yoga pose",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_adductors",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1496",
+      "name": "sledge hammer",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "whole_body",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1511",
+      "name": "hamstring stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_hamstring",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1512",
+      "name": "all fours squad stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_quadriceps",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1545",
+      "name": "barbell full zercher squat",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "squat",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1548",
+      "name": "chair leg extended stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_quadriceps",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1559",
+      "name": "exercise ball hip flexor stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_gluteal",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1560",
+      "name": "exercise ball seated hamstring stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_hamstring",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1564",
+      "name": "intermediate hip flexor and quad stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_quadriceps",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1576",
+      "name": "leg up hamstring stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_hamstring",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1582",
+      "name": "reclining big toe pose with rope",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_hamstring",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1585",
+      "name": "runners stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_hamstring",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1587",
+      "name": "seated wide angle pose sequence",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_hamstring",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1599",
+      "name": "standing hamstring and calf stretch with strap",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1604",
+      "name": "world greatest stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_hamstring",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1614",
+      "name": "lever preacher curl v. 2",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "variantOf": "0592",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "1615",
+      "name": "lever hammer grip preacher curl",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1616",
+      "name": "lever reverse grip preacher curl",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1618",
+      "name": "dumbbell incline hammer press on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "elbow_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1620",
+      "name": "dumbbell incline one arm hammer press on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "elbow_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1621",
+      "name": "dumbbell one arm hammer press on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "elbow_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1628",
+      "name": "ez barbell spider curl",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "ez_bar_spider_curl",
+      "classificationConfidence": 0.9,
+      "duplicateOf": "0454",
+      "variantOf": "0454",
+      "reasons": [
+        "specialized_only",
+        "duplicate",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "1637",
+      "name": "cable overhead curl on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1649",
+      "name": "dumbbell alternating bicep curl with leg raised on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1650",
+      "name": "dumbbell alternating seated bicep curl on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1652",
+      "name": "dumbbell bicep curl on exercise ball with leg raised",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1653",
+      "name": "dumbbell bicep curl with stork stance",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1656",
+      "name": "dumbbell biceps curl v sit on bosu ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1657",
+      "name": "dumbbell cross body hammer curl v. 2",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.94,
+      "variantOf": "0298",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "1659",
+      "name": "dumbbell hammer curl on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1660",
+      "name": "dumbbell kneeling bicep curl exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1668",
+      "name": "dumbbell one arm seated bicep curl on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1673",
+      "name": "dumbbell preacher curl over exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1676",
+      "name": "dumbbell seated alternate hammer curl on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1679",
+      "name": "dumbbell seated one arm bicep curl on exercise ball with leg raised",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1680",
+      "name": "dumbbell standing one arm curl over incline bench",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.97,
+      "variantOf": "0422",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "1688",
+      "name": "lunge with twist",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "lunge_with_twist",
+      "classificationConfidence": 0.85,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1700",
+      "name": "dumbbell push press",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "vertical_push",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1705",
+      "name": "squat on bosu ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "squat",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1707",
+      "name": "prone twist on stability ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "trunk_rotation",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1708",
+      "name": "assisted lying calves stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1709",
+      "name": "assisted lying glutes stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_gluteal",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1710",
+      "name": "assisted lying gluteus and piriformis stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_gluteal",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1712",
+      "name": "assisted side lying adductor stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "hip_adduction",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1713",
+      "name": "assisted prone lying quads stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_quadriceps",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1714",
+      "name": "assisted prone rectus femoris stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_abs",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1716",
+      "name": "assisted seated pectoralis major stretch with stability ball",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_chest",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1718",
+      "name": "barbell seated close grip behind neck triceps extension",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "triceps_extension",
+      "classificationConfidence": 0.97,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1730",
+      "name": "dumbbell seated bent over alternate kickback",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "triceps_kickback",
+      "classificationConfidence": 0.95,
+      "variantOf": "0394",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "1731",
+      "name": "dumbbell close grip press",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "forearm",
+      "classificationConfidence": 0.99,
+      "duplicateOf": "0296",
+      "reasons": [
+        "duplicate"
+      ]
+    },
+    {
+      "exerciseId": "1734",
+      "name": "dumbbell kickbacks on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "hip_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1736",
+      "name": "dumbbell one arm french press on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "triceps_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1742",
+      "name": "dumbbell tricep kickback with stork stance",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "triceps_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1744",
+      "name": "exercise ball dip",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "elbow_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1745",
+      "name": "exercise ball seated triceps stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "triceps_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1746",
+      "name": "exercise ball supine triceps extension",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "triceps_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1747",
+      "name": "ez bar french press on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "triceps_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1750",
+      "name": "medicine ball supine chest throw",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "throw",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1759",
+      "name": "single leg squat (pistol) male",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "squat",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "1765",
+      "name": "dumbbell upright row (back pov)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "upright_row",
+      "classificationConfidence": 0.99,
+      "duplicateOf": "0437",
+      "reasons": [
+        "duplicate"
+      ]
+    },
+    {
+      "exerciseId": "1766",
+      "name": "self assisted inverse leg curl",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "inverse_leg_curl",
+      "classificationConfidence": 0.96,
+      "variantOf": "0697",
+      "reasons": [
+        "specialized_only",
+        "resolved_source_conflict",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "1772",
+      "name": "elbow lift - reverse push-up",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "reverse_push_up",
+      "classificationConfidence": 0.95,
+      "reasons": [
+        "specialized_only",
+        "resolved_source_conflict"
+      ]
+    },
+    {
+      "exerciseId": "1775",
+      "name": "side plank hip adduction",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "hip_adduction",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "2135",
+      "name": "weighted front plank",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "plank",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "2136",
+      "name": "dumbbell cuban press v. 2",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "shoulder_rotation",
+      "classificationConfidence": 0.94,
+      "variantOf": "0299",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "2137",
+      "name": "dumbbell arnold press",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "shoulder_press",
+      "classificationConfidence": 0.94,
+      "variantOf": "0287",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "2138",
+      "name": "stationary bike run v. 3",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "distance",
+      "familyId": "locomotion",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "2139",
+      "name": "hands bike",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "distance",
+      "familyId": "locomotion",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "2141",
+      "name": "walk elliptical cross trainer",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "distance",
+      "familyId": "locomotion",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "2142",
+      "name": "ski ergometer",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "distance",
+      "familyId": "locomotion",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "2202",
+      "name": "roller hip stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_gluteal",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "2205",
+      "name": "roller hip lat stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_gluteal",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "2207",
+      "name": "roller side lat stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_upper-back",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "2208",
+      "name": "roller back stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_lower-back",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "2285",
+      "name": "lever pullover",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "pullover",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "2286",
+      "name": "lever hip extension v. 2",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "hip_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "2287",
+      "name": "lever alternate leg press",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "leg_press",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "2288",
+      "name": "lever gripper hands",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "forearm",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "2289",
+      "name": "lever calf press",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "2297",
+      "name": "stability ball crunch (full range hands behind head)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "crunch",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "2311",
+      "name": "walking on stepmill",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "distance",
+      "familyId": "locomotion",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "2315",
+      "name": "lever rotary calf",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "2318",
+      "name": "lever shoulder press v. 3",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "shoulder_press",
+      "classificationConfidence": 0.9,
+      "variantOf": "0603",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "2328",
+      "name": "narrow push-up on exercise ball",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "push_up",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "2330",
+      "name": "cable lat pulldown full range of motion",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "straight_arm_pulldown",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "resolved_source_conflict"
+      ]
+    },
+    {
+      "exerciseId": "2335",
+      "name": "lever seated calf press",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "2371",
+      "name": "weighted russian twist v. 2",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "trunk_rotation",
+      "classificationConfidence": 0.94,
+      "variantOf": "0845",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "2398",
+      "name": "close-grip push-up (on knees)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "close_grip_push_up",
+      "classificationConfidence": 0.94,
+      "variantOf": "0259",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "2400",
+      "name": "inverse leg curl (on pull-up cable machine)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "pull_up",
+      "classificationConfidence": 0.94,
+      "variantOf": "0496",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "2401",
+      "name": "dumbbell biceps curl (with arm blaster)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.94,
+      "variantOf": "0294",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "2403",
+      "name": "dumbbell alternate biceps curl (with arm blaster)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.94,
+      "variantOf": "0285",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "2405",
+      "name": "cable triceps pushdown (v-bar) (with arm blaster)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "triceps_extension",
+      "classificationConfidence": 0.94,
+      "variantOf": "0241",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "2459",
+      "name": "tire flip",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "hinge",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "2567",
+      "name": "seated piriformis stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_gluteal",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "2571",
+      "name": "rocking frog stretch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "mobility_gluteal",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "2611",
+      "name": "lever horizontal one leg press",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "leg_press",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "2612",
+      "name": "jump rope",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "bodyweight",
+      "familyId": "jump",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "2736",
+      "name": "lever reverse grip lateral pulldown",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "pulldown",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "2798",
+      "name": "barbell squat jump step rear lunge",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "squat",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "2800",
+      "name": "barbell sitted alternate leg raise (female)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "leg_raise",
+      "classificationConfidence": 0.99,
+      "duplicateOf": "2799",
+      "reasons": [
+        "duplicate"
+      ]
+    },
+    {
+      "exerciseId": "2802",
+      "name": "twisted leg raise",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "leg_raise",
+      "classificationConfidence": 0.94,
+      "variantOf": "2801",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "3011",
+      "name": "incline scapula push up",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "scapular_push_up",
+      "classificationConfidence": 0.9,
+      "variantOf": "3021",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "3021",
+      "name": "scapula push-up",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "scapular_push_up",
+      "classificationConfidence": 0.92,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3119",
+      "name": "potty squat",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "bodyweight_squat",
+      "classificationConfidence": 0.82,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3147",
+      "name": "pelvic tilt",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "mobility",
+      "tracking": "timed",
+      "familyId": "mobility",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3162",
+      "name": "bodyweight standing one arm row",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "row",
+      "classificationConfidence": 0.94,
+      "variantOf": "3161",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "3166",
+      "name": "bodyweight standing row",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "row",
+      "classificationConfidence": 0.94,
+      "variantOf": "3165",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "3168",
+      "name": "bodyweight squatting row",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "row",
+      "classificationConfidence": 0.94,
+      "variantOf": "3167",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "3195",
+      "name": "lever lying two-one leg curl",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3200",
+      "name": "lever bent-over row with v-bar",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "row",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3201",
+      "name": "quarter sit-up",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "sit_up",
+      "classificationConfidence": 0.94,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3202",
+      "name": "half sit-up (male)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "sit_up",
+      "classificationConfidence": 0.94,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3203",
+      "name": "prisoner half sit-up (male)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "sit_up",
+      "classificationConfidence": 0.94,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3221",
+      "name": "half knee bends (male)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "knee_extension",
+      "classificationConfidence": 0.94,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3222",
+      "name": "semi squat jump (male)",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "bodyweight",
+      "familyId": "squat",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3223",
+      "name": "star jump (male)",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "bodyweight",
+      "familyId": "jump",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3224",
+      "name": "jack jump (male)",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "bodyweight",
+      "familyId": "jump",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3235",
+      "name": "cable assisted inverse leg curl",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "assistance",
+      "familyId": "biceps_curl",
+      "classificationConfidence": 0.97,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3239",
+      "name": "kneeling plank tap shoulder (male)",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "plank",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3240",
+      "name": "exercise ball on the wall calf raise (tennis ball between knees)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.9,
+      "variantOf": "1382",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "3241",
+      "name": "exercise ball on the wall calf raise (tennis ball between ankles)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.9,
+      "variantOf": "1382",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "3286",
+      "name": "weighted muscle up",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "vertical_pull",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3290",
+      "name": "weighted one hand pull up",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "pull_up",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3291",
+      "name": "stalder press",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "elbow_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3292",
+      "name": "elevator",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "whole_body",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3295",
+      "name": "front lever reps",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "horizontal_pull",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3296",
+      "name": "front lever",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "trunk_flexion",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3297",
+      "name": "back lever",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "horizontal_pull",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3298",
+      "name": "straddle planche",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "trunk_flexion",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3299",
+      "name": "full planche",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "trunk_flexion",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3300",
+      "name": "lean planche",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "trunk_flexion",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3301",
+      "name": "frog planche",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "trunk_flexion",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3302",
+      "name": "handstand",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "elbow_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3303",
+      "name": "flag",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "trunk_flexion",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3304",
+      "name": "skin the cat",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "whole_body",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3305",
+      "name": "barbell thruster",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "vertical_push",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3312",
+      "name": "weighted muscle up (on bar)",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "vertical_pull",
+      "classificationConfidence": 0.9,
+      "variantOf": "3286",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "3314",
+      "name": "straddle maltese",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "trunk_flexion",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3315",
+      "name": "full maltese",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "trunk_flexion",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3318",
+      "name": "swing 360",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "whole_body",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3327",
+      "name": "full planche push-up",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "push_up",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3360",
+      "name": "bear crawl",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "timed",
+      "familyId": "locomotion",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3361",
+      "name": "skater hops",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "bodyweight",
+      "familyId": "knee_extension",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3419",
+      "name": "l-sit on floor",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "trunk_flexion",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3420",
+      "name": "v-sit on floor",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "trunk_flexion",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3543",
+      "name": "bodyweight drop jump squat",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "bodyweight",
+      "familyId": "squat",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3544",
+      "name": "bodyweight incline side plank",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "plank",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3552",
+      "name": "quick feet v. 2",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "timed",
+      "familyId": "locomotion",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3582",
+      "name": "lunge with jump",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "bodyweight",
+      "familyId": "lunge",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3637",
+      "name": "wheel run",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "distance",
+      "familyId": "locomotion",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3638",
+      "name": "push to run",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "distance",
+      "familyId": "locomotion",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3642",
+      "name": "weighted stretch lunge",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "stretch",
+      "tracking": "timed",
+      "familyId": "lunge",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3656",
+      "name": "short stride run",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "distance",
+      "familyId": "locomotion",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3663",
+      "name": "reverse plank with leg lift",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "plank",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3664",
+      "name": "dumbbell side plank with rear fly",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "rear_delt_fly",
+      "classificationConfidence": 0.95,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3665",
+      "name": "power point plank",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "isometric",
+      "tracking": "timed",
+      "familyId": "plank",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3671",
+      "name": "ski step",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "timed",
+      "familyId": "locomotion",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3672",
+      "name": "back and forth step",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "conditioning",
+      "tracking": "timed",
+      "familyId": "locomotion",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3698",
+      "name": "inchworm v. 2",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "mobility",
+      "tracking": "timed",
+      "familyId": "trunk_flexion",
+      "classificationConfidence": 0.94,
+      "variantOf": "1471",
+      "reasons": [
+        "manual_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "3758",
+      "name": "lever standing chest press",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "bench_press",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3759",
+      "name": "lever seated good morning",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "hinge",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3760",
+      "name": "lever seated crunch v. 2",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "crunch",
+      "classificationConfidence": 0.9,
+      "variantOf": "0595",
+      "reasons": [
+        "specialized_only",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "3785",
+      "name": "incline push-up (on box)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "push_up",
+      "classificationConfidence": 0.94,
+      "variantOf": "0493",
+      "reasons": [
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "3888",
+      "name": "dumbbell one arm snatch",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "external_load",
+      "familyId": "hip_extension",
+      "classificationConfidence": 0.9,
+      "reasons": [
+        "manual_only"
+      ]
+    }
+  ]
+}

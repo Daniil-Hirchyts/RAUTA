@@ -2,6 +2,15 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join } from "node:path"
 import exercises from "../src/data/exercises.generated.json"
 import type { ExerciseSummary } from "../src/types"
+import {
+  compositeAnimationFrame,
+  createAnimationCanvas,
+  disposeAnimationFrame,
+  flattenAnimationCanvas,
+  parseAnimationInfo,
+  type AnimationInfo,
+  type Rgba,
+} from "./webp-compositor"
 
 const allExercises = [...(exercises as ExerciseSummary[])].sort((a, b) =>
   a.id.localeCompare(b.id)
@@ -34,57 +43,8 @@ function run(command: string[]): string {
   return result.stdout.toString()
 }
 
-type AnimationFrame = {
-  width: number
-  height: number
-  x: number
-  y: number
-  disposeToBackground: boolean
-  blendWithPrevious: boolean
-}
-
-type AnimationInfo = {
-  width: number
-  height: number
-  background: [number, number, number, number]
-  frames: AnimationFrame[]
-}
-
 function animationInfo(mediaPath: string): AnimationInfo {
-  const info = run(["webpmux", "-info", mediaPath])
-  const canvas = info.match(/Canvas size:\s*(\d+) x (\d+)/)
-  if (!canvas) throw new Error(`Missing animation canvas metadata: ${mediaPath}`)
-  const backgroundHex = info.match(/Background color\s*:\s*0x([0-9a-f]{8})/i)?.[1] ?? "00000000"
-  const value = Number.parseInt(backgroundHex, 16)
-  const background: [number, number, number, number] = [
-    (value >>> 16) & 0xff,
-    (value >>> 8) & 0xff,
-    value & 0xff,
-    (value >>> 24) & 0xff,
-  ]
-  const frames = info
-    .split("\n")
-    .map((line) =>
-      line.match(
-        /^\s*\d+:\s+(\d+)\s+(\d+)\s+(?:yes|no)\s+(\d+)\s+(\d+)\s+\d+\s+(background|none)\s+(yes|no)\b/
-      )
-    )
-    .filter((match): match is RegExpMatchArray => Boolean(match))
-    .map((match) => ({
-      width: Number(match[1]),
-      height: Number(match[2]),
-      x: Number(match[3]),
-      y: Number(match[4]),
-      disposeToBackground: match[5] === "background",
-      blendWithPrevious: match[6] === "yes",
-    }))
-  if (!frames.length) throw new Error(`Missing animation frame metadata: ${mediaPath}`)
-  return {
-    width: Number(canvas[1]),
-    height: Number(canvas[2]),
-    background,
-    frames,
-  }
+  return parseAnimationInfo(run(["webpmux", "-info", mediaPath]), mediaPath)
 }
 
 function readPam(path: string): { width: number; height: number; pixels: Uint8Array } {
@@ -109,62 +69,21 @@ function readPam(path: string): { width: number; height: number; pixels: Uint8Ar
   return { width, height, pixels }
 }
 
-function sourceOver(canvas: Uint8Array, targetOffset: number, source: Uint8Array, sourceOffset: number) {
-  const sourceAlpha = source[sourceOffset + 3] / 255
-  const destinationAlpha = canvas[targetOffset + 3] / 255
-  const outputAlpha = sourceAlpha + destinationAlpha * (1 - sourceAlpha)
-  if (outputAlpha === 0) {
-    canvas.fill(0, targetOffset, targetOffset + 4)
-    return
-  }
-  for (let channel = 0; channel < 3; channel++)
-    canvas[targetOffset + channel] = Math.round(
-      (source[sourceOffset + channel] * sourceAlpha +
-        canvas[targetOffset + channel] * destinationAlpha * (1 - sourceAlpha)) /
-        outputAlpha
-    )
-  canvas[targetOffset + 3] = Math.round(outputAlpha * 255)
-}
-
-function fillRect(
-  canvas: Uint8Array,
-  canvasWidth: number,
-  frame: AnimationFrame,
-  rgba: [number, number, number, number]
-) {
-  for (let y = 0; y < frame.height; y++)
-    for (let x = 0; x < frame.width; x++) {
-      const offset = ((frame.y + y) * canvasWidth + frame.x + x) * 4
-      canvas[offset] = rgba[0]
-      canvas[offset + 1] = rgba[1]
-      canvas[offset + 2] = rgba[2]
-      canvas[offset + 3] = rgba[3]
-    }
-}
-
 function writePpm(
   path: string,
   canvas: Uint8Array,
   width: number,
   height: number,
-  background: [number, number, number, number]
+  background: Rgba
 ) {
-  const rgb = Buffer.alloc(width * height * 3)
-  const backgroundAlpha = background[3] / 255
-  for (let sourceOffset = 0, targetOffset = 0; sourceOffset < canvas.length; sourceOffset += 4, targetOffset += 3) {
-    const alpha = canvas[sourceOffset + 3] / 255
-    const flattenedAlpha = alpha + backgroundAlpha * (1 - alpha)
-    for (let channel = 0; channel < 3; channel++) {
-      const value =
-        flattenedAlpha === 0
-          ? 0
-          : (canvas[sourceOffset + channel] * alpha +
-              background[channel] * backgroundAlpha * (1 - alpha)) /
-            flattenedAlpha
-      rgb[targetOffset + channel] = Math.round(value)
-    }
-  }
-  writeFileSync(path, Buffer.concat([Buffer.from(`P6\n${width} ${height}\n255\n`), rgb]))
+  const rgb = flattenAnimationCanvas(canvas, background)
+  writeFileSync(
+    path,
+    Buffer.concat([
+      Buffer.from(`P6\n${width} ${height}\n255\n`),
+      Buffer.from(rgb),
+    ])
+  )
 }
 
 const reviewed = data.map((exercise) => {
@@ -175,13 +94,7 @@ const reviewed = data.map((exercise) => {
   const exerciseRoot = join(root, exercise.id)
   mkdirSync(exerciseRoot, { recursive: true })
   const width = String(frameCount).length
-  const canvas = new Uint8Array(info.width * info.height * 4)
-  for (let offset = 0; offset < canvas.length; offset += 4) {
-    canvas[offset] = info.background[0]
-    canvas[offset + 1] = info.background[1]
-    canvas[offset + 2] = info.background[2]
-    canvas[offset + 3] = info.background[3]
-  }
+  const canvas = createAnimationCanvas(info.width, info.height, info.background)
   for (let index = 0; index < frameCount; index++) {
     const frameNumber = index + 1
     const frame = info.frames[index]
@@ -194,15 +107,15 @@ const reviewed = data.map((exercise) => {
     const decoded = readPam(temporaryPam)
     if (decoded.width !== frame.width || decoded.height !== frame.height)
       throw new Error(`Frame geometry mismatch: ${exercise.id} frame ${frameNumber}`)
-    for (let y = 0; y < frame.height; y++)
-      for (let x = 0; x < frame.width; x++) {
-        const targetOffset = ((frame.y + y) * info.width + frame.x + x) * 4
-        const sourceOffset = (y * frame.width + x) * 4
-        if (frame.blendWithPrevious) sourceOver(canvas, targetOffset, decoded.pixels, sourceOffset)
-        else canvas.set(decoded.pixels.subarray(sourceOffset, sourceOffset + 4), targetOffset)
-      }
+    compositeAnimationFrame(
+      canvas,
+      info.width,
+      info.height,
+      frame,
+      decoded.pixels
+    )
     writePpm(ppm, canvas, info.width, info.height, info.background)
-    if (frame.disposeToBackground) fillRect(canvas, info.width, frame, info.background)
+    disposeAnimationFrame(canvas, info.width, frame, info.background)
     rmSync(temporaryWebp, { force: true })
     rmSync(temporaryPam, { force: true })
   }

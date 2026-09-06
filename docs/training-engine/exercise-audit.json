@@ -1,5 +1,5 @@
 {
-  "datasetFingerprint": "a1134e55",
+  "datasetFingerprint": "db4f602c",
   "total": 1324,
   "errors": [],
   "equipment": {
@@ -70,37 +70,45 @@
     "upper-back": 260
   },
   "programmingDirectCoverage": {
-    "abs": 167,
+    "abs": 166,
     "adductors": 4,
-    "biceps": 195,
-    "calves": 69,
-    "chest": 200,
-    "deltoids": 157,
-    "forearm": 138,
-    "gluteal": 197,
+    "biceps": 191,
+    "calves": 68,
+    "chest": 186,
+    "deltoids": 158,
+    "forearm": 133,
+    "gluteal": 196,
     "hamstring": 40,
     "hip-flexors": 6,
     "lower-back": 15,
-    "obliques": 22,
-    "quadriceps": 131,
+    "obliques": 21,
+    "quadriceps": 132,
     "serratus": 6,
-    "tibialis": 3,
-    "trapezius": 17,
-    "triceps": 145,
-    "upper-back": 199
+    "tibialis": 1,
+    "trapezius": 21,
+    "triceps": 146,
+    "upper-back": 185
   },
   "types": {
     "conditioning": 20,
-    "isometric": 23,
+    "isometric": 21,
     "mobility": 7,
     "power": 53,
-    "resistance": 1160,
+    "resistance": 1162,
     "stretch": 61
   },
+  "tracking": {
+    "assistance": 18,
+    "band_resistance": 61,
+    "bodyweight": 285,
+    "distance": 13,
+    "external_load": 851,
+    "timed": 96
+  },
   "automaticProgramming": {
-    "allowed": 973,
-    "manual_only": 176,
-    "specialized_only": 175
+    "allowed": 966,
+    "manual_only": 166,
+    "specialized_only": 192
   },
   "provenance": {
     "curated_video_and_text": 1324
@@ -114,6 +122,7 @@
   "staleSourceAndMediaReviewCount": 0,
   "missingSourceFingerprintCount": 0,
   "missingMediaFingerprintCount": 0,
+  "mediaMapMismatchCount": 0,
   "reviewFreshness": [
     {
       "exerciseId": "0001",
@@ -8071,6 +8080,11 @@
   },
   "ruleOnlyCount": 0,
   "unknownTypeCount": 0,
+  "unknownPatternCount": 0,
+  "unknownMechanicsCount": 0,
+  "unknownLateralityCount": 0,
+  "unknownTrackingCount": 0,
+  "unknownSkillCount": 0,
   "automaticAllowedPlannerUnsupported": [],
   "specializedPlannerUnsupported": [],
   "manualOnlyByCapability": [
@@ -8283,12 +8297,6 @@
       "name": "power clean",
       "exerciseType": "power",
       "tracking": "external_load"
-    },
-    {
-      "id": "0664",
-      "name": "push-up to side plank",
-      "exerciseType": "isometric",
-      "tracking": "timed"
     },
     {
       "id": "0669",
@@ -9023,12 +9031,6 @@
       "tracking": "timed"
     },
     {
-      "id": "3664",
-      "name": "dumbbell side plank with rear fly",
-      "exerciseType": "isometric",
-      "tracking": "timed"
-    },
-    {
       "id": "3665",
       "name": "power point plank",
       "exerciseType": "isometric",
@@ -9059,6 +9061,7 @@
       "tracking": "external_load"
     }
   ],
+  "familyCount": 104,
   "duplicates": [
     {
       "exerciseId": "0577",
@@ -9067,10 +9070,6 @@
     {
       "exerciseId": "1371",
       "duplicateOf": "0088"
-    },
-    {
-      "exerciseId": "1394",
-      "duplicateOf": "0763"
     },
     {
       "exerciseId": "1461",
@@ -9107,48 +9106,76 @@
   ],
   "variants": [
     {
-      "exerciseId": "0078",
-      "variantOf": "0077"
+      "exerciseId": "0047",
+      "variantOf": "0025"
+    },
+    {
+      "exerciseId": "0077",
+      "variantOf": "0078"
+    },
+    {
+      "exerciseId": "0085",
+      "variantOf": "0032"
     },
     {
       "exerciseId": "0098",
       "variantOf": "0097"
     },
     {
-      "exerciseId": "0120",
-      "variantOf": "0119"
+      "exerciseId": "0119",
+      "variantOf": "0120"
     },
     {
       "exerciseId": "0121",
-      "variantOf": "0119"
+      "variantOf": "0120"
+    },
+    {
+      "exerciseId": "0123",
+      "variantOf": "0120"
     },
     {
       "exerciseId": "0126",
       "variantOf": "0125"
     },
     {
-      "exerciseId": "0171",
-      "variantOf": "0170"
+      "exerciseId": "0151",
+      "variantOf": "0025"
     },
     {
-      "exerciseId": "0198",
-      "variantOf": "0197"
+      "exerciseId": "0157",
+      "variantOf": "0032"
+    },
+    {
+      "exerciseId": "0170",
+      "variantOf": "0171"
+    },
+    {
+      "exerciseId": "0197",
+      "variantOf": "0198"
+    },
+    {
+      "exerciseId": "0199",
+      "variantOf": "0238"
     },
     {
       "exerciseId": "0200",
-      "variantOf": "0199"
+      "variantOf": "0201"
     },
     {
       "exerciseId": "0201",
       "variantOf": "0199"
     },
     {
-      "exerciseId": "0203",
-      "variantOf": "0202"
+      "exerciseId": "0202",
+      "variantOf": "0203"
     },
     {
-      "exerciseId": "0238",
-      "variantOf": "0237"
+      "exerciseId": "0237",
+      "variantOf": "0238"
+    },
+    {
+      "exerciseId": "0241",
+      "variantOf": "0201"
     },
     {
       "exerciseId": "0271",
@@ -9157,6 +9184,18 @@
     {
       "exerciseId": "0272",
       "variantOf": "0267"
+    },
+    {
+      "exerciseId": "0289",
+      "variantOf": "0025"
+    },
+    {
+      "exerciseId": "0293",
+      "variantOf": "0027"
+    },
+    {
+      "exerciseId": "0294",
+      "variantOf": "0031"
     },
     {
       "exerciseId": "0305",
@@ -9175,8 +9214,16 @@
       "variantOf": "0317"
     },
     {
+      "exerciseId": "0334",
+      "variantOf": "0178"
+    },
+    {
       "exerciseId": "0343",
       "variantOf": "0342"
+    },
+    {
+      "exerciseId": "0354",
+      "variantOf": "0333"
     },
     {
       "exerciseId": "0361",
@@ -9187,12 +9234,24 @@
       "variantOf": "0379"
     },
     {
+      "exerciseId": "0394",
+      "variantOf": "0333"
+    },
+    {
       "exerciseId": "0396",
       "variantOf": "0395"
     },
     {
+      "exerciseId": "0398",
+      "variantOf": "0394"
+    },
+    {
       "exerciseId": "0405",
       "variantOf": "0404"
+    },
+    {
+      "exerciseId": "0420",
+      "variantOf": "0333"
     },
     {
       "exerciseId": "0457",
@@ -9211,6 +9270,10 @@
       "variantOf": "0513"
     },
     {
+      "exerciseId": "0577",
+      "variantOf": "0576"
+    },
+    {
       "exerciseId": "0602",
       "variantOf": "0601"
     },
@@ -9219,24 +9282,28 @@
       "variantOf": "0651"
     },
     {
+      "exerciseId": "0653",
+      "variantOf": "0662"
+    },
+    {
       "exerciseId": "0655",
-      "variantOf": "0653"
+      "variantOf": "0662"
     },
     {
       "exerciseId": "0656",
-      "variantOf": "0653"
+      "variantOf": "0655"
     },
     {
       "exerciseId": "0658",
-      "variantOf": "0653"
+      "variantOf": "0659"
     },
     {
       "exerciseId": "0659",
-      "variantOf": "0653"
+      "variantOf": "0662"
     },
     {
-      "exerciseId": "0662",
-      "variantOf": "0653"
+      "exerciseId": "0661",
+      "variantOf": "0642"
     },
     {
       "exerciseId": "0685",
@@ -9245,6 +9312,14 @@
     {
       "exerciseId": "0697",
       "variantOf": "0696"
+    },
+    {
+      "exerciseId": "0748",
+      "variantOf": "0025"
+    },
+    {
+      "exerciseId": "0760",
+      "variantOf": "0770"
     },
     {
       "exerciseId": "0813",
@@ -9259,6 +9334,14 @@
       "variantOf": "0845"
     },
     {
+      "exerciseId": "0860",
+      "variantOf": "0354"
+    },
+    {
+      "exerciseId": "0861",
+      "variantOf": "0027"
+    },
+    {
       "exerciseId": "0862",
       "variantOf": "0243"
     },
@@ -9269,6 +9352,10 @@
     {
       "exerciseId": "0874",
       "variantOf": "0226"
+    },
+    {
+      "exerciseId": "1394",
+      "variantOf": "0763"
     },
     {
       "exerciseId": "1401",
@@ -9287,6 +9374,14 @@
       "variantOf": "0595"
     },
     {
+      "exerciseId": "1461",
+      "variantOf": "0043"
+    },
+    {
+      "exerciseId": "1462",
+      "variantOf": "0043"
+    },
+    {
       "exerciseId": "1479",
       "variantOf": "1299"
     },
@@ -9295,12 +9390,24 @@
       "variantOf": "0592"
     },
     {
+      "exerciseId": "1628",
+      "variantOf": "0454"
+    },
+    {
       "exerciseId": "1657",
       "variantOf": "0298"
     },
     {
+      "exerciseId": "1680",
+      "variantOf": "0422"
+    },
+    {
+      "exerciseId": "1730",
+      "variantOf": "0394"
+    },
+    {
       "exerciseId": "1766",
-      "variantOf": "0696"
+      "variantOf": "0697"
     },
     {
       "exerciseId": "2136",
@@ -9343,6 +9450,10 @@
       "variantOf": "2801"
     },
     {
+      "exerciseId": "3011",
+      "variantOf": "3021"
+    },
+    {
       "exerciseId": "3162",
       "variantOf": "3161"
     },
@@ -9379,57 +9490,84 @@
       "variantOf": "0493"
     }
   ],
-  "conflicts": [
+  "resolvedSourceConflicts": [
     {
       "exerciseId": "0172",
+      "name": "cable incline pushdown",
       "tags": [
+        "classification_media_preferred",
+        "source_media_conflict"
+      ]
+    },
+    {
+      "exerciseId": "0225",
+      "name": "cable standing cross-over high reverse fly",
+      "tags": [
+        "classification_media_preferred",
         "source_media_conflict"
       ]
     },
     {
       "exerciseId": "0656",
+      "name": "push-up (on stability ball)",
       "tags": [
+        "classification_media_preferred",
         "source_media_conflict"
       ]
     },
     {
       "exerciseId": "0697",
+      "name": "self assisted inverse leg curl",
       "tags": [
+        "classification_media_preferred",
         "source_media_conflict"
       ]
     },
     {
       "exerciseId": "0763",
+      "name": "smith reverse calf raises",
       "tags": [
+        "classification_media_preferred",
         "source_media_conflict"
       ]
     },
     {
       "exerciseId": "1394",
+      "name": "smith reverse calf raises",
       "tags": [
+        "classification_media_preferred",
         "source_media_conflict"
       ]
     },
     {
       "exerciseId": "1766",
+      "name": "self assisted inverse leg curl",
       "tags": [
+        "classification_media_preferred",
         "source_equipment_conflict",
         "source_media_conflict"
       ]
     },
     {
       "exerciseId": "1772",
+      "name": "elbow lift - reverse push-up",
       "tags": [
+        "classification_media_preferred",
         "source_media_conflict"
       ]
     },
     {
       "exerciseId": "2330",
+      "name": "cable lat pulldown full range of motion",
       "tags": [
+        "classification_media_preferred",
         "source_media_conflict"
       ]
     }
   ],
+  "unresolvedSourceConflicts": [],
+  "unusable": [],
+  "lowConfidence": [],
   "reviewProgressByFamily": [
     {
       "familyId": "anti_extension",
@@ -9465,8 +9603,8 @@
     },
     {
       "familyId": "back_extension",
-      "total": 10,
-      "fullyReviewed": 10,
+      "total": 9,
+      "fullyReviewed": 9,
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
@@ -9475,7 +9613,6 @@
         "0488",
         "0489",
         "0573",
-        "0593",
         "0835",
         "1314",
         "1333",
@@ -9603,8 +9740,8 @@
     },
     {
       "familyId": "biceps_curl",
-      "total": 173,
-      "fullyReviewed": 173,
+      "total": 170,
+      "fullyReviewed": 170,
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
@@ -9683,12 +9820,10 @@
         "0496",
         "0575",
         "0582",
-        "0586",
         "0592",
         "0599",
         "0636",
         "0696",
-        "0697",
         "0771",
         "0795",
         "0847",
@@ -9765,7 +9900,6 @@
         "1682",
         "1683",
         "1684",
-        "1766",
         "1769",
         "1770",
         "2293",
@@ -9792,21 +9926,9 @@
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
-      "allowed": 1,
-      "members": [
-        "3119"
-      ]
-    },
-    {
-      "familyId": "cable_incline_pushdown",
-      "total": 1,
-      "fullyReviewed": 1,
-      "partiallyReviewed": 0,
-      "stale": 0,
-      "ruleOnly": 0,
       "allowed": 0,
       "members": [
-        "0172"
+        "3119"
       ]
     },
     {
@@ -9837,14 +9959,13 @@
     },
     {
       "familyId": "cable_straight_arm_pulldown",
-      "total": 3,
-      "fullyReviewed": 3,
+      "total": 2,
+      "fullyReviewed": 2,
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
-      "allowed": 3,
+      "allowed": 2,
       "members": [
-        "0199",
         "0237",
         "0238"
       ]
@@ -9870,7 +9991,7 @@
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
-      "allowed": 32,
+      "allowed": 31,
       "members": [
         "0108",
         "0111",
@@ -9950,32 +10071,24 @@
     },
     {
       "familyId": "chest_fly",
-      "total": 33,
-      "fullyReviewed": 33,
+      "total": 24,
+      "fullyReviewed": 24,
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
-      "allowed": 21,
+      "allowed": 15,
       "members": [
         "0158",
         "0179",
         "0185",
         "0188",
-        "0225",
         "0227",
-        "0240",
         "0302",
         "0307",
         "0308",
         "0319",
-        "0359",
-        "0383",
-        "0386",
         "0458",
         "0596",
-        "0601",
-        "0602",
-        "0993",
         "1262",
         "1263",
         "1264",
@@ -9988,8 +10101,7 @@
         "1286",
         "1288",
         "1292",
-        "3234",
-        "3664"
+        "3234"
       ]
     },
     {
@@ -9999,7 +10111,7 @@
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
-      "allowed": 2,
+      "allowed": 1,
       "members": [
         "0259",
         "2398"
@@ -10054,8 +10166,8 @@
     },
     {
       "familyId": "dip",
-      "total": 17,
-      "fullyReviewed": 17,
+      "total": 18,
+      "fullyReviewed": 18,
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
@@ -10065,6 +10177,7 @@
         "0019",
         "0129",
         "0591",
+        "0677",
         "0812",
         "0813",
         "0814",
@@ -10082,8 +10195,8 @@
     },
     {
       "familyId": "elbow_extension",
-      "total": 28,
-      "fullyReviewed": 28,
+      "total": 27,
+      "fullyReviewed": 27,
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
@@ -10101,7 +10214,6 @@
         "0607",
         "0639",
         "0672",
-        "0677",
         "1451",
         "1617",
         "1618",
@@ -10143,7 +10255,7 @@
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
-      "allowed": 2,
+      "allowed": 0,
       "members": [
         "0454",
         "1628"
@@ -10189,7 +10301,7 @@
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
-      "allowed": 1,
+      "allowed": 0,
       "members": [
         "1421"
       ]
@@ -10467,6 +10579,19 @@
       ]
     },
     {
+      "familyId": "inverse_leg_curl",
+      "total": 2,
+      "fullyReviewed": 2,
+      "partiallyReviewed": 0,
+      "stale": 0,
+      "ruleOnly": 0,
+      "allowed": 0,
+      "members": [
+        "0697",
+        "1766"
+      ]
+    },
+    {
       "familyId": "jump",
       "total": 5,
       "fullyReviewed": 5,
@@ -10489,7 +10614,7 @@
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
-      "allowed": 5,
+      "allowed": 6,
       "members": [
         "0028",
         "0585",
@@ -10550,13 +10675,14 @@
     },
     {
       "familyId": "leg_curl",
-      "total": 1,
-      "fullyReviewed": 1,
+      "total": 2,
+      "fullyReviewed": 2,
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
-      "allowed": 1,
+      "allowed": 2,
       "members": [
+        "0586",
         "3193"
       ]
     },
@@ -10683,7 +10809,7 @@
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
-      "allowed": 1,
+      "allowed": 0,
       "members": [
         "1688"
       ]
@@ -11035,7 +11161,7 @@
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
-      "allowed": 2,
+      "allowed": 0,
       "members": [
         "0642",
         "0661"
@@ -11055,26 +11181,47 @@
     },
     {
       "familyId": "rear_delt_fly",
-      "total": 13,
-      "fullyReviewed": 13,
+      "total": 22,
+      "fullyReviewed": 22,
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
-      "allowed": 12,
+      "allowed": 20,
       "members": [
         "0075",
         "0076",
         "0154",
+        "0225",
         "0233",
+        "0240",
+        "0359",
         "0377",
         "0378",
+        "0383",
+        "0386",
+        "0601",
+        "0602",
         "0669",
         "0762",
+        "0993",
         "1022",
         "1328",
         "2292",
         "2470",
+        "3664",
         "3697"
+      ]
+    },
+    {
+      "familyId": "reverse_hyperextension",
+      "total": 1,
+      "fullyReviewed": 1,
+      "partiallyReviewed": 0,
+      "stale": 0,
+      "ruleOnly": 0,
+      "allowed": 0,
+      "members": [
+        "0593"
       ]
     },
     {
@@ -11220,7 +11367,7 @@
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
-      "allowed": 1,
+      "allowed": 0,
       "members": [
         "0688"
       ]
@@ -11232,7 +11379,7 @@
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
-      "allowed": 2,
+      "allowed": 0,
       "members": [
         "3011",
         "3021"
@@ -11436,13 +11583,13 @@
       ]
     },
     {
-      "familyId": "smith_reverse_calf_raise",
+      "familyId": "smith_calf_raise",
       "total": 2,
       "fullyReviewed": 2,
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
-      "allowed": 0,
+      "allowed": 2,
       "members": [
         "0763",
         "1394"
@@ -11455,19 +11602,19 @@
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
-      "allowed": 1,
+      "allowed": 0,
       "members": [
         "0778"
       ]
     },
     {
       "familyId": "squat",
-      "total": 69,
-      "fullyReviewed": 69,
+      "total": 68,
+      "fullyReviewed": 68,
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
-      "allowed": 52,
+      "allowed": 50,
       "members": [
         "0024",
         "0026",
@@ -11497,7 +11644,6 @@
         "0533",
         "0534",
         "0544",
-        "0551",
         "0741",
         "0743",
         "0744",
@@ -11567,13 +11713,15 @@
     },
     {
       "familyId": "straight_arm_pulldown",
-      "total": 1,
-      "fullyReviewed": 1,
+      "total": 3,
+      "fullyReviewed": 3,
       "partiallyReviewed": 0,
       "stale": 0,
       "ruleOnly": 0,
-      "allowed": 0,
+      "allowed": 3,
       "members": [
+        "0172",
+        "0199",
         "2330"
       ]
     },
@@ -11810,6 +11958,18 @@
       ]
     },
     {
+      "familyId": "turkish_get_up",
+      "total": 1,
+      "fullyReviewed": 1,
+      "partiallyReviewed": 0,
+      "stale": 0,
+      "ruleOnly": 0,
+      "allowed": 0,
+      "members": [
+        "0551"
+      ]
+    },
+    {
       "familyId": "upright_row",
       "total": 5,
       "fullyReviewed": 5,
@@ -11942,833 +12102,532 @@
       }
     ]
   ],
-  "nearDuplicates": [
-    [
-      {
-        "id": "0043",
-        "name": "barbell full squat"
-      },
-      {
-        "id": "1461",
-        "name": "barbell full squat (back pov)"
-      },
-      {
-        "id": "1462",
-        "name": "barbell full squat (side pov)"
-      }
-    ],
-    [
-      {
-        "id": "0078",
-        "name": "barbell rear lunge"
-      },
-      {
-        "id": "0077",
-        "name": "barbell rear lunge v. 2"
-      }
-    ],
-    [
-      {
-        "id": "0088",
-        "name": "barbell seated calf raise"
-      },
-      {
-        "id": "1371",
-        "name": "barbell seated calf raise"
-      }
-    ],
-    [
-      {
-        "id": "0098",
-        "name": "barbell side split squat"
-      },
-      {
-        "id": "0097",
-        "name": "barbell side split squat v. 2"
-      }
-    ],
-    [
-      {
-        "id": "2799",
-        "name": "barbell sitted alternate leg raise"
-      },
-      {
-        "id": "2800",
-        "name": "barbell sitted alternate leg raise (female)"
-      }
-    ],
-    [
-      {
-        "id": "0120",
-        "name": "barbell upright row"
-      },
-      {
-        "id": "0119",
-        "name": "barbell upright row v. 2"
-      },
-      {
-        "id": "0121",
-        "name": "barbell upright row v. 3"
-      }
-    ],
-    [
-      {
-        "id": "0126",
-        "name": "barbell wrist curl"
-      },
-      {
-        "id": "0125",
-        "name": "barbell wrist curl v. 2"
-      }
-    ],
-    [
-      {
-        "id": "3168",
-        "name": "bodyweight squatting row"
-      },
-      {
-        "id": "3167",
-        "name": "bodyweight squatting row (with towel)"
-      }
-    ],
-    [
-      {
-        "id": "3162",
-        "name": "bodyweight standing one arm row"
-      },
-      {
-        "id": "3161",
-        "name": "bodyweight standing one arm row (with towel)"
-      }
-    ],
-    [
-      {
-        "id": "3166",
-        "name": "bodyweight standing row"
-      },
-      {
-        "id": "3165",
-        "name": "bodyweight standing row (with towel)"
-      }
-    ],
-    [
-      {
-        "id": "0171",
-        "name": "cable incline fly"
-      },
-      {
-        "id": "0170",
-        "name": "cable incline fly (on stability ball)"
-      }
-    ],
-    [
-      {
-        "id": "0198",
-        "name": "cable pulldown"
-      },
-      {
-        "id": "0197",
-        "name": "cable pulldown (pro lat bar)"
-      }
-    ],
-    [
-      {
-        "id": "0201",
-        "name": "cable pushdown"
-      },
-      {
-        "id": "0199",
-        "name": "cable pushdown (straight arm) v. 2"
-      },
-      {
-        "id": "0200",
-        "name": "cable pushdown (with rope attachment)"
-      }
-    ],
-    [
-      {
-        "id": "0202",
-        "name": "cable rear delt row (stirrups)"
-      },
-      {
-        "id": "0203",
-        "name": "cable rear delt row (with rope)"
-      }
-    ],
-    [
-      {
-        "id": "0226",
-        "name": "cable standing crunch"
-      },
-      {
-        "id": "0874",
-        "name": "cable standing crunch (with rope attachment)"
-      }
-    ],
-    [
-      {
-        "id": "0238",
-        "name": "cable straight arm pulldown"
-      },
-      {
-        "id": "0237",
-        "name": "cable straight arm pulldown (with rope)"
-      }
-    ],
-    [
-      {
-        "id": "0241",
-        "name": "cable triceps pushdown (v-bar)"
-      },
-      {
-        "id": "2405",
-        "name": "cable triceps pushdown (v-bar) (with arm blaster)"
-      }
-    ],
-    [
-      {
-        "id": "0243",
-        "name": "cable twist"
-      },
-      {
-        "id": "0862",
-        "name": "cable twist (up-down)"
-      }
-    ],
-    [
-      {
-        "id": "0251",
-        "name": "chest dip"
-      },
-      {
-        "id": "1430",
-        "name": "chest dip (on dip-pull-up cage)"
-      }
-    ],
-    [
-      {
-        "id": "0259",
-        "name": "close-grip push-up"
-      },
-      {
-        "id": "2398",
-        "name": "close-grip push-up (on knees)"
-      }
-    ],
-    [
-      {
-        "id": "0267",
-        "name": "crunch (hands overhead)"
-      },
-      {
-        "id": "0272",
-        "name": "crunch (on stability ball, arms straight)"
-      },
-      {
-        "id": "0271",
-        "name": "crunch (on stability ball)"
-      }
-    ],
-    [
-      {
-        "id": "0285",
-        "name": "dumbbell alternate biceps curl"
-      },
-      {
-        "id": "2403",
-        "name": "dumbbell alternate biceps curl (with arm blaster)"
-      }
-    ],
-    [
-      {
-        "id": "2137",
-        "name": "dumbbell arnold press"
-      },
-      {
-        "id": "0287",
-        "name": "dumbbell arnold press v. 2"
-      }
-    ],
-    [
-      {
-        "id": "0294",
-        "name": "dumbbell biceps curl"
-      },
-      {
-        "id": "2401",
-        "name": "dumbbell biceps curl (with arm blaster)"
-      }
-    ],
-    [
-      {
-        "id": "1731",
-        "name": "dumbbell close grip press"
-      },
-      {
-        "id": "0296",
-        "name": "dumbbell close-grip press"
-      }
-    ],
-    [
-      {
-        "id": "0298",
-        "name": "dumbbell cross body hammer curl"
-      },
-      {
-        "id": "1657",
-        "name": "dumbbell cross body hammer curl v. 2"
-      }
-    ],
-    [
-      {
-        "id": "0299",
-        "name": "dumbbell cuban press"
-      },
-      {
-        "id": "2136",
-        "name": "dumbbell cuban press v. 2"
-      }
-    ],
-    [
-      {
-        "id": "0305",
-        "name": "dumbbell decline shrug"
-      },
-      {
-        "id": "0304",
-        "name": "dumbbell decline shrug v. 2"
-      }
-    ],
-    [
-      {
-        "id": "0310",
-        "name": "dumbbell front raise"
-      },
-      {
-        "id": "0309",
-        "name": "dumbbell front raise v. 2"
-      }
-    ],
-    [
-      {
-        "id": "0313",
-        "name": "dumbbell hammer curl"
-      },
-      {
-        "id": "0312",
-        "name": "dumbbell hammer curl v. 2"
-      }
-    ],
-    [
-      {
-        "id": "0318",
-        "name": "dumbbell incline curl"
-      },
-      {
-        "id": "0317",
-        "name": "dumbbell incline curl v. 2"
-      }
-    ],
-    [
-      {
-        "id": "0343",
-        "name": "dumbbell lying one arm press"
-      },
-      {
-        "id": "0342",
-        "name": "dumbbell lying one arm press v. 2"
-      }
-    ],
-    [
-      {
-        "id": "0361",
-        "name": "dumbbell one arm shoulder press"
-      },
-      {
-        "id": "0360",
-        "name": "dumbbell one arm shoulder press v. 2"
-      }
-    ],
-    [
-      {
-        "id": "0380",
-        "name": "dumbbell rear lateral raise"
-      },
-      {
-        "id": "0379",
-        "name": "dumbbell rear lateral raise (support head)"
-      }
-    ],
-    [
-      {
-        "id": "0396",
-        "name": "dumbbell seated lateral raise"
-      },
-      {
-        "id": "0395",
-        "name": "dumbbell seated lateral raise v. 2"
-      }
-    ],
-    [
-      {
-        "id": "0405",
-        "name": "dumbbell seated shoulder press"
-      },
-      {
-        "id": "0404",
-        "name": "dumbbell seated shoulder press (parallel grip)"
-      }
-    ],
-    [
-      {
-        "id": "0437",
-        "name": "dumbbell upright row"
-      },
-      {
-        "id": "1765",
-        "name": "dumbbell upright row (back pov)"
-      }
-    ],
-    [
-      {
-        "id": "1382",
-        "name": "exercise ball on the wall calf raise"
-      },
-      {
-        "id": "3241",
-        "name": "exercise ball on the wall calf raise (tennis ball between ankles)"
-      },
-      {
-        "id": "3240",
-        "name": "exercise ball on the wall calf raise (tennis ball between knees)"
-      }
-    ],
-    [
-      {
-        "id": "0454",
-        "name": "ez barbell spider curl"
-      },
-      {
-        "id": "1628",
-        "name": "ez barbell spider curl"
-      }
-    ],
-    [
-      {
-        "id": "0456",
-        "name": "flexion leg sit up (bent knee)"
-      },
-      {
-        "id": "0457",
-        "name": "flexion leg sit up (straight arm)"
-      }
-    ],
-    [
-      {
-        "id": "0489",
-        "name": "hyperextension"
-      },
-      {
-        "id": "0488",
-        "name": "hyperextension (on bench)"
-      }
-    ],
-    [
-      {
-        "id": "1471",
-        "name": "inchworm"
-      },
-      {
-        "id": "3698",
-        "name": "inchworm v. 2"
-      }
-    ],
-    [
-      {
-        "id": "0493",
-        "name": "incline push-up"
-      },
-      {
-        "id": "3785",
-        "name": "incline push-up (on box)"
-      }
-    ],
-    [
-      {
-        "id": "0496",
-        "name": "inverse leg curl (bench support)"
-      },
-      {
-        "id": "2400",
-        "name": "inverse leg curl (on pull-up cable machine)"
-      }
-    ],
-    [
-      {
-        "id": "0499",
-        "name": "inverted row"
-      },
-      {
-        "id": "0497",
-        "name": "inverted row v. 2"
-      }
-    ],
-    [
-      {
-        "id": "0514",
-        "name": "jump squat"
-      },
-      {
-        "id": "0513",
-        "name": "jump squat v. 2"
-      }
-    ],
-    [
-      {
-        "id": "0576",
-        "name": "lever chest press"
-      },
-      {
-        "id": "0577",
-        "name": "lever chest press"
-      }
-    ],
-    [
-      {
-        "id": "0580",
-        "name": "lever gripless shrug"
-      },
-      {
-        "id": "1439",
-        "name": "lever gripless shrug v. 2"
-      }
-    ],
-    [
-      {
-        "id": "1299",
-        "name": "lever incline chest press"
-      },
-      {
-        "id": "1479",
-        "name": "lever incline chest press v. 2"
-      }
-    ],
-    [
-      {
-        "id": "0592",
-        "name": "lever preacher curl"
-      },
-      {
-        "id": "1614",
-        "name": "lever preacher curl v. 2"
-      }
-    ],
-    [
-      {
-        "id": "1452",
-        "name": "lever seated crunch"
-      },
-      {
-        "id": "0595",
-        "name": "lever seated crunch (chest pad)"
-      },
-      {
-        "id": "3760",
-        "name": "lever seated crunch v. 2"
-      }
-    ],
-    [
-      {
-        "id": "0602",
-        "name": "lever seated reverse fly"
-      },
-      {
-        "id": "0601",
-        "name": "lever seated reverse fly (parallel grip)"
-      }
-    ],
-    [
-      {
-        "id": "0603",
-        "name": "lever shoulder press"
-      },
-      {
-        "id": "0869",
-        "name": "lever shoulder press v. 2"
-      },
-      {
-        "id": "2318",
-        "name": "lever shoulder press v. 3"
-      }
-    ],
-    [
-      {
-        "id": "0631",
-        "name": "muscle up"
-      },
-      {
-        "id": "1401",
-        "name": "muscle-up (on vertical bar)"
-      }
-    ],
-    [
-      {
-        "id": "0651",
-        "name": "pull up (neutral grip)"
-      },
-      {
-        "id": "0652",
-        "name": "pull-up"
-      }
-    ],
-    [
-      {
-        "id": "0662",
-        "name": "push-up"
-      },
-      {
-        "id": "0653",
-        "name": "push-up (bosu ball)"
-      },
-      {
-        "id": "0655",
-        "name": "push-up (on stability ball)"
-      },
-      {
-        "id": "0656",
-        "name": "push-up (on stability ball)"
-      },
-      {
-        "id": "0659",
-        "name": "push-up (wall)"
-      },
-      {
-        "id": "0658",
-        "name": "push-up (wall) v. 2"
-      }
-    ],
-    [
-      {
-        "id": "0685",
-        "name": "run"
-      },
-      {
-        "id": "0684",
-        "name": "run (equipment)"
-      }
-    ],
-    [
-      {
-        "id": "0697",
-        "name": "self assisted inverse leg curl"
-      },
-      {
-        "id": "1766",
-        "name": "self assisted inverse leg curl"
-      },
-      {
-        "id": "0696",
-        "name": "self assisted inverse leg curl (on floor)"
-      }
-    ],
-    [
-      {
-        "id": "1463",
-        "name": "sled 45° leg press (side pov)"
-      },
-      {
-        "id": "0739",
-        "name": "sled 45в° leg press"
-      },
-      {
-        "id": "1464",
-        "name": "sled 45в° leg press (back pov)"
-      }
-    ],
-    [
-      {
-        "id": "0763",
-        "name": "smith reverse calf raises"
-      },
-      {
-        "id": "1394",
-        "name": "smith reverse calf raises"
-      }
-    ],
-    [
-      {
-        "id": "0814",
-        "name": "triceps dip"
-      },
-      {
-        "id": "0812",
-        "name": "triceps dip (bench leg)"
-      },
-      {
-        "id": "0813",
-        "name": "triceps dip (between benches)"
-      }
-    ],
-    [
-      {
-        "id": "2802",
-        "name": "twisted leg raise"
-      },
-      {
-        "id": "2801",
-        "name": "twisted leg raise (female)"
-      }
-    ],
-    [
-      {
-        "id": "3286",
-        "name": "weighted muscle up"
-      },
-      {
-        "id": "3312",
-        "name": "weighted muscle up (on bar)"
-      }
-    ],
-    [
-      {
-        "id": "0846",
-        "name": "weighted russian twist"
-      },
-      {
-        "id": "0845",
-        "name": "weighted russian twist (legs up)"
-      },
-      {
-        "id": "2371",
-        "name": "weighted russian twist v. 2"
-      }
-    ]
-  ],
-  "suspiciousPrimary": [
+  "nearDuplicateCandidates": [
     {
-      "id": "0154",
-      "name": "cable cross-over revers fly"
+      "key": "barbell full squat",
+      "members": [
+        {
+          "id": "0043",
+          "name": "barbell full squat"
+        },
+        {
+          "id": "1461",
+          "name": "barbell full squat (back pov)"
+        },
+        {
+          "id": "1462",
+          "name": "barbell full squat (side pov)"
+        }
+      ]
     },
     {
-      "id": "0172",
-      "name": "cable incline pushdown"
+      "key": "barbell rear lunge",
+      "members": [
+        {
+          "id": "0077",
+          "name": "barbell rear lunge v. 2"
+        },
+        {
+          "id": "0078",
+          "name": "barbell rear lunge"
+        }
+      ]
     },
     {
-      "id": "0199",
-      "name": "cable pushdown (straight arm) v. 2"
+      "key": "barbell seated calf raise",
+      "members": [
+        {
+          "id": "0088",
+          "name": "barbell seated calf raise"
+        },
+        {
+          "id": "1371",
+          "name": "barbell seated calf raise"
+        }
+      ]
     },
     {
-      "id": "0333",
-      "name": "dumbbell kickback"
+      "key": "barbell side split squat",
+      "members": [
+        {
+          "id": "0097",
+          "name": "barbell side split squat v. 2"
+        },
+        {
+          "id": "0098",
+          "name": "barbell side split squat"
+        }
+      ]
     },
     {
-      "id": "0354",
-      "name": "dumbbell one arm kickback"
+      "key": "barbell sitted alternate leg raise",
+      "members": [
+        {
+          "id": "2799",
+          "name": "barbell sitted alternate leg raise"
+        },
+        {
+          "id": "2800",
+          "name": "barbell sitted alternate leg raise (female)"
+        }
+      ]
     },
     {
-      "id": "0378",
-      "name": "dumbbell rear fly"
+      "key": "barbell upright row",
+      "members": [
+        {
+          "id": "0119",
+          "name": "barbell upright row v. 2"
+        },
+        {
+          "id": "0120",
+          "name": "barbell upright row"
+        },
+        {
+          "id": "0121",
+          "name": "barbell upright row v. 3"
+        }
+      ]
     },
     {
-      "id": "0394",
-      "name": "dumbbell seated kickback"
+      "key": "barbell wrist curl",
+      "members": [
+        {
+          "id": "0125",
+          "name": "barbell wrist curl v. 2"
+        },
+        {
+          "id": "0126",
+          "name": "barbell wrist curl"
+        }
+      ]
     },
     {
-      "id": "0398",
-      "name": "dumbbell seated one arm kickback"
+      "key": "dumbbell arnold press",
+      "members": [
+        {
+          "id": "0287",
+          "name": "dumbbell arnold press v. 2"
+        },
+        {
+          "id": "2137",
+          "name": "dumbbell arnold press"
+        }
+      ]
     },
     {
-      "id": "0420",
-      "name": "dumbbell standing kickback"
+      "key": "dumbbell close grip press",
+      "members": [
+        {
+          "id": "0296",
+          "name": "dumbbell close-grip press"
+        },
+        {
+          "id": "1731",
+          "name": "dumbbell close grip press"
+        }
+      ]
     },
     {
-      "id": "0642",
-      "name": "outside leg kick push-up"
+      "key": "dumbbell cross body hammer curl",
+      "members": [
+        {
+          "id": "0298",
+          "name": "dumbbell cross body hammer curl"
+        },
+        {
+          "id": "1657",
+          "name": "dumbbell cross body hammer curl v. 2"
+        }
+      ]
     },
     {
-      "id": "0661",
-      "name": "push-up inside leg kick"
+      "key": "dumbbell cuban press",
+      "members": [
+        {
+          "id": "0299",
+          "name": "dumbbell cuban press"
+        },
+        {
+          "id": "2136",
+          "name": "dumbbell cuban press v. 2"
+        }
+      ]
     },
     {
-      "id": "0664",
-      "name": "push-up to side plank"
+      "key": "dumbbell decline shrug",
+      "members": [
+        {
+          "id": "0304",
+          "name": "dumbbell decline shrug v. 2"
+        },
+        {
+          "id": "0305",
+          "name": "dumbbell decline shrug"
+        }
+      ]
     },
     {
-      "id": "0688",
-      "name": "scapular pull-up"
+      "key": "dumbbell front raise",
+      "members": [
+        {
+          "id": "0309",
+          "name": "dumbbell front raise v. 2"
+        },
+        {
+          "id": "0310",
+          "name": "dumbbell front raise"
+        }
+      ]
     },
     {
-      "id": "0778",
-      "name": "spider crawl push up"
+      "key": "dumbbell hammer curl",
+      "members": [
+        {
+          "id": "0312",
+          "name": "dumbbell hammer curl v. 2"
+        },
+        {
+          "id": "0313",
+          "name": "dumbbell hammer curl"
+        }
+      ]
     },
     {
-      "id": "0860",
-      "name": "cable kickback"
+      "key": "dumbbell incline curl",
+      "members": [
+        {
+          "id": "0317",
+          "name": "dumbbell incline curl v. 2"
+        },
+        {
+          "id": "0318",
+          "name": "dumbbell incline curl"
+        }
+      ]
     },
     {
-      "id": "1417",
-      "name": "exercise ball one legged diagonal kick hamstring curl"
+      "key": "dumbbell lying one arm press",
+      "members": [
+        {
+          "id": "0342",
+          "name": "dumbbell lying one arm press v. 2"
+        },
+        {
+          "id": "0343",
+          "name": "dumbbell lying one arm press"
+        }
+      ]
     },
     {
-      "id": "1421",
-      "name": "modified push up to lower arms"
+      "key": "dumbbell one arm shoulder press",
+      "members": [
+        {
+          "id": "0360",
+          "name": "dumbbell one arm shoulder press v. 2"
+        },
+        {
+          "id": "0361",
+          "name": "dumbbell one arm shoulder press"
+        }
+      ]
     },
     {
-      "id": "1430",
-      "name": "chest dip (on dip-pull-up cage)"
+      "key": "dumbbell seated lateral raise",
+      "members": [
+        {
+          "id": "0395",
+          "name": "dumbbell seated lateral raise v. 2"
+        },
+        {
+          "id": "0396",
+          "name": "dumbbell seated lateral raise"
+        }
+      ]
     },
     {
-      "id": "1688",
-      "name": "lunge with twist"
+      "key": "dumbbell standing one arm curl over incline bench",
+      "members": [
+        {
+          "id": "0422",
+          "name": "dumbbell standing one arm curl (over incline bench)"
+        },
+        {
+          "id": "1680",
+          "name": "dumbbell standing one arm curl over incline bench"
+        }
+      ]
     },
     {
-      "id": "1730",
-      "name": "dumbbell seated bent over alternate kickback"
+      "key": "dumbbell upright row",
+      "members": [
+        {
+          "id": "0437",
+          "name": "dumbbell upright row"
+        },
+        {
+          "id": "1765",
+          "name": "dumbbell upright row (back pov)"
+        }
+      ]
     },
     {
-      "id": "1772",
-      "name": "elbow lift - reverse push-up"
+      "key": "ez barbell spider curl",
+      "members": [
+        {
+          "id": "0454",
+          "name": "ez barbell spider curl"
+        },
+        {
+          "id": "1628",
+          "name": "ez barbell spider curl"
+        }
+      ]
     },
     {
-      "id": "3011",
-      "name": "incline scapula push up"
+      "key": "inchworm",
+      "members": [
+        {
+          "id": "1471",
+          "name": "inchworm"
+        },
+        {
+          "id": "3698",
+          "name": "inchworm v. 2"
+        }
+      ]
     },
     {
-      "id": "3021",
-      "name": "scapula push-up"
+      "key": "inverted row",
+      "members": [
+        {
+          "id": "0497",
+          "name": "inverted row v. 2"
+        },
+        {
+          "id": "0499",
+          "name": "inverted row"
+        }
+      ]
     },
     {
-      "id": "3119",
-      "name": "potty squat"
+      "key": "jump squat",
+      "members": [
+        {
+          "id": "0513",
+          "name": "jump squat v. 2"
+        },
+        {
+          "id": "0514",
+          "name": "jump squat"
+        }
+      ]
     },
     {
-      "id": "3662",
-      "name": "pike-to-cobra push-up"
+      "key": "lever chest press",
+      "members": [
+        {
+          "id": "0576",
+          "name": "lever chest press"
+        },
+        {
+          "id": "0577",
+          "name": "lever chest press"
+        }
+      ]
     },
     {
-      "id": "3664",
-      "name": "dumbbell side plank with rear fly"
+      "key": "lever gripless shrug",
+      "members": [
+        {
+          "id": "0580",
+          "name": "lever gripless shrug"
+        },
+        {
+          "id": "1439",
+          "name": "lever gripless shrug v. 2"
+        }
+      ]
+    },
+    {
+      "key": "lever incline chest press",
+      "members": [
+        {
+          "id": "1299",
+          "name": "lever incline chest press"
+        },
+        {
+          "id": "1479",
+          "name": "lever incline chest press v. 2"
+        }
+      ]
+    },
+    {
+      "key": "lever preacher curl",
+      "members": [
+        {
+          "id": "0592",
+          "name": "lever preacher curl"
+        },
+        {
+          "id": "1614",
+          "name": "lever preacher curl v. 2"
+        }
+      ]
+    },
+    {
+      "key": "lever seated crunch",
+      "members": [
+        {
+          "id": "1452",
+          "name": "lever seated crunch"
+        },
+        {
+          "id": "3760",
+          "name": "lever seated crunch v. 2"
+        }
+      ]
+    },
+    {
+      "key": "lever shoulder press",
+      "members": [
+        {
+          "id": "0603",
+          "name": "lever shoulder press"
+        },
+        {
+          "id": "0869",
+          "name": "lever shoulder press v. 2"
+        },
+        {
+          "id": "2318",
+          "name": "lever shoulder press v. 3"
+        }
+      ]
+    },
+    {
+      "key": "push up on stability ball",
+      "members": [
+        {
+          "id": "0655",
+          "name": "push-up (on stability ball)"
+        },
+        {
+          "id": "0656",
+          "name": "push-up (on stability ball)"
+        }
+      ]
+    },
+    {
+      "key": "push up wall",
+      "members": [
+        {
+          "id": "0658",
+          "name": "push-up (wall) v. 2"
+        },
+        {
+          "id": "0659",
+          "name": "push-up (wall)"
+        }
+      ]
+    },
+    {
+      "key": "self assisted inverse leg curl",
+      "members": [
+        {
+          "id": "0697",
+          "name": "self assisted inverse leg curl"
+        },
+        {
+          "id": "1766",
+          "name": "self assisted inverse leg curl"
+        }
+      ]
+    },
+    {
+      "key": "sled 45 leg press",
+      "members": [
+        {
+          "id": "0739",
+          "name": "sled 45в° leg press"
+        },
+        {
+          "id": "1463",
+          "name": "sled 45° leg press (side pov)"
+        },
+        {
+          "id": "1464",
+          "name": "sled 45в° leg press (back pov)"
+        }
+      ]
+    },
+    {
+      "key": "smith reverse calf raises",
+      "members": [
+        {
+          "id": "0763",
+          "name": "smith reverse calf raises"
+        },
+        {
+          "id": "1394",
+          "name": "smith reverse calf raises"
+        }
+      ]
+    },
+    {
+      "key": "twisted leg raise",
+      "members": [
+        {
+          "id": "2801",
+          "name": "twisted leg raise (female)"
+        },
+        {
+          "id": "2802",
+          "name": "twisted leg raise"
+        }
+      ]
+    },
+    {
+      "key": "weighted russian twist",
+      "members": [
+        {
+          "id": "0846",
+          "name": "weighted russian twist"
+        },
+        {
+          "id": "2371",
+          "name": "weighted russian twist v. 2"
+        }
+      ]
     }
   ],
+  "legacyNearDuplicateGroupsReviewed": 64,
+  "unresolvedDuplicateGroups": [],
+  "suspiciousPrimary": [],
   "ancillaryEquipment": {
     "ab slings": 2,
     "arm blaster": 7,
     "band anchor": 19,
-    "bench": 317,
+    "bench": 320,
+    "body weight": 1,
     "bosu ball": 2,
-    "chair": 53,
-    "dip station": 20,
+    "chair": 48,
+    "dip bars": 2,
+    "dip station": 18,
     "low bar": 14,
     "partner": 2,
-    "pull-up bar": 48,
-    "rack": 50,
-    "rope attachment": 9,
+    "pull-up bar": 47,
+    "rack": 47,
+    "rings": 1,
+    "rope attachment": 8,
     "stability ball": 51,
     "step": 38,
-    "straight-bar attachment": 18,
+    "straight-bar attachment": 15,
+    "support": 2,
     "towel": 6,
-    "v-bar attachment": 7,
+    "v-bar attachment": 6,
     "wall": 32
   },
-  "reviewQueue": []
+  "reviewQueue": [],
+  "exceptionalRecordCount": 435
 }

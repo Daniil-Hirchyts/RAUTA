@@ -37,3 +37,6 @@ build
 
 # Generated training media review artifacts
 docs/training-engine/media-review/
+
+# Local scratch scripts
+scripts/.tmp-*

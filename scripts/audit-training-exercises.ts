@@ -4,27 +4,54 @@ import {
   createExerciseIndex,
   DEFAULT_POLICY,
   plannerSupportsExercise,
+  type ExerciseMetadata,
+  type ExerciseSummary,
 } from "../src/training"
 import {
   curationFreshness,
+  currentMediaFingerprint,
   getCuratedExerciseReviews,
   isFullyCuratedReview,
 } from "../src/training/data/curated-exercises"
-import type { ExerciseSummary } from "../src/training"
-const data = exercises as ExerciseSummary[]
+import {
+  duplicateCandidateGroups,
+  hasTerminalConflictResolution,
+  normalizeLegacyDuplicateCandidateName,
+  SOURCE_CONFLICT_TAGS,
+} from "./training-catalogue-review"
+
+const data = [...(exercises as ExerciseSummary[])].sort((a, b) =>
+  a.id.localeCompare(b.id)
+)
 const index = createExerciseIndex(data)
-const counts = (values: string[]) =>
-  Object.fromEntries(
-    [...new Set(values)]
-      .sort()
-      .map((key) => [key, values.filter((v) => v === key).length])
-  )
-const groups = (key: (e: ExerciseSummary) => string) =>
-  Object.values(Object.groupBy(data, key))
-    .filter((g) => g && g.length > 1)
-    .map((g) => g!.map((e) => ({ id: e.id, name: e.name })))
-const metadata = [...index.byId.values()].map((e) => e.metadata)
+const metadata = [...index.byId.values()].map((item) => item.metadata)
 const curatedReviews = getCuratedExerciseReviews()
+
+const counts = (values: string[]) => {
+  const tally = new Map<string, number>()
+  for (const value of values) tally.set(value, (tally.get(value) ?? 0) + 1)
+  return Object.fromEntries([...tally].sort(([a], [b]) => a.localeCompare(b)))
+}
+
+const exactNameDuplicates = Object.values(
+  Object.groupBy(data, (exercise) => exercise.name.toLowerCase().trim())
+)
+  .filter((group) => group && group.length > 1)
+  .map((group) => group!.map(({ id, name }) => ({ id, name })))
+
+const currentDuplicateCandidates = duplicateCandidateGroups(data)
+const legacyDuplicateCandidates = duplicateCandidateGroups(
+  data,
+  normalizeLegacyDuplicateCandidateName
+)
+const unresolvedDuplicateGroups = currentDuplicateCandidates.filter((group) => {
+  const explicitLinks = group.members.filter((member) => {
+    const item = index.byId.get(member.id)
+    return Boolean(item?.metadata.variantOf || item?.metadata.duplicateOf)
+  }).length
+  return explicitLinks < group.members.length - 1
+})
+
 const reviewFreshness = curatedReviews.map((review) => {
   const exercise = index.byId.get(review.exerciseId)?.exercise
   if (!exercise)
@@ -51,6 +78,7 @@ const reviewFreshness = curatedReviews.map((review) => {
           : ("partially_reviewed" as const),
   }
 })
+
 const fullyReviewed = reviewFreshness.filter(
   ({ status }) => status === "fully_reviewed"
 )
@@ -60,89 +88,203 @@ const partiallyReviewed = reviewFreshness.filter(
 const staleReviews = reviewFreshness.filter(({ status }) =>
   status.startsWith("stale_")
 )
+
 const modality = (review: (typeof curatedReviews)[number]) =>
   review.reviewedFrom.includes("video")
     ? "full_video"
     : review.reviewedFrom.includes("sampled_frames")
       ? "sampled_frames"
       : "text_only"
-const reviewModality = {
-  fullyReviewed: counts(fullyReviewed.map(({ review }) => modality(review))),
-  partiallyReviewed: counts(
-    partiallyReviewed.map(({ review }) => modality(review))
+
+const hasSourceConflict = (metadata: ExerciseMetadata) =>
+  metadata.tags.some((tag) =>
+    SOURCE_CONFLICT_TAGS.includes(tag as (typeof SOURCE_CONFLICT_TAGS)[number])
+  )
+
+const conflictRow = (metadata: ExerciseMetadata) => ({
+  exerciseId: metadata.exerciseId,
+  name: index.byId.get(metadata.exerciseId)!.exercise.name,
+  tags: metadata.tags.filter(
+    (tag) => tag.includes("conflict") || tag.startsWith("classification_")
   ),
-}
-const reviewProgressByFamily = [...index.byFamily.entries()]
-  .map(([familyId, members]) => {
-    const statuses = members.map(
-      (member) => member.metadata.reviewStatus ?? "rule_only"
-    )
-    return {
-      familyId,
-      total: members.length,
-      fullyReviewed: statuses.filter((status) => status === "fully_reviewed")
-        .length,
-      partiallyReviewed: statuses.filter(
-        (status) => status === "partially_reviewed"
-      ).length,
-      stale: statuses.filter((status) => status.startsWith("stale_")).length,
-      ruleOnly: statuses.filter((status) => status === "rule_only").length,
-      allowed: members.filter(
-        (member) => member.metadata.automaticProgramming === "allowed"
-      ).length,
-      members: members.map((member) => member.exercise.id),
-    }
-  })
-  .filter((family) => family.fullyReviewed + family.partiallyReviewed > 0)
-  .sort((a, b) => a.familyId.localeCompare(b.familyId))
-const unresolvedConflictTags = [
-  "source_media_conflict",
-  "source_equipment_conflict",
-]
-const capabilityRow = (
-  item: typeof index.byId extends Map<string, infer T> ? T : never
-) => ({
-  id: item.exercise.id,
-  name: item.exercise.name,
-  exerciseType: item.metadata.exerciseType,
-  tracking: item.metadata.tracking,
 })
+
+const resolvedSourceConflicts = metadata
+  .filter((item) => hasSourceConflict(item) && hasTerminalConflictResolution(item))
+  .map(conflictRow)
+const unresolvedSourceConflicts = metadata
+  .filter((item) => hasSourceConflict(item) && !hasTerminalConflictResolution(item))
+  .map(conflictRow)
+const unusable = metadata
+  .filter((item) => item.tags.includes("unusable_source_record"))
+  .map((item) => ({
+    exerciseId: item.exerciseId,
+    name: index.byId.get(item.exerciseId)!.exercise.name,
+  }))
+
 const automaticAllowedPlannerUnsupported = [...index.byId.values()]
   .filter(
     (item) =>
       item.metadata.automaticProgramming === "allowed" &&
       !plannerSupportsExercise(item.metadata)
   )
-  .map(capabilityRow)
+  .map((item) => ({
+    id: item.exercise.id,
+    name: item.exercise.name,
+    exerciseType: item.metadata.exerciseType,
+    tracking: item.metadata.tracking,
+  }))
 const specializedPlannerUnsupported = [...index.byId.values()]
   .filter(
     (item) =>
       item.metadata.automaticProgramming === "specialized_only" &&
       !plannerSupportsExercise(item.metadata)
   )
-  .map(capabilityRow)
+  .map((item) => ({
+    id: item.exercise.id,
+    name: item.exercise.name,
+    exerciseType: item.metadata.exerciseType,
+    tracking: item.metadata.tracking,
+  }))
 const manualOnlyByCapability = [...index.byId.values()]
   .filter(
     (item) =>
       item.metadata.automaticProgramming === "manual_only" &&
       !plannerSupportsExercise(item.metadata)
   )
-  .map(capabilityRow)
+  .map((item) => ({
+    id: item.exercise.id,
+    name: item.exercise.name,
+    exerciseType: item.metadata.exerciseType,
+    tracking: item.metadata.tracking,
+  }))
+
+const unknownTypeCount = metadata.filter(
+  (item) => item.exerciseType === "unknown"
+).length
+const unknownPatternCount = metadata.filter(
+  (item) =>
+    item.movementPatterns.length === 0 || item.movementPatterns.includes("unknown")
+).length
+const unknownMechanicsCount = metadata.filter(
+  (item) => item.mechanics === "unknown"
+).length
+const unknownLateralityCount = metadata.filter(
+  (item) => item.laterality === "unknown"
+).length
+const unknownTrackingCount = metadata.filter(
+  (item) => item.tracking === "unknown"
+).length
+const unknownSkillCount = metadata.filter((item) => item.skill === "unknown").length
+const ruleOnlyCount = metadata.filter((item) => item.provenance === "rule").length
+const mediaMapMismatchCount = curatedReviews.filter((review) => {
+  const current = currentMediaFingerprint(review.exerciseId)
+  return Boolean(current && review.mediaFingerprint && current !== review.mediaFingerprint)
+}).length
+const lowConfidence = metadata.filter(
+  (item) =>
+    item.classificationConfidence <
+    DEFAULT_POLICY.minimumAutomaticClassificationConfidence
+)
+
+const reviewQueue = metadata
+  .filter((item) => {
+    const review = reviewFreshness.find(
+      ({ review }) => review.exerciseId === item.exerciseId
+    )
+    return (
+      review?.status !== "fully_reviewed" ||
+      item.provenance === "rule" ||
+      item.exerciseType === "unknown" ||
+      item.movementPatterns.includes("unknown") ||
+      item.mechanics === "unknown" ||
+      item.laterality === "unknown" ||
+      item.tracking === "unknown" ||
+      item.skill === "unknown" ||
+      item.tags.includes("manual_review_required") ||
+      !hasTerminalConflictResolution(item)
+    )
+  })
+  .map((item) => ({
+    id: item.exerciseId,
+    name: index.byId.get(item.exerciseId)!.exercise.name,
+    tags: item.tags,
+  }))
+
+const duplicates = metadata
+  .filter((item) => item.duplicateOf)
+  .map((item) => ({ exerciseId: item.exerciseId, duplicateOf: item.duplicateOf! }))
+const variants = metadata
+  .filter((item) => item.variantOf)
+  .map((item) => ({ exerciseId: item.exerciseId, variantOf: item.variantOf! }))
+
+const exceptionalRecords = [...index.byId.values()]
+  .map((item) => {
+    const reasons: string[] = []
+    if (item.metadata.automaticProgramming === "manual_only") reasons.push("manual_only")
+    if (item.metadata.automaticProgramming === "specialized_only")
+      reasons.push("specialized_only")
+    if (hasSourceConflict(item.metadata)) reasons.push("resolved_source_conflict")
+    if (
+      item.metadata.classificationConfidence <
+      DEFAULT_POLICY.minimumAutomaticClassificationConfidence
+    )
+      reasons.push("low_confidence")
+    if (item.metadata.duplicateOf) reasons.push("duplicate")
+    if (item.metadata.variantOf) reasons.push("variant")
+    if (item.metadata.tags.includes("unusable_source_record")) reasons.push("unusable")
+    return {
+      exerciseId: item.exercise.id,
+      name: item.exercise.name,
+      automaticProgramming: item.metadata.automaticProgramming,
+      exerciseType: item.metadata.exerciseType,
+      tracking: item.metadata.tracking,
+      familyId: item.metadata.familyId,
+      classificationConfidence: item.metadata.classificationConfidence,
+      duplicateOf: item.metadata.duplicateOf,
+      variantOf: item.metadata.variantOf,
+      reasons,
+    }
+  })
+  .filter((item) => item.reasons.length > 0)
+
+const reviewProgressByFamily = [...index.byFamily.entries()]
+  .map(([familyId, members]) => ({
+    familyId,
+    total: members.length,
+    fullyReviewed: members.filter(
+      (member) => member.metadata.reviewStatus === "fully_reviewed"
+    ).length,
+    partiallyReviewed: members.filter(
+      (member) => member.metadata.reviewStatus === "partially_reviewed"
+    ).length,
+    stale: members.filter((member) => member.metadata.reviewStatus?.startsWith("stale_"))
+      .length,
+    ruleOnly: members.filter((member) => member.metadata.reviewStatus === "rule_only")
+      .length,
+    allowed: members.filter(
+      (member) => member.metadata.automaticProgramming === "allowed"
+    ).length,
+    members: members.map((member) => member.exercise.id),
+  }))
+  .sort((a, b) => a.familyId.localeCompare(b.familyId))
+
 const report = {
   datasetFingerprint: index.fingerprint,
   total: data.length,
   errors: index.issues,
-  equipment: counts(data.map((e) => e.equipment)),
-  primaryMuscle: counts(data.map((e) => e.primaryMuscle ?? "missing")),
-  participationCoverage: counts(data.flatMap((e) => e.muscles)),
+  equipment: counts(data.map((exercise) => exercise.equipment)),
+  primaryMuscle: counts(data.map((exercise) => exercise.primaryMuscle ?? "missing")),
+  participationCoverage: counts(data.flatMap((exercise) => exercise.muscles)),
   programmingDirectCoverage: counts(
-    metadata.flatMap((m) =>
-      m.setRoles.filter((r) => r.role === "direct").map((r) => r.muscleId)
+    metadata.flatMap((item) =>
+      item.setRoles.filter((role) => role.role === "direct").map((role) => role.muscleId)
     )
   ),
-  types: counts(metadata.map((m) => m.exerciseType)),
-  automaticProgramming: counts(metadata.map((m) => m.automaticProgramming)),
-  provenance: counts(metadata.map((m) => m.provenance)),
+  types: counts(metadata.map((item) => item.exerciseType)),
+  tracking: counts(metadata.map((item) => item.tracking)),
+  automaticProgramming: counts(metadata.map((item) => item.automaticProgramming)),
+  provenance: counts(metadata.map((item) => item.provenance)),
   curatedReviewCount: curatedReviews.length,
   fullyReviewedCount: fullyReviewed.length,
   partiallyReviewedCount: partiallyReviewed.length,
@@ -162,6 +304,7 @@ const report = {
   missingMediaFingerprintCount: reviewFreshness.filter(
     ({ freshness }) => freshness?.mediaFingerprintMissing
   ).length,
+  mediaMapMismatchCount,
   reviewFreshness: reviewFreshness.map(({ review, freshness, status }) => ({
     exerciseId: review.exerciseId,
     status,
@@ -178,94 +321,117 @@ const report = {
     (review) =>
       !review.reviewedFrom.includes("video") &&
       !review.reviewedFrom.includes("sampled_frames") &&
-      (review.reviewedFrom.includes("name") ||
-        review.reviewedFrom.includes("instructions"))
+      (review.reviewedFrom.includes("name") || review.reviewedFrom.includes("instructions"))
   ).length,
-  reviewModality,
-  ruleOnlyCount: metadata.filter((m) => m.provenance === "rule").length,
-  unknownTypeCount: metadata.filter((m) => m.exerciseType === "unknown").length,
+  reviewModality: {
+    fullyReviewed: counts(fullyReviewed.map(({ review }) => modality(review))),
+    partiallyReviewed: counts(partiallyReviewed.map(({ review }) => modality(review))),
+  },
+  ruleOnlyCount,
+  unknownTypeCount,
+  unknownPatternCount,
+  unknownMechanicsCount,
+  unknownLateralityCount,
+  unknownTrackingCount,
+  unknownSkillCount,
   automaticAllowedPlannerUnsupported,
   specializedPlannerUnsupported,
   manualOnlyByCapability,
-  duplicates: metadata
-    .filter((m) => m.duplicateOf)
-    .map((m) => ({ exerciseId: m.exerciseId, duplicateOf: m.duplicateOf! })),
-  variants: metadata
-    .filter((m) => m.variantOf)
-    .map((m) => ({ exerciseId: m.exerciseId, variantOf: m.variantOf! })),
-  conflicts: metadata
-    .filter((m) => m.tags.some((tag) => unresolvedConflictTags.includes(tag)))
-    .map((m) => ({
-      exerciseId: m.exerciseId,
-      tags: m.tags.filter((tag) => tag.includes("conflict")),
-    })),
+  familyCount: index.byFamily.size,
+  duplicates,
+  variants,
+  resolvedSourceConflicts,
+  unresolvedSourceConflicts,
+  unusable,
+  lowConfidence: lowConfidence.map((item) => ({
+    exerciseId: item.exerciseId,
+    classificationConfidence: item.classificationConfidence,
+  })),
   reviewProgressByFamily,
-  missingPrimary: data.filter((e) => !e.primaryMuscle).map((e) => e.id),
+  missingPrimary: data.filter((exercise) => !exercise.primaryMuscle).map((exercise) => exercise.id),
   missingInstructions: data
-    .filter((e) => e.instructions.length < 2)
-    .map((e) => e.id),
-  exactNameDuplicates: groups((e) => e.name.toLowerCase().trim()),
-  nearDuplicates: groups((e) =>
-    e.name
-      .toLowerCase()
-      .replace(/\([^)]*\)|v\.\s*\d+|version \d+/g, "")
-      .replace(/[^a-z0-9]+/g, " ")
-      .trim()
-  ),
+    .filter((exercise) => exercise.instructions.length < 2)
+    .map((exercise) => exercise.id),
+  exactNameDuplicates,
+  nearDuplicateCandidates: currentDuplicateCandidates.map((group) => ({
+    key: group.key,
+    members: group.members.map(({ id, name }) => ({ id, name })),
+  })),
+  legacyNearDuplicateGroupsReviewed: legacyDuplicateCandidates.length,
+  unresolvedDuplicateGroups: unresolvedDuplicateGroups.map((group) => ({
+    key: group.key,
+    members: group.members.map(({ id, name }) => ({ id, name })),
+  })),
   suspiciousPrimary: metadata
-    .filter((m) => m.tags.includes("primary_mismatch"))
-    .map((m) => ({
-      id: m.exerciseId,
-      name: index.byId.get(m.exerciseId)!.exercise.name,
+    .filter((item) => item.tags.includes("primary_mismatch"))
+    .map((item) => ({
+      id: item.exerciseId,
+      name: index.byId.get(item.exerciseId)!.exercise.name,
     })),
   ancillaryEquipment: counts(
-    metadata.flatMap((m) =>
-      m.requiredEquipment.filter(
-        (eq) => eq !== index.byId.get(m.exerciseId)!.exercise.equipment
+    metadata.flatMap((item) =>
+      item.requiredEquipment.filter(
+        (equipment) => equipment !== index.byId.get(item.exerciseId)!.exercise.equipment
       )
     )
   ),
-  reviewQueue: metadata
-    .filter(
-      (m) =>
-        m.exerciseType === "unknown" ||
-        (m.provenance === "rule" &&
-          m.classificationConfidence <
-            (m.automaticProgramming === "specialized_only"
-              ? DEFAULT_POLICY.minimumSpecializedClassificationConfidence
-              : DEFAULT_POLICY.minimumAutomaticClassificationConfidence)) ||
-        m.tags.includes("manual_review_required") ||
-        m.reviewStatus?.startsWith("stale_")
-    )
-    .map((m) => ({
-      id: m.exerciseId,
-      name: index.byId.get(m.exerciseId)!.exercise.name,
-      tags: m.tags,
-    })),
+  reviewQueue,
+  exceptionalRecordCount: exceptionalRecords.length,
 }
+
 writeFileSync(
   "docs/training-engine/exercise-audit.json",
   JSON.stringify(report, null, 2) + "\n"
 )
 writeFileSync(
-  "docs/training-engine/EXERCISE_DATA_AUDIT.md",
-  `# Exercise data audit\n\nGenerated with \`bun scripts/audit-training-exercises.ts\`. Full per-record review queues, capability exceptions, duplicate groups and coverage counts: [exercise-audit.json](exercise-audit.json). Source is unchanged.\n\n- Records: ${report.total}; fingerprint: ${report.datasetFingerprint}.\n- Structural errors: ${report.errors.length}; missing primary: ${report.missingPrimary.length}; insufficient instructions: ${report.missingInstructions.length}.\n- Types: ${JSON.stringify(report.types)}.\n- Automatic programming: ${JSON.stringify(report.automaticProgramming)}.\n- Planner capability: allowed but unsupported ${report.automaticAllowedPlannerUnsupported.length}; specialized but unsupported ${report.specializedPlannerUnsupported.length}; manual-only outside current planner capability ${report.manualOnlyByCapability.length}.\n- Provenance: ${JSON.stringify(report.provenance)}. Curated reviews: ${report.curatedReviewCount}; current fully reviewed core metadata: ${report.fullyReviewedCount}; current partially reviewed: ${report.partiallyReviewedCount}; stale: ${report.staleReviewCount}; rule-only fallback: ${report.ruleOnlyCount}.\n- Stale review detail: source ${report.staleSourceReviewCount}; media ${report.staleMediaReviewCount}; source and media ${report.staleSourceAndMediaReviewCount}. Missing source fingerprints: ${report.missingSourceFingerprintCount}; missing required media fingerprints: ${report.missingMediaFingerprintCount}.\n- Review source modality: full-animation/video reviewed: ${report.fullVideoReviewedCount}; sampled-frame + contact-sheet reviewed: ${report.sampledFramesReviewedCount}; text-only reviewed: ${report.textOnlyReviewedCount}. Current full/partial modality split: ${JSON.stringify(report.reviewModality)}.\n- Unknown exercise type: ${report.unknownTypeCount}; unresolved curated conflict records: ${report.conflicts.length}.\n- Structured duplicate relationships: ${report.duplicates.length}; variant relationships: ${report.variants.length}; curated families with review progress: ${report.reviewProgressByFamily.length}.\n- Exact-name duplicate groups: ${report.exactNameDuplicates.length}; normalized near-duplicate groups: ${report.nearDuplicates.length}. Uncurated groups remain review candidates, not proven duplicates.\n- Suspicious primary/movement conflicts: ${report.suspiciousPrimary.length}.\n- Unknown/low-confidence/conflict/stale review queue: ${report.reviewQueue.length}.\n\n## Findings\n\nCurated metadata overrides deterministic inference only for fields explicitly stored in the curated record. A current fully reviewed record has all 11 core programming fields explicitly present and current source/media fingerprints. Missing or changed required fingerprints make the review stale, force manual-only programming, and keep it out of current full/partial totals. Review completeness is separate from media modality: sampled-frame review is reported as sampled-frame review, and only inspection of the full animation may use video provenance.\n\nThe automatic planner supports resistance exercises tracked by external load, assistance, bodyweight, or qualitative band resistance. Timed, distance, repetition-only, unknown, and non-resistance records can remain classified in the catalogue but cannot be ordinary automatic selections. Band prescriptions do not invent kilograms or equivalence between bands.\n\nThe source maps lats and rhomboids to upper-back, all deltoid heads together, and most trunk work to abs. Obliques, hip-flexors and tibialis have no primary records. Some squats are primarily gluteal; programming assigns quadriceps and gluteal direct roles by explicit movement policy, not their editorial ranking. Serratus, forearm and stabilizer involvement is not treated as validated hypertrophy credit.\n\nMuscle weights are generated from source term order and damping constants in src/lib/muscles.ts (0.62 assist and 0.68 decay), not physiological measurements. They remain participation metadata only.\n\nThe source mixes stretches, mobility, conditioning, isometrics, complex power movements and dynamic resistance. Recognized non-resistance work is excluded. Unrecognized names remain unknown. Regex classification is deterministic and auditable, but is not expert curation. It supplies no invented systemic fatigue/stability coefficients.\n\nThe single equipment label omits benches, racks, pull-up bars, dip stations, boxes, anchors, partners and supports. Curated records correct required equipment only when supported by reviewed instructions/media. Complete technique accuracy still needs continued review; source instruction prose is not guaranteed correct. Bodyweight does not imply that supporting equipment such as a dip bar or bench is available.\n\nNo exercise IDs or generated source records were changed. Manual-only records remain available through the catalogue index while automatic generation filters them. Specialized records require explicit preference/specificity selection and the specialized confidence threshold.\n`
+  "docs/training-engine/exceptional-exercises.json",
+  JSON.stringify(
+    {
+      generatedFromDatasetFingerprint: report.datasetFingerprint,
+      count: exceptionalRecords.length,
+      records: exceptionalRecords,
+    },
+    null,
+    2
+  ) + "\n"
 )
+writeFileSync(
+  "docs/training-engine/EXERCISE_DATA_AUDIT.md",
+  `# Exercise data audit\n\nGenerated with \`bun scripts/audit-training-exercises.ts\`. The 1,324-record catalogue is frozen from explicit reviewed decisions; candidate-name normalization is diagnostic only. Full details are in [exercise-audit.json](exercise-audit.json), with compact exceptional records in [exceptional-exercises.json](exceptional-exercises.json). Source IDs and media remain unchanged.\n\n- Records: ${report.total}; fingerprint: ${report.datasetFingerprint}. Structural errors: ${report.errors.length}.\n- Types: ${JSON.stringify(report.types)}. Tracking: ${JSON.stringify(report.tracking)}.\n- Automatic programming: ${JSON.stringify(report.automaticProgramming)}. Planner capability: allowed but unsupported ${report.automaticAllowedPlannerUnsupported.length}.\n- Review completeness: fully reviewed ${report.fullyReviewedCount}; partial ${report.partiallyReviewedCount}; rule-only ${report.ruleOnlyCount}; stale ${report.staleReviewCount}. Missing source fingerprints ${report.missingSourceFingerprintCount}; missing media fingerprints ${report.missingMediaFingerprintCount}; media-map mismatches ${report.mediaMapMismatchCount}.\n- Review evidence: full-animation/video ${report.fullVideoReviewedCount}; sampled-frame ${report.sampledFramesReviewedCount}; text-only ${report.textOnlyReviewedCount}. Provenance: ${JSON.stringify(report.provenance)}.\n- Ordinary unknowns: type ${report.unknownTypeCount}; pattern ${report.unknownPatternCount}; mechanics ${report.unknownMechanicsCount}; laterality ${report.unknownLateralityCount}; tracking ${report.unknownTrackingCount}; skill ${report.unknownSkillCount}.\n- Relationships: families ${report.familyCount}; duplicates ${report.duplicates.length}; variants ${report.variants.length}. Conservative duplicate candidate groups ${report.nearDuplicateCandidates.length}; legacy groups explicitly reviewed ${report.legacyNearDuplicateGroupsReviewed}; unresolved duplicate groups ${report.unresolvedDuplicateGroups.length}.\n- Source/media conflicts: resolved ${report.resolvedSourceConflicts.length}; unresolved ${report.unresolvedSourceConflicts.length}. Unusable source records: ${report.unusable.length}. Low-confidence records below ${DEFAULT_POLICY.minimumAutomaticClassificationConfidence}: ${report.lowConfidence.length}.\n- Review queue: ${report.reviewQueue.length}. Exceptional-record report: ${report.exceptionalRecordCount}.\n\n## Findings\n\nEvery accepted record stores all core programming fields explicitly and is tied to current source and media fingerprints. The runtime can still infer metadata for caller-supplied exercises outside the built-in catalogue, but the built-in 1,324-record catalogue no longer derives its accepted core classifications from name regexes.\n\nFull-sequence visual review covered all catalogue animations. Source/media disagreements remain tagged as provenance, with a terminal reviewed resolution on each record. These tags therefore identify resolved evidence conflicts rather than pending review work.\n\nNear-duplicate discovery preserves semantic parenthetical qualifiers such as apparatus, grip and setup descriptors. It removes only version markers and non-semantic sex/viewpoint annotations. Structured \`duplicateOf\` and \`variantOf\` links are explicit reviewed decisions; candidate grouping does not write relationships.\n\nAutomatic programming remains capability-gated. \`specialized_only\` is used for fully understood movements whose skill, apparatus, instability or setup warrants explicit selection; \`manual_only\` remains available for classified exercises outside ordinary automatic planner capability. Neither state substitutes for incomplete classification.\n\nThe source muscle taxonomy and participation weights remain editorial inputs rather than physiological measurements. Required-equipment metadata supplements the source's single equipment label where reviewed media or instructions demonstrate benches, supports, rings, attachments or other setup requirements.\n`
+)
+
 console.log(
   JSON.stringify({
     total: report.total,
     types: report.types,
+    tracking: report.tracking,
     automaticProgramming: report.automaticProgramming,
     provenance: report.provenance,
     fullyReviewed: report.fullyReviewedCount,
     partiallyReviewed: report.partiallyReviewedCount,
+    ruleOnly: report.ruleOnlyCount,
     staleReviews: report.staleReviewCount,
+    missingSourceFingerprints: report.missingSourceFingerprintCount,
+    missingMediaFingerprints: report.missingMediaFingerprintCount,
+    mediaMapMismatches: report.mediaMapMismatchCount,
     fullVideoReviewed: report.fullVideoReviewedCount,
     sampledFramesReviewed: report.sampledFramesReviewedCount,
-    automaticAllowedPlannerUnsupported:
-      report.automaticAllowedPlannerUnsupported.length,
-    specializedPlannerUnsupported: report.specializedPlannerUnsupported.length,
+    ordinaryUnknowns:
+      report.unknownTypeCount +
+      report.unknownPatternCount +
+      report.unknownMechanicsCount +
+      report.unknownLateralityCount +
+      report.unknownTrackingCount +
+      report.unknownSkillCount,
+    families: report.familyCount,
+    duplicates: report.duplicates.length,
+    variants: report.variants.length,
+    resolvedSourceConflicts: report.resolvedSourceConflicts.length,
+    unresolvedSourceConflicts: report.unresolvedSourceConflicts.length,
+    unusable: report.unusable.length,
+    unresolvedDuplicateGroups: report.unresolvedDuplicateGroups.length,
+    allowedPlannerMismatch: report.automaticAllowedPlannerUnsupported.length,
     reviewQueue: report.reviewQueue.length,
-    suspicious: report.suspiciousPrimary.length,
+    exceptionalRecords: report.exceptionalRecordCount,
   })
 )

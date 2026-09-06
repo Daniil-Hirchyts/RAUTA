@@ -408,8 +408,26 @@ export function scoreWeek(week: TrainingWeek, input: OptimizationInput): Score {
         : request.preferences.goal
     ]
   const specificity = specificIds.length
-    ? specificIds.filter((id) => selected.some((e) => e.exercise.id === id))
-        .length / specificIds.length
+    ? mean(
+        specificIds.map((id) => {
+          const exercise = index.byId.get(id)
+          if (!exercise) return 0
+          const desiredExposures = Math.max(
+            1,
+            ...exercise.metadata.setRoles
+              .filter((role) => role.role === "direct")
+              .map(
+                (role) =>
+                  targets.find((target) => target.muscleId === role.muscleId)
+                    ?.preferredExposures ?? 0
+              )
+          )
+          const actualExposures = week.sessions.filter((session) =>
+            session.exercises.some((planned) => planned.exerciseId === id)
+          ).length
+          return clamp(actualExposures / desiredExposures)
+        })
+      )
     : mean(
         selected.map((e) =>
           Number(
