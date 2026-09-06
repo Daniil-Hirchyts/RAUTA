@@ -1,6 +1,6 @@
 {
-  "generatedFromDatasetFingerprint": "db4f602c",
-  "count": 435,
+  "generatedFromDatasetFingerprint": "60f861c1",
+  "count": 454,
   "records": [
     {
       "exerciseId": "0001",
@@ -30,36 +30,39 @@
       "exerciseId": "0010",
       "name": "assisted hanging knee raise with throw down",
       "automaticProgramming": "manual_only",
-      "exerciseType": "power",
+      "exerciseType": "resistance",
       "tracking": "assistance",
       "familyId": "leg_raise",
-      "classificationConfidence": 0.9,
+      "classificationConfidence": 0.94,
       "reasons": [
-        "manual_only"
+        "manual_only",
+        "resolved_source_conflict"
       ]
     },
     {
       "exerciseId": "0012",
       "name": "assisted lying leg raise with lateral throw down",
       "automaticProgramming": "manual_only",
-      "exerciseType": "power",
+      "exerciseType": "resistance",
       "tracking": "assistance",
       "familyId": "leg_raise",
-      "classificationConfidence": 0.9,
+      "classificationConfidence": 0.93,
       "reasons": [
-        "manual_only"
+        "manual_only",
+        "resolved_source_conflict"
       ]
     },
     {
       "exerciseId": "0013",
       "name": "assisted lying leg raise with throw down",
       "automaticProgramming": "manual_only",
-      "exerciseType": "power",
+      "exerciseType": "resistance",
       "tracking": "assistance",
       "familyId": "leg_raise",
-      "classificationConfidence": 0.9,
+      "classificationConfidence": 0.94,
       "reasons": [
-        "manual_only"
+        "manual_only",
+        "resolved_source_conflict"
       ]
     },
     {
@@ -68,20 +71,8 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "knee_extension",
-      "classificationConfidence": 0.9,
-      "reasons": [
-        "manual_only"
-      ]
-    },
-    {
-      "exerciseId": "0029",
-      "name": "barbell clean-grip front squat",
-      "automaticProgramming": "manual_only",
-      "exerciseType": "power",
-      "tracking": "external_load",
-      "familyId": "squat",
-      "classificationConfidence": 0.9,
+      "familyId": "clean_and_press",
+      "classificationConfidence": 0.98,
       "reasons": [
         "manual_only"
       ]
@@ -117,7 +108,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "shoulder_abduction",
+      "familyId": "snatch",
       "classificationConfidence": 0.9,
       "reasons": [
         "manual_only"
@@ -168,7 +159,7 @@
       "automaticProgramming": "allowed",
       "exerciseType": "resistance",
       "tracking": "external_load",
-      "familyId": "barbell_upright_row",
+      "familyId": "upright_row",
       "classificationConfidence": 0.92,
       "variantOf": "0120",
       "reasons": [
@@ -181,7 +172,7 @@
       "automaticProgramming": "allowed",
       "exerciseType": "resistance",
       "tracking": "external_load",
-      "familyId": "barbell_upright_row",
+      "familyId": "upright_row",
       "classificationConfidence": 0.92,
       "variantOf": "0120",
       "reasons": [
@@ -194,7 +185,7 @@
       "automaticProgramming": "allowed",
       "exerciseType": "resistance",
       "tracking": "external_load",
-      "familyId": "barbell_upright_row",
+      "familyId": "upright_row",
       "classificationConfidence": 0.94,
       "variantOf": "0120",
       "reasons": [
@@ -207,7 +198,7 @@
       "automaticProgramming": "allowed",
       "exerciseType": "resistance",
       "tracking": "external_load",
-      "familyId": "biceps_curl",
+      "familyId": "forearm",
       "classificationConfidence": 0.94,
       "variantOf": "0125",
       "reasons": [
@@ -349,8 +340,8 @@
       "automaticProgramming": "specialized_only",
       "exerciseType": "resistance",
       "tracking": "external_load",
-      "familyId": "trunk_flexion",
-      "classificationConfidence": 0.9,
+      "familyId": "trunk_rotation",
+      "classificationConfidence": 0.99,
       "reasons": [
         "specialized_only"
       ]
@@ -375,6 +366,18 @@
       "tracking": "external_load",
       "familyId": "rear_delt_fly",
       "classificationConfidence": 0.97,
+      "reasons": [
+        "resolved_source_conflict"
+      ]
+    },
+    {
+      "exerciseId": "0232",
+      "name": "cable standing pulldown (with rope)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "pulldown",
+      "classificationConfidence": 0.99,
       "reasons": [
         "resolved_source_conflict"
       ]
@@ -490,7 +493,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "hip_extension",
+      "familyId": "clean",
       "classificationConfidence": 0.9,
       "reasons": [
         "manual_only"
@@ -630,7 +633,7 @@
       "automaticProgramming": "allowed",
       "exerciseType": "resistance",
       "tracking": "external_load",
-      "familyId": "lateral_raise",
+      "familyId": "rear_delt_fly",
       "classificationConfidence": 0.94,
       "variantOf": "0379",
       "reasons": [
@@ -754,13 +757,13 @@
     {
       "exerciseId": "0464",
       "name": "front plank with twist",
-      "automaticProgramming": "manual_only",
-      "exerciseType": "isometric",
-      "tracking": "timed",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
       "familyId": "plank",
-      "classificationConfidence": 0.96,
+      "classificationConfidence": 0.98,
       "reasons": [
-        "manual_only"
+        "specialized_only"
       ]
     },
     {
@@ -806,7 +809,7 @@
       "automaticProgramming": "specialized_only",
       "exerciseType": "resistance",
       "tracking": "bodyweight",
-      "familyId": "biceps_curl",
+      "familyId": "leg_curl",
       "classificationConfidence": 0.97,
       "reasons": [
         "specialized_only"
@@ -834,7 +837,8 @@
       "familyId": "horizontal_push",
       "classificationConfidence": 0.96,
       "reasons": [
-        "manual_only"
+        "manual_only",
+        "resolved_source_conflict"
       ]
     },
     {
@@ -881,10 +885,22 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "grip",
-      "classificationConfidence": 0.9,
+      "familyId": "clean",
+      "classificationConfidence": 0.96,
       "reasons": [
         "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "0524",
+      "name": "kettlebell bent press",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "bent_press",
+      "classificationConfidence": 0.98,
+      "reasons": [
+        "specialized_only"
       ]
     },
     {
@@ -893,7 +909,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "elbow_flexion",
+      "familyId": "clean",
       "classificationConfidence": 0.9,
       "reasons": [
         "manual_only"
@@ -905,7 +921,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "elbow_flexion",
+      "familyId": "clean",
       "classificationConfidence": 0.9,
       "reasons": [
         "manual_only"
@@ -917,7 +933,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "shoulder_abduction",
+      "familyId": "jerk",
       "classificationConfidence": 0.9,
       "reasons": [
         "manual_only"
@@ -929,7 +945,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "vertical_push",
+      "familyId": "push_press",
       "classificationConfidence": 0.96,
       "reasons": [
         "manual_only"
@@ -941,7 +957,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "shoulder_abduction",
+      "familyId": "snatch",
       "classificationConfidence": 0.9,
       "reasons": [
         "manual_only"
@@ -953,7 +969,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "knee_flexion",
+      "familyId": "clean",
       "classificationConfidence": 0.9,
       "reasons": [
         "manual_only"
@@ -965,8 +981,8 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "shoulder_abduction",
-      "classificationConfidence": 0.9,
+      "familyId": "clean_and_jerk",
+      "classificationConfidence": 0.97,
       "reasons": [
         "manual_only"
       ]
@@ -977,7 +993,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "shoulder_abduction",
+      "familyId": "jerk",
       "classificationConfidence": 0.9,
       "reasons": [
         "manual_only"
@@ -989,7 +1005,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "vertical_push",
+      "familyId": "push_press",
       "classificationConfidence": 0.96,
       "reasons": [
         "manual_only"
@@ -1001,7 +1017,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "shoulder_abduction",
+      "familyId": "snatch",
       "classificationConfidence": 0.9,
       "reasons": [
         "manual_only"
@@ -1014,7 +1030,7 @@
       "exerciseType": "resistance",
       "tracking": "external_load",
       "familyId": "squat",
-      "classificationConfidence": 0.9,
+      "classificationConfidence": 0.99,
       "reasons": [
         "specialized_only"
       ]
@@ -1024,9 +1040,9 @@
       "name": "kettlebell plyo push-up",
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
-      "tracking": "external_load",
+      "tracking": "bodyweight",
       "familyId": "push_up",
-      "classificationConfidence": 0.9,
+      "classificationConfidence": 0.99,
       "reasons": [
         "manual_only"
       ]
@@ -1037,7 +1053,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "vertical_push",
+      "familyId": "thruster",
       "classificationConfidence": 0.96,
       "reasons": [
         "manual_only"
@@ -1061,7 +1077,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "shoulder_abduction",
+      "familyId": "clean",
       "classificationConfidence": 0.9,
       "reasons": [
         "manual_only"
@@ -1221,7 +1237,7 @@
       "automaticProgramming": "specialized_only",
       "exerciseType": "resistance",
       "tracking": "external_load",
-      "familyId": "biceps_curl",
+      "familyId": "leg_curl",
       "classificationConfidence": 0.9,
       "reasons": [
         "specialized_only"
@@ -1401,7 +1417,7 @@
       "automaticProgramming": "specialized_only",
       "exerciseType": "resistance",
       "tracking": "external_load",
-      "familyId": "biceps_curl",
+      "familyId": "leg_curl",
       "classificationConfidence": 0.9,
       "reasons": [
         "specialized_only"
@@ -1570,7 +1586,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "knee_flexion",
+      "familyId": "clean",
       "classificationConfidence": 0.9,
       "reasons": [
         "manual_only"
@@ -1788,7 +1804,7 @@
       "automaticProgramming": "specialized_only",
       "exerciseType": "resistance",
       "tracking": "assistance",
-      "familyId": "biceps_curl",
+      "familyId": "leg_curl",
       "classificationConfidence": 0.97,
       "reasons": [
         "specialized_only"
@@ -1851,7 +1867,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "resistance",
       "tracking": "external_load",
-      "familyId": "shoulder_abduction",
+      "familyId": "shoulder_press",
       "classificationConfidence": 0.97,
       "reasons": [
         "manual_only"
@@ -1876,12 +1892,10 @@
       "automaticProgramming": "specialized_only",
       "exerciseType": "resistance",
       "tracking": "external_load",
-      "familyId": "squat",
-      "classificationConfidence": 0.9,
-      "variantOf": "0770",
+      "familyId": "leg_press",
+      "classificationConfidence": 0.99,
       "reasons": [
-        "specialized_only",
-        "variant"
+        "specialized_only"
       ]
     },
     {
@@ -1902,10 +1916,11 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "knee_extension",
-      "classificationConfidence": 0.9,
+      "familyId": "snatch_pull",
+      "classificationConfidence": 0.97,
       "reasons": [
-        "manual_only"
+        "manual_only",
+        "resolved_source_conflict"
       ]
     },
     {
@@ -1926,8 +1941,8 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "squat",
-      "classificationConfidence": 0.9,
+      "familyId": "squat_jerk",
+      "classificationConfidence": 0.97,
       "reasons": [
         "manual_only"
       ]
@@ -1938,7 +1953,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "resistance",
       "tracking": "external_load",
-      "familyId": "shoulder_abduction",
+      "familyId": "shoulder_press",
       "classificationConfidence": 0.97,
       "reasons": [
         "manual_only"
@@ -2074,7 +2089,7 @@
       "exerciseType": "resistance",
       "tracking": "external_load",
       "familyId": "trunk_lateral_flexion",
-      "classificationConfidence": 0.9,
+      "classificationConfidence": 0.99,
       "reasons": [
         "specialized_only"
       ]
@@ -2143,6 +2158,30 @@
       "variantOf": "0226",
       "reasons": [
         "variant"
+      ]
+    },
+    {
+      "exerciseId": "1000",
+      "name": "band single leg reverse calf raise",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "band_resistance",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.99,
+      "reasons": [
+        "resolved_source_conflict"
+      ]
+    },
+    {
+      "exerciseId": "1012",
+      "name": "band twisting overhead press",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "band_resistance",
+      "familyId": "shoulder_press",
+      "classificationConfidence": 0.99,
+      "reasons": [
+        "resolved_source_conflict"
       ]
     },
     {
@@ -2932,8 +2971,8 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "stretch",
       "tracking": "timed",
-      "familyId": "calf_raise",
-      "classificationConfidence": 0.96,
+      "familyId": "mobility_calves",
+      "classificationConfidence": 0.99,
       "reasons": [
         "manual_only"
       ]
@@ -2944,8 +2983,8 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "stretch",
       "tracking": "timed",
-      "familyId": "calf_raise",
-      "classificationConfidence": 0.96,
+      "familyId": "mobility_calves",
+      "classificationConfidence": 0.99,
       "reasons": [
         "manual_only"
       ]
@@ -3004,10 +3043,22 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "stretch",
       "tracking": "timed",
-      "familyId": "calf_raise",
-      "classificationConfidence": 0.96,
+      "familyId": "mobility_calves",
+      "classificationConfidence": 0.99,
       "reasons": [
         "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "1391",
+      "name": "sled calf press on leg press",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "calf_raise",
+      "classificationConfidence": 0.99,
+      "reasons": [
+        "resolved_source_conflict"
       ]
     },
     {
@@ -3025,13 +3076,25 @@
       ]
     },
     {
+      "exerciseId": "1396",
+      "name": "smith toe raise",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "dorsiflexion",
+      "classificationConfidence": 0.99,
+      "reasons": [
+        "resolved_source_conflict"
+      ]
+    },
+    {
       "exerciseId": "1398",
       "name": "standing calves calf stretch",
       "automaticProgramming": "manual_only",
       "exerciseType": "stretch",
       "tracking": "timed",
-      "familyId": "calf_raise",
-      "classificationConfidence": 0.96,
+      "familyId": "mobility_calves",
+      "classificationConfidence": 0.99,
       "reasons": [
         "manual_only"
       ]
@@ -3080,8 +3143,8 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "stretch",
       "tracking": "timed",
-      "familyId": "calf_raise",
-      "classificationConfidence": 0.96,
+      "familyId": "mobility_calves",
+      "classificationConfidence": 0.99,
       "reasons": [
         "manual_only"
       ]
@@ -3092,8 +3155,8 @@
       "automaticProgramming": "specialized_only",
       "exerciseType": "resistance",
       "tracking": "bodyweight",
-      "familyId": "trunk_rotation",
-      "classificationConfidence": 0.9,
+      "familyId": "hip_rotation",
+      "classificationConfidence": 0.99,
       "reasons": [
         "specialized_only"
       ]
@@ -3193,18 +3256,6 @@
       "variantOf": "0251",
       "reasons": [
         "variant"
-      ]
-    },
-    {
-      "exerciseId": "1433",
-      "name": "smith front squat (clean grip)",
-      "automaticProgramming": "manual_only",
-      "exerciseType": "power",
-      "tracking": "external_load",
-      "familyId": "squat",
-      "classificationConfidence": 0.9,
-      "reasons": [
-        "manual_only"
       ]
     },
     {
@@ -3515,8 +3566,8 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "stretch",
       "tracking": "timed",
-      "familyId": "calf_raise",
-      "classificationConfidence": 0.96,
+      "familyId": "mobility_hamstring",
+      "classificationConfidence": 0.99,
       "reasons": [
         "manual_only"
       ]
@@ -3811,7 +3862,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "vertical_push",
+      "familyId": "push_press",
       "classificationConfidence": 0.96,
       "reasons": [
         "manual_only"
@@ -3847,8 +3898,8 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "stretch",
       "tracking": "timed",
-      "familyId": "calf_raise",
-      "classificationConfidence": 0.96,
+      "familyId": "mobility_calves",
+      "classificationConfidence": 0.99,
       "reasons": [
         "manual_only"
       ]
@@ -3956,7 +4007,7 @@
       "automaticProgramming": "allowed",
       "exerciseType": "resistance",
       "tracking": "external_load",
-      "familyId": "forearm",
+      "familyId": "bench_press",
       "classificationConfidence": 0.99,
       "duplicateOf": "0296",
       "reasons": [
@@ -3969,7 +4020,7 @@
       "automaticProgramming": "specialized_only",
       "exerciseType": "resistance",
       "tracking": "external_load",
-      "familyId": "hip_extension",
+      "familyId": "triceps_kickback",
       "classificationConfidence": 0.9,
       "reasons": [
         "specialized_only"
@@ -3993,8 +4044,8 @@
       "automaticProgramming": "specialized_only",
       "exerciseType": "resistance",
       "tracking": "external_load",
-      "familyId": "triceps_extension",
-      "classificationConfidence": 0.9,
+      "familyId": "triceps_kickback",
+      "classificationConfidence": 0.94,
       "reasons": [
         "specialized_only"
       ]
@@ -4142,7 +4193,7 @@
       "automaticProgramming": "allowed",
       "exerciseType": "resistance",
       "tracking": "external_load",
-      "familyId": "shoulder_rotation",
+      "familyId": "cuban_press",
       "classificationConfidence": 0.94,
       "variantOf": "0299",
       "reasons": [
@@ -4223,6 +4274,19 @@
       ]
     },
     {
+      "exerciseId": "2203",
+      "name": "roller seated shoulder flexor depresor retractor",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "mobility",
+      "tracking": "timed",
+      "familyId": "foam_rolling_hamstring",
+      "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only",
+        "resolved_source_conflict"
+      ]
+    },
+    {
       "exerciseId": "2205",
       "name": "roller hip lat stretch",
       "automaticProgramming": "manual_only",
@@ -4254,6 +4318,33 @@
       "tracking": "timed",
       "familyId": "mobility_lower-back",
       "classificationConfidence": 0.96,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "2209",
+      "name": "roller seated single leg shoulder flexor depresor retractor",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "mobility",
+      "tracking": "timed",
+      "familyId": "foam_rolling_hamstring",
+      "classificationConfidence": 0.96,
+      "variantOf": "2203",
+      "reasons": [
+        "manual_only",
+        "resolved_source_conflict",
+        "variant"
+      ]
+    },
+    {
+      "exerciseId": "2271",
+      "name": "left hook. boxing",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "bodyweight",
+      "familyId": "boxing_hook",
+      "classificationConfidence": 0.99,
       "reasons": [
         "manual_only"
       ]
@@ -4300,7 +4391,7 @@
       "automaticProgramming": "specialized_only",
       "exerciseType": "resistance",
       "tracking": "external_load",
-      "familyId": "forearm",
+      "familyId": "grip",
       "classificationConfidence": 0.9,
       "reasons": [
         "specialized_only"
@@ -4437,11 +4528,12 @@
       "automaticProgramming": "specialized_only",
       "exerciseType": "resistance",
       "tracking": "bodyweight",
-      "familyId": "pull_up",
-      "classificationConfidence": 0.94,
+      "familyId": "inverse_leg_curl",
+      "classificationConfidence": 0.97,
       "variantOf": "0496",
       "reasons": [
         "specialized_only",
+        "resolved_source_conflict",
         "variant"
       ]
     },
@@ -4490,8 +4582,8 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "hinge",
-      "classificationConfidence": 0.96,
+      "familyId": "tire_flip",
+      "classificationConfidence": 0.99,
       "reasons": [
         "manual_only"
       ]
@@ -4536,10 +4628,10 @@
       "exerciseId": "2612",
       "name": "jump rope",
       "automaticProgramming": "manual_only",
-      "exerciseType": "power",
-      "tracking": "bodyweight",
-      "familyId": "jump",
-      "classificationConfidence": 0.9,
+      "exerciseType": "conditioning",
+      "tracking": "timed",
+      "familyId": "jump_rope",
+      "classificationConfidence": 0.99,
       "reasons": [
         "manual_only"
       ]
@@ -4582,15 +4674,28 @@
       ]
     },
     {
+      "exerciseId": "2801",
+      "name": "twisted leg raise (female)",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "leg_raise",
+      "classificationConfidence": 0.99,
+      "reasons": [
+        "resolved_source_conflict"
+      ]
+    },
+    {
       "exerciseId": "2802",
       "name": "twisted leg raise",
       "automaticProgramming": "allowed",
       "exerciseType": "resistance",
       "tracking": "bodyweight",
       "familyId": "leg_raise",
-      "classificationConfidence": 0.94,
+      "classificationConfidence": 0.99,
       "variantOf": "2801",
       "reasons": [
+        "resolved_source_conflict",
         "variant"
       ]
     },
@@ -4606,6 +4711,18 @@
       "reasons": [
         "specialized_only",
         "variant"
+      ]
+    },
+    {
+      "exerciseId": "3019",
+      "name": "bench pull-ups",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "pull_up",
+      "classificationConfidence": 0.99,
+      "reasons": [
+        "resolved_source_conflict"
       ]
     },
     {
@@ -4689,7 +4806,7 @@
       "automaticProgramming": "specialized_only",
       "exerciseType": "resistance",
       "tracking": "external_load",
-      "familyId": "biceps_curl",
+      "familyId": "leg_curl",
       "classificationConfidence": 0.9,
       "reasons": [
         "specialized_only"
@@ -4744,6 +4861,90 @@
       ]
     },
     {
+      "exerciseId": "3212",
+      "name": "basic toe touch (male)",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "mobility",
+      "tracking": "timed",
+      "familyId": "mobility",
+      "classificationConfidence": 0.99,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3213",
+      "name": "side-to-side toe touch (male)",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "mobility",
+      "tracking": "timed",
+      "familyId": "mobility",
+      "classificationConfidence": 0.99,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3214",
+      "name": "arms apart circular toe touch (male)",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "mobility",
+      "tracking": "timed",
+      "familyId": "mobility",
+      "classificationConfidence": 0.99,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3215",
+      "name": "hands reversed clasped circular toe touch (male)",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "mobility",
+      "tracking": "timed",
+      "familyId": "mobility",
+      "classificationConfidence": 0.99,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3218",
+      "name": "hands clasped circular toe touch (male)",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "mobility",
+      "tracking": "timed",
+      "familyId": "mobility",
+      "classificationConfidence": 0.99,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3219",
+      "name": "scissor jumps (male)",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "bodyweight",
+      "familyId": "jump",
+      "classificationConfidence": 0.99,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
+      "exerciseId": "3220",
+      "name": "astride jumps (male)",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "power",
+      "tracking": "bodyweight",
+      "familyId": "jump",
+      "classificationConfidence": 0.99,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
       "exerciseId": "3221",
       "name": "half knee bends (male)",
       "automaticProgramming": "specialized_only",
@@ -4792,12 +4993,24 @@
       ]
     },
     {
+      "exerciseId": "3231",
+      "name": "two toe touch (male)",
+      "automaticProgramming": "manual_only",
+      "exerciseType": "mobility",
+      "tracking": "timed",
+      "familyId": "mobility",
+      "classificationConfidence": 0.99,
+      "reasons": [
+        "manual_only"
+      ]
+    },
+    {
       "exerciseId": "3235",
       "name": "cable assisted inverse leg curl",
       "automaticProgramming": "specialized_only",
       "exerciseType": "resistance",
       "tracking": "assistance",
-      "familyId": "biceps_curl",
+      "familyId": "leg_curl",
       "classificationConfidence": 0.97,
       "reasons": [
         "specialized_only"
@@ -4853,6 +5066,18 @@
       "classificationConfidence": 0.9,
       "reasons": [
         "specialized_only"
+      ]
+    },
+    {
+      "exerciseId": "3288",
+      "name": "korean dips",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
+      "familyId": "chest_dip",
+      "classificationConfidence": 0.99,
+      "reasons": [
+        "resolved_source_conflict"
       ]
     },
     {
@@ -4921,8 +5146,8 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "isometric",
       "tracking": "timed",
-      "familyId": "horizontal_pull",
-      "classificationConfidence": 0.9,
+      "familyId": "back_lever",
+      "classificationConfidence": 0.95,
       "reasons": [
         "manual_only"
       ]
@@ -5017,7 +5242,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "vertical_push",
+      "familyId": "thruster",
       "classificationConfidence": 0.96,
       "reasons": [
         "manual_only"
@@ -5035,6 +5260,18 @@
       "reasons": [
         "specialized_only",
         "variant"
+      ]
+    },
+    {
+      "exerciseId": "3313",
+      "name": "weighted straight bar dip",
+      "automaticProgramming": "allowed",
+      "exerciseType": "resistance",
+      "tracking": "external_load",
+      "familyId": "chest_dip",
+      "classificationConfidence": 0.99,
+      "reasons": [
+        "resolved_source_conflict"
       ]
     },
     {
@@ -5103,8 +5340,8 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "bodyweight",
-      "familyId": "knee_extension",
-      "classificationConfidence": 0.96,
+      "familyId": "skater_hop",
+      "classificationConfidence": 0.99,
       "reasons": [
         "manual_only"
       ]
@@ -5176,7 +5413,7 @@
       "exerciseType": "power",
       "tracking": "bodyweight",
       "familyId": "lunge",
-      "classificationConfidence": 0.9,
+      "classificationConfidence": 0.99,
       "reasons": [
         "manual_only"
       ]
@@ -5232,13 +5469,13 @@
     {
       "exerciseId": "3663",
       "name": "reverse plank with leg lift",
-      "automaticProgramming": "manual_only",
-      "exerciseType": "isometric",
-      "tracking": "timed",
+      "automaticProgramming": "specialized_only",
+      "exerciseType": "resistance",
+      "tracking": "bodyweight",
       "familyId": "plank",
-      "classificationConfidence": 0.96,
+      "classificationConfidence": 0.97,
       "reasons": [
-        "manual_only"
+        "specialized_only"
       ]
     },
     {
@@ -5360,7 +5597,7 @@
       "automaticProgramming": "manual_only",
       "exerciseType": "power",
       "tracking": "external_load",
-      "familyId": "hip_extension",
+      "familyId": "snatch",
       "classificationConfidence": 0.9,
       "reasons": [
         "manual_only"

@@ -2,15 +2,15 @@
 
 Generated with `bun scripts/audit-training-exercises.ts`. The 1,324-record catalogue is frozen from explicit reviewed decisions; candidate-name normalization is diagnostic only. Full details are in [exercise-audit.json](exercise-audit.json), with compact exceptional records in [exceptional-exercises.json](exceptional-exercises.json). Source IDs and media remain unchanged.
 
-- Records: 1324; fingerprint: db4f602c. Structural errors: 0.
-- Types: {"conditioning":20,"isometric":21,"mobility":7,"power":53,"resistance":1162,"stretch":61}. Tracking: {"assistance":18,"band_resistance":61,"bodyweight":285,"distance":13,"external_load":851,"timed":96}.
-- Automatic programming: {"allowed":966,"manual_only":166,"specialized_only":192}. Planner capability: allowed but unsupported 0.
+- Records: 1324; fingerprint: 60f861c1. Structural errors: 0.
+- Types: {"conditioning":21,"isometric":19,"mobility":15,"power":50,"resistance":1158,"stretch":61}. Tracking: {"assistance":18,"band_resistance":61,"bodyweight":279,"distance":13,"external_load":850,"timed":103}.
+- Automatic programming: {"allowed":956,"manual_only":173,"specialized_only":195}. Planner capability: allowed but unsupported 0.
 - Review completeness: fully reviewed 1324; partial 0; rule-only 0; stale 0. Missing source fingerprints 0; missing media fingerprints 0; media-map mismatches 0.
 - Review evidence: full-animation/video 1324; sampled-frame 0; text-only 0. Provenance: {"curated_video_and_text":1324}.
 - Ordinary unknowns: type 0; pattern 0; mechanics 0; laterality 0; tracking 0; skill 0.
-- Relationships: families 104; duplicates 10; variants 96. Conservative duplicate candidate groups 37; legacy groups explicitly reviewed 64; unresolved duplicate groups 0.
-- Source/media conflicts: resolved 9; unresolved 0. Unusable source records: 0. Low-confidence records below 0.7: 0.
-- Review queue: 0. Exceptional-record report: 435.
+- Relationships: families 122; duplicates 10; variants 96. Conservative duplicate candidate groups 37; legacy groups explicitly reviewed 64; unresolved duplicate groups 0.
+- Source/media conflicts: resolved 27; unresolved 0. Unusable source records: 0. Low-confidence records below 0.7: 0.
+- Review queue: 0. Exceptional-record report: 454.
 
 ## Findings
 

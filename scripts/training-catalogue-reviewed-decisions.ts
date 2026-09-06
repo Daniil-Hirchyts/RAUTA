@@ -36,6 +36,17 @@ export const REVIEWED_METADATA_DECISIONS: Record<string, MetadataDecision> = {
     classificationConfidence: 0.99,
     tags: ["catalogue_full_sequence_review"],
   },
+  "1000": {
+    movementPatterns: ["calf_raise"],
+    setRoles: [{ muscleId: "calves", role: "direct", provenance: "curated" }],
+    classificationConfidence: 0.99,
+    familyId: "calf_raise",
+    tags: [
+      "catalogue_full_sequence_review",
+      "classification_media_preferred",
+      "source_media_conflict",
+    ],
+  },
   "1416": {
     movementPatterns: ["hip_rotation"],
     mechanics: "isolation",
@@ -429,6 +440,21 @@ export const REVIEWED_METADATA_DECISIONS: Record<string, MetadataDecision> = {
     classificationConfidence: 0.99,
     familyId: "push_up",
     tags: ["catalogue_full_sequence_review", "complex_movement"],
+  },
+  "0232": {
+    movementPatterns: ["vertical_pull"],
+    mechanics: "compound",
+    setRoles: [
+      { muscleId: "upper-back", role: "direct", provenance: "curated" },
+      { muscleId: "biceps", role: "indirect", provenance: "curated" },
+    ],
+    classificationConfidence: 0.99,
+    familyId: "pulldown",
+    tags: [
+      "catalogue_full_sequence_review",
+      "classification_media_preferred",
+      "source_media_conflict",
+    ],
   },
   "0237": {
     movementPatterns: ["shoulder_extension"],
@@ -1269,6 +1295,40 @@ export const REVIEWED_METADATA_DECISIONS: Record<string, MetadataDecision> = {
     automaticProgramming: "manual_only",
     familyId: "jump",
     tags: ["catalogue_full_sequence_review", "complex_movement"],
+  },
+  "3288": {
+    movementPatterns: ["vertical_push"],
+    mechanics: "compound",
+    requiredEquipment: ["dip bars"],
+    setRoles: [
+      { muscleId: "chest", role: "direct", provenance: "curated" },
+      { muscleId: "triceps", role: "indirect", provenance: "curated" },
+      { muscleId: "deltoids", role: "indirect", provenance: "curated" },
+    ],
+    classificationConfidence: 0.99,
+    familyId: "chest_dip",
+    tags: [
+      "catalogue_full_sequence_review",
+      "classification_media_preferred",
+      "equipment_requirement_corrected",
+      "source_media_conflict",
+    ],
+  },
+  "3313": {
+    movementPatterns: ["vertical_push"],
+    mechanics: "compound",
+    setRoles: [
+      { muscleId: "chest", role: "direct", provenance: "curated" },
+      { muscleId: "triceps", role: "indirect", provenance: "curated" },
+      { muscleId: "deltoids", role: "indirect", provenance: "curated" },
+    ],
+    classificationConfidence: 0.99,
+    familyId: "chest_dip",
+    tags: [
+      "catalogue_full_sequence_review",
+      "classification_media_preferred",
+      "source_media_conflict",
+    ],
   },
   "3297": {
     exerciseType: "isometric",
