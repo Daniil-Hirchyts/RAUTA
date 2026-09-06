@@ -20,9 +20,11 @@
     "ios:upload": "xcrun altool --upload-app -f build/ios/export/App.ipa -t ios --apiKey \"$ASC_KEY_ID\" --apiIssuer \"$ASC_ISSUER\"",
     "ios:release": "./scripts/release-testflight.sh",
     "training:example": "bun scripts/generate-training-program.ts",
-    "training:audit": "bun scripts/audit-training-exercises.ts",
+    "training:audit": "bun run training:media-fingerprints:check && bun scripts/audit-training-exercises.ts",
     "training:media-fingerprints": "bun scripts/generate-training-media-fingerprints.ts",
+    "training:media-fingerprints:check": "bun scripts/generate-training-media-fingerprints.ts --check",
     "training:media-review": "bun scripts/review-training-exercise-media.ts",
+    "training:catalogue:check": "bun run training:media-fingerprints:check && bun scripts/check-training-catalogue.ts",
     "training:benchmark": "bun scripts/benchmark-training-engine.ts",
     "training:test": "vitest run src/training"
   },

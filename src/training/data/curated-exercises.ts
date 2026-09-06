@@ -1,11 +1,10 @@
-import records from "./exercise-metadata.curated.json"
-import commonFamilyRecords from "./exercise-metadata.curated.common.json"
+import records from "./exercise-metadata.curated.complete.json"
 import mediaFingerprints from "./exercise-media-fingerprints.json"
 import type { ExerciseSummary } from "../../types"
 import type { ExerciseMetadata } from "../domain/types"
 import { fingerprint } from "../numeric"
 
-export const CURATION_VERSION = "1.3.0"
+export const CURATION_VERSION = "2.0.0"
 
 export type ExerciseReviewSource =
   "name" | "instructions" | "sampled_frames" | "video"
@@ -95,10 +94,7 @@ export function curationFreshness(
   }
 }
 
-const CURATED_REVIEWS = [
-  ...(records as unknown as CuratedExerciseReview[]),
-  ...(commonFamilyRecords as unknown as CuratedExerciseReview[]),
-]
+const CURATED_REVIEWS = records as unknown as CuratedExerciseReview[]
 const CURATED_BY_ID = new Map(
   CURATED_REVIEWS.map((record) => [record.exerciseId, record])
 )

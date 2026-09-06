@@ -104,6 +104,43 @@ it("bodyweight top-range performance changes the prescribed rep range without kg
   expect(p.workingSets[0].targetReps).toEqual({ min: 11, max: 21 })
   expect(p.workingSets[0].resistance).toEqual({ type: "bodyweight" })
 })
+it("does not use weighted-bodyweight logs as ordinary bodyweight progression", () => {
+  const h = history([[20, 20, 20]], "0662")
+  const p = recommendProgression({
+    exercise: index.byId.get("0662")!,
+    history: h,
+    now: "2026-08-12T12:00:00.000Z",
+    reps: { min: 10, max: 20 },
+    rir: 2,
+    requiredSets: 3,
+    policy: DEFAULT_POLICY,
+  })
+  expect(p.action).toBe("calibrate")
+  expect(p.reasons).toEqual(["context_changed"])
+  expect(p.resistance).toEqual({ type: "bodyweight" })
+})
+it("uses only qualitative band-resistance logs for band rep progression", () => {
+  const h = history([[12, 12, 12]], "3236")
+  const input = {
+    exercise: index.byId.get("3236")!,
+    history: h,
+    now: "2026-08-12T12:00:00.000Z",
+    reps: { min: 8, max: 12 },
+    rir: 2,
+    requiredSets: 3,
+    policy: DEFAULT_POLICY,
+  }
+  const incompatible = recommendProgression(input)
+  expect(incompatible.action).toBe("calibrate")
+  expect(incompatible.reasons).toEqual(["context_changed"])
+
+  h.sessions[0].exercises[0].sets.forEach((s) => {
+    s.resistance = { type: "band_resistance" }
+  })
+  const compatible = recommendProgression(input)
+  expect(compatible.action).toBe("increase_reps")
+  expect(compatible.resistance).toEqual({ type: "band_resistance" })
+})
 it("large downward grid steps do not make aggressive reductions", () => {
   const h = history([
     [2, 2, 2],

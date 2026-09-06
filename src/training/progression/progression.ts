@@ -87,8 +87,19 @@ function recentPerformance(i: ProgressionInput) {
 }
 export const repProgression: ProgressionStrategy = {
   recommend(i) {
-    const { latest } = recentPerformance(i)
-    if (!latest) return recommendation(i, {})
+    const exposures = exerciseExposures(i.history, i.exercise.exercise.id, i.now)
+    const compatible = exposures.filter(
+      (exposure) =>
+        exposure.sets.length > 0 &&
+        exposure.sets.every(
+          (set) => set.resistance.type === i.exercise.metadata.tracking
+        )
+    )
+    const latest = compatible.at(-1)
+    if (!latest)
+      return recommendation(i, {
+        reasons: exposures.length ? ["context_changed"] : ["no_history"],
+      })
     if (
       Date.parse(i.now) - Date.parse(latest.session.completedAt) >
       i.policy.staleAfterDays * DAY_MS

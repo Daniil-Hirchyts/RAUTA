@@ -410,7 +410,7 @@ export function resolveExerciseMetadata(e: ExerciseSummary): ExerciseMetadata {
     exerciseId: e.id,
     tags: [
       ...new Set([
-        ...(inferred.tags ?? []),
+        ...(!fullyReviewed ? (inferred.tags ?? []) : []),
         ...(review.metadata.tags ?? []),
         ...(staleSource ? ["stale_source_review"] : []),
         ...(staleMedia ? ["stale_media_review"] : []),
@@ -478,8 +478,33 @@ export function validateMetadata(
     m.movementPatterns.every((p) =>
       [
         ...RULES.map((r) => r.pattern),
+        "hip_flexion",
+        "hip_rotation",
+        "shoulder_flexion",
+        "shoulder_extension",
+        "shoulder_rotation",
+        "scapular_protraction",
+        "scapular_retraction",
+        "scapular_elevation",
+        "scapular_depression",
+        "wrist_flexion",
+        "wrist_extension",
+        "forearm_rotation",
+        "grip",
+        "dorsiflexion",
+        "trunk_lateral_flexion",
         "anti_extension",
+        "anti_rotation",
+        "neck_flexion",
+        "neck_extension",
+        "neck_rotation",
         "carry",
+        "locomotion",
+        "jump",
+        "throw",
+        "mobility",
+        "balance",
+        "whole_body",
         "unknown",
       ].includes(p)
     ) &&

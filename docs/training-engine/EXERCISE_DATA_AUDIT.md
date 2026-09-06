@@ -2,19 +2,19 @@
 
 Generated with `bun scripts/audit-training-exercises.ts`. Full per-record review queues, capability exceptions, duplicate groups and coverage counts: [exercise-audit.json](exercise-audit.json). Source is unchanged.
 
-- Records: 1324; fingerprint: 7c1b298b.
+- Records: 1324; fingerprint: a1134e55.
 - Structural errors: 0; missing primary: 0; insufficient instructions: 0.
-- Types: {"conditioning":16,"isometric":10,"power":42,"resistance":757,"stretch":56,"unknown":443}.
-- Automatic programming: {"allowed":666,"manual_only":623,"specialized_only":35}.
-- Planner capability: allowed but unsupported 0; specialized but unsupported 0; manual-only outside current planner capability 603.
-- Provenance: {"curated":12,"curated_sampled_frames_and_text":72,"rule":1240}. Curated reviews: 84; current fully reviewed core metadata: 72; current partially reviewed: 12; stale: 0; rule-only fallback: 1240.
+- Types: {"conditioning":20,"isometric":23,"mobility":7,"power":53,"resistance":1160,"stretch":61}.
+- Automatic programming: {"allowed":973,"manual_only":176,"specialized_only":175}.
+- Planner capability: allowed but unsupported 0; specialized but unsupported 0; manual-only outside current planner capability 164.
+- Provenance: {"curated_video_and_text":1324}. Curated reviews: 1324; current fully reviewed core metadata: 1324; current partially reviewed: 0; stale: 0; rule-only fallback: 0.
 - Stale review detail: source 0; media 0; source and media 0. Missing source fingerprints: 0; missing required media fingerprints: 0.
-- Review source modality: full-animation/video reviewed: 0; sampled-frame + contact-sheet reviewed: 84; text-only reviewed: 0. Current full/partial modality split: {"fullyReviewed":{"sampled_frames":72},"partiallyReviewed":{"sampled_frames":12}}.
-- Unknown exercise type: 443; unresolved curated conflict records: 8.
-- Structured duplicate relationships: 1; variant relationships: 38; curated families with review progress: 40.
+- Review source modality: full-animation/video reviewed: 1324; sampled-frame + contact-sheet reviewed: 0; text-only reviewed: 0. Current full/partial modality split: {"fullyReviewed":{"full_video":1324},"partiallyReviewed":{}}.
+- Unknown exercise type: 0; unresolved curated conflict records: 8.
+- Structured duplicate relationships: 11; variant relationships: 68; curated families with review progress: 102.
 - Exact-name duplicate groups: 6; normalized near-duplicate groups: 64. Uncurated groups remain review candidates, not proven duplicates.
 - Suspicious primary/movement conflicts: 26.
-- Unknown/low-confidence/conflict/stale review queue: 468.
+- Unknown/low-confidence/conflict/stale review queue: 0.
 
 ## Findings
 
