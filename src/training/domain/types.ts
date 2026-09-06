@@ -126,7 +126,7 @@ export type ResistanceValue =
       basis: "total" | "per_implement"
       stationId: string
     }
-  | { type: "bodyweight" | "unknown" }
+  | { type: "bodyweight" | "band_resistance" | "unknown" }
 export type SetType = "warmup" | "working" | "backoff" | "drop" | "other"
 export type CompletedSet = {
   id: string
@@ -214,7 +214,13 @@ export type ExerciseMetadata = {
     | "curated_sampled_frames_and_text"
     | "curated_video"
     | "curated_video_and_text"
-  reviewStatus?: "rule_only" | "partially_reviewed" | "fully_reviewed"
+  reviewStatus?:
+    | "rule_only"
+    | "partially_reviewed"
+    | "fully_reviewed"
+    | "stale_source_review"
+    | "stale_media_review"
+    | "stale_source_and_media_review"
   reviewedFields?: string[]
   ruleVersion: string
 }
@@ -251,7 +257,11 @@ export type PlannedSet = {
   targetReps: RepRange
   targetRir: number
   resistance: ResistanceValue
-  loadAcquisition: "calibrate_by_rir" | "history" | "bodyweight"
+  loadAcquisition:
+    | "calibrate_by_rir"
+    | "history"
+    | "bodyweight"
+    | "band_resistance"
   side: "both"
   groupId?: string
 }
@@ -342,7 +352,6 @@ export type TrainingPolicy = {
   warmupRestSeconds: number
   warmupFractions: number[]
   warmupReps: number[]
-  minimumClassificationConfidence: number
   minimumAutomaticClassificationConfidence: number
   minimumSpecializedClassificationConfidence: number
   beamWidth: number
@@ -354,6 +363,7 @@ export type TrainingPolicy = {
     | "specificity"
     | "continuity"
     | "preference"
+    | "skillSuitability"
     | "patternNeed"
     | "quality"
     | "redundancy"

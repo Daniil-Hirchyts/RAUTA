@@ -66,12 +66,15 @@ function recommendation(
   i: ProgressionInput,
   patch: Partial<ProgressionRecommendation>
 ): ProgressionRecommendation {
+  const resistance: ResistanceValue =
+    i.exercise.metadata.tracking === "bodyweight"
+      ? { type: "bodyweight" }
+      : i.exercise.metadata.tracking === "band_resistance"
+        ? { type: "band_resistance" }
+        : { type: "unknown" }
   return {
     action: "calibrate",
-    resistance:
-      i.exercise.metadata.tracking === "bodyweight"
-        ? { type: "bodyweight" }
-        : { type: "unknown" },
+    resistance,
     targetReps: { ...i.reps },
     confidence: "none",
     reasons: ["no_history"],

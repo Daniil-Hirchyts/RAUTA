@@ -18,7 +18,12 @@ const optional = (v: unknown, check: (v: unknown) => boolean) =>
   v === undefined || check(v)
 export function validResistance(r: unknown): boolean {
   if (!isRecord(r)) return false
-  if (r.type === "unknown" || r.type === "bodyweight") return true
+  if (
+    r.type === "unknown" ||
+    r.type === "bodyweight" ||
+    r.type === "band_resistance"
+  )
+    return true
   return (
     choices(r.type, ["external_load", "assistance"]) &&
     finite(r.kg, 0, 2000) &&
@@ -86,8 +91,6 @@ export function validatePolicy(value: unknown): PlanningIssue[] {
     p.meaningfulExposureSets <= 0 ||
     p.indirectCredit < 0 ||
     p.indirectCredit > 1 ||
-    p.minimumClassificationConfidence < 0 ||
-    p.minimumClassificationConfidence > 1 ||
     p.minimumAutomaticClassificationConfidence < 0 ||
     p.minimumAutomaticClassificationConfidence > 1 ||
     p.minimumSpecializedClassificationConfidence < 0 ||

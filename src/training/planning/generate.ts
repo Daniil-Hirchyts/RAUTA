@@ -212,10 +212,27 @@ export function evaluateTrainingProgram(
   request: ProgramGenerationRequest,
   index?: ExerciseIndex
 ) {
-  const invalid = validateGenerationRequest(request)
+  const authoritativeRequest: ProgramGenerationRequest = {
+    ...request,
+    policy: structuredClone(program.policy),
+  }
+  const invalid = validateGenerationRequest(authoritativeRequest)
   if (invalid.length) return { valid: false, score: undefined, issues: invalid }
-  const input = preparation(request, undefined, index)
-  const validation = validateTrainingProgram(program, request, input.index)
+  if (
+    request.policy &&
+    fingerprint(request.policy) !== fingerprint(program.policy)
+  )
+    return {
+      valid: false,
+      score: undefined,
+      issues: [{ code: "INVALID_PROGRAM" as const, path: "program.policy" }],
+    }
+  const input = preparation(authoritativeRequest, undefined, index)
+  const validation = validateTrainingProgram(
+    program,
+    authoritativeRequest,
+    input.index
+  )
   if (!validation.valid)
     return { valid: false, score: undefined, issues: validation.issues }
   const weeks = program.weeks.map((w) =>

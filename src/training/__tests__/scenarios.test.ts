@@ -157,7 +157,9 @@ describe("real-data golden scenarios", () => {
       for (const s of p.weeks[0].sessions)
         for (const e of s.exercises)
           for (const set of e.workingSets)
-            expect(["unknown", "bodyweight"]).toContain(set.resistance.type)
+            expect(["unknown", "bodyweight", "band_resistance"]).toContain(
+              set.resistance.type
+            )
     },
     30_000
   )

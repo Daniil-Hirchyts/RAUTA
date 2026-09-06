@@ -12,7 +12,12 @@ import type {
 } from "../domain/types"
 import { compareIds, fingerprint, finite, isRecord } from "../numeric"
 import {
+  plannerSupportsExercise,
+  plannerSupportsTracking,
+} from "../domain/capabilities"
+import {
   CURATION_VERSION,
+  curationFreshness,
   getCuratedExerciseReview,
   isFullyCuratedReview,
 } from "./curated-exercises"
@@ -386,18 +391,39 @@ export function resolveExerciseMetadata(e: ExerciseSummary): ExerciseMetadata {
   const inferred = inferExerciseMetadata(e)
   const review = getCuratedExerciseReview(e.id)
   if (!review) return inferred
-  const fullyReviewed = isFullyCuratedReview(review)
+  const freshness = curationFreshness(review, e)
+  const staleSource = freshness.staleSource || freshness.sourceFingerprintMissing
+  const staleMedia = freshness.staleMedia || freshness.mediaFingerprintMissing
+  const fullyReviewed = isFullyCuratedReview(review) && !staleSource && !staleMedia
+  const reviewStatus = staleSource
+    ? staleMedia
+      ? "stale_source_and_media_review"
+      : "stale_source_review"
+    : staleMedia
+      ? "stale_media_review"
+      : fullyReviewed
+        ? "fully_reviewed"
+        : "partially_reviewed"
   return {
     ...inferred,
     ...review.metadata,
     exerciseId: e.id,
     tags: [
-      ...new Set([...(inferred.tags ?? []), ...(review.metadata.tags ?? [])]),
+      ...new Set([
+        ...(inferred.tags ?? []),
+        ...(review.metadata.tags ?? []),
+        ...(staleSource ? ["stale_source_review"] : []),
+        ...(staleMedia ? ["stale_media_review"] : []),
+      ]),
     ].sort(compareIds),
+    automaticProgramming:
+      staleSource || staleMedia
+        ? "manual_only"
+        : (review.metadata.automaticProgramming ?? inferred.automaticProgramming),
     provenance: fullyReviewed
       ? curatedProvenance(review.reviewedFrom)
       : "curated",
-    reviewStatus: fullyReviewed ? "fully_reviewed" : "partially_reviewed",
+    reviewStatus,
     reviewedFields: [...(review.reviewedFields ?? [])].sort(compareIds),
     ruleVersion: `${RULE_VERSION}+curation-${CURATION_VERSION}`,
   }
@@ -485,12 +511,18 @@ export function validateMetadata(
     typeof m.ruleVersion === "string" &&
     !!m.ruleVersion &&
     (m.reviewStatus === undefined ||
-      ["rule_only", "partially_reviewed", "fully_reviewed"].includes(
-        m.reviewStatus
-      )) &&
+      [
+        "rule_only",
+        "partially_reviewed",
+        "fully_reviewed",
+        "stale_source_review",
+        "stale_media_review",
+        "stale_source_and_media_review",
+      ].includes(m.reviewStatus)) &&
     (m.reviewedFields === undefined ||
       (Array.isArray(m.reviewedFields) &&
         m.reviewedFields.every((field) => typeof field === "string"))) &&
+    (m.automaticProgramming !== "allowed" || plannerSupportsExercise(m)) &&
     (m.exerciseType !== "resistance" ||
       m.automaticProgramming === "manual_only" ||
       (m.setRoles.some((r) => r.role === "direct") &&
@@ -675,6 +707,7 @@ export function exclusionReasons(
         : policy.minimumAutomaticClassificationConfidence)
   if (
     e.metadata.exerciseType !== "resistance" ||
+    !plannerSupportsTracking(e.metadata.tracking) ||
     automaticProgrammingBlocked ||
     lowConfidenceRule ||
     e.metadata.movementPatterns.some((pattern) =>

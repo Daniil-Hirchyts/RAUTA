@@ -1,13 +1,14 @@
 import records from "./exercise-metadata.curated.json"
+import commonFamilyRecords from "./exercise-metadata.curated.common.json"
+import mediaFingerprints from "./exercise-media-fingerprints.json"
+import type { ExerciseSummary } from "../../types"
 import type { ExerciseMetadata } from "../domain/types"
+import { fingerprint } from "../numeric"
 
-export const CURATION_VERSION = "1.2.0"
+export const CURATION_VERSION = "1.3.0"
 
 export type ExerciseReviewSource =
-  | "name"
-  | "instructions"
-  | "sampled_frames"
-  | "video"
+  "name" | "instructions" | "sampled_frames" | "video"
 export type CuratedExerciseMetadataPatch = Partial<
   Omit<ExerciseMetadata, "exerciseId" | "provenance" | "ruleVersion">
 >
@@ -29,10 +30,75 @@ export type CuratedExerciseReview = {
   exerciseId: string
   reviewedFrom: ExerciseReviewSource[]
   reviewedFields?: CoreProgrammingField[]
+  sourceExerciseFingerprint: string
+  mediaFingerprint?: string
+  reviewedFrameNumbers?: number[]
   metadata: CuratedExerciseMetadataPatch
 }
 
-const CURATED_REVIEWS = records as unknown as CuratedExerciseReview[]
+export type CurationFreshness = {
+  sourceCurrent: boolean
+  mediaCurrent: boolean | undefined
+  sourceFingerprintMissing: boolean
+  mediaFingerprintMissing: boolean
+  staleSource: boolean
+  staleMedia: boolean
+}
+
+const MEDIA_FINGERPRINTS = mediaFingerprints as Record<string, string>
+
+export function sourceExerciseFingerprint(exercise: ExerciseSummary): string {
+  return fingerprint({
+    id: exercise.id,
+    name: exercise.name,
+    instructions: exercise.instructions,
+    equipment: exercise.equipment,
+    primaryMuscle: exercise.primaryMuscle,
+    muscles: exercise.muscles,
+    muscleWeights: exercise.muscleWeights,
+  })
+}
+
+export function currentMediaFingerprint(
+  exerciseId: string
+): string | undefined {
+  return MEDIA_FINGERPRINTS[exerciseId]
+}
+
+export function curationFreshness(
+  review: CuratedExerciseReview,
+  exercise: ExerciseSummary,
+  mediaFingerprint = currentMediaFingerprint(exercise.id)
+): CurationFreshness {
+  const needsMedia =
+    review.reviewedFrom.includes("sampled_frames") ||
+    review.reviewedFrom.includes("video")
+  const currentSource = sourceExerciseFingerprint(exercise)
+  const sourceFingerprintMissing = !review.sourceExerciseFingerprint
+  const mediaFingerprintMissing = needsMedia && !review.mediaFingerprint
+  const sourceCurrent =
+    !sourceFingerprintMissing &&
+    review.sourceExerciseFingerprint === currentSource
+  const mediaCurrent = needsMedia
+    ? !mediaFingerprintMissing &&
+      !!mediaFingerprint &&
+      review.mediaFingerprint === mediaFingerprint
+    : undefined
+  return {
+    sourceCurrent,
+    mediaCurrent,
+    sourceFingerprintMissing,
+    mediaFingerprintMissing,
+    staleSource: !sourceFingerprintMissing && !sourceCurrent,
+    staleMedia:
+      needsMedia && !mediaFingerprintMissing && mediaCurrent === false,
+  }
+}
+
+const CURATED_REVIEWS = [
+  ...(records as unknown as CuratedExerciseReview[]),
+  ...(commonFamilyRecords as unknown as CuratedExerciseReview[]),
+]
 const CURATED_BY_ID = new Map(
   CURATED_REVIEWS.map((record) => [record.exerciseId, record])
 )

@@ -1,4 +1,9 @@
 export type * from "./domain/types"
+export {
+  PLANNER_SUPPORTED_TRACKING,
+  plannerSupportsExercise,
+  plannerSupportsTracking,
+} from "./domain/capabilities"
 export { DEFAULT_POLICY, ENGINE_VERSION } from "./policy"
 export {
   createExerciseIndex,

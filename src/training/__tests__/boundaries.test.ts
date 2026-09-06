@@ -4,7 +4,10 @@ import {
   analyzeTrainingState,
   createExerciseIndex,
   DEFAULT_POLICY,
+  evaluateTrainingProgram,
   generateTrainingProgram,
+  plannerSupportsExercise,
+  plannerSupportsTracking,
   recommendProgression,
   validateGenerationRequest,
   validateMetadata,
@@ -18,6 +21,54 @@ import { adaptTrainingProgram } from "../planning/adapt"
 import { confidenceAtLeast } from "../numeric"
 import { calculateSessionVolume } from "../analysis/volume"
 const index = createExerciseIndex(request().exercises)
+it("keeps automatic planner capabilities aligned with supported tracking semantics", () => {
+  for (const tracking of [
+    "external_load",
+    "assistance",
+    "bodyweight",
+    "band_resistance",
+  ] as const)
+    expect(plannerSupportsTracking(tracking)).toBe(true)
+  for (const tracking of [
+    "repetition_only",
+    "timed",
+    "distance",
+    "unknown",
+  ] as const)
+    expect(plannerSupportsTracking(tracking)).toBe(false)
+
+  const base = index.byId.get("0025")!.metadata
+  for (const tracking of ["repetition_only", "timed", "distance"] as const) {
+    const metadata = {
+      ...structuredClone(base),
+      tracking,
+      automaticProgramming: "allowed" as const,
+    }
+    expect(plannerSupportsExercise(metadata)).toBe(false)
+    expect(validateMetadata(metadata, index.byId.get("0025")!.exercise)).toHaveLength(
+      1
+    )
+  }
+})
+it("prescribes band resistance explicitly without inventing kilograms", () => {
+  const r = request()
+  const input = preparation(r)
+  const band = index.byId.get("3236")!
+  expect(band.metadata.tracking).toBe("band_resistance")
+  expect(plannerSupportsExercise(band.metadata)).toBe(true)
+  const prescribed = prescribeExercise(
+    band,
+    3,
+    "band-test",
+    { total: 0, contributions: [] },
+    input
+  )
+  expect(prescribed.workingSets[0].resistance).toEqual({
+    type: "band_resistance",
+  })
+  expect(prescribed.workingSets[0].loadAcquisition).toBe("band_resistance")
+  expect(prescribed.warmupSets).toEqual([])
+})
 it("old ID-only completion never fabricates sets, load or effective volume", () => {
   const session = adaptLegacyWorkout({
     id: "old",
@@ -450,6 +501,85 @@ it("policy is immutable and all important divisors reject zero", () => {
     expect(generateTrainingProgram(r).status).toBe("invalid")
   }
 })
+it("adaptation requires the exact source policy fingerprint", () => {
+  const baseRequest = request({
+    policy: {
+      ...structuredClone(DEFAULT_POLICY),
+      beamWidth: 1,
+      candidateLimit: 3,
+    },
+  })
+  const generated = generateTrainingProgram(baseRequest)
+  if (!("program" in generated)) throw new Error("fixture infeasible")
+  const next = request({
+    policy: structuredClone(generated.program.policy),
+    now: "2026-09-13T12:00:00.000Z",
+    schedule: {
+      ...baseRequest.schedule,
+      weekStart: "2026-09-14T00:00:00.000Z",
+      durationWeeks: 1,
+    },
+  })
+  expect(
+    adaptTrainingProgram({
+      previousProgram: generated.program,
+      request: next,
+      mode: "next_week",
+    }).status
+  ).toMatch(/success|partial/)
+
+  next.policy = {
+    ...structuredClone(generated.program.policy),
+    indirectCredit: generated.program.policy.indirectCredit + 0.01,
+  }
+  expect(
+    adaptTrainingProgram({
+      previousProgram: generated.program,
+      request: next,
+      mode: "next_week",
+    }).status
+  ).toBe("invalid")
+
+  next.policy = {
+    ...structuredClone(generated.program.policy),
+    version: "different-version",
+  }
+  expect(
+    adaptTrainingProgram({
+      previousProgram: generated.program,
+      request: next,
+      mode: "next_week",
+    }).status
+  ).toBe("invalid")
+}, 30_000)
+it("stored-program evaluation uses the embedded policy and rejects explicit mismatches", () => {
+  const generationRequest = request({
+    policy: {
+      ...structuredClone(DEFAULT_POLICY),
+      beamWidth: 1,
+      candidateLimit: 3,
+      indirectCredit: 0.37,
+    },
+  })
+  const generated = generateTrainingProgram(generationRequest)
+  if (!("program" in generated)) throw new Error("fixture infeasible")
+
+  const withoutPolicy = request()
+  expect(evaluateTrainingProgram(generated.program, withoutPolicy).valid).toBe(true)
+
+  const mismatch = request({
+    policy: {
+      ...structuredClone(generated.program.policy),
+      indirectCredit: generated.program.policy.indirectCredit + 0.01,
+    },
+  })
+  const evaluated = evaluateTrainingProgram(generated.program, mismatch)
+  expect(evaluated.valid).toBe(false)
+  expect(evaluated.issues).toContainEqual({
+    code: "INVALID_PROGRAM",
+    path: "program.policy",
+  })
+}, 30_000)
 it("specific strength histories select and prescribe the actual squat, bench and deadlift", () => {
   const r = request()
   r.preferences.goal = "strength"

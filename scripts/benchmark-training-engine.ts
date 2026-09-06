@@ -61,7 +61,7 @@ const future = {
   },
 }
 const runs = 7
-const scenarioRuns = 3
+const scenarioRuns = 2
 function benchmark(name: string, fn: () => unknown, repetitions = runs) {
   fn()
   const samples = Array.from({ length: repetitions }, () => {
@@ -167,7 +167,11 @@ const scenarioRequests = [
   scenario("equipment-limited", (request) => {
     request.profile.trainingExperience = "intermediate"
     request.preferences.goal = "hypertrophy"
-    request.preferences.availableEquipment = ["body weight", "dumbbell", "bench"]
+    request.preferences.availableEquipment = [
+      "body weight",
+      "dumbbell",
+      "bench",
+    ]
     request.schedule.days = [0, 2, 4]
   }),
   scenario("time-limited", (request) => {
@@ -185,6 +189,72 @@ const scenarioRequests = [
     ]
     request.preferences.maxSessionDurationMinutes = 55
     request.schedule.days = [0, 1, 3, 5]
+  }),
+  scenario("endurance beginner 3-day", (request) => {
+    request.profile.trainingExperience = "beginner"
+    request.preferences.goal = "muscular_endurance"
+    request.schedule.days = [0, 2, 4]
+  }),
+  scenario("hypertrophy advanced 5-day", (request) => {
+    request.profile.trainingExperience = "advanced"
+    request.preferences.goal = "hypertrophy"
+    request.preferences.maxSessionDurationMinutes = 70
+    request.schedule.days = [0, 1, 2, 4, 5]
+  }),
+  scenario("strength beginner 3-day", (request) => {
+    request.profile.trainingExperience = "beginner"
+    request.preferences.goal = "strength"
+    request.preferences.strengthExerciseIds = ["0025", "0032"]
+    request.schedule.days = [0, 2, 4]
+  }),
+  scenario("bodyweight only", (request) => {
+    request.preferences.goal = "general_fitness"
+    request.preferences.availableEquipment = ["body weight", "pull-up bar"]
+    request.schedule.days = [0, 2, 4]
+  }),
+  scenario("bands and bodyweight", (request) => {
+    request.preferences.goal = "hypertrophy"
+    request.preferences.availableEquipment = [
+      "body weight",
+      "resistance band",
+      "pull-up bar",
+    ]
+    request.schedule.days = [0, 2, 4]
+  }),
+  scenario("six-day cold start", (request) => {
+    request.profile.trainingExperience = "advanced"
+    request.preferences.goal = "hypertrophy"
+    request.preferences.maxSessionDurationMinutes = 50
+    request.schedule.days = [0, 1, 2, 3, 4, 5]
+  }),
+  scenario("lower-body priority", (request) => {
+    request.profile.trainingExperience = "intermediate"
+    request.preferences.goal = "hypertrophy"
+    request.preferences.priorityMuscles = [
+      { muscleId: "quadriceps", level: "specialization" },
+      { muscleId: "hamstring", level: "high" },
+    ]
+    request.schedule.days = [0, 1, 3, 5]
+  }),
+  scenario("weekly-set cap", (request) => {
+    request.profile.trainingExperience = "intermediate"
+    request.preferences.goal = "hypertrophy"
+    request.preferences.maxWeeklyWorkingSets = 24
+    request.schedule.days = [0, 2, 4]
+  }),
+  scenario("explicit chest bounds", (request) => {
+    request.profile.trainingExperience = "intermediate"
+    request.preferences.goal = "hypertrophy"
+    request.preferences.muscleVolumeBounds = [
+      { muscleId: "chest", minimum: 8, maximum: 12 },
+    ]
+    request.schedule.days = [0, 1, 3, 5]
+  }),
+  scenario("very tight duration", (request) => {
+    request.preferences.goal = "general_fitness"
+    request.preferences.preferredSessionDurationMinutes = 15
+    request.preferences.maxSessionDurationMinutes = 15
+    request.schedule.days = [0, 3]
   }),
   {
     name: "dense history",
@@ -215,6 +285,7 @@ const scenarioMatrix = scenarioRequests.flatMap(({ name, request }) =>
         status: result.status,
         hardFeasible: false,
         score: null,
+        warningCodes: result.issues.map((issue) => issue.code),
         issueCodes: result.issues.map((issue) => issue.code),
       }
     const validation = validateTrainingProgram(
@@ -230,6 +301,7 @@ const scenarioMatrix = scenarioRequests.flatMap(({ name, request }) =>
       status: result.status,
       hardFeasible: validation.valid,
       score: result.program.diagnostics.score.total,
+      warningCodes: result.issues.map((issue) => issue.code),
       issueCodes: validation.issues.map((issue) => issue.code),
     }
   })
@@ -241,10 +313,31 @@ const widthSummary = [1, 3, 8].map((beamWidth) => {
     beamWidth,
     hardFeasibleScenarios: rows.filter((row) => row.hardFeasible).length,
     scenarioCount: rows.length,
-    medianLatencyMs: Number((median(rows.map((row) => row.medianMs)) ?? 0).toFixed(2)),
+    medianLatencyMs: Number(
+      (median(rows.map((row) => row.medianMs)) ?? 0).toFixed(2)
+    ),
     medianScore:
       scores.length > 0 ? Number((median(scores) ?? 0).toFixed(4)) : null,
   }
+})
+const nonMonotonicCases = scenarioRequests.flatMap(({ name }) => {
+  const rows = scenarioMatrix
+    .filter((row) => row.scenario === name && row.score !== null)
+    .sort((a, b) => a.beamWidth - b.beamWidth)
+  return rows.slice(1).flatMap((row, index) => {
+    const previous = rows[index]
+    return previous && row.score! + 1e-9 < previous.score!
+      ? [
+          {
+            scenario: name,
+            narrowerBeam: previous.beamWidth,
+            widerBeam: row.beamWidth,
+            narrowerScore: previous.score,
+            widerScore: row.score,
+          },
+        ]
+      : []
+  })
 })
 const results = {
   environment: {
@@ -259,6 +352,7 @@ const results = {
   widths,
   scenarioMatrix,
   widthSummary,
+  nonMonotonicCases,
 }
 writeFileSync(
   "docs/training-engine/benchmark-results.json",
@@ -266,6 +360,6 @@ writeFileSync(
 )
 writeFileSync(
   "docs/training-engine/PERFORMANCE.md",
-  `# Performance\n\nRun \`bun scripts/benchmark-training-engine.ts\`. Measured on ${results.environment.cpu}, ${platform()} ${arch()}, runtime ${results.environment.runtime}. Core operations use one warmup plus ${runs} timed repetitions. Scenario-matrix generation uses one warmup plus ${scenarioRuns} timed repetitions per scenario/beam combination. The reported p95 is the maximum of each small sample; it is not a precise tail-latency estimate. Wall-clock measurements remain outside deterministic core results.\n\n| Operation | Median ms | Sample p95 ms |\n|---|---:|---:|\n${rows.map((r) => `| ${r.name} | ${r.medianMs} | ${r.p95Ms} |`).join("\n")}\n\n## Representative beam-width comparison\n\n| Width | Median ms | Score |\n|---|---:|---:|\n${widths.map((w) => `| ${w.name} | ${w.medianMs} | ${w.score?.toFixed(4)} |`).join("\n")}\n\n## Scenario matrix\n\n| Scenario | Beam | Median ms | Score | Hard-feasible | Status |\n|---|---:|---:|---:|:---:|---|\n${scenarioMatrix.map((row) => `| ${row.scenario} | ${row.beamWidth} | ${row.medianMs} | ${row.score === null ? "—" : row.score.toFixed(4)} | ${row.hardFeasible ? "yes" : "no"} | ${row.status} |`).join("\n")}\n\n| Beam | Feasible scenarios | Median scenario latency ms | Median score |\n|---|---:|---:|---:|\n${widthSummary.map((row) => `| ${row.beamWidth} | ${row.hardFeasibleScenarios}/${row.scenarioCount} | ${row.medianLatencyMs} | ${row.medianScore?.toFixed(4) ?? "—"} |`).join("\n")}\n\nScores are optimizer utility, not predicted fitness outcomes. The default beam width remains 3 unless the matrix shows a repeatable quality improvement that justifies additional latency; one case alone is not used to change policy.\n\n## Profiling and limits\n\nAn initial cold-start run took about 2,097 ms. Bun CPU profiling showed repeated muscle-volume aggregation inside candidate scoring as the dominant sampled stack. Computing one scoring context per partial session and iterating only known set roles reduced that same cold-start run to about 508 ms. This is an algorithmic change with invariant/scenario regression tests. No native code or optimization dependency was needed. Indexes are reusable for analytics, validation and queries. Generation currently builds its own index once per request.\n\nThese are desktop development measurements, not iPhone benchmarks or a latency SLA. Several-thousand-exercise inputs and very long histories should be profiled on target hardware before UI integration. The pure synchronous API can be called from a future Web Worker without redesigning the domain. Persisted programs include a policy snapshot; payload size trades off against reproducibility.\n`
+  `# Performance\n\nRun \`bun scripts/benchmark-training-engine.ts\`. Measured on ${results.environment.cpu}, ${platform()} ${arch()}, runtime ${results.environment.runtime}. Core operations use one warmup plus ${runs} timed repetitions. Scenario-matrix generation uses one warmup plus ${scenarioRuns} timed repetitions per scenario/beam combination. The reported p95 is the maximum of each small sample; it is not a precise tail-latency estimate. Wall-clock measurements remain outside deterministic core results.\n\n| Operation | Median ms | Sample p95 ms |\n|---|---:|---:|\n${rows.map((r) => `| ${r.name} | ${r.medianMs} | ${r.p95Ms} |`).join("\n")}\n\n## Representative beam-width comparison\n\n| Width | Median ms | Score |\n|---|---:|---:|\n${widths.map((w) => `| ${w.name} | ${w.medianMs} | ${w.score?.toFixed(4)} |`).join("\n")}\n\n## Scenario matrix\n\n| Scenario | Beam | Median ms | Score | Hard-feasible | Status | Warnings |\n|---|---:|---:|---:|:---:|---|---|\n${scenarioMatrix.map((row) => `| ${row.scenario} | ${row.beamWidth} | ${row.medianMs} | ${row.score === null ? "—" : row.score.toFixed(4)} | ${row.hardFeasible ? "yes" : "no"} | ${row.status} | ${row.warningCodes.join(", ") || "—"} |`).join("\n")}\n\n| Beam | Feasible scenarios | Median scenario latency ms | Median score |\n|---|---:|---:|---:|\n${widthSummary.map((row) => `| ${row.beamWidth} | ${row.hardFeasibleScenarios}/${row.scenarioCount} | ${row.medianLatencyMs} | ${row.medianScore?.toFixed(4) ?? "—"} |`).join("\n")}\n\nScores are optimizer utility, not predicted fitness outcomes. The default beam width remains 3 unless the matrix shows a repeatable quality improvement that justifies additional latency. Wider beams are not guaranteed to be monotonic in final score: pruning ranks partial weeks, and bounded local improvement runs only after the final pre-improvement candidate is selected. A path retained by a narrow beam can therefore be displaced by several temporarily stronger partial paths in a wider beam, while a different final candidate can respond less well to local improvement. This matrix found ${nonMonotonicCases.length} adjacent-width score regressions; exact cases are recorded in benchmark-results.json. Guaranteeing monotonicity would require keeping an explicit incumbent or improving and comparing more terminal candidates, which would change search cost and semantics, so no policy change is made from this diagnostic alone.\n\n## Profiling and limits\n\nAn initial cold-start run took about 2,097 ms. Bun CPU profiling showed repeated muscle-volume aggregation inside candidate scoring as the dominant sampled stack. Computing one scoring context per partial session and iterating only known set roles reduced that same cold-start run to about 508 ms. This is an algorithmic change with invariant/scenario regression tests. No native code or optimization dependency was needed. Indexes are reusable for analytics, validation and queries. Generation currently builds its own index once per request.\n\nThese are desktop development measurements, not iPhone benchmarks or a latency SLA. Several-thousand-exercise inputs and very long histories should be profiled on target hardware before UI integration. The pure synchronous API can be called from a future Web Worker without redesigning the domain. Persisted programs include a policy snapshot; payload size trades off against reproducibility.\n`
 )
 console.log(JSON.stringify(results, null, 2))

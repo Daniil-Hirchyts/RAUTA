@@ -114,8 +114,8 @@ export function adaptTrainingProgram({
   if (
     !validSource(previousProgram) ||
     !["remaining_week", "next_week"].includes(mode) ||
-    previousProgram.policyVersion !==
-      (request.policy ?? previousProgram.policy).version
+    fingerprint(previousProgram.policy) !==
+      fingerprint(request.policy ?? previousProgram.policy)
   )
     return {
       status: "invalid",

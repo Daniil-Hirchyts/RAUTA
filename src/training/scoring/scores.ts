@@ -1,4 +1,5 @@
 import type {
+  Experience,
   IndexedExercise,
   MuscleId,
   OptimizationInput,
@@ -15,6 +16,21 @@ import {
   emptyVolume,
 } from "../analysis/volume"
 import { estimateSessionDuration } from "../planning/duration"
+
+export function skillSuitability(
+  experience: Experience,
+  skill: IndexedExercise["metadata"]["skill"],
+  explicitlyPreferred = false,
+  strengthSpecific = false
+): number {
+  if (strengthSpecific) return 1
+  if (explicitlyPreferred) return 0.95
+  if (experience === "advanced") return skill === "unknown" ? 0.85 : 1
+  if (experience === "intermediate")
+    return skill === "complex" ? 0.9 : skill === "unknown" ? 0.75 : 1
+  return skill === "complex" ? 0.25 : skill === "unknown" ? 0.6 : 1
+}
+
 export function weightedScore(
   values: Record<string, number>,
   weights: Record<string, number>
@@ -149,6 +165,12 @@ export function createExerciseScorer(
       : request.preferences.preferredExerciseIds?.includes(e.exercise.id)
         ? 1
         : 0.5
+    const skillFit = skillSuitability(
+      request.profile.trainingExperience,
+      e.metadata.skill,
+      request.preferences.preferredExerciseIds?.includes(e.exercise.id),
+      request.preferences.strengthExerciseIds?.includes(e.exercise.id)
+    )
     const muscles = e.metadata.setRoles
       .filter((r) => r.role === "direct")
       .map((r) => r.muscleId)
@@ -177,6 +199,7 @@ export function createExerciseScorer(
         specificity,
         continuity,
         preference,
+        skillSuitability: skillFit,
         patternNeed: e.metadata.movementPatterns.some(
           (p) => !usedPatterns.includes(p)
         )

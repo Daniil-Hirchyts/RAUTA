@@ -4,6 +4,7 @@ import {
   createExerciseIndex,
   DEFAULT_POLICY,
   generateTrainingProgram,
+  plannerSupportsExercise,
   validateGenerationRequest,
   validateTrainingProgram,
   inferExerciseMetadata,
@@ -15,9 +16,12 @@ import { scoreExercise } from "../scoring/scores"
 import { generateSplitCandidates } from "../planning/optimizer"
 import {
   CORE_PROGRAMMING_FIELDS,
+  curationFreshness,
+  currentMediaFingerprint,
   getCuratedExerciseReviews,
   isFullyCuratedReview,
 } from "../data/curated-exercises"
+import { skillSuitability } from "../scoring/scores"
 // Seeded generated cases avoid a new dependency. The seed and failing index reproduce every case.
 function random(seed: number) {
   let n = seed >>> 0
@@ -63,6 +67,8 @@ describe("generated invariants and metamorphic cases", () => {
       expect(["allowed", "specialized_only", "manual_only"]).toContain(
         item.metadata.automaticProgramming
       )
+      if (item.metadata.automaticProgramming === "allowed")
+        expect(plannerSupportsExercise(item.metadata), item.exercise.id).toBe(true)
       if (
         item.metadata.exerciseType === "resistance" &&
         item.metadata.automaticProgramming !== "manual_only"
@@ -147,6 +153,56 @@ describe("generated invariants and metamorphic cases", () => {
         expect(metadata?.reviewStatus).toBe("partially_reviewed")
       }
     }
+  })
+
+  it("keeps migrated curation fingerprints current and detects every stale mode", () => {
+    for (const review of getCuratedExerciseReviews()) {
+      const exercise = index.byId.get(review.exerciseId)!.exercise
+      const freshness = curationFreshness(review, exercise)
+      expect(freshness.sourceFingerprintMissing, review.exerciseId).toBe(false)
+      expect(freshness.mediaFingerprintMissing, review.exerciseId).toBe(false)
+      expect(freshness.sourceCurrent, review.exerciseId).toBe(true)
+      expect(freshness.mediaCurrent, review.exerciseId).toBe(true)
+    }
+
+    const review = structuredClone(getCuratedExerciseReviews()[0])
+    const exercise = index.byId.get(review.exerciseId)!.exercise
+    expect(
+      curationFreshness(review, { ...exercise, name: exercise.name + " changed" })
+        .staleSource
+    ).toBe(true)
+    expect(
+      curationFreshness(
+        { ...review, mediaFingerprint: "0".repeat(64) },
+        exercise,
+        currentMediaFingerprint(exercise.id)
+      ).staleMedia
+    ).toBe(true)
+    const both = curationFreshness(
+      { ...review, mediaFingerprint: "0".repeat(64) },
+      { ...exercise, name: exercise.name + " changed" },
+      currentMediaFingerprint(exercise.id)
+    )
+    expect(both.staleSource).toBe(true)
+    expect(both.staleMedia).toBe(true)
+    const missing = curationFreshness(
+      { ...review, sourceExerciseFingerprint: "", mediaFingerprint: undefined },
+      exercise,
+      currentMediaFingerprint(exercise.id)
+    )
+    expect(missing.sourceFingerprintMissing).toBe(true)
+    expect(missing.mediaFingerprintMissing).toBe(true)
+  })
+
+  it("uses skill suitability as a soft experience-aware scoring factor", () => {
+    expect(skillSuitability("beginner", "basic")).toBeGreaterThan(
+      skillSuitability("beginner", "complex")
+    )
+    expect(skillSuitability("advanced", "complex")).toBe(1)
+    expect(skillSuitability("beginner", "complex", true)).toBeGreaterThan(
+      skillSuitability("beginner", "complex")
+    )
+    expect(skillSuitability("beginner", "complex", false, true)).toBe(1)
   })
 
   it("40 seeded valid profiles retain all hard invariants", () => {

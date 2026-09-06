@@ -1,8 +1,16 @@
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
+import { createHash } from "node:crypto"
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
 import { join } from "node:path"
 import exercises from "../src/data/exercises.generated.json"
 import { resolveExerciseMetadata } from "../src/training/data/exercises"
 import { getCuratedExerciseReview } from "../src/training/data/curated-exercises"
+import { sourceExerciseFingerprint } from "../src/training/data/curated-exercises"
 import type { ExerciseSummary } from "../src/training"
 
 const data = exercises as ExerciseSummary[]
@@ -75,6 +83,10 @@ const extracted = requestedIds.map((exerciseId) => {
     contactSheet,
   ])
   const currentReview = getCuratedExerciseReview(exerciseId)
+  const sourceFingerprint = sourceExerciseFingerprint(exercise)
+  const mediaFingerprint = createHash("sha256")
+    .update(readFileSync(mediaPath))
+    .digest("hex")
 
   return {
     exerciseId,
@@ -85,11 +97,22 @@ const extracted = requestedIds.map((exerciseId) => {
     equipment: exercise.equipment,
     mediaPath,
     frameCount,
-    extractedFrames: frameNumbers,
+    sampledFrameNumbers: frameNumbers,
+    sourceExerciseFingerprint: sourceFingerprint,
+    mediaFingerprint,
     frameFiles: frames,
     contactSheet,
     inferredMetadata: resolveExerciseMetadata(exercise),
     currentReview: currentReview ?? null,
+    reviewTemplate: {
+      exerciseId,
+      reviewedFrom: [],
+      reviewedFields: [],
+      sourceExerciseFingerprint: sourceFingerprint,
+      mediaFingerprint,
+      reviewedFrameNumbers: frameNumbers,
+      metadata: {},
+    },
     reviewStatus: "package_generated_not_reviewed" as const,
   }
 })

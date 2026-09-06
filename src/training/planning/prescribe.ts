@@ -49,12 +49,14 @@ export function prescribeExercise(
     loadAcquisition:
       progression.resistance.type === "bodyweight"
         ? "bodyweight"
+        : progression.resistance.type === "band_resistance"
+          ? "band_resistance"
         : progression.resistance.type === "unknown"
           ? "calibrate_by_rir"
           : "history",
     side: "both",
   }))
-  const warmupSets: PlannedSet[] = compound
+  const warmupSets: PlannedSet[] = compound && heavySupported
     ? policy.warmupFractions
         .slice(0, reps.max <= policy.heavyWarmupMaxReps ? 2 : 1)
         .map((fraction, i) => {

@@ -1,5 +1,5 @@
 {
-  "datasetFingerprint": "e43fc6d7",
+  "datasetFingerprint": "7c1b298b",
   "total": 1324,
   "errors": [],
   "equipment": {
@@ -80,7 +80,7 @@
     "hamstring": 36,
     "lower-back": 10,
     "obliques": 5,
-    "quadriceps": 96,
+    "quadriceps": 98,
     "serratus": 2,
     "trapezius": 5,
     "triceps": 73,
@@ -95,31 +95,4165 @@
     "unknown": 443
   },
   "automaticProgramming": {
-    "allowed": 669,
-    "manual_only": 622,
-    "specialized_only": 33
+    "allowed": 666,
+    "manual_only": 623,
+    "specialized_only": 35
   },
   "provenance": {
     "curated": 12,
-    "curated_sampled_frames_and_text": 48,
-    "rule": 1264
+    "curated_sampled_frames_and_text": 72,
+    "rule": 1240
   },
-  "curatedReviewCount": 60,
-  "fullyReviewedCount": 48,
+  "curatedReviewCount": 84,
+  "fullyReviewedCount": 72,
   "partiallyReviewedCount": 12,
+  "staleReviewCount": 0,
+  "staleSourceReviewCount": 0,
+  "staleMediaReviewCount": 0,
+  "staleSourceAndMediaReviewCount": 0,
+  "missingSourceFingerprintCount": 0,
+  "missingMediaFingerprintCount": 0,
+  "reviewFreshness": [
+    {
+      "exerciseId": "0088",
+      "status": "partially_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "1371",
+      "status": "partially_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0454",
+      "status": "partially_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "1628",
+      "status": "partially_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0576",
+      "status": "partially_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0577",
+      "status": "partially_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0655",
+      "status": "partially_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0656",
+      "status": "partially_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0697",
+      "status": "partially_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "1766",
+      "status": "partially_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0763",
+      "status": "partially_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "1394",
+      "status": "partially_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0043",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0074",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0077",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0078",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0119",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0120",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0121",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0123",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0154",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0170",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0171",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0172",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0197",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0198",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0199",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0200",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0201",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0202",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0203",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0237",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0238",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0241",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0251",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0259",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0333",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0354",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0378",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0394",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0398",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0420",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0642",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0661",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0664",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0688",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0778",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0860",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "1417",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "1421",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "1430",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "1461",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "1462",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "1688",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "1730",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "1772",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "2398",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "3011",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "3021",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "3119",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0025",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0027",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0031",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0032",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0047",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0085",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0151",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0157",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0178",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0219",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0289",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0293",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0294",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0308",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0334",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0413",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0585",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0603",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0607",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0748",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0760",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0770",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "0861",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    },
+    {
+      "exerciseId": "2330",
+      "status": "fully_reviewed",
+      "sourceFingerprintMissing": false,
+      "mediaFingerprintMissing": false
+    }
+  ],
   "fullVideoReviewedCount": 0,
-  "sampledFramesReviewedCount": 60,
+  "sampledFramesReviewedCount": 84,
   "textOnlyReviewedCount": 0,
   "reviewModality": {
     "fullyReviewed": {
-      "sampled_frames": 48
+      "sampled_frames": 72
     },
     "partiallyReviewed": {
       "sampled_frames": 12
     }
   },
-  "ruleOnlyCount": 1264,
+  "ruleOnlyCount": 1240,
   "unknownTypeCount": 443,
+  "automaticAllowedPlannerUnsupported": [],
+  "specializedPlannerUnsupported": [],
+  "manualOnlyByCapability": [
+    {
+      "id": "0002",
+      "name": "45° side bend",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0003",
+      "name": "air bike",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0006",
+      "name": "alternate heel touchers",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0009",
+      "name": "assisted chest dip (kneeling)",
+      "exerciseType": "unknown",
+      "tracking": "assistance"
+    },
+    {
+      "id": "0010",
+      "name": "assisted hanging knee raise with throw down",
+      "exerciseType": "power",
+      "tracking": "assistance"
+    },
+    {
+      "id": "0011",
+      "name": "assisted hanging knee raise",
+      "exerciseType": "unknown",
+      "tracking": "assistance"
+    },
+    {
+      "id": "0012",
+      "name": "assisted lying leg raise with lateral throw down",
+      "exerciseType": "power",
+      "tracking": "assistance"
+    },
+    {
+      "id": "0013",
+      "name": "assisted lying leg raise with throw down",
+      "exerciseType": "power",
+      "tracking": "assistance"
+    },
+    {
+      "id": "0014",
+      "name": "assisted motion russian twist",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0016",
+      "name": "assisted prone hamstring",
+      "exerciseType": "unknown",
+      "tracking": "assistance"
+    },
+    {
+      "id": "0020",
+      "name": "balance board",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0022",
+      "name": "barbell pullover to press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0028",
+      "name": "barbell clean and press",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0029",
+      "name": "barbell clean-grip front squat",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0034",
+      "name": "barbell decline bent arm pullover",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0035",
+      "name": "barbell decline close grip to skull press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0036",
+      "name": "barbell decline wide-grip press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0037",
+      "name": "barbell decline wide-grip pullover",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0038",
+      "name": "barbell drag curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0040",
+      "name": "barbell front raise and pullover",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0041",
+      "name": "barbell front raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0048",
+      "name": "barbell incline reverse-grip press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0050",
+      "name": "barbell incline shoulder raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0053",
+      "name": "barbell jump squat",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0055",
+      "name": "barbell lying close-grip press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0057",
+      "name": "barbell lying extension",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0058",
+      "name": "barbell lying lifting (on hip)",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0067",
+      "name": "barbell one arm snatch",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0072",
+      "name": "barbell prone incline curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0073",
+      "name": "barbell pullover",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0079",
+      "name": "barbell revers wrist curl v. 2",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0080",
+      "name": "barbell reverse curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0082",
+      "name": "barbell reverse wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0083",
+      "name": "barbell rollerout from bench",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0084",
+      "name": "barbell rollerout",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0087",
+      "name": "barbell seated bradford rocky press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0094",
+      "name": "barbell seated twist",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0095",
+      "name": "barbell shrug",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0096",
+      "name": "barbell side bent v. 2",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0100",
+      "name": "barbell skier",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0103",
+      "name": "barbell standing ab rollerout",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0104",
+      "name": "barbell standing back wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0105",
+      "name": "barbell standing bradford press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0106",
+      "name": "barbell standing close grip curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0107",
+      "name": "barbell standing front raise over head",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0110",
+      "name": "barbell standing reverse grip curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0112",
+      "name": "barbell standing twist",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0113",
+      "name": "barbell standing wide-grip curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0125",
+      "name": "barbell wrist curl v. 2",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0126",
+      "name": "barbell wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0128",
+      "name": "battling ropes",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0129",
+      "name": "bench dip (knees bent)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0130",
+      "name": "bench hip extension",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0137",
+      "name": "body-up",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0138",
+      "name": "bottoms-up",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0152",
+      "name": "cable concentration extension (on knee)",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0155",
+      "name": "cable cross-over variation",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0161",
+      "name": "cable forward raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0162",
+      "name": "cable front raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0164",
+      "name": "cable front shoulder raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0174",
+      "name": "cable judo flip",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0182",
+      "name": "cable lying close-grip curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0184",
+      "name": "cable lying extension pullover (with rope attachment)",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0190",
+      "name": "cable one arm curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0191",
+      "name": "cable one arm lateral bent-over",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0196",
+      "name": "cable pull through (with rope)",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0204",
+      "name": "cable rear drive",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0206",
+      "name": "cable reverse curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0210",
+      "name": "cable reverse wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0211",
+      "name": "cable russian twists (on stability ball)",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0216",
+      "name": "cable seated shoulder internal rotation",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0220",
+      "name": "cable shrug",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0222",
+      "name": "cable side bend",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0224",
+      "name": "cable standing back wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0228",
+      "name": "cable standing hip extension",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0229",
+      "name": "cable standing inner curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0230",
+      "name": "cable standing lift",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0235",
+      "name": "cable standing shoulder external rotation",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0243",
+      "name": "cable twist",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0244",
+      "name": "cable twisting pull",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0247",
+      "name": "cable wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0253",
+      "name": "chin-ups (narrow parallel grip)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0257",
+      "name": "circles knee stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0260",
+      "name": "cocoons",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0271",
+      "name": "crunch (on stability ball)",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0272",
+      "name": "crunch (on stability ball, arms straight)",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0276",
+      "name": "dead bug",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0286",
+      "name": "dumbbell alternate side press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0288",
+      "name": "dumbbell around pullover",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0290",
+      "name": "dumbbell bench seated press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0295",
+      "name": "dumbbell clean",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0296",
+      "name": "dumbbell close-grip press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0299",
+      "name": "dumbbell cuban press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0303",
+      "name": "dumbbell decline hammer press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0304",
+      "name": "dumbbell decline shrug v. 2",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0305",
+      "name": "dumbbell decline shrug",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0309",
+      "name": "dumbbell front raise v. 2",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0310",
+      "name": "dumbbell front raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0316",
+      "name": "dumbbell incline breeding",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0317",
+      "name": "dumbbell incline curl v. 2",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0318",
+      "name": "dumbbell incline curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0321",
+      "name": "dumbbell incline hammer press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0324",
+      "name": "dumbbell incline palm-in press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0325",
+      "name": "dumbbell incline raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0328",
+      "name": "dumbbell incline shoulder raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0329",
+      "name": "dumbbell incline shrug",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0331",
+      "name": "dumbbell incline twisted flyes",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0332",
+      "name": "dumbbell iron cross",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0335",
+      "name": "dumbbell lateral to front raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0337",
+      "name": "dumbbell lying extension (across face)",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0338",
+      "name": "dumbbell lying elbow press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0339",
+      "name": "dumbbell lying femoral",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0340",
+      "name": "dumbbell lying hammer press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0341",
+      "name": "dumbbell lying one arm deltoid rear",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0342",
+      "name": "dumbbell lying one arm press v. 2",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0343",
+      "name": "dumbbell lying one arm press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0347",
+      "name": "dumbbell lying pronation",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0349",
+      "name": "dumbbell lying supination",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0350",
+      "name": "dumbbell lying supine curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0358",
+      "name": "dumbbell one arm reverse wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0364",
+      "name": "dumbbell one arm wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0365",
+      "name": "dumbbell over bench neutral wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0366",
+      "name": "dumbbell over bench one arm neutral wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0367",
+      "name": "dumbbell over bench one arm wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0368",
+      "name": "dumbbell over bench revers wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0369",
+      "name": "dumbbell over bench wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0371",
+      "name": "dumbbell plyo squat",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0374",
+      "name": "dumbbell prone incline curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0375",
+      "name": "dumbbell pullover",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0376",
+      "name": "dumbbell raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0385",
+      "name": "dumbbell reverse wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0387",
+      "name": "dumbbell seated alternate front raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0388",
+      "name": "dumbbell seated alternate press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0389",
+      "name": "dumbbell seated bench extension",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0392",
+      "name": "dumbbell seated front raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0397",
+      "name": "dumbbell seated neutral wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0399",
+      "name": "dumbbell seated one arm rotate",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0401",
+      "name": "dumbbell seated palms up wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0406",
+      "name": "dumbbell shrug",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0407",
+      "name": "dumbbell side bend",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0408",
+      "name": "dumbbell side lying one hand raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0415",
+      "name": "dumbbell standing alternate raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0419",
+      "name": "dumbbell standing front raise above head",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0422",
+      "name": "dumbbell standing one arm curl (over incline bench)",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0423",
+      "name": "dumbbell standing one arm extension",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0424",
+      "name": "dumbbell standing one arm palm in press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0425",
+      "name": "dumbbell standing one arm reverse curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0427",
+      "name": "dumbbell standing palms in press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0429",
+      "name": "dumbbell standing reverse curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0433",
+      "name": "dumbbell straight arm pullover",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0436",
+      "name": "dumbbell tate press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0438",
+      "name": "dumbbell w-press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0439",
+      "name": "dumbbell zottman curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0443",
+      "name": "elbow-to-knee",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0445",
+      "name": "ez barbell anti gravity press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0446",
+      "name": "ez barbell close-grip curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0448",
+      "name": "ez barbell decline close grip face press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0451",
+      "name": "ez barbell reverse grip curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0455",
+      "name": "finger curls",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0459",
+      "name": "flutter kicks",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0464",
+      "name": "front plank with twist",
+      "exerciseType": "isometric",
+      "tracking": "timed"
+    },
+    {
+      "id": "0466",
+      "name": "gironda sternum chin",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0467",
+      "name": "gorilla chin",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0472",
+      "name": "hanging leg raise",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0473",
+      "name": "hanging pike",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0474",
+      "name": "hanging straight leg hip raise",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0475",
+      "name": "hanging straight leg raise",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0476",
+      "name": "hanging straight twisting leg hip raise",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0484",
+      "name": "hip raise (bent knee)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0491",
+      "name": "incline leg hip raise (leg straight)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0492",
+      "name": "incline push up depth jump",
+      "exerciseType": "power",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0500",
+      "name": "isometric wipers",
+      "exerciseType": "isometric",
+      "tracking": "timed"
+    },
+    {
+      "id": "0501",
+      "name": "jack burpee",
+      "exerciseType": "conditioning",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0513",
+      "name": "jump squat v. 2",
+      "exerciseType": "power",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0514",
+      "name": "jump squat",
+      "exerciseType": "power",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0517",
+      "name": "kettlebell advanced windmill",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0518",
+      "name": "kettlebell alternating hang clean",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0519",
+      "name": "kettlebell alternating press on floor",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0520",
+      "name": "kettlebell alternating press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0524",
+      "name": "kettlebell bent press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0525",
+      "name": "kettlebell bottoms up clean from the hang position",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0526",
+      "name": "kettlebell double alternating hang clean",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0527",
+      "name": "kettlebell double jerk",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0528",
+      "name": "kettlebell double push press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0529",
+      "name": "kettlebell double snatch",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0530",
+      "name": "kettlebell double windmill",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0531",
+      "name": "kettlebell extended range one arm press on floor",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0532",
+      "name": "kettlebell figure 8",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0535",
+      "name": "kettlebell hang clean",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0537",
+      "name": "kettlebell one arm clean and jerk",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0538",
+      "name": "kettlebell one arm jerk",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0540",
+      "name": "kettlebell one arm push press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0542",
+      "name": "kettlebell one arm snatch",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0543",
+      "name": "kettlebell pirate supper legs",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0545",
+      "name": "kettlebell plyo push-up",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0546",
+      "name": "kettlebell seated press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0547",
+      "name": "kettlebell seesaw press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0548",
+      "name": "kettlebell sumo high pull",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0549",
+      "name": "kettlebell swing",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0550",
+      "name": "kettlebell thruster",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0552",
+      "name": "kettlebell two arm clean",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0554",
+      "name": "kettlebell windmill",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0555",
+      "name": "kick out sit",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0558",
+      "name": "kipping muscle up",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0562",
+      "name": "landmine 180",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0570",
+      "name": "leg pull in flat bench",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0580",
+      "name": "lever gripless shrug",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0583",
+      "name": "lever kneeling twist",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0604",
+      "name": "lever shrug",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0609",
+      "name": "london bridge",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0613",
+      "name": "lying (side) quads stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0620",
+      "name": "lying leg raise flat bench",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0624",
+      "name": "march sit (wall)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0628",
+      "name": "monster walk",
+      "exerciseType": "conditioning",
+      "tracking": "distance"
+    },
+    {
+      "id": "0630",
+      "name": "mountain climber",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0631",
+      "name": "muscle up",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0635",
+      "name": "oblique crunches floor",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0636",
+      "name": "olympic barbell hammer curl",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0637",
+      "name": "olympic barbell triceps extension",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0639",
+      "name": "one arm dip",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0640",
+      "name": "one arm slam (with medicine ball)",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0641",
+      "name": "otis up",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0643",
+      "name": "overhead triceps stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0648",
+      "name": "power clean",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0650",
+      "name": "pull-in (on stability ball)",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0651",
+      "name": "pull up (neutral grip)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0653",
+      "name": "push-up (bosu ball)",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0663",
+      "name": "push-up medicine ball",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0668",
+      "name": "rear decline bridge",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0669",
+      "name": "rear deltoid stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0672",
+      "name": "reverse dip",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0675",
+      "name": "reverse hyper extension (on stability ball)",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0677",
+      "name": "ring dips",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0680",
+      "name": "rope climb",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0684",
+      "name": "run (equipment)",
+      "exerciseType": "conditioning",
+      "tracking": "distance"
+    },
+    {
+      "id": "0685",
+      "name": "run",
+      "exerciseType": "conditioning",
+      "tracking": "distance"
+    },
+    {
+      "id": "0689",
+      "name": "seated leg raise",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0690",
+      "name": "seated lower back stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0705",
+      "name": "side bridge v. 2",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0709",
+      "name": "side hip (on parallel bars)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0716",
+      "name": "side push neck stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0720",
+      "name": "side-to-side chin",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0721",
+      "name": "side wrist pull stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0730",
+      "name": "single leg platform slide",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0740",
+      "name": "sled 45в° leg wide press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0746",
+      "name": "smith back shrug",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0747",
+      "name": "smith behind neck press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0754",
+      "name": "smith decline reverse-grip press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0756",
+      "name": "smith hip raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0758",
+      "name": "smith incline reverse-grip press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0759",
+      "name": "smith incline shoulder raises",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0764",
+      "name": "smith reverse-grip press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0767",
+      "name": "smith shrug",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0771",
+      "name": "smith standing back wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0776",
+      "name": "snatch pull",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0777",
+      "name": "spell caster",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0786",
+      "name": "squat jerk",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0788",
+      "name": "standing behind neck press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0794",
+      "name": "standing lateral stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0796",
+      "name": "standing wheel rollerout",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0798",
+      "name": "stationary bike walk",
+      "exerciseType": "conditioning",
+      "tracking": "distance"
+    },
+    {
+      "id": "0805",
+      "name": "suspended abdominal fallout",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0817",
+      "name": "triceps stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0826",
+      "name": "vertical leg raise (on parallel bars)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0830",
+      "name": "weighted bench dip",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0832",
+      "name": "weighted crunch",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0833",
+      "name": "weighted donkey calf raise",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0834",
+      "name": "weighted front raise",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0835",
+      "name": "weighted hyperextension (on stability ball)",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0840",
+      "name": "weighted overhead crunch (on stability ball)",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0841",
+      "name": "weighted pull-up",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0844",
+      "name": "weighted round arm",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0845",
+      "name": "weighted russian twist (legs up)",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0846",
+      "name": "weighted russian twist",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0847",
+      "name": "weighted seated bicep curl (on stability ball)",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0849",
+      "name": "weighted seated twist (on stability ball)",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0850",
+      "name": "weighted side bend (on stability ball)",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0851",
+      "name": "weighted sissy squat",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0852",
+      "name": "weighted squat",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0853",
+      "name": "weighted standing curl",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0854",
+      "name": "weighted standing hand squeeze",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0856",
+      "name": "weighted svend press",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0857",
+      "name": "wheel rollerout",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0858",
+      "name": "wind sprints",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0859",
+      "name": "wrist rollerer",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0862",
+      "name": "cable twist (up-down)",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0863",
+      "name": "dumbbell lying external shoulder rotation",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0864",
+      "name": "dumbbell upright shoulder external rotation",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "0865",
+      "name": "lying leg-hip raise",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0866",
+      "name": "weighted hanging leg-hip raise",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "0870",
+      "name": "butt-ups",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "0969",
+      "name": "band alternating v-up",
+      "exerciseType": "unknown",
+      "tracking": "band_resistance"
+    },
+    {
+      "id": "0971",
+      "name": "band assisted wheel rollerout",
+      "exerciseType": "unknown",
+      "tracking": "band_resistance"
+    },
+    {
+      "id": "0978",
+      "name": "band front raise",
+      "exerciseType": "unknown",
+      "tracking": "band_resistance"
+    },
+    {
+      "id": "0979",
+      "name": "band horizontal pallof press",
+      "exerciseType": "unknown",
+      "tracking": "band_resistance"
+    },
+    {
+      "id": "0980",
+      "name": "band bent-over hip extension",
+      "exerciseType": "unknown",
+      "tracking": "band_resistance"
+    },
+    {
+      "id": "0984",
+      "name": "band lying hip internal rotation",
+      "exerciseType": "unknown",
+      "tracking": "band_resistance"
+    },
+    {
+      "id": "0991",
+      "name": "band pull through",
+      "exerciseType": "unknown",
+      "tracking": "band_resistance"
+    },
+    {
+      "id": "0994",
+      "name": "band reverse wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "band_resistance"
+    },
+    {
+      "id": "0996",
+      "name": "band seated hip internal rotation",
+      "exerciseType": "unknown",
+      "tracking": "band_resistance"
+    },
+    {
+      "id": "1002",
+      "name": "band lying straight leg raise",
+      "exerciseType": "unknown",
+      "tracking": "band_resistance"
+    },
+    {
+      "id": "1011",
+      "name": "band seated twist",
+      "exerciseType": "unknown",
+      "tracking": "band_resistance"
+    },
+    {
+      "id": "1014",
+      "name": "band v-up",
+      "exerciseType": "unknown",
+      "tracking": "band_resistance"
+    },
+    {
+      "id": "1015",
+      "name": "band vertical pallof press",
+      "exerciseType": "unknown",
+      "tracking": "band_resistance"
+    },
+    {
+      "id": "1016",
+      "name": "band wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "band_resistance"
+    },
+    {
+      "id": "1017",
+      "name": "band y-raise",
+      "exerciseType": "unknown",
+      "tracking": "band_resistance"
+    },
+    {
+      "id": "1018",
+      "name": "band shrug",
+      "exerciseType": "unknown",
+      "tracking": "band_resistance"
+    },
+    {
+      "id": "1160",
+      "name": "burpee",
+      "exerciseType": "conditioning",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1167",
+      "name": "dynamic chest stretch (male)",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1201",
+      "name": "dumbbell burpee",
+      "exerciseType": "conditioning",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1255",
+      "name": "barbell decline pullover",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1259",
+      "name": "behind head chest stretch",
+      "exerciseType": "stretch",
+      "tracking": "assistance"
+    },
+    {
+      "id": "1260",
+      "name": "cable decline one arm press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1261",
+      "name": "cable decline press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1265",
+      "name": "cable one arm incline press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1266",
+      "name": "cable one arm incline press on exercise ball",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1267",
+      "name": "cable one arm press on exercise ball",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1268",
+      "name": "cable press on exercise ball",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1269",
+      "name": "cable standing up straight crossovers",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1270",
+      "name": "cable upper chest crossovers",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1271",
+      "name": "chest and front of shoulder stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1272",
+      "name": "chest stretch with exercise ball",
+      "exerciseType": "stretch",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1281",
+      "name": "dumbbell incline one arm press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1282",
+      "name": "dumbbell incline one arm press on exercise ball",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1283",
+      "name": "dumbbell incline press on exercise ball",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1284",
+      "name": "dumbbell lying pullover on exercise ball",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1290",
+      "name": "dumbbell one arm press on exercise ball",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1291",
+      "name": "dumbbell one arm pullover on exercise ball",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1293",
+      "name": "dumbbell press on exercise ball",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1294",
+      "name": "dumbbell pullover hip extension on exercise ball",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1295",
+      "name": "dumbbell pullover on exercise ball",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1296",
+      "name": "exercise ball pike push up",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1297",
+      "name": "isometric chest squeeze",
+      "exerciseType": "isometric",
+      "tracking": "timed"
+    },
+    {
+      "id": "1302",
+      "name": "medicine ball chest pass",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1303",
+      "name": "medicine ball chest push from 3 point stance",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1304",
+      "name": "medicine ball chest push multiple response",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1305",
+      "name": "medicine ball chest push single response",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1306",
+      "name": "plyo push up",
+      "exerciseType": "power",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1307",
+      "name": "push up on bosu ball",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1310",
+      "name": "weighted drop push up",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1312",
+      "name": "medicine ball chest push with run release",
+      "exerciseType": "conditioning",
+      "tracking": "distance"
+    },
+    {
+      "id": "1314",
+      "name": "back extension on exercise ball",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1316",
+      "name": "barbell bent arm pullover",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1332",
+      "name": "exercise ball alternating arm ups",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1333",
+      "name": "exercise ball back extension with arms extended",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1334",
+      "name": "exercise ball back extension with hands behind head",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1335",
+      "name": "exercise ball back extension with knees off ground",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1336",
+      "name": "exercise ball back extension with rotation",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1338",
+      "name": "exercise ball hug",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1339",
+      "name": "exercise ball lat stretch",
+      "exerciseType": "stretch",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1341",
+      "name": "exercise ball lower back stretch (pyramid)",
+      "exerciseType": "stretch",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1342",
+      "name": "exercise ball lying side lat stretch",
+      "exerciseType": "stretch",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1343",
+      "name": "exercise ball prone leg raise",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1346",
+      "name": "kneeling lat stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1352",
+      "name": "lower back curl",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1353",
+      "name": "medicine ball catch and overhead throw",
+      "exerciseType": "power",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1354",
+      "name": "medicine ball overhead slam",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1355",
+      "name": "one arm against wall",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1358",
+      "name": "side lying floor stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1362",
+      "name": "sphinx",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1363",
+      "name": "spine stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1364",
+      "name": "standing pelvic tilt",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1365",
+      "name": "upper back stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1366",
+      "name": "upward facing dog",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1368",
+      "name": "ankle circles",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1374",
+      "name": "box jump down with one leg stabilization",
+      "exerciseType": "power",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1377",
+      "name": "calf stretch with hands against wall",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1378",
+      "name": "calf stretch with rope",
+      "exerciseType": "stretch",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1388",
+      "name": "peroneals stretch",
+      "exerciseType": "stretch",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1389",
+      "name": "posterior tibialis stretch",
+      "exerciseType": "stretch",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1390",
+      "name": "seated calf stretch (male)",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1396",
+      "name": "smith toe raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1397",
+      "name": "standing calves",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1398",
+      "name": "standing calves calf stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1399",
+      "name": "bench dip on floor",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1401",
+      "name": "muscle-up (on vertical bar)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1403",
+      "name": "neck side stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1405",
+      "name": "back pec stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1407",
+      "name": "calf push stretch with hands against wall",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1408",
+      "name": "band hip lift",
+      "exerciseType": "unknown",
+      "tracking": "band_resistance"
+    },
+    {
+      "id": "1411",
+      "name": "barbell palms down wrist curl over a bench",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1412",
+      "name": "barbell palms up wrist curl over a bench",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1413",
+      "name": "cable reverse one arm curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1415",
+      "name": "dumbbell one arm seated neutral wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1416",
+      "name": "exercise ball one leg prone lower body rotation",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1418",
+      "name": "hug keens to chest",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1419",
+      "name": "iron cross stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1420",
+      "name": "kneeling jump squat",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1422",
+      "name": "pelvic tilt into bridge",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1423",
+      "name": "reverse hyper on flat bench",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1424",
+      "name": "seated glute stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1426",
+      "name": "smith seated wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1428",
+      "name": "wrist circles",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1433",
+      "name": "smith front squat (clean grip)",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1437",
+      "name": "dumbbell finger curls",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1439",
+      "name": "lever gripless shrug v. 2",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1441",
+      "name": "dumbbell over bench one arm reverse wrist curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1451",
+      "name": "lever seated dip",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1458",
+      "name": "ez barbell seated curls",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1466",
+      "name": "twist hip lift",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1468",
+      "name": "crab twist toe touch",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1471",
+      "name": "inchworm",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1472",
+      "name": "forward jump",
+      "exerciseType": "power",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1473",
+      "name": "backward jump",
+      "exerciseType": "power",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1494",
+      "name": "butterfly yoga pose",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1496",
+      "name": "sledge hammer",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1511",
+      "name": "hamstring stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1512",
+      "name": "all fours squad stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1548",
+      "name": "chair leg extended stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1559",
+      "name": "exercise ball hip flexor stretch",
+      "exerciseType": "stretch",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1560",
+      "name": "exercise ball seated hamstring stretch",
+      "exerciseType": "stretch",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1564",
+      "name": "intermediate hip flexor and quad stretch",
+      "exerciseType": "stretch",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1576",
+      "name": "leg up hamstring stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1582",
+      "name": "reclining big toe pose with rope",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1585",
+      "name": "runners stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1587",
+      "name": "seated wide angle pose sequence",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1599",
+      "name": "standing hamstring and calf stretch with strap",
+      "exerciseType": "stretch",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1604",
+      "name": "world greatest stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1617",
+      "name": "dumbbell decline one arm hammer press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1618",
+      "name": "dumbbell incline hammer press on exercise ball",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1619",
+      "name": "dumbbell incline one arm hammer press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1620",
+      "name": "dumbbell incline one arm hammer press on exercise ball",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1621",
+      "name": "dumbbell one arm hammer press on exercise ball",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1622",
+      "name": "dumbbell one arm reverse grip press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1630",
+      "name": "cable close grip curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1632",
+      "name": "cable drag curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1636",
+      "name": "cable overhead curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1637",
+      "name": "cable overhead curl on exercise ball",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1643",
+      "name": "cable seated overhead curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1644",
+      "name": "cable squatting curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1645",
+      "name": "cable two arm curl on incline bench",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1662",
+      "name": "dumbbell lying wide curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1664",
+      "name": "dumbbell high curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1665",
+      "name": "dumbbell one arm prone curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1667",
+      "name": "dumbbell one arm reverse spider curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1670",
+      "name": "dumbbell one arm standing curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1675",
+      "name": "dumbbell reverse spider curl",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1680",
+      "name": "dumbbell standing one arm curl over incline bench",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1687",
+      "name": "posterior step to overhead reach",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1689",
+      "name": "push and pull bodyweight",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1700",
+      "name": "dumbbell push press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1701",
+      "name": "medicine ball close grip push up",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1705",
+      "name": "squat on bosu ball",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1707",
+      "name": "prone twist on stability ball",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1708",
+      "name": "assisted lying calves stretch",
+      "exerciseType": "stretch",
+      "tracking": "assistance"
+    },
+    {
+      "id": "1709",
+      "name": "assisted lying glutes stretch",
+      "exerciseType": "stretch",
+      "tracking": "assistance"
+    },
+    {
+      "id": "1710",
+      "name": "assisted lying gluteus and piriformis stretch",
+      "exerciseType": "stretch",
+      "tracking": "assistance"
+    },
+    {
+      "id": "1712",
+      "name": "assisted side lying adductor stretch",
+      "exerciseType": "stretch",
+      "tracking": "assistance"
+    },
+    {
+      "id": "1713",
+      "name": "assisted prone lying quads stretch",
+      "exerciseType": "stretch",
+      "tracking": "assistance"
+    },
+    {
+      "id": "1714",
+      "name": "assisted prone rectus femoris stretch",
+      "exerciseType": "stretch",
+      "tracking": "assistance"
+    },
+    {
+      "id": "1716",
+      "name": "assisted seated pectoralis major stretch with stability ball",
+      "exerciseType": "stretch",
+      "tracking": "assistance"
+    },
+    {
+      "id": "1721",
+      "name": "barbell reverse grip skullcrusher",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1729",
+      "name": "dumbbell lying alternate extension",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1731",
+      "name": "dumbbell close grip press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1733",
+      "name": "dumbbell incline two arm extension",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1734",
+      "name": "dumbbell kickbacks on exercise ball",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1735",
+      "name": "dumbbell lying single extension",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1736",
+      "name": "dumbbell one arm french press on exercise ball",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1744",
+      "name": "exercise ball dip",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1745",
+      "name": "exercise ball seated triceps stretch",
+      "exerciseType": "stretch",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1747",
+      "name": "ez bar french press on exercise ball",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1749",
+      "name": "ez bar standing french press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1750",
+      "name": "medicine ball supine chest throw",
+      "exerciseType": "power",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1751",
+      "name": "barbell pin presses",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "1753",
+      "name": "three bench dip",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1754",
+      "name": "weighted three bench dips",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1755",
+      "name": "weighted tricep dips",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1761",
+      "name": "hanging oblique knee raise",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1764",
+      "name": "hanging leg hip raise",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "1767",
+      "name": "weighted triceps dip on high parallel bars",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "1775",
+      "name": "side plank hip adduction",
+      "exerciseType": "isometric",
+      "tracking": "timed"
+    },
+    {
+      "id": "2133",
+      "name": "farmers walk",
+      "exerciseType": "conditioning",
+      "tracking": "distance"
+    },
+    {
+      "id": "2135",
+      "name": "weighted front plank",
+      "exerciseType": "isometric",
+      "tracking": "timed"
+    },
+    {
+      "id": "2136",
+      "name": "dumbbell cuban press v. 2",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "2138",
+      "name": "stationary bike run v. 3",
+      "exerciseType": "conditioning",
+      "tracking": "distance"
+    },
+    {
+      "id": "2139",
+      "name": "hands bike",
+      "exerciseType": "conditioning",
+      "tracking": "unknown"
+    },
+    {
+      "id": "2141",
+      "name": "walk elliptical cross trainer",
+      "exerciseType": "conditioning",
+      "tracking": "distance"
+    },
+    {
+      "id": "2142",
+      "name": "ski ergometer",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "2143",
+      "name": "dumbbell standing around world",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "2202",
+      "name": "roller hip stretch",
+      "exerciseType": "stretch",
+      "tracking": "unknown"
+    },
+    {
+      "id": "2203",
+      "name": "roller seated shoulder flexor depresor retractor",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "2204",
+      "name": "roller body saw",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "2205",
+      "name": "roller hip lat stretch",
+      "exerciseType": "stretch",
+      "tracking": "unknown"
+    },
+    {
+      "id": "2206",
+      "name": "roller reverse crunch",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "2207",
+      "name": "roller side lat stretch",
+      "exerciseType": "stretch",
+      "tracking": "unknown"
+    },
+    {
+      "id": "2208",
+      "name": "roller back stretch",
+      "exerciseType": "stretch",
+      "tracking": "unknown"
+    },
+    {
+      "id": "2209",
+      "name": "roller seated single leg shoulder flexor depresor retractor",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "2271",
+      "name": "left hook. boxing",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "2285",
+      "name": "lever pullover",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "2286",
+      "name": "lever hip extension v. 2",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "2288",
+      "name": "lever gripper hands",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "2297",
+      "name": "stability ball crunch (full range hands behind head)",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "2311",
+      "name": "walking on stepmill",
+      "exerciseType": "conditioning",
+      "tracking": "unknown"
+    },
+    {
+      "id": "2312",
+      "name": "lying elbow to knee",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "2315",
+      "name": "lever rotary calf",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "2328",
+      "name": "narrow push-up on exercise ball",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "2329",
+      "name": "spine twist",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "2331",
+      "name": "cycle cross trainer",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "2333",
+      "name": "arm slingers hanging straight legs",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "2355",
+      "name": "arm slingers hanging bent knee legs",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "2363",
+      "name": "wide-grip chest dip on high parallel bars",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "2364",
+      "name": "assisted wide-grip chest dip (kneeling)",
+      "exerciseType": "unknown",
+      "tracking": "assistance"
+    },
+    {
+      "id": "2368",
+      "name": "split squats",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "2371",
+      "name": "weighted russian twist v. 2",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "2397",
+      "name": "dumbbell scott press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "2399",
+      "name": "cable seated twist",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "2402",
+      "name": "dumbbell hammer curls (with arm blaster)",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "2459",
+      "name": "tire flip",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "2462",
+      "name": "chest dip on straight bar",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "2466",
+      "name": "bridge - mountain climber (cross body)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "2567",
+      "name": "seated piriformis stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "2571",
+      "name": "rocking frog stretch",
+      "exerciseType": "stretch",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "2612",
+      "name": "jump rope",
+      "exerciseType": "power",
+      "tracking": "unknown"
+    },
+    {
+      "id": "2705",
+      "name": "dumbbell lying pronation on floor",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "2706",
+      "name": "dumbbell lying supination on floor",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "2798",
+      "name": "barbell squat jump step rear lunge",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    },
+    {
+      "id": "2799",
+      "name": "barbell sitted alternate leg raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "2800",
+      "name": "barbell sitted alternate leg raise (female)",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "2801",
+      "name": "twisted leg raise (female)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "2802",
+      "name": "twisted leg raise",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "2808",
+      "name": "dumbbell sumo pull through",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "2963",
+      "name": "captains chair straight leg raise",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "2987",
+      "name": "weighted close grip chin-up on dip cage",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "3010",
+      "name": "ez bar lying bent arms pullover",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "3012",
+      "name": "scapula dips",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3016",
+      "name": "curl-up",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3019",
+      "name": "bench pull-ups",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3147",
+      "name": "pelvic tilt",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3193",
+      "name": "glute-ham raise",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3212",
+      "name": "basic toe touch (male)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3213",
+      "name": "side-to-side toe touch (male)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3214",
+      "name": "arms apart circular toe touch (male)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3215",
+      "name": "hands reversed clasped circular toe touch (male)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3218",
+      "name": "hands clasped circular toe touch (male)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3219",
+      "name": "scissor jumps (male)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3220",
+      "name": "astride jumps (male)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3221",
+      "name": "half knee bends (male)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3222",
+      "name": "semi squat jump (male)",
+      "exerciseType": "power",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3223",
+      "name": "star jump (male)",
+      "exerciseType": "power",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3224",
+      "name": "jack jump (male)",
+      "exerciseType": "power",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3231",
+      "name": "two toe touch (male)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3239",
+      "name": "kneeling plank tap shoulder (male)",
+      "exerciseType": "isometric",
+      "tracking": "timed"
+    },
+    {
+      "id": "3286",
+      "name": "weighted muscle up",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "3287",
+      "name": "elbow dips",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3288",
+      "name": "korean dips",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3289",
+      "name": "impossible dips",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3290",
+      "name": "weighted one hand pull up",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "3291",
+      "name": "stalder press",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3292",
+      "name": "elevator",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3293",
+      "name": "archer pull up",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3295",
+      "name": "front lever reps",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3296",
+      "name": "front lever",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3297",
+      "name": "back lever",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3298",
+      "name": "straddle planche",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3299",
+      "name": "full planche",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3300",
+      "name": "lean planche",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3301",
+      "name": "frog planche",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3302",
+      "name": "handstand",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3303",
+      "name": "flag",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3304",
+      "name": "skin the cat",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3305",
+      "name": "barbell thruster",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "3312",
+      "name": "weighted muscle up (on bar)",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "3313",
+      "name": "weighted straight bar dip",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "3314",
+      "name": "straddle maltese",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3315",
+      "name": "full maltese",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3318",
+      "name": "swing 360",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3360",
+      "name": "bear crawl",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3361",
+      "name": "skater hops",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3419",
+      "name": "l-sit on floor",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3420",
+      "name": "v-sit on floor",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3433",
+      "name": "swimmer kicks v. 2 (male)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3533",
+      "name": "quads",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3541",
+      "name": "dumbbell incline y-raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "3542",
+      "name": "dumbbell incline t-raise",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "3543",
+      "name": "bodyweight drop jump squat",
+      "exerciseType": "power",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3544",
+      "name": "bodyweight incline side plank",
+      "exerciseType": "isometric",
+      "tracking": "timed"
+    },
+    {
+      "id": "3545",
+      "name": "dumbbell incline alternate press",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "3546",
+      "name": "dumbbell seated alternate shoulder",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "3548",
+      "name": "dumbbell single arm overhead carry",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "3552",
+      "name": "quick feet v. 2",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3582",
+      "name": "lunge with jump",
+      "exerciseType": "power",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3636",
+      "name": "high knee against wall",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3637",
+      "name": "wheel run",
+      "exerciseType": "conditioning",
+      "tracking": "distance"
+    },
+    {
+      "id": "3638",
+      "name": "push to run",
+      "exerciseType": "conditioning",
+      "tracking": "distance"
+    },
+    {
+      "id": "3639",
+      "name": "bent knee lying twist (male)",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3641",
+      "name": "weighted kneeling step with swing",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "3642",
+      "name": "weighted stretch lunge",
+      "exerciseType": "stretch",
+      "tracking": "unknown"
+    },
+    {
+      "id": "3643",
+      "name": "weighted cossack squats (male)",
+      "exerciseType": "unknown",
+      "tracking": "unknown"
+    },
+    {
+      "id": "3644",
+      "name": "weighted lunge with swing",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "3645",
+      "name": "single leg bridge with outstretched leg",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3656",
+      "name": "short stride run",
+      "exerciseType": "conditioning",
+      "tracking": "distance"
+    },
+    {
+      "id": "3662",
+      "name": "pike-to-cobra push-up",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3663",
+      "name": "reverse plank with leg lift",
+      "exerciseType": "isometric",
+      "tracking": "timed"
+    },
+    {
+      "id": "3664",
+      "name": "dumbbell side plank with rear fly",
+      "exerciseType": "isometric",
+      "tracking": "timed"
+    },
+    {
+      "id": "3665",
+      "name": "power point plank",
+      "exerciseType": "isometric",
+      "tracking": "timed"
+    },
+    {
+      "id": "3666",
+      "name": "walking on incline treadmill",
+      "exerciseType": "unknown",
+      "tracking": "external_load"
+    },
+    {
+      "id": "3669",
+      "name": "standing archer",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3670",
+      "name": "weighted decline sit-up",
+      "exerciseType": "resistance",
+      "tracking": "unknown"
+    },
+    {
+      "id": "3671",
+      "name": "ski step",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3672",
+      "name": "back and forth step",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3698",
+      "name": "inchworm v. 2",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3699",
+      "name": "shoulder tap",
+      "exerciseType": "unknown",
+      "tracking": "bodyweight"
+    },
+    {
+      "id": "3888",
+      "name": "dumbbell one arm snatch",
+      "exerciseType": "power",
+      "tracking": "external_load"
+    }
+  ],
   "duplicates": [
     {
       "exerciseId": "1371",
@@ -128,8 +4262,16 @@
   ],
   "variants": [
     {
+      "exerciseId": "0047",
+      "variantOf": "0025"
+    },
+    {
       "exerciseId": "0077",
       "variantOf": "0078"
+    },
+    {
+      "exerciseId": "0085",
+      "variantOf": "0032"
     },
     {
       "exerciseId": "0119",
@@ -142,6 +4284,14 @@
     {
       "exerciseId": "0123",
       "variantOf": "0120"
+    },
+    {
+      "exerciseId": "0151",
+      "variantOf": "0025"
+    },
+    {
+      "exerciseId": "0157",
+      "variantOf": "0032"
     },
     {
       "exerciseId": "0170",
@@ -172,6 +4322,22 @@
       "variantOf": "0201"
     },
     {
+      "exerciseId": "0289",
+      "variantOf": "0025"
+    },
+    {
+      "exerciseId": "0293",
+      "variantOf": "0027"
+    },
+    {
+      "exerciseId": "0294",
+      "variantOf": "0031"
+    },
+    {
+      "exerciseId": "0334",
+      "variantOf": "0178"
+    },
+    {
       "exerciseId": "0354",
       "variantOf": "0333"
     },
@@ -200,8 +4366,20 @@
       "variantOf": "0642"
     },
     {
+      "exerciseId": "0748",
+      "variantOf": "0025"
+    },
+    {
+      "exerciseId": "0760",
+      "variantOf": "0770"
+    },
+    {
       "exerciseId": "0860",
       "variantOf": "0354"
+    },
+    {
+      "exerciseId": "0861",
+      "variantOf": "0027"
     },
     {
       "exerciseId": "1394",
@@ -279,6 +4457,12 @@
       "tags": [
         "source_media_conflict"
       ]
+    },
+    {
+      "exerciseId": "2330",
+      "tags": [
+        "source_media_conflict"
+      ]
     }
   ],
   "reviewProgressByFamily": [
@@ -287,7 +4471,9 @@
       "total": 3,
       "fullyReviewed": 3,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 3,
       "members": [
         "0043",
         "1461",
@@ -299,7 +4485,9 @@
       "total": 1,
       "fullyReviewed": 1,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 1,
       "members": [
         "0074"
       ]
@@ -309,7 +4497,9 @@
       "total": 2,
       "fullyReviewed": 2,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 2,
       "members": [
         "0077",
         "0078"
@@ -320,7 +4510,9 @@
       "total": 4,
       "fullyReviewed": 4,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 4,
       "members": [
         "0119",
         "0120",
@@ -333,7 +4525,9 @@
       "total": 1,
       "fullyReviewed": 1,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 0,
       "members": [
         "3119"
       ]
@@ -343,7 +4537,9 @@
       "total": 1,
       "fullyReviewed": 1,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 0,
       "members": [
         "0172"
       ]
@@ -353,7 +4549,9 @@
       "total": 2,
       "fullyReviewed": 2,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 2,
       "members": [
         "0197",
         "0198"
@@ -364,7 +4562,9 @@
       "total": 2,
       "fullyReviewed": 2,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 2,
       "members": [
         "0202",
         "0203"
@@ -375,7 +4575,9 @@
       "total": 3,
       "fullyReviewed": 3,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 3,
       "members": [
         "0199",
         "0237",
@@ -387,7 +4589,9 @@
       "total": 3,
       "fullyReviewed": 3,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 3,
       "members": [
         "0200",
         "0201",
@@ -399,10 +4603,47 @@
       "total": 2,
       "fullyReviewed": 2,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 2,
       "members": [
         "0251",
         "1430"
+      ]
+    },
+    {
+      "familyId": "chest_fly",
+      "total": 24,
+      "fullyReviewed": 1,
+      "partiallyReviewed": 0,
+      "stale": 0,
+      "ruleOnly": 23,
+      "allowed": 24,
+      "members": [
+        "0158",
+        "0179",
+        "0185",
+        "0188",
+        "0227",
+        "0302",
+        "0307",
+        "0308",
+        "0319",
+        "0458",
+        "0596",
+        "1262",
+        "1263",
+        "1264",
+        "1276",
+        "1277",
+        "1278",
+        "1279",
+        "1280",
+        "1285",
+        "1286",
+        "1288",
+        "1292",
+        "3234"
       ]
     },
     {
@@ -410,10 +4651,189 @@
       "total": 2,
       "fullyReviewed": 2,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 1,
       "members": [
         "0259",
         "2398"
+      ]
+    },
+    {
+      "familyId": "elbow_extension",
+      "total": 56,
+      "fullyReviewed": 1,
+      "partiallyReviewed": 0,
+      "stale": 0,
+      "ruleOnly": 55,
+      "allowed": 52,
+      "members": [
+        "0018",
+        "0019",
+        "0056",
+        "0060",
+        "0061",
+        "0092",
+        "0109",
+        "0149",
+        "0173",
+        "0176",
+        "0186",
+        "0194",
+        "0207",
+        "0231",
+        "0306",
+        "0330",
+        "0344",
+        "0346",
+        "0351",
+        "0362",
+        "0373",
+        "0430",
+        "0449",
+        "0453",
+        "0591",
+        "0607",
+        "0637",
+        "0812",
+        "0813",
+        "0814",
+        "0815",
+        "0816",
+        "0998",
+        "1718",
+        "1720",
+        "1722",
+        "1723",
+        "1724",
+        "1725",
+        "1726",
+        "1727",
+        "1737",
+        "1738",
+        "1740",
+        "1741",
+        "1746",
+        "1748",
+        "1752",
+        "1755",
+        "1767",
+        "1771",
+        "2186",
+        "2188",
+        "2189",
+        "2405",
+        "2406"
+      ]
+    },
+    {
+      "familyId": "elbow_flexion",
+      "total": 99,
+      "fullyReviewed": 2,
+      "partiallyReviewed": 0,
+      "stale": 0,
+      "ruleOnly": 97,
+      "allowed": 96,
+      "members": [
+        "0023",
+        "0031",
+        "0059",
+        "0070",
+        "0081",
+        "0089",
+        "0139",
+        "0165",
+        "0195",
+        "0209",
+        "0285",
+        "0294",
+        "0297",
+        "0298",
+        "0312",
+        "0313",
+        "0315",
+        "0320",
+        "0322",
+        "0353",
+        "0370",
+        "0372",
+        "0382",
+        "0384",
+        "0390",
+        "0391",
+        "0393",
+        "0402",
+        "0403",
+        "0416",
+        "0418",
+        "0421",
+        "0428",
+        "0447",
+        "0452",
+        "0575",
+        "0592",
+        "0636",
+        "0847",
+        "0868",
+        "0968",
+        "0976",
+        "0986",
+        "1414",
+        "1614",
+        "1615",
+        "1616",
+        "1627",
+        "1629",
+        "1631",
+        "1633",
+        "1634",
+        "1635",
+        "1639",
+        "1640",
+        "1641",
+        "1642",
+        "1646",
+        "1647",
+        "1648",
+        "1649",
+        "1650",
+        "1652",
+        "1653",
+        "1654",
+        "1656",
+        "1657",
+        "1659",
+        "1660",
+        "1661",
+        "1663",
+        "1666",
+        "1668",
+        "1669",
+        "1671",
+        "1672",
+        "1673",
+        "1674",
+        "1676",
+        "1677",
+        "1678",
+        "1679",
+        "1682",
+        "1683",
+        "1684",
+        "1769",
+        "1770",
+        "2293",
+        "2294",
+        "2321",
+        "2401",
+        "2403",
+        "2404",
+        "2407",
+        "2414",
+        "2741",
+        "3123",
+        "3560",
+        "5201"
       ]
     },
     {
@@ -421,7 +4841,9 @@
       "total": 2,
       "fullyReviewed": 0,
       "partiallyReviewed": 2,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 0,
       "members": [
         "0454",
         "1628"
@@ -432,17 +4854,56 @@
       "total": 1,
       "fullyReviewed": 1,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 0,
       "members": [
         "1421"
       ]
     },
     {
+      "familyId": "hinge",
+      "total": 24,
+      "fullyReviewed": 3,
+      "partiallyReviewed": 0,
+      "stale": 0,
+      "ruleOnly": 21,
+      "allowed": 24,
+      "members": [
+        "0032",
+        "0044",
+        "0066",
+        "0085",
+        "0090",
+        "0115",
+        "0116",
+        "0117",
+        "0157",
+        "0300",
+        "0432",
+        "0434",
+        "0578",
+        "0749",
+        "0752",
+        "0811",
+        "1009",
+        "1010",
+        "1023",
+        "1459",
+        "1756",
+        "1757",
+        "2805",
+        "3759"
+      ]
+    },
+    {
       "familyId": "horizontal_press",
       "total": 83,
-      "fullyReviewed": 0,
+      "fullyReviewed": 5,
       "partiallyReviewed": 2,
-      "ruleOnly": 81,
+      "stale": 0,
+      "ruleOnly": 76,
+      "allowed": 74,
       "members": [
         "0025",
         "0030",
@@ -530,14 +4991,121 @@
       ]
     },
     {
+      "familyId": "horizontal_pull",
+      "total": 81,
+      "fullyReviewed": 3,
+      "partiallyReviewed": 0,
+      "stale": 0,
+      "ruleOnly": 78,
+      "allowed": 74,
+      "members": [
+        "0027",
+        "0049",
+        "0064",
+        "0118",
+        "0159",
+        "0160",
+        "0167",
+        "0180",
+        "0189",
+        "0193",
+        "0208",
+        "0213",
+        "0214",
+        "0218",
+        "0234",
+        "0236",
+        "0239",
+        "0246",
+        "0248",
+        "0292",
+        "0293",
+        "0327",
+        "0363",
+        "0437",
+        "0497",
+        "0498",
+        "0499",
+        "0521",
+        "0522",
+        "0541",
+        "0571",
+        "0574",
+        "0581",
+        "0588",
+        "0589",
+        "0606",
+        "0761",
+        "0775",
+        "0808",
+        "0861",
+        "0988",
+        "0990",
+        "1313",
+        "1317",
+        "1318",
+        "1319",
+        "1320",
+        "1321",
+        "1322",
+        "1323",
+        "1324",
+        "1329",
+        "1330",
+        "1331",
+        "1344",
+        "1345",
+        "1348",
+        "1349",
+        "1350",
+        "1351",
+        "1356",
+        "1359",
+        "1360",
+        "1361",
+        "1765",
+        "1773",
+        "2298",
+        "2300",
+        "2327",
+        "2464",
+        "3017",
+        "3144",
+        "3156",
+        "3158",
+        "3161",
+        "3162",
+        "3165",
+        "3166",
+        "3167",
+        "3168",
+        "3200"
+      ]
+    },
+    {
       "familyId": "incline_cable_fly",
       "total": 2,
       "fullyReviewed": 2,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 1,
       "members": [
         "0170",
         "0171"
+      ]
+    },
+    {
+      "familyId": "knee_extension",
+      "total": 2,
+      "fullyReviewed": 1,
+      "partiallyReviewed": 0,
+      "stale": 0,
+      "ruleOnly": 1,
+      "allowed": 2,
+      "members": [
+        "0585",
+        "3007"
       ]
     },
     {
@@ -545,7 +5113,9 @@
       "total": 10,
       "fullyReviewed": 0,
       "partiallyReviewed": 2,
+      "stale": 0,
       "ruleOnly": 8,
+      "allowed": 8,
       "members": [
         "0496",
         "0582",
@@ -564,7 +5134,9 @@
       "total": 1,
       "fullyReviewed": 1,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 0,
       "members": [
         "1688"
       ]
@@ -574,7 +5146,9 @@
       "total": 2,
       "fullyReviewed": 2,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 0,
       "members": [
         "0642",
         "0661"
@@ -585,7 +5159,9 @@
       "total": 1,
       "fullyReviewed": 1,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 0,
       "members": [
         "0664"
       ]
@@ -595,7 +5171,9 @@
       "total": 14,
       "fullyReviewed": 2,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 12,
+      "allowed": 14,
       "members": [
         "0075",
         "0154",
@@ -618,7 +5196,9 @@
       "total": 1,
       "fullyReviewed": 1,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 0,
       "members": [
         "1772"
       ]
@@ -628,7 +5208,9 @@
       "total": 1,
       "fullyReviewed": 1,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 0,
       "members": [
         "0688"
       ]
@@ -638,7 +5220,9 @@
       "total": 2,
       "fullyReviewed": 2,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 0,
       "members": [
         "3011",
         "3021"
@@ -649,10 +5233,42 @@
       "total": 2,
       "fullyReviewed": 0,
       "partiallyReviewed": 2,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 2,
       "members": [
         "0088",
         "1371"
+      ]
+    },
+    {
+      "familyId": "shoulder_abduction",
+      "total": 19,
+      "fullyReviewed": 2,
+      "partiallyReviewed": 0,
+      "stale": 0,
+      "ruleOnly": 17,
+      "allowed": 19,
+      "members": [
+        "0178",
+        "0192",
+        "0215",
+        "0311",
+        "0323",
+        "0326",
+        "0334",
+        "0345",
+        "0348",
+        "0355",
+        "0356",
+        "0379",
+        "0380",
+        "0395",
+        "0396",
+        "0584",
+        "0977",
+        "2317",
+        "3237"
       ]
     },
     {
@@ -660,7 +5276,9 @@
       "total": 2,
       "fullyReviewed": 0,
       "partiallyReviewed": 2,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 0,
       "members": [
         "0763",
         "1394"
@@ -671,9 +5289,75 @@
       "total": 1,
       "fullyReviewed": 1,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 0,
       "members": [
         "0778"
+      ]
+    },
+    {
+      "familyId": "squat",
+      "total": 53,
+      "fullyReviewed": 3,
+      "partiallyReviewed": 0,
+      "stale": 0,
+      "ruleOnly": 50,
+      "allowed": 40,
+      "members": [
+        "0024",
+        "0026",
+        "0039",
+        "0042",
+        "0046",
+        "0051",
+        "0063",
+        "0068",
+        "0069",
+        "0101",
+        "0102",
+        "0124",
+        "0127",
+        "0291",
+        "0411",
+        "0413",
+        "0533",
+        "0534",
+        "0544",
+        "0551",
+        "0739",
+        "0741",
+        "0743",
+        "0744",
+        "0750",
+        "0755",
+        "0760",
+        "0770",
+        "0851",
+        "0852",
+        "1004",
+        "1425",
+        "1434",
+        "1435",
+        "1436",
+        "1463",
+        "1464",
+        "1476",
+        "1489",
+        "1545",
+        "1685",
+        "1686",
+        "1705",
+        "1759",
+        "1760",
+        "2287",
+        "2611",
+        "2803",
+        "3132",
+        "3142",
+        "3194",
+        "3281",
+        "3769"
       ]
     },
     {
@@ -681,7 +5365,9 @@
       "total": 1,
       "fullyReviewed": 1,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 0,
       "members": [
         "1417"
       ]
@@ -691,10 +5377,24 @@
       "total": 2,
       "fullyReviewed": 0,
       "partiallyReviewed": 2,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 0,
       "members": [
         "0655",
         "0656"
+      ]
+    },
+    {
+      "familyId": "straight_arm_pulldown",
+      "total": 1,
+      "fullyReviewed": 1,
+      "partiallyReviewed": 0,
+      "stale": 0,
+      "ruleOnly": 0,
+      "allowed": 0,
+      "members": [
+        "2330"
       ]
     },
     {
@@ -702,7 +5402,9 @@
       "total": 7,
       "fullyReviewed": 7,
       "partiallyReviewed": 0,
+      "stale": 0,
       "ruleOnly": 0,
+      "allowed": 7,
       "members": [
         "0333",
         "0354",
@@ -711,6 +5413,47 @@
         "0420",
         "0860",
         "1730"
+      ]
+    },
+    {
+      "familyId": "vertical_push",
+      "total": 30,
+      "fullyReviewed": 2,
+      "partiallyReviewed": 0,
+      "stale": 0,
+      "ruleOnly": 28,
+      "allowed": 29,
+      "members": [
+        "0086",
+        "0091",
+        "0148",
+        "0219",
+        "0287",
+        "0360",
+        "0361",
+        "0404",
+        "0405",
+        "0414",
+        "0426",
+        "0523",
+        "0539",
+        "0553",
+        "0587",
+        "0590",
+        "0603",
+        "0765",
+        "0766",
+        "0772",
+        "0774",
+        "0869",
+        "0997",
+        "1012",
+        "1438",
+        "1456",
+        "1457",
+        "2137",
+        "2318",
+        "3122"
       ]
     }
   ],
@@ -1588,13 +6331,13 @@
   ],
   "ancillaryEquipment": {
     "band anchor": 18,
-    "bench": 317,
-    "chair": 49,
+    "bench": 318,
+    "chair": 48,
     "dip bars": 2,
     "low bar": 5,
     "partner": 2,
     "pull-up bar": 37,
-    "rack": 10,
+    "rack": 11,
     "stability ball": 51,
     "step": 26,
     "suspension straps": 1,
@@ -3552,6 +8295,15 @@
       "id": "2329",
       "name": "spine twist",
       "tags": []
+    },
+    {
+      "id": "2330",
+      "name": "cable lat pulldown full range of motion",
+      "tags": [
+        "curated_common_family_review",
+        "manual_review_required",
+        "source_media_conflict"
+      ]
     },
     {
       "id": "2331",
