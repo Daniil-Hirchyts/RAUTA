@@ -74,6 +74,69 @@ export function calculateHistoryVolume(
     }
   return volume
 }
+export function calculateHistoryFrequency(
+  history: TrainingHistory,
+  index: ExerciseIndex,
+  policy: TrainingPolicy,
+  from: number,
+  to: number,
+  inclusiveStart = false
+): Record<MuscleId, number> {
+  const frequency = Object.fromEntries(MUSCLE_IDS.map((m) => [m, 0])) as Record<
+    MuscleId,
+    number
+  >
+  for (const session of history.sessions) {
+    const volume = emptyVolume()
+    for (const performed of session.exercises) {
+      const e = index.byId.get(performed.exerciseId)
+      if (!e) continue
+      for (const set of performed.sets) {
+        const time = Date.parse(set.timestamp ?? session.completedAt)
+        if (
+          isWorkingSet(set) &&
+          (inclusiveStart ? time >= from : time > from) &&
+          time <= to
+        )
+          addExerciseVolume(
+            volume,
+            e,
+            set.side === "both" ? 1 : 0.5,
+            policy
+          )
+      }
+    }
+    for (const muscleId of MUSCLE_IDS)
+      if (volume[muscleId].effective >= policy.meaningfulExposureSets)
+        frequency[muscleId]++
+  }
+  return frequency
+}
+export function calculateHistoryExerciseFrequency(
+  history: TrainingHistory,
+  policy: TrainingPolicy,
+  from: number,
+  to: number,
+  inclusiveStart = false
+): Record<string, number> {
+  const frequency: Record<string, number> = {}
+  for (const session of history.sessions)
+    for (const performed of session.exercises) {
+      const units = performed.sets.reduce((sum, set) => {
+        const time = Date.parse(set.timestamp ?? session.completedAt)
+        return (
+          sum +
+          ((inclusiveStart ? time >= from : time > from) && time <= to
+            ? completedWorkingSetUnits(set)
+            : 0)
+        )
+      }, 0)
+      if (units >= policy.meaningfulExposureSets)
+        frequency[performed.exerciseId] =
+          (frequency[performed.exerciseId] ?? 0) + 1
+    }
+  return frequency
+}
 export function calculateSessionVolume(
   session: Pick<PlannedSession, "exercises">,
   index: ExerciseIndex,

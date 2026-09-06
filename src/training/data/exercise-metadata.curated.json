@@ -1,0 +1,157 @@
+[
+  {
+    "exerciseId": "0088",
+    "reviewedFrom": ["name", "instructions", "video"],
+    "metadata": {
+      "familyId": "seated_barbell_calf_raise",
+      "tags": ["curated_exact_name_review"]
+    }
+  },
+  {
+    "exerciseId": "1371",
+    "reviewedFrom": ["name", "instructions", "video"],
+    "metadata": {
+      "familyId": "seated_barbell_calf_raise",
+      "duplicateOf": "0088",
+      "tags": ["curated_exact_name_review", "duplicate_candidate"]
+    }
+  },
+  {
+    "exerciseId": "0454",
+    "reviewedFrom": ["name", "instructions", "video"],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["elbow_flexion"],
+      "mechanics": "isolation",
+      "tracking": "external_load",
+      "setRoles": [
+        { "muscleId": "biceps", "role": "direct", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.9,
+      "skill": "basic",
+      "automaticProgramming": "specialized_only",
+      "familyId": "ez_bar_spider_curl",
+      "tags": ["curated_exact_name_review", "setup_variant"]
+    }
+  },
+  {
+    "exerciseId": "1628",
+    "reviewedFrom": ["name", "instructions", "video"],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["elbow_flexion"],
+      "mechanics": "isolation",
+      "tracking": "external_load",
+      "setRoles": [
+        { "muscleId": "biceps", "role": "direct", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.9,
+      "skill": "basic",
+      "automaticProgramming": "specialized_only",
+      "familyId": "ez_bar_spider_curl",
+      "variantOf": "0454",
+      "tags": ["curated_exact_name_review", "setup_variant"]
+    }
+  },
+  {
+    "exerciseId": "0576",
+    "reviewedFrom": ["name", "instructions", "video"],
+    "metadata": {
+      "familyId": "horizontal_press",
+      "tags": ["curated_exact_name_review", "machine_variant"]
+    }
+  },
+  {
+    "exerciseId": "0577",
+    "reviewedFrom": ["name", "instructions", "video"],
+    "metadata": {
+      "familyId": "horizontal_press",
+      "variantOf": "0576",
+      "tags": ["curated_exact_name_review", "machine_variant"]
+    }
+  },
+  {
+    "exerciseId": "0655",
+    "reviewedFrom": ["name", "instructions", "video"],
+    "metadata": {
+      "tracking": "bodyweight",
+      "skill": "complex",
+      "automaticProgramming": "specialized_only",
+      "familyId": "stability_ball_push_up",
+      "tags": ["curated_exact_name_review", "unstable_setup"]
+    }
+  },
+  {
+    "exerciseId": "0656",
+    "reviewedFrom": ["name", "instructions", "video"],
+    "metadata": {
+      "automaticProgramming": "manual_only",
+      "classificationConfidence": 0.4,
+      "tracking": "bodyweight",
+      "skill": "complex",
+      "familyId": "stability_ball_push_up",
+      "variantOf": "0655",
+      "tags": [
+        "curated_exact_name_review",
+        "source_media_conflict",
+        "manual_review_required"
+      ]
+    }
+  },
+  {
+    "exerciseId": "0697",
+    "reviewedFrom": ["name", "instructions", "video"],
+    "metadata": {
+      "automaticProgramming": "manual_only",
+      "classificationConfidence": 0.35,
+      "tags": [
+        "curated_exact_name_review",
+        "source_media_conflict",
+        "manual_review_required"
+      ]
+    }
+  },
+  {
+    "exerciseId": "1766",
+    "reviewedFrom": ["name", "instructions", "video"],
+    "metadata": {
+      "automaticProgramming": "manual_only",
+      "classificationConfidence": 0.3,
+      "tags": [
+        "curated_exact_name_review",
+        "source_media_conflict",
+        "source_equipment_conflict",
+        "manual_review_required"
+      ]
+    }
+  },
+  {
+    "exerciseId": "0763",
+    "reviewedFrom": ["name", "instructions", "video"],
+    "metadata": {
+      "automaticProgramming": "manual_only",
+      "classificationConfidence": 0.4,
+      "familyId": "smith_reverse_calf_raise",
+      "tags": [
+        "curated_exact_name_review",
+        "source_media_conflict",
+        "manual_review_required"
+      ]
+    }
+  },
+  {
+    "exerciseId": "1394",
+    "reviewedFrom": ["name", "instructions", "video"],
+    "metadata": {
+      "automaticProgramming": "manual_only",
+      "classificationConfidence": 0.4,
+      "familyId": "smith_reverse_calf_raise",
+      "variantOf": "0763",
+      "tags": [
+        "curated_exact_name_review",
+        "source_media_conflict",
+        "manual_review_required"
+      ]
+    }
+  }
+]

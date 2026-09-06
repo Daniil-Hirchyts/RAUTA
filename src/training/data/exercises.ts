@@ -11,14 +11,20 @@ import type {
   TrainingPolicy,
 } from "../domain/types"
 import { compareIds, fingerprint, finite, isRecord } from "../numeric"
+import {
+  CURATION_VERSION,
+  getCuratedExerciseReview,
+} from "./curated-exercises"
 
-const RULE_VERSION = "1.0.0"
+const RULE_VERSION = "1.1.0"
 type PatternRule = {
   match: RegExp
+  exclude?: RegExp
   pattern: MovementPattern
   direct: MuscleId[]
   indirect: MuscleId[]
   compound?: boolean
+  familyId?: string
 }
 /** Roles are explicit anatomical programming approximations, independent of source weights. */
 const RULES: PatternRule[] = [
@@ -74,7 +80,7 @@ const RULES: PatternRule[] = [
     compound: true,
   },
   {
-    match: /\b(hip thrust|glute bridge|kickback)\b/,
+    match: /\b(hip thrusts?|glute bridges?|kickback)\b/,
     pattern: "hip_extension",
     direct: ["gluteal"],
     indirect: ["hamstring"],
@@ -85,6 +91,7 @@ const RULES: PatternRule[] = [
     direct: ["chest"],
     indirect: ["triceps", "deltoids"],
     compound: true,
+    familyId: "horizontal_press",
   },
   {
     match: /\b(shoulder press|military press|overhead press|arnold press)\b/,
@@ -112,12 +119,15 @@ const RULES: PatternRule[] = [
     pattern: "horizontal_pull",
     direct: ["deltoids"],
     indirect: ["upper-back"],
+    familyId: "rear_delt_fly",
   },
   {
     match: /\b(fly|flye)\b/,
+    exclude: /\b(reverse fly|rear delt)\b/,
     pattern: "horizontal_push",
     direct: ["chest"],
     indirect: [],
+    familyId: "chest_fly",
   },
   {
     match: /\b(triceps|tricep|pushdown|skull crusher)\b/,
@@ -198,7 +208,7 @@ export function inferExerciseMetadata(e: ExerciseSummary): ExerciseMetadata {
   const name = e.name.toLowerCase()
   const instructions = e.instructions.join(" ").toLowerCase()
   const text = name + " " + instructions
-  const type = /\bstretch/.test(name)
+  const detectedType = /\bstretch/.test(name)
     ? "stretch"
     : /\b(run|running|bike|elliptical|stepmill|skierg|burpee|jumping jack|walk)\b/.test(
           name
@@ -215,19 +225,23 @@ export function inferExerciseMetadata(e: ExerciseSummary): ExerciseMetadata {
     /\b(stretch|isometric|hold|static|assisted stretch|neck|wrist|finger|reverse grip curl|upright row|squat row|squatting row|pullover|sissy|behind neck)\b/.test(
       name
     )
-  const rule = RULES.find((r) => r.match.test(name))
+  const partialRom = /\bpartial|\bhalf|\bquarter|3\/4/.test(name)
+  const rules = RULES.filter(
+    (rule) => rule.match.test(name) && !rule.exclude?.test(name)
+  )
   // A primary-muscle mismatch is reviewable data, never silently overridden.
   const matchesMuscle =
-    !!rule &&
+    rules.length > 0 &&
     !!e.primaryMuscle &&
-    [...rule.direct, ...rule.indirect].includes(e.primaryMuscle)
-  const classified =
-    type === "unknown" &&
-    !!rule &&
+    rules.some((rule) =>
+      [...rule.direct, ...rule.indirect].includes(e.primaryMuscle!)
+    )
+  const ruleSupported =
+    detectedType === "unknown" &&
+    rules.length > 0 &&
     matchesMuscle &&
-    !complex &&
-    !ambiguous &&
     e.instructions.length >= 2
+  const exerciseType = ruleSupported ? "resistance" : detectedType
   const equipment = new Set([e.equipment])
   if (/bench/.test(text) && !/leverage|smith|sled/.test(e.equipment))
     equipment.add("bench")
@@ -255,23 +269,56 @@ export function inferExerciseMetadata(e: ExerciseSummary): ExerciseMetadata {
   const tracking =
     e.equipment === "body weight"
       ? "bodyweight"
-      : e.equipment === "assisted"
+      : e.equipment === "assisted" ||
+          (e.equipment === "leverage machine" && /\bassisted\b/.test(name))
         ? "assistance"
         : /^(barbell|dumbbell|cable|leverage machine|smith machine|sled machine|kettlebell|ez barbell|trap bar)$/.test(
               e.equipment
             )
           ? "external_load"
           : "unknown"
+  const roleByMuscle = new Map<
+    MuscleId,
+    { muscleId: MuscleId; role: "direct" | "indirect"; provenance: "rule" }
+  >()
+  if (ruleSupported)
+    for (const rule of rules) {
+      for (const muscleId of rule.indirect)
+        if (!roleByMuscle.has(muscleId))
+          roleByMuscle.set(muscleId, {
+            muscleId,
+            role: "indirect",
+            provenance: "rule",
+          })
+      for (const muscleId of rule.direct)
+        roleByMuscle.set(muscleId, {
+          muscleId,
+          role: "direct",
+          provenance: "rule",
+        })
+    }
+  const patterns = ruleSupported
+    ? [...new Set(rules.map((rule) => rule.pattern))].sort(compareIds)
+    : (["unknown"] as MovementPattern[])
+  const families = ruleSupported
+    ? [...new Set(rules.map((rule) => rule.familyId ?? rule.pattern))]
+    : []
+  const familyId = families.length === 1 ? families[0] : undefined
+  const automaticProgramming =
+    exerciseType !== "resistance" || !ruleSupported || ambiguous || tracking === "unknown"
+      ? "manual_only"
+      : complex || partialRom
+        ? "specialized_only"
+        : "allowed"
   return {
     exerciseId: e.id,
-    exerciseType: classified ? "resistance" : type,
-    movementPatterns: classified && rule ? [rule.pattern] : ["unknown"],
-    mechanics:
-      classified && rule
-        ? rule.compound
-          ? "compound"
-          : "isolation"
-        : "unknown",
+    exerciseType,
+    movementPatterns: patterns,
+    mechanics: ruleSupported
+      ? rules.some((rule) => rule.compound)
+        ? "compound"
+        : "isolation"
+      : "unknown",
     laterality:
       /one arm|one leg|single arm|single leg|single-arm|single-leg|split squat/.test(
         name
@@ -282,35 +329,59 @@ export function inferExerciseMetadata(e: ExerciseSummary): ExerciseMetadata {
           : "bilateral",
     tracking,
     requiredEquipment: [...equipment].sort(compareIds),
-    setRoles:
-      classified && rule
-        ? [
-            ...rule.direct.map((muscleId) => ({
-              muscleId,
-              role: "direct" as const,
-              provenance: "rule" as const,
-            })),
-            ...rule.indirect.map((muscleId) => ({
-              muscleId,
-              role: "indirect" as const,
-              provenance: "rule" as const,
-            })),
-          ]
-        : [],
-    classificationConfidence: classified
-      ? 0.75
-      : type !== "unknown"
+    setRoles: [...roleByMuscle.values()].sort((a, b) =>
+      compareIds(a.muscleId, b.muscleId)
+    ),
+    classificationConfidence:
+      exerciseType === "resistance"
+        ? ambiguous
+          ? 0.45
+          : complex || partialRom
+            ? 0.6
+            : 0.75
+        : detectedType !== "unknown"
         ? 0.9
         : 0.2,
-    skill: complex ? "complex" : classified ? "basic" : "unknown",
+    skill: complex ? "complex" : ruleSupported ? "basic" : "unknown",
     setupSeconds: tracking === "external_load" ? 60 : 30,
     tags: [
-      ...(!matchesMuscle && rule ? ["primary_mismatch"] : []),
+      ...(!matchesMuscle && rules.length ? ["primary_mismatch"] : []),
       ...(complex ? ["complex_unreviewed"] : []),
-      ...(/\bpartial|\bhalf|\bquarter|3\/4/.test(name) ? ["partial_rom"] : []),
+      ...(partialRom ? ["partial_rom"] : []),
+      ...(patterns.length > 1 ? ["multi_pattern"] : []),
     ],
+    automaticProgramming,
+    familyId,
     provenance: "rule",
     ruleVersion: RULE_VERSION,
+  }
+}
+
+function curatedProvenance(
+  reviewedFrom: readonly string[]
+): ExerciseMetadata["provenance"] {
+  const video = reviewedFrom.includes("video")
+  const text = reviewedFrom.includes("name") || reviewedFrom.includes("instructions")
+  return video && text
+    ? "curated_video_and_text"
+    : video
+      ? "curated_video"
+      : "curated_text"
+}
+
+export function resolveExerciseMetadata(e: ExerciseSummary): ExerciseMetadata {
+  const inferred = inferExerciseMetadata(e)
+  const review = getCuratedExerciseReview(e.id)
+  if (!review) return inferred
+  return {
+    ...inferred,
+    ...review.metadata,
+    exerciseId: e.id,
+    tags: [
+      ...new Set([...(inferred.tags ?? []), ...(review.metadata.tags ?? [])]),
+    ].sort(compareIds),
+    provenance: curatedProvenance(review.reviewedFrom),
+    ruleVersion: `${RULE_VERSION}+curation-${CURATION_VERSION}`,
   }
 }
 export function validateMetadata(
@@ -358,7 +429,26 @@ export function validateMetadata(
     Array.isArray(m.tags) &&
     m.tags.every((t) => typeof t === "string") &&
     ["basic", "complex", "unknown"].includes(m.skill) &&
-    ["rule", "curated"].includes(m.provenance) &&
+    ["allowed", "specialized_only", "manual_only"].includes(
+      m.automaticProgramming
+    ) &&
+    (m.familyId === undefined ||
+      (typeof m.familyId === "string" && m.familyId.length > 0)) &&
+    (m.variantOf === undefined ||
+      (typeof m.variantOf === "string" &&
+        m.variantOf.length > 0 &&
+        m.variantOf !== m.exerciseId)) &&
+    (m.duplicateOf === undefined ||
+      (typeof m.duplicateOf === "string" &&
+        m.duplicateOf.length > 0 &&
+        m.duplicateOf !== m.exerciseId)) &&
+    [
+      "rule",
+      "curated",
+      "curated_text",
+      "curated_video",
+      "curated_video_and_text",
+    ].includes(m.provenance) &&
     typeof m.ruleVersion === "string" &&
     !!m.ruleVersion &&
     (m.exerciseType !== "resistance" ||
@@ -376,9 +466,17 @@ export function createExerciseIndex(
   const issues = validateExerciseData(exercises)
   const byId = new Map<string, IndexedExercise>()
   const byMuscle = new Map<MuscleId, IndexedExercise[]>()
+  const byDirectMuscle = new Map<MuscleId, IndexedExercise[]>()
   const byPrimaryMuscle = new Map<MuscleId, IndexedExercise[]>()
   const byEquipment = new Map<string, IndexedExercise[]>()
   const byMovementPattern = new Map<MovementPattern, IndexedExercise[]>()
+  const byFamily = new Map<string, IndexedExercise[]>()
+  const byAutomaticProgramming = new Map<
+    ExerciseMetadata["automaticProgramming"],
+    IndexedExercise[]
+  >()
+  const byTracking = new Map<ExerciseMetadata["tracking"], IndexedExercise[]>()
+  const byMechanics = new Map<ExerciseMetadata["mechanics"], IndexedExercise[]>()
   const byExerciseType = new Map<
     ExerciseMetadata["exerciseType"],
     IndexedExercise[]
@@ -386,9 +484,14 @@ export function createExerciseIndex(
   const result = {
     byId,
     byMuscle,
+    byDirectMuscle,
     byPrimaryMuscle,
     byEquipment,
     byMovementPattern,
+    byFamily,
+    byAutomaticProgramming,
+    byTracking,
+    byMechanics,
     byExerciseType,
     issues,
     fingerprint: "",
@@ -410,6 +513,60 @@ export function createExerciseIndex(
     metadata.set(m.exerciseId, m)
   }
   if (issues.length) return result
+  const exerciseIds = new Set(exercises.map((exercise) => exercise.id))
+  const effectiveMetadata = new Map<string, ExerciseMetadata>()
+  for (const exercise of exercises) {
+    const explicit = metadata.get(exercise.id)
+    const m = structuredClone(explicit ?? resolveExerciseMetadata(exercise))
+    // Built-in catalogue relationships may point outside a caller-supplied subset.
+    // Keep the local index self-contained while requiring explicit overrides to be valid.
+    if (!explicit) {
+      if (m.variantOf && !exerciseIds.has(m.variantOf)) delete m.variantOf
+      if (m.duplicateOf && !exerciseIds.has(m.duplicateOf)) delete m.duplicateOf
+    }
+    issues.push(...validateMetadata(m, exercise))
+    effectiveMetadata.set(exercise.id, m)
+  }
+  if (issues.length) return result
+  for (const m of effectiveMetadata.values()) {
+    for (const relationship of [m.variantOf, m.duplicateOf])
+      if (relationship && !exerciseIds.has(relationship))
+        issues.push({
+          code: "INVALID_EXERCISE_DATA",
+          context: {
+            exerciseId: m.exerciseId,
+            invalidRelationship: relationship,
+          },
+        })
+  }
+  const state = new Map<string, "visiting" | "visited">()
+  const stack: string[] = []
+  let relationshipCycle: string[] | undefined
+  const visitRelationship = (exerciseId: string): boolean => {
+    if (state.get(exerciseId) === "visiting") {
+      const start = stack.indexOf(exerciseId)
+      relationshipCycle = [...stack.slice(start), exerciseId]
+      return true
+    }
+    if (state.get(exerciseId) === "visited") return false
+    state.set(exerciseId, "visiting")
+    stack.push(exerciseId)
+    const current = effectiveMetadata.get(exerciseId)
+    for (const target of [current?.variantOf, current?.duplicateOf])
+      if (target && visitRelationship(target)) return true
+    stack.pop()
+    state.set(exerciseId, "visited")
+    return false
+  }
+  for (const exerciseId of [...exerciseIds].sort(compareIds)) {
+    if (visitRelationship(exerciseId)) break
+  }
+  if (relationshipCycle)
+    issues.push({
+      code: "INVALID_EXERCISE_DATA",
+      context: { relationshipCycle },
+    })
+  if (issues.length) return result
   const append = <K>(
     map: Map<K, IndexedExercise[]>,
     key: K,
@@ -417,9 +574,7 @@ export function createExerciseIndex(
   ) => map.set(key, [...(map.get(key) ?? []), item])
   for (const source of [...exercises].sort((a, b) => compareIds(a.id, b.id))) {
     const exercise = structuredClone(source)
-    const m = structuredClone(
-      metadata.get(exercise.id) ?? inferExerciseMetadata(exercise)
-    )
+    const m = structuredClone(effectiveMetadata.get(exercise.id)!)
     const item = {
       exercise,
       metadata: m,
@@ -429,13 +584,19 @@ export function createExerciseIndex(
       })),
     }
     byId.set(exercise.id, item)
-    for (const role of m.setRoles)
+    for (const role of m.setRoles) {
       if (role.role !== "incidental") append(byMuscle, role.muscleId, item)
+      if (role.role === "direct") append(byDirectMuscle, role.muscleId, item)
+    }
     if (exercise.primaryMuscle)
       append(byPrimaryMuscle, exercise.primaryMuscle, item)
     for (const eq of m.requiredEquipment) append(byEquipment, eq, item)
     for (const pattern of m.movementPatterns)
       append(byMovementPattern, pattern, item)
+    if (m.familyId) append(byFamily, m.familyId, item)
+    append(byAutomaticProgramming, m.automaticProgramming, item)
+    append(byTracking, m.tracking, item)
+    append(byMechanics, m.mechanics, item)
     append(byExerciseType, m.exerciseType, item)
   }
   result.fingerprint = fingerprint([...byId.values()])
@@ -458,12 +619,20 @@ export function exclusionReasons(
       code: "UNAVAILABLE_EQUIPMENT",
       context: { ...context, missing },
     })
+  const explicitlyRequested =
+    p.preferredExerciseIds?.includes(e.exercise.id) ||
+    p.strengthExerciseIds?.includes(e.exercise.id)
+  const automaticProgrammingBlocked =
+    e.metadata.automaticProgramming === "manual_only" ||
+    (e.metadata.automaticProgramming === "specialized_only" &&
+      !explicitlyRequested)
+  const lowConfidenceRule =
+    e.metadata.provenance === "rule" &&
+    e.metadata.classificationConfidence < policy.minimumClassificationConfidence
   if (
     e.metadata.exerciseType !== "resistance" ||
-    e.metadata.classificationConfidence <
-      policy.minimumClassificationConfidence ||
-    e.metadata.tags.includes("partial_rom") ||
-    e.metadata.skill === "complex" ||
+    automaticProgrammingBlocked ||
+    lowConfidenceRule ||
     e.metadata.movementPatterns.some((pattern) =>
       p.excludedPatterns?.includes(pattern)
     )

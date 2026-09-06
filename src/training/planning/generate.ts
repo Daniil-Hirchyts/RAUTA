@@ -73,7 +73,8 @@ export function replicateWeek(
 }
 export function generateTrainingProgram(
   request: ProgramGenerationRequest,
-  optimizer: ProgramOptimizer = beamOptimizer
+  optimizer: ProgramOptimizer = beamOptimizer,
+  adaptation?: TrainingProgram["adaptation"]
 ): ProgramGenerationResult {
   const invalid = validateGenerationRequest(request)
   if (invalid.length)
@@ -154,6 +155,7 @@ export function generateTrainingProgram(
       score: scoreWeek(result.week, { ...input, targets: result.week.targets }),
       warnings: [],
     },
+    adaptation: adaptation ? structuredClone(adaptation) : undefined,
   }
   namespaceProgramIds(program, program.id)
   const validation = validateTrainingProgram(program, request, input.index)

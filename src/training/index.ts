@@ -3,6 +3,7 @@ export { DEFAULT_POLICY, ENGINE_VERSION } from "./policy"
 export {
   createExerciseIndex,
   inferExerciseMetadata,
+  resolveExerciseMetadata,
   validateExerciseData,
   validateMetadata,
 } from "./data/exercises"

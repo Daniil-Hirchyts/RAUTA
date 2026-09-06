@@ -1,9 +1,9 @@
 import { deepFreeze } from "./numeric"
 import type { TrainingPolicy } from "./domain/types"
-export const ENGINE_VERSION = "1.0.0"
+export const ENGINE_VERSION = "1.1.0"
 /** Exact values are versioned engineering policy; see docs/training-engine/EVIDENCE.md. */
 export const DEFAULT_POLICY: TrainingPolicy = deepFreeze({
-  version: "1.0.0",
+  version: "1.1.0",
   goals: {
     hypertrophy: {
       volume: { minimum: 6, preferred: 10, upperGuideline: 18 },
@@ -78,6 +78,10 @@ export const DEFAULT_POLICY: TrainingPolicy = deepFreeze({
   trendThreshold: 0.03,
   reductionFraction: 0.1,
   maxLoadIncreaseFraction: 0.1,
+  coarseGridMaxLoadIncreaseFraction: 0.35,
+  coarseGridMaxExtraReps: 4,
+  coarseGridRequiredTopExposures: 2,
+  progressionEvidenceSets: 3,
   maxBodyweightReps: 30,
   rirTolerance: 1,
   generalWarmupSeconds: 180,
@@ -110,7 +114,15 @@ export const DEFAULT_POLICY: TrainingPolicy = deepFreeze({
     concentration: -1,
     nonempty: 2,
   },
-  similarityWeights: { patterns: 0.5, directMuscles: 0.4, equipment: 0.1 },
+  similarityWeights: {
+    family: 0,
+    patterns: 0.5,
+    directMuscles: 0.4,
+    mechanics: 0,
+    tracking: 0,
+    laterality: 0,
+    equipment: 0.1,
+  },
   orderingWeights: { specific: 10, priority: 2, compound: 1 },
   adherenceReductionThreshold: 0.7,
   beginnerRir: 3,

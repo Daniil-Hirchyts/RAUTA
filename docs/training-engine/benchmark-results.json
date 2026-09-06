@@ -9,8 +9,8 @@
   "rows": [
     {
       "name": "index build (1,324 records)",
-      "medianMs": 61.78,
-      "p95Ms": 65.18
+      "medianMs": 86.38,
+      "p95Ms": 89.09
     },
     {
       "name": "indexed muscle query (10,000 lookups)",
@@ -19,43 +19,48 @@
     },
     {
       "name": "state (120 sessions / 1,440 sets)",
-      "medianMs": 2.6,
-      "p95Ms": 2.85
+      "medianMs": 5.18,
+      "p95Ms": 5.64
+    },
+    {
+      "name": "substitution search",
+      "medianMs": 85.39,
+      "p95Ms": 92.82
     },
     {
       "name": "generate (4 weeks, full data, history)",
-      "medianMs": 675.81,
-      "p95Ms": 708.17
+      "medianMs": 1035.11,
+      "p95Ms": 1054.51
     },
     {
       "name": "adapt next week",
-      "medianMs": 170.32,
-      "p95Ms": 177.86
+      "medianMs": 227.44,
+      "p95Ms": 232.32
     },
     {
       "name": "independent validation (4 weeks)",
-      "medianMs": 4.62,
-      "p95Ms": 4.96
+      "medianMs": 16.56,
+      "p95Ms": 17.34
     }
   ],
   "widths": [
     {
       "name": "beam width 1",
-      "medianMs": 328.68,
-      "p95Ms": 334.45,
-      "score": 0.770465374228395
+      "medianMs": 529.67,
+      "p95Ms": 545.65,
+      "score": 0.7602206965488216
     },
     {
       "name": "beam width 3",
-      "medianMs": 686.64,
-      "p95Ms": 710.37,
-      "score": 0.770465374228395
+      "medianMs": 1047.74,
+      "p95Ms": 1159.96,
+      "score": 0.7602206965488216
     },
     {
       "name": "beam width 8",
-      "medianMs": 1538.3,
-      "p95Ms": 1593.95,
-      "score": 0.7697246334876543
+      "medianMs": 2367.73,
+      "p95Ms": 2421.17,
+      "score": 0.7847979797979799
     }
   ]
 }

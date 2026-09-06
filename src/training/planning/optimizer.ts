@@ -169,7 +169,15 @@ function improveWeek(
           .slice(0, 2)
         const mutations = [
           ...(original.workingSets.length > 1
-            ? [{ ...original, workingSets: original.workingSets.slice(0, -1) }]
+            ? [
+                prescribeExercise(
+                  input.index.byId.get(original.exerciseId)!,
+                  original.workingSets.length - 1,
+                  best.sessions[si].id,
+                  original.rationale,
+                  input
+                ),
+              ]
             : []),
           ...swaps.map((x) =>
             prescribeExercise(
@@ -264,8 +272,9 @@ export const beamOptimizer: ProgramOptimizer = {
             )
             .slice(0, input.policy.candidateLimit)
           for (const { e, score } of ranked)
-            for (const count of [1, 2, 3].filter(
-              (n) => n <= input.policy.maxSetsPerExercise
+            for (const count of Array.from(
+              { length: input.policy.maxSetsPerExercise },
+              (_, index) => index + 1
             )) {
               iterations++
               const prescribed = prescribeExercise(

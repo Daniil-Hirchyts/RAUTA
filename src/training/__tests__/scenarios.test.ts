@@ -14,6 +14,8 @@ import { preparation } from "../planning/generate"
 import { deriveProgramTargets } from "../planning/targets"
 import { exerciseSimilarity, volumeUtility } from "../scoring/scores"
 import { generateSplitCandidates } from "../planning/optimizer"
+import { calculateSessionVolume } from "../analysis/volume"
+import { DEFAULT_POLICY } from "../policy"
 const index = createExerciseIndex(request().exercises)
 function plan(r: ProgramGenerationRequest): TrainingProgram {
   const result = generateTrainingProgram(r)
@@ -192,6 +194,28 @@ describe("real-data golden scenarios", () => {
     )
     expect(summarizeProgram(p, index).weeks).toHaveLength(4)
   }, 30_000)
+  it("derives set-count candidates from maxSetsPerExercise", () => {
+    const generateWithMaximum = (maxSetsPerExercise: number) => {
+      const r = request()
+      r.policy = {
+        ...structuredClone(DEFAULT_POLICY),
+        beamWidth: 1,
+        candidateLimit: 4,
+        localIterations: 2,
+        maxSetsPerExercise,
+      }
+      const result = generateTrainingProgram(r)
+      expect("program" in result).toBe(true)
+      if (!("program" in result)) throw new Error(JSON.stringify(result))
+      return result.program.weeks[0].sessions.flatMap((s) => s.exercises)
+    }
+    const three = generateWithMaximum(3)
+    const four = generateWithMaximum(4)
+    expect(three.every((e) => e.workingSets.length <= 3)).toBe(true)
+    expect(three.some((e) => e.workingSets.length === 3)).toBe(true)
+    expect(four.every((e) => e.workingSets.length <= 4)).toBe(true)
+    expect(four.some((e) => e.workingSets.length === 4)).toBe(true)
+  }, 30_000)
 })
 describe("adaptation", () => {
   it("handles partial work, retains future slots and never stacks missed sessions", () => {
@@ -278,6 +302,165 @@ describe("adaptation", () => {
       expect(p?.progression.resistance).toMatchObject({ kg: 72.5 })
     }
   }, 30_000)
+  it("preserves remaining-week muscle frequency after volume is already satisfied", () => {
+    const r = request()
+    const previous = plan(r)
+    const next = request({
+      now: "2026-09-08T12:00:00.000Z",
+      schedule: { ...r.schedule, days: [2, 4] },
+    })
+    next.history = {
+      coverage: "complete",
+      coverageStart: "2026-08-01T00:00:00.000Z",
+      sessions: [
+        {
+          id: "chest-volume",
+          startedAt: "2026-09-07T10:00:00.000Z",
+          completedAt: "2026-09-07T11:00:00.000Z",
+          status: "completed",
+          exercises: [
+            {
+              exerciseId: "0025",
+              sets: Array.from({ length: 10 }, (_, i) =>
+                set({ id: `chest-volume-${i}` })
+              ),
+            },
+          ],
+        },
+      ],
+    }
+    const result = adaptTrainingProgram({
+      previousProgram: previous,
+      request: next,
+      mode: "remaining_week",
+    })
+    expect("program" in result).toBe(true)
+    if ("program" in result) {
+      const chest = result.program.weeks[0].targets.find(
+        (t) => t.muscleId === "chest"
+      )!
+      expect(chest.preferred).toBe(0)
+      expect(chest.preferredExposures).toBe(1)
+      expect(
+        result.program.weeks[0].sessions.some(
+          (session) =>
+            calculateSessionVolume(session, index, result.program.policy).chest
+              .effective >= result.program.policy.meaningfulExposureSets
+        )
+      ).toBe(true)
+    }
+  }, 30_000)
+  it("preserves a specific strength lift after both muscle volume and frequency are satisfied", () => {
+    const r = request()
+    r.preferences.goal = "strength"
+    r.preferences.strengthExerciseIds = ["0025"]
+    r.schedule.days = [0, 1, 2, 3, 4]
+    const previous = plan(r)
+    expect(
+      previous.weeks[0].sessions.filter((s) =>
+        s.exercises.some((e) => e.exerciseId === "0025")
+      )
+    ).toHaveLength(2)
+    const next = request({
+      now: "2026-09-08T12:00:00.000Z",
+      preferences: { ...r.preferences },
+      schedule: { ...r.schedule, days: [2, 3, 4] },
+    })
+    next.history = {
+      coverage: "complete",
+      coverageStart: "2026-08-01T00:00:00.000Z",
+      sessions: [
+        {
+          id: "bench",
+          startedAt: "2026-09-07T10:00:00.000Z",
+          completedAt: "2026-09-07T11:00:00.000Z",
+          status: "completed",
+          exercises: [
+            {
+              exerciseId: "0025",
+              sets: Array.from({ length: 3 }, (_, i) =>
+                set({ id: `bench-${i}` })
+              ),
+            },
+          ],
+        },
+        {
+          id: "fly",
+          startedAt: "2026-09-08T10:00:00.000Z",
+          completedAt: "2026-09-08T11:00:00.000Z",
+          status: "completed",
+          exercises: [
+            {
+              exerciseId: "0151",
+              sets: Array.from({ length: 3 }, (_, i) =>
+                set({ id: `fly-${i}` })
+              ),
+            },
+          ],
+        },
+      ],
+    }
+    const result = adaptTrainingProgram({
+      previousProgram: previous,
+      request: next,
+      mode: "remaining_week",
+    })
+    expect("program" in result).toBe(true)
+    if ("program" in result) {
+      const chest = result.program.weeks[0].targets.find(
+        (t) => t.muscleId === "chest"
+      )!
+      expect(chest.preferred).toBe(0)
+      expect(chest.preferredExposures).toBe(0)
+      expect(
+        result.program.weeks[0].sessions.some((s) =>
+          s.exercises.some((e) => e.exerciseId === "0025")
+        )
+      ).toBe(true)
+    }
+  }, 30_000)
+  it("does not report missed volume when completed and rescheduled work preserves it", () => {
+    const r = request()
+    const previous = plan(r)
+    const first = previous.weeks[0].sessions[0]
+    const next = request({
+      now: "2026-09-08T12:00:00.000Z",
+      schedule: { ...r.schedule, days: [2, 4] },
+    })
+    next.history = {
+      coverage: "complete",
+      coverageStart: "2026-08-01T00:00:00.000Z",
+      sessions: [
+        {
+          id: "completed-first",
+          plannedSessionId: first.id,
+          startedAt: "2026-09-07T10:00:00.000Z",
+          completedAt: "2026-09-07T11:00:00.000Z",
+          status: "completed",
+          exercises: first.exercises.map((exercise) => ({
+            exerciseId: exercise.exerciseId,
+            sets: exercise.workingSets.map((plannedSet, i) =>
+              set({
+                id: `${exercise.exerciseId}-${i}`,
+                plannedSetId: plannedSet.id,
+                reps: plannedSet.targetReps.max,
+                resistance: plannedSet.resistance,
+              })
+            ),
+          })),
+        },
+      ],
+    }
+    const result = adaptTrainingProgram({
+      previousProgram: previous,
+      request: next,
+      mode: "remaining_week",
+    })
+    expect("program" in result).toBe(true)
+    expect(result.issues.some((i) => i.code === "MISSED_VOLUME_DROPPED")).toBe(
+      false
+    )
+  }, 30_000)
 })
 it("targets, volume utility, similarity and split candidates express intended science/policy", () => {
   const r = request()
@@ -298,8 +481,12 @@ it("targets, volume utility, similarity and split candidates express intended sc
   expect(volumeUtility(20, 10, 18)).toBeLessThan(volumeUtility(10, 10, 18))
   expect(
     exerciseSimilarity(index.byId.get("0025")!, index.byId.get("0289")!)
-  ).toBeGreaterThan(
-    exerciseSimilarity(index.byId.get("0025")!, index.byId.get("0032")!)
-  )
+  ).toBeGreaterThan(exerciseSimilarity(index.byId.get("0025")!, index.byId.get("0032")!))
+  const substitutions = findExerciseSubstitutions("0025", r, 100)
+  const dumbbellBenchRank = substitutions.findIndex((s) => s.exerciseId === "0289")
+  const cableFlyRank = substitutions.findIndex((s) => s.exerciseId === "1262")
+  expect(dumbbellBenchRank).toBeGreaterThanOrEqual(0)
+  expect(cableFlyRank).toBeGreaterThanOrEqual(0)
+  expect(dumbbellBenchRank).toBeLessThan(cableFlyRank)
   expect(generateSplitCandidates(input)).toHaveLength(3)
 })

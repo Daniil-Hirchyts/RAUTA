@@ -46,6 +46,10 @@ export function exerciseSimilarity(
 ): number {
   if (a.exercise.id === b.exercise.id) return 1
   return (
+    weights.family *
+      Number(
+        !!a.metadata.familyId && a.metadata.familyId === b.metadata.familyId
+      ) +
     weights.patterns *
       jaccard(a.metadata.movementPatterns, b.metadata.movementPatterns) +
     weights.directMuscles *
@@ -57,6 +61,9 @@ export function exerciseSimilarity(
           .filter((r) => r.role === "direct")
           .map((r) => r.muscleId)
       ) +
+    weights.mechanics * Number(a.metadata.mechanics === b.metadata.mechanics) +
+    weights.tracking * Number(a.metadata.tracking === b.metadata.tracking) +
+    weights.laterality * Number(a.metadata.laterality === b.metadata.laterality) +
     weights.equipment * Number(a.exercise.equipment === b.exercise.equipment)
   )
 }

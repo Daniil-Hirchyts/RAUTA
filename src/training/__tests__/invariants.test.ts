@@ -50,6 +50,79 @@ function assertFinite(value: unknown) {
 }
 
 describe("generated invariants and metamorphic cases", () => {
+  it("keeps the full catalogue indexed with valid programming metadata", () => {
+    expect(index.issues).toEqual([])
+    expect(index.byId.size).toBe(full.exercises.length)
+    for (const item of index.byId.values()) {
+      expect(index.byId.get(item.exercise.id)).toBe(item)
+      expect(["allowed", "specialized_only", "manual_only"]).toContain(
+        item.metadata.automaticProgramming
+      )
+      if (
+        item.metadata.exerciseType === "resistance" &&
+        item.metadata.automaticProgramming !== "manual_only"
+      ) {
+        expect(item.metadata.setRoles.some((role) => role.role === "direct")).toBe(
+          true
+        )
+        expect(item.metadata.mechanics).not.toBe("unknown")
+        expect(item.metadata.movementPatterns).not.toContain("unknown")
+      }
+      for (const relationship of [
+        item.metadata.variantOf,
+        item.metadata.duplicateOf,
+      ]) {
+        if (!relationship) continue
+        expect(relationship).not.toBe(item.exercise.id)
+        expect(index.byId.has(relationship)).toBe(true)
+      }
+    }
+    for (const item of index.byAutomaticProgramming.get("manual_only") ?? [])
+      expect(index.byId.has(item.exercise.id)).toBe(true)
+
+    for (const id of [
+      "0088",
+      "1371",
+      "0454",
+      "1628",
+      "0576",
+      "0577",
+      "0655",
+      "0656",
+      "0697",
+      "1766",
+      "0763",
+      "1394",
+    ])
+      expect(index.byId.get(id)?.metadata.provenance).toBe(
+        "curated_video_and_text"
+      )
+    expect(index.byId.get("1371")?.metadata.duplicateOf).toBe("0088")
+    expect(index.byId.get("0577")?.metadata.variantOf).toBe("0576")
+    expect(index.byId.get("0656")?.metadata.tags).toContain(
+      "source_media_conflict"
+    )
+    expect(index.byId.get("0697")?.metadata.automaticProgramming).toBe(
+      "manual_only"
+    )
+  })
+
+  it("rejects relationship cycles in explicit metadata", () => {
+    const a = index.byId.get("0025")!
+    const b = index.byId.get("0289")!
+    const cycled = createExerciseIndex(
+      [a.exercise, b.exercise],
+      [
+        { ...a.metadata, variantOf: b.exercise.id },
+        { ...b.metadata, variantOf: a.exercise.id },
+      ]
+    )
+    expect(cycled.issues.some((issue) => issue.code === "INVALID_EXERCISE_DATA")).toBe(
+      true
+    )
+    expect(cycled.byId.size).toBe(0)
+  })
+
   it("40 seeded valid profiles retain all hard invariants", () => {
     const rnd = random(47329)
     for (let i = 0; i < 40; i++) {
@@ -153,6 +226,116 @@ describe("generated invariants and metamorphic cases", () => {
         input
       ).contributions.find((c) => c.factor === "specificity")?.rawValue
     ).toBe(1)
+  })
+
+  it("separates manual and specialized eligibility from curated confidence", () => {
+    const source = index.byId.get("0025")!
+    const allowed = {
+      ...source,
+      metadata: {
+        ...source.metadata,
+        provenance: "curated" as const,
+        classificationConfidence: 0.1,
+        automaticProgramming: "allowed" as const,
+      },
+    }
+    expect(
+      exclusionReasons(allowed, full.preferences, DEFAULT_POLICY).some(
+        (issue) => issue.code === "UNSUPPORTED_EXERCISE"
+      )
+    ).toBe(false)
+
+    const manual = {
+      ...allowed,
+      metadata: { ...allowed.metadata, automaticProgramming: "manual_only" as const },
+    }
+    expect(
+      exclusionReasons(
+        manual,
+        {
+          ...full.preferences,
+          preferredExerciseIds: [source.exercise.id],
+        },
+        DEFAULT_POLICY
+      ).some((issue) => issue.code === "UNSUPPORTED_EXERCISE")
+    ).toBe(true)
+
+    const specialized = {
+      ...allowed,
+      metadata: {
+        ...allowed.metadata,
+        automaticProgramming: "specialized_only" as const,
+      },
+    }
+    expect(
+      exclusionReasons(specialized, full.preferences, DEFAULT_POLICY).some(
+        (issue) => issue.code === "UNSUPPORTED_EXERCISE"
+      )
+    ).toBe(true)
+    expect(
+      exclusionReasons(
+        specialized,
+        {
+          ...full.preferences,
+          preferredExerciseIds: [source.exercise.id],
+        },
+        DEFAULT_POLICY
+      ).some((issue) => issue.code === "UNSUPPORTED_EXERCISE")
+    ).toBe(false)
+  })
+
+  it("classifies representative programming families deterministically", () => {
+    const cases = [
+      ["0025", "horizontal_push", "compound", "external_load", "bilateral", "chest"],
+      ["0027", "horizontal_pull", "compound", "external_load", "bilateral", "upper-back"],
+      ["0007", "vertical_pull", "compound", "external_load", "alternating", "upper-back"],
+      ["0017", "vertical_pull", "compound", "assistance", "bilateral", "upper-back"],
+      ["0024", "squat", "compound", "external_load", "bilateral", "quadriceps"],
+      ["0032", "hinge", "compound", "external_load", "bilateral", "gluteal"],
+      ["0054", "lunge", "compound", "external_load", "alternating", "gluteal"],
+      ["1463", "squat", "compound", "external_load", "bilateral", "quadriceps"],
+      ["0585", "knee_extension", "isolation", "external_load", "bilateral", "quadriceps"],
+      ["0586", "knee_flexion", "isolation", "external_load", "bilateral", "hamstring"],
+      ["3236", "hip_extension", "isolation", "unknown", "bilateral", "gluteal"],
+      ["1370", "calf_raise", "isolation", "external_load", "bilateral", "calves"],
+      ["0091", "vertical_push", "compound", "external_load", "bilateral", "deltoids"],
+      ["0192", "shoulder_abduction", "isolation", "external_load", "unilateral", "deltoids"],
+      ["0075", "horizontal_pull", "isolation", "external_load", "bilateral", "deltoids"],
+      ["0031", "elbow_flexion", "isolation", "external_load", "bilateral", "biceps"],
+      ["0201", "elbow_extension", "isolation", "external_load", "bilateral", "triceps"],
+      ["1262", "horizontal_push", "isolation", "external_load", "unilateral", "chest"],
+      ["3204", "trunk_flexion", "isolation", "bodyweight", "bilateral", "abs"],
+      ["0573", "trunk_extension", "isolation", "external_load", "bilateral", "lower-back"],
+      ["0493", "horizontal_push", "compound", "bodyweight", "bilateral", "chest"],
+    ] as const
+
+    for (const [id, pattern, mechanics, tracking, laterality, directMuscle] of cases) {
+      const metadata = index.byId.get(id)?.metadata
+      expect(metadata, id).toBeDefined()
+      expect(metadata?.exerciseType, id).toBe("resistance")
+      expect(metadata?.movementPatterns, id).toContain(pattern)
+      expect(metadata?.mechanics, id).toBe(mechanics)
+      expect(metadata?.tracking, id).toBe(tracking)
+      expect(metadata?.laterality, id).toBe(laterality)
+      expect(
+        metadata?.setRoles.some(
+          (role) => role.role === "direct" && role.muscleId === directMuscle
+        ),
+        id
+      ).toBe(true)
+    }
+
+    expect(index.byId.get("1003")?.metadata.movementPatterns).toEqual([
+      "horizontal_pull",
+      "squat",
+    ])
+    expect(
+      index.byId
+        .get("0993")
+        ?.metadata.setRoles.some(
+          (role) => role.role === "direct" && role.muscleId === "chest"
+        )
+    ).toBe(false)
   })
 })
 describe("malformed input and hostile data", () => {
@@ -262,6 +445,28 @@ describe("malformed input and hostile data", () => {
         p.weeks[0].sessions[0].duration.totalSeconds = 1
       },
       (p: typeof result.program) => {
+        const chest = p.weeks[0].targets.find((t) => t.muscleId === "chest")!
+        chest.preferred = Math.max(chest.minimum, chest.preferred - 2)
+      },
+      (p: typeof result.program) => {
+        p.weeks[0].sessions[0].exercises[0].targetMuscles = ["forearm"]
+      },
+      (p: typeof result.program) => {
+        p.weeks[0].sessions[0].exercises[0].progression.confidence = "high"
+      },
+      (p: typeof result.program) => {
+        p.weeks[0].sessions[0].focus = ["forearm"]
+      },
+      (p: typeof result.program) => {
+        p.weeks[0].phase = "reduced_volume"
+      },
+      (p: typeof result.program) => {
+        p.diagnostics.score.total += 0.01
+      },
+      (p: typeof result.program) => {
+        p.policy.maxSetsPerExercise += 1
+      },
+      (p: typeof result.program) => {
         p.weeks[0].sessions[0].exercises[0].workingSets[0].setType = "warmup"
       },
       (p: typeof result.program) => {
@@ -277,6 +482,15 @@ describe("malformed input and hostile data", () => {
       mutate(p)
       expect(validateTrainingProgram(p, r, i).valid).toBe(false)
     }
+    const independent = structuredClone(result.program)
+    independent.weeks[0].sessions[0].scheduledAt =
+      "2026-02-30T00:00:00.000Z"
+    independent.weeks[0].sessions[1].duration.totalSeconds = 1
+    expect(
+      validateTrainingProgram(independent, r, i).issues.some(
+        (issue) => issue.path === "weeks.0.sessions.1.duration"
+      )
+    ).toBe(true)
     for (const v of [
       null,
       {},

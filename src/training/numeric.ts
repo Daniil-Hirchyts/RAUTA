@@ -11,6 +11,13 @@ export const median = (values: number[]) => {
     : undefined
 }
 export const round = (n: number) => Math.round(n * 1e6) / 1e6
+const CONFIDENCE_RANK = { none: 0, low: 1, medium: 2, high: 3 } as const
+export function confidenceAtLeast(
+  value: keyof typeof CONFIDENCE_RANK,
+  minimum: keyof typeof CONFIDENCE_RANK
+) {
+  return CONFIDENCE_RANK[value] >= CONFIDENCE_RANK[minimum]
+}
 export const addDays = (iso: string, days: number) =>
   new Date(Date.parse(iso) + days * DAY_MS).toISOString()
 export function canonical(value: unknown): string {

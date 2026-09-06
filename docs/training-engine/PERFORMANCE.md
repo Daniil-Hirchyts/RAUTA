@@ -4,20 +4,21 @@ Run `bun scripts/benchmark-training-engine.ts`. Measured on Apple M1 Pro, darwin
 
 | Operation | Median ms | Sample p95 ms |
 |---|---:|---:|
-| index build (1,324 records) | 61.78 | 65.18 |
+| index build (1,324 records) | 86.38 | 89.09 |
 | indexed muscle query (10,000 lookups) | 0.11 | 0.17 |
-| state (120 sessions / 1,440 sets) | 2.6 | 2.85 |
-| generate (4 weeks, full data, history) | 675.81 | 708.17 |
-| adapt next week | 170.32 | 177.86 |
-| independent validation (4 weeks) | 4.62 | 4.96 |
+| state (120 sessions / 1,440 sets) | 5.18 | 5.64 |
+| substitution search | 85.39 | 92.82 |
+| generate (4 weeks, full data, history) | 1035.11 | 1054.51 |
+| adapt next week | 227.44 | 232.32 |
+| independent validation (4 weeks) | 16.56 | 17.34 |
 
 ## Beam width comparison
 
 | Width | Median ms | Score |
 |---|---:|---:|
-| beam width 1 | 328.68 | 0.7705 |
-| beam width 3 | 686.64 | 0.7705 |
-| beam width 8 | 1538.3 | 0.7697 |
+| beam width 1 | 529.67 | 0.7602 |
+| beam width 3 | 1047.74 | 0.7602 |
+| beam width 8 | 2367.73 | 0.7848 |
 
 Scores are optimizer utility, not predicted fitness outcomes. One representative case does not establish global optimality. Default width 3 bounds latency; widening is configurable.
 

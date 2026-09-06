@@ -11,14 +11,14 @@ Missing concepts added to the specification: explicit healthy-adult declaration;
 ## Data flow
 
 1. Runtime input validation and eligibility/capability gate.
-2. Dataset validation, conservative metadata inference and reusable indexes.
+2. Dataset validation, curated metadata overrides, deterministic inference fallback and reusable indexes. The full source catalogue remains accessible; suitability controls automatic versus specialized/manual programming without deleting records.
 3. Single derived state: actual volume, exercise-specific performance, adherence and confidence.
 4. Goal/experience starting targets, priority, conservative history adjustment.
 5. Evaluate full body, upper/lower and push/pull/legs candidate allocations. Templates are candidates, never selected solely from days per week.
 6. Indexed hard filtering; bounded beam construction and whole-week scoring; bounded local set removal/substitution improvement.
 7. Prescribe reps, effort, rest and calibration or history-based load. Future weeks preserve exercise selection; unobserved future progress is not fabricated.
-8. Independent validation and structured success/partial/infeasible/unsupported results.
-9. Adaptation preserves past sessions and continuity, replans remaining slots from actual work without stacking missed sessions.
+8. Independent semantic validation reconstructs deterministic targets, prescriptions, ordering, duration, scores, policy/version/fingerprint invariants and adaptation lineage before returning structured success/partial/infeasible/unsupported results.
+9. Adaptation preserves past sessions and continuity, then replans future slots from residual muscle volume, residual muscle frequency and remaining explicit strength-exercise exposures without stacking missed sessions.
 
 ## Boundaries
 
@@ -28,12 +28,12 @@ Domain models, policy, metadata/index, analytics, targets, scoring, optimization
 
 - `domain/types.ts`: immutable-by-contract serializable profile, eligibility, history, metadata, targets, planned work, issues, scores and extension interfaces.
 - `policy.ts`: frozen versioned defaults. Clone and assign a new version when tuning; generated programs carry a full policy snapshot.
-- `data/`: validated metadata/index construction, explicit role rules, ancillary equipment, and the non-destructive legacy adapter.
+- `data/`: validated metadata/index construction, curated JSON overrides with provenance/relationships, deterministic inference fallback, explicit role rules, ancillary equipment, and the non-destructive legacy adapter. Curated `familyId`, `duplicateOf` and `variantOf` metadata can improve continuity and substitutions while source records remain intact.
 - `analysis/`: effective volume, rolling windows, decayed workload, compatible e1RM/trends and linked adherence.
-- `planning/`: target derivation, split candidates and allocation, prescriptions, duration, bounded beam/local optimizer, generation, adaptation and substitution ranking.
+- `planning/`: target derivation, split candidates and allocation, prescriptions, duration, bounded beam/local optimizer, generation, residual-volume/frequency/specificity adaptation, and substitution ranking. Substitutions use a richer family/pattern/direct-muscle/mechanics/tracking/laterality/equipment similarity than the global redundancy score.
 - `scoring/`: normalized explainable candidate/session/week objectives, similarity and priority ordering.
 - `progression/`: achievable grids, double progression, repetition progression, assistance semantics and pluggable strategies.
-- `validation/`: request, policy, eligibility and independent whole-program checks; unknown input is rejected structurally at generation/validation boundaries.
+- `validation/`: request, policy, eligibility and independent whole-program checks; important derived semantics are recomputed rather than trusted from persisted fields, and unknown input is rejected structurally at generation/validation boundaries.
 - `summary.ts`: pure debug summaries. Scripts perform file I/O and console reporting; the core does neither.
 
 Main API from `src/training/index.ts`:
@@ -80,4 +80,4 @@ No dependencies were added. Seeded invariant/malformed-input generation uses a s
 
 ## Deliberate specification refinements
 
-A global muscle-specificity coefficient, exact recovery percentage, universal age multiplier, compulsory every-fourth-week deload and automatic increase in volume with more training days were rejected. Full physiological exercise metadata was not invented to fill missing values. Beam width 3 was selected after profiling and comparison; width 8 added latency without improving the measured representative score. No solver/native runtime was necessary. Accurate set logs and curation are the next prerequisites for individual calibration.
+A global muscle-specificity coefficient, exact recovery percentage, universal age multiplier, compulsory every-fourth-week deload and automatic increase in volume with more training days were rejected. Full physiological exercise metadata was not invented to fill missing values. Default beam width 3 remains the latency-oriented policy choice; the current representative benchmark shows width 8 can improve optimizer score at substantially higher cost, so beam width remains configurable rather than treated as globally optimal. No solver/native runtime was necessary. Accurate set logs and further catalogue curation are the next prerequisites for individual calibration.

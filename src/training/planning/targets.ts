@@ -6,7 +6,7 @@ import type {
   ProgramGenerationRequest,
   TrainingPolicy,
 } from "../domain/types"
-import { clamp } from "../numeric"
+import { clamp, confidenceAtLeast } from "../numeric"
 export const MAJOR_MUSCLES: MuscleId[] = [
   "chest",
   "upper-back",
@@ -47,7 +47,7 @@ export function deriveProgramTargets(
     const muscleState = state.muscles[muscleId]
     if (
       preferred &&
-      muscleState.confidence === "medium" &&
+      confidenceAtLeast(muscleState.confidence, "medium") &&
       muscleState.recentSessionCount >= policy.historyMinSessions
     ) {
       const recent = muscleState.rolling28DaySets / 4

@@ -16,7 +16,10 @@ import {
 } from "../numeric"
 import { exclusionReasons } from "../data/exercises"
 import {
+  calculateHistoryExerciseFrequency,
+  calculateHistoryFrequency,
   calculateHistoryVolume,
+  calculateSessionVolume,
   completedWorkingSetUnits,
 } from "../analysis/volume"
 import {
@@ -156,13 +159,35 @@ export function adaptTrainingProgram({
     Date.parse(request.now),
     true
   )
+  const actualFrequency =
+    mode === "remaining_week"
+      ? calculateHistoryFrequency(
+          request.history,
+          base.index,
+          base.policy,
+          Date.parse(request.schedule.weekStart),
+          Date.parse(request.now),
+          true
+        )
+      : undefined
+  const actualSpecificFrequency =
+    mode === "remaining_week"
+      ? calculateHistoryExerciseFrequency(
+          request.history,
+          base.policy,
+          Date.parse(request.schedule.weekStart),
+          Date.parse(request.now),
+          true
+        )
+      : {}
   const completedSets =
     mode === "remaining_week"
       ? request.history.sessions
           .filter(
             (s) =>
               Date.parse(s.completedAt) >=
-              Date.parse(request.schedule.weekStart)
+                Date.parse(request.schedule.weekStart) &&
+              Date.parse(s.completedAt) <= Date.parse(request.now)
           )
           .reduce(
             (sum, s) =>
@@ -240,7 +265,29 @@ export function adaptTrainingProgram({
       t.preferred -
         (mode === "remaining_week" ? actual[t.muscleId].effective : 0)
     ),
+    preferredExposures: Math.max(
+      0,
+      t.preferredExposures -
+        (mode === "remaining_week" ? (actualFrequency?.[t.muscleId] ?? 0) : 0)
+    ),
   }))
+  const remainingSpecificTargets = new Map(
+    (request.preferences.strengthExerciseIds ?? []).map((exerciseId) => {
+      const planned = source.sessions.filter((s) =>
+        s.exercises.some((e) => e.exerciseId === exerciseId)
+      ).length
+      return [
+        exerciseId,
+        Math.max(
+          0,
+          planned -
+            (mode === "remaining_week"
+              ? (actualSpecificFrequency[exerciseId] ?? 0)
+              : 0)
+        ),
+      ] as const
+    })
+  )
   const input: OptimizationInput = {
     ...base,
     request: adjustedRequest,
@@ -261,6 +308,17 @@ export function adaptTrainingProgram({
     targets,
     sessions: generateSplitCandidates(input)[0].sessions,
   }
+  const plannedMuscleExposures = (candidate: TrainingWeek, muscleId: string) =>
+    candidate.sessions.filter(
+      (s) =>
+        calculateSessionVolume(s, input.index, input.policy)[
+          muscleId as keyof ReturnType<typeof calculateSessionVolume>
+        ].effective >= input.policy.meaningfulExposureSets
+    ).length
+  const plannedSpecificExposures = (candidate: TrainingWeek, exerciseId: string) =>
+    candidate.sessions.filter((s) =>
+      s.exercises.some((e) => e.exerciseId === exerciseId)
+    ).length
   for (let si = 0; si < week.sessions.length; si++) {
     const day = futureDays.slice().sort((a, b) => a - b)[si]
     const prior =
@@ -315,7 +373,23 @@ export function adaptTrainingProgram({
           current[r.muscleId] <
             (targets.find((t) => t.muscleId === r.muscleId)?.preferred ?? 0)
       )
-      if (!needsWork && mode === "remaining_week") continue
+      const needsFrequency = e.metadata.setRoles.some(
+        (r) =>
+          r.role === "direct" &&
+          plannedMuscleExposures(week, r.muscleId) <
+            (targets.find((t) => t.muscleId === r.muscleId)
+              ?.preferredExposures ?? 0)
+      )
+      const needsSpecificity =
+        plannedSpecificExposures(week, e.exercise.id) <
+        (remainingSpecificTargets.get(e.exercise.id) ?? 0)
+      if (
+        !needsWork &&
+        !needsFrequency &&
+        !needsSpecificity &&
+        mode === "remaining_week"
+      )
+        continue
       const count =
         week.phase === "reduced_volume"
           ? Math.max(1, old.workingSets.length - 1)
@@ -337,6 +411,73 @@ export function adaptTrainingProgram({
       week = {
         ...week,
         sessions: week.sessions.map((s, i) => (i === si ? session : s)),
+      }
+    }
+  }
+  // Reschedule explicit strength-lift occurrences that were missed earlier in the
+  // week when a future slot remains. One lift occurrence is never stacked twice
+  // into the same session.
+  for (const [exerciseId, desired] of remainingSpecificTargets) {
+    const e = input.index.byId.get(exerciseId)
+    if (
+      !e ||
+      exclusionReasons(e, adjustedRequest.preferences, input.policy).length
+    )
+      continue
+    const template = source.sessions
+      .flatMap((s) => s.exercises)
+      .find((p) => p.exerciseId === exerciseId)
+    while (
+      plannedSpecificExposures(week, exerciseId) < desired &&
+      plannedSpecificExposures(week, exerciseId) < week.sessions.length
+    ) {
+      const existingTimes = week.sessions
+        .filter((s) => s.exercises.some((p) => p.exerciseId === exerciseId))
+        .map((s) => Date.parse(s.scheduledAt))
+      const candidates = week.sessions
+        .filter((s) => !s.exercises.some((p) => p.exerciseId === exerciseId))
+        .sort((a, b) => {
+          const spacing = (s: typeof a) =>
+            existingTimes.length
+              ? Math.min(
+                  ...existingTimes.map((time) =>
+                    Math.abs(Date.parse(s.scheduledAt) - time)
+                  )
+                )
+              : Infinity
+          return spacing(b) - spacing(a) || compareIds(a.id, b.id)
+        })
+      const session = candidates[0]
+      if (!session) break
+      const count = Math.min(
+        input.policy.maxSetsPerExercise,
+        Math.max(
+          1,
+          week.phase === "reduced_volume"
+            ? (template?.workingSets.length ?? 1) - 1
+            : (template?.workingSets.length ?? 1)
+        )
+      )
+      const prescription = prescribeExercise(
+        e,
+        count,
+        session.id,
+        scoreExercise(e, session, week, input),
+        input
+      )
+      week = {
+        ...week,
+        sessions: week.sessions.map((s) =>
+          s.id === session.id
+            ? {
+                ...s,
+                exercises: [
+                  ...s.exercises,
+                  { ...prescription, order: s.exercises.length },
+                ],
+              }
+            : s
+        ),
       }
     }
   }
@@ -365,7 +506,18 @@ export function adaptTrainingProgram({
                       j !== ei
                         ? [e]
                         : e.workingSets.length > 1
-                          ? [{ ...e, workingSets: e.workingSets.slice(0, -1) }]
+                          ? [
+                              {
+                                ...prescribeExercise(
+                                  input.index.byId.get(e.exerciseId)!,
+                                  e.workingSets.length - 1,
+                                  s.id,
+                                  e.rationale,
+                                  input
+                                ),
+                                order: e.order,
+                              },
+                            ]
                           : []
                     ),
                   }
@@ -373,6 +525,13 @@ export function adaptTrainingProgram({
           }
           return [{ candidate, score: scoreWeek(candidate, input).total }]
         })
+      )
+      .filter(({ candidate }) =>
+        [...remainingSpecificTargets].every(
+          ([exerciseId, desired]) =>
+            plannedSpecificExposures(candidate, exerciseId) >=
+            Math.min(desired, candidate.sessions.length)
+        )
       )
       .sort((a, b) => b.score - a.score)
     if (!removals.length) break
@@ -394,21 +553,29 @@ export function adaptTrainingProgram({
       issues: [{ code: "SESSION_DURATION_INFEASIBLE" }],
       suggestions: ["increase_duration", "relax_volume_bounds"],
     }
-  const result = generateTrainingProgram(adjustedRequest, {
-    optimize: () => ({
-      week,
-      split: "preserved_structure",
-      candidates: input.index.byId.size,
-      iterations: maximumTrims,
-      splits: [
-        {
-          name: "preserved_structure",
-          score: scoreWeek(week, input).total,
-          valid: true,
-        },
-      ],
-    }),
-  })
+  const result = generateTrainingProgram(
+    adjustedRequest,
+    {
+      optimize: () => ({
+        week,
+        split: "preserved_structure",
+        candidates: input.index.byId.size,
+        iterations: maximumTrims,
+        splits: [
+          {
+            name: "preserved_structure",
+            score: scoreWeek(week, input).total,
+            valid: true,
+          },
+        ],
+      }),
+    },
+    {
+      sourceProgramId: previousProgram.id,
+      asOf: request.now,
+      mode,
+    }
+  )
   if ("program" in result) {
     result.program.adaptation = {
       sourceProgramId: previousProgram.id,
@@ -419,8 +586,39 @@ export function adaptTrainingProgram({
       result.program,
       "adaptation-" + fingerprint({ source: previousProgram.id, request, week })
     )
-    if (mode === "remaining_week")
-      result.issues.push({ code: "MISSED_VOLUME_DROPPED" })
+    if (mode === "remaining_week") {
+      const sourceVolume = Object.fromEntries(
+        targets.map((t) => [
+          t.muscleId,
+          source.sessions.reduce(
+            (sum, session) =>
+              sum +
+              calculateSessionVolume(session, input.index, input.policy)[
+                t.muscleId
+              ].effective,
+            0
+          ),
+        ])
+      ) as Record<(typeof targets)[number]["muscleId"], number>
+      const adaptedVolume = weekVolume(week, input)
+      const dropped = targets.some(
+        (t) =>
+          Math.max(0, sourceVolume[t.muscleId] - actual[t.muscleId].effective) >
+          (adaptedVolume[t.muscleId] ?? 0) + 1e-6
+      )
+      if (dropped) result.issues.push({ code: "MISSED_VOLUME_DROPPED" })
+    }
+    const missingSpecific = [...remainingSpecificTargets]
+      .filter(
+        ([exerciseId, desired]) =>
+          plannedSpecificExposures(week, exerciseId) < desired
+      )
+      .map(([exerciseId]) => exerciseId)
+    if (missingSpecific.length)
+      result.issues.push({
+        code: "SPECIFICITY_UNAVAILABLE",
+        context: { exerciseIds: missingSpecific },
+      })
     if (week.phase === "reduced_volume")
       result.issues.push({ code: "REDUCED_VOLUME" })
     result.program.diagnostics.warnings = result.issues

@@ -92,6 +92,11 @@ export function validatePolicy(value: unknown): PlanningIssue[] {
     p.reductionFraction > 0.5 ||
     p.maxLoadIncreaseFraction <= 0 ||
     p.maxLoadIncreaseFraction > 0.2 ||
+    p.coarseGridMaxLoadIncreaseFraction <= p.maxLoadIncreaseFraction ||
+    p.coarseGridMaxLoadIncreaseFraction > 1 ||
+    !integer(p.coarseGridMaxExtraReps, 0, 20) ||
+    !integer(p.coarseGridRequiredTopExposures, 1, 10) ||
+    !integer(p.progressionEvidenceSets, 1, 10) ||
     p.maxWeeklyVolumeIncrease < 0 ||
     p.maxWeeklyVolumeIncrease > 4 ||
     p.warmupFractions.length !== p.warmupReps.length ||

@@ -15,6 +15,7 @@ import { prescribeExercise } from "../planning/prescribe"
 import { preparation } from "../planning/generate"
 import { orderExercises } from "../scoring/scores"
 import { adaptTrainingProgram } from "../planning/adapt"
+import { confidenceAtLeast } from "../numeric"
 const index = createExerciseIndex(request().exercises)
 it("old ID-only completion never fabricates sets, load or effective volume", () => {
   const session = adaptLegacyWorkout({
@@ -69,6 +70,34 @@ it("large downward grid steps do not make aggressive reductions", () => {
   })
   expect(p.action).toBe("hold")
   expect(p.reasons).toContain("increment_too_large")
+})
+it("coarse load grids progress after repeated success at the extended rep ceiling", () => {
+  const h = history([
+    [16, 16, 16],
+    [16, 16, 16],
+  ])
+  const p = recommendProgression({
+    exercise: index.byId.get("0025")!,
+    history: h,
+    now: "2026-08-15T12:00:00.000Z",
+    reps: { min: 8, max: 12 },
+    rir: 2,
+    requiredSets: 3,
+    loadGrid: { availableLoadsKg: [70, 90] },
+    loadContext: { stationId: "bench-A", basis: "total" },
+    policy: DEFAULT_POLICY,
+  })
+  expect(p).toMatchObject({
+    action: "increase_load",
+    resistance: { type: "external_load", kg: 90 },
+    confidence: "medium",
+  })
+  expect(p.reasons).toContain("coarse_load_grid")
+})
+it("confidence ordering treats high as satisfying at-least-medium requirements", () => {
+  expect(confidenceAtLeast("high", "medium")).toBe(true)
+  expect(confidenceAtLeast("medium", "medium")).toBe(true)
+  expect(confidenceAtLeast("low", "medium")).toBe(false)
 })
 it("priority isolation can precede non-priority compounds", () => {
   const r = request()

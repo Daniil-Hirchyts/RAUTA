@@ -35,7 +35,7 @@ export function prescribeExercise(
     now: request.now,
     reps,
     rir,
-    requiredSets: count,
+    requiredSets: Math.min(count, policy.progressionEvidenceSets),
     loadContext: request.preferences.loadContexts?.[id],
     loadGrid: request.preferences.loadGrids?.[id],
     policy,

@@ -1,10 +1,13 @@
 import type {
   ExerciseIndex,
+  OptimizationInput,
+  PlannedExercise,
   PlanningIssue,
   ProgramGenerationRequest,
+  Score,
   TrainingProgram,
 } from "../domain/types"
-import { finite, isRecord, validIso, DAY_MS } from "../numeric"
+import { finite, fingerprint, isRecord, validIso, DAY_MS } from "../numeric"
 import { createExerciseIndex, exclusionReasons } from "../data/exercises"
 import {
   calculateHistoryVolume,
@@ -14,6 +17,13 @@ import {
 } from "../analysis/volume"
 import { estimateSessionDuration } from "../planning/duration"
 import { isAchievableLoad } from "../progression/progression"
+import { analyzeTrainingState } from "../analysis/state"
+import { deriveProgramTargets } from "../planning/targets"
+import { DEFAULT_POLICY, ENGINE_VERSION } from "../policy"
+import { prescribeExercise } from "../planning/prescribe"
+import { generateSplitCandidates } from "../planning/optimizer"
+import { orderExercises, scoreWeek } from "../scoring/scores"
+import { MUSCLE_IDS } from "../../types"
 import {
   planningEligibility,
   validResistance,
@@ -37,6 +47,52 @@ export function validateTrainingProgram(
   const issues: PlanningIssue[] = []
   const warnings: PlanningIssue[] = []
   const fail = (path: string) => issues.push({ code: "INVALID_PROGRAM", path })
+  const validScore = (value: unknown, path: string): value is Score => {
+    if (
+      !isRecord(value) ||
+      typeof value.total !== "number" ||
+      !Number.isFinite(value.total) ||
+      !Array.isArray(value.contributions)
+    ) {
+      fail(path)
+      return false
+    }
+    const factors = new Set<string>()
+    let numerator = 0
+    let denominator = 0
+    for (const contribution of value.contributions) {
+      if (
+        !isRecord(contribution) ||
+        typeof contribution.factor !== "string" ||
+        !contribution.factor ||
+        factors.has(contribution.factor) ||
+        typeof contribution.rawValue !== "number" ||
+        !Number.isFinite(contribution.rawValue) ||
+        contribution.rawValue < 0 ||
+        contribution.rawValue > 1 ||
+        typeof contribution.weight !== "number" ||
+        !Number.isFinite(contribution.weight) ||
+        typeof contribution.contribution !== "number" ||
+        !Number.isFinite(contribution.contribution) ||
+        Math.abs(
+          contribution.contribution -
+            contribution.rawValue * contribution.weight
+        ) > 1e-9
+      ) {
+        fail(path)
+        return false
+      }
+      factors.add(contribution.factor)
+      numerator += contribution.contribution
+      denominator += Math.abs(contribution.weight)
+    }
+    const expected = denominator ? numerator / denominator : 0
+    if (Math.abs(value.total - expected) > 1e-9) {
+      fail(path)
+      return false
+    }
+    return true
+  }
   if (
     !isRecord(value) ||
     !Array.isArray(value.weeks) ||
@@ -46,8 +102,12 @@ export function validateTrainingProgram(
   )
     return { valid: false, issues: [{ code: "INVALID_PROGRAM" }], warnings }
   const program = value as TrainingProgram
+  const authoritativePolicy = request.policy ??
+    (program.adaptation ? undefined : DEFAULT_POLICY)
   if (
     !validIso(program.generatedAt) ||
+    program.generatedAt !== request.now ||
+    program.engineVersion !== ENGINE_VERSION ||
     program.policyVersion !== program.policy.version ||
     program.durationWeeks !== program.weeks.length ||
     program.weeks.length !== request.schedule.durationWeeks ||
@@ -55,6 +115,19 @@ export function validateTrainingProgram(
     program.datasetFingerprint !== index.fingerprint
   )
     fail("program.header")
+  if (
+    authoritativePolicy &&
+    fingerprint(program.policy) !== fingerprint(authoritativePolicy)
+  )
+    fail("program.policy")
+  if (
+    program.adaptation &&
+    (!program.adaptation.sourceProgramId ||
+      !validIso(program.adaptation.asOf) ||
+      program.adaptation.asOf !== request.now ||
+      !["remaining_week", "next_week"].includes(program.adaptation.mode))
+  )
+    fail("program.adaptation")
   // Scan all numeric payload fields, including diagnostics, without trusting generator output.
   const seenObjects = new Set<object>()
   function numbers(v: unknown, path: string) {
@@ -66,6 +139,44 @@ export function validateTrainingProgram(
     }
   }
   numbers(program, "program")
+  const semanticRequest: ProgramGenerationRequest = {
+    ...request,
+    policy: program.policy,
+  }
+  const initialState = analyzeTrainingState(
+    semanticRequest,
+    index,
+    [],
+    program.policy
+  )
+  const semanticTargets = deriveProgramTargets(
+    semanticRequest,
+    initialState,
+    program.policy
+  )
+  const semanticState = analyzeTrainingState(
+    semanticRequest,
+    index,
+    semanticTargets,
+    program.policy
+  )
+  const semanticInput: OptimizationInput = {
+    request: semanticRequest,
+    index,
+    state: semanticState,
+    targets: semanticTargets,
+    policy: program.policy,
+  }
+  const expectedPhase = program.adaptation
+    ? request.readiness?.perceivedReadiness === "low" &&
+      Object.values(semanticState.exercises).filter((e) => e.trend === "declining")
+        .length >= 2
+      ? "reduced_volume"
+      : "base"
+    : "base"
+  const initialSplitCandidates = !program.adaptation
+    ? generateSplitCandidates(semanticInput)
+    : []
   const ids = new Set<string>()
   const unique = (id: unknown, path: string) => {
     if (typeof id !== "string" || !id || ids.has(id)) fail(path)
@@ -82,6 +193,7 @@ export function validateTrainingProgram(
       continue
     }
     unique(w.id, `weeks.${wi}.id`)
+    if (w.phase !== expectedPhase) fail(`weeks.${wi}.phase`)
     if (
       !validIso(w.start) ||
       Date.parse(w.start) !==
@@ -92,8 +204,17 @@ export function validateTrainingProgram(
     const dates = new Set<string>()
     for (const [si, session] of w.sessions.entries()) {
       const path = `weeks.${wi}.sessions.${si}`
+      const sessionIssueStart = issues.length
       if (
         !isRecord(session) ||
+        !Array.isArray(session.focus) ||
+        !session.focus.length ||
+        session.focus.some(
+          (muscleId) =>
+            typeof muscleId !== "string" ||
+            !MUSCLE_IDS.includes(muscleId as (typeof MUSCLE_IDS)[number])
+        ) ||
+        new Set(session.focus).size !== session.focus.length ||
         !Array.isArray(session.exercises) ||
         !session.exercises.length
       ) {
@@ -130,6 +251,7 @@ export function validateTrainingProgram(
         issues.push(
           ...exclusionReasons(record, request.preferences, program.policy)
         )
+        if (!validScore(e.rationale, path + ".rationale")) continue
         if (
           exercises.has(e.exerciseId) ||
           e.order !== ei ||
@@ -139,6 +261,28 @@ export function validateTrainingProgram(
         )
           fail(path + ".exercise")
         exercises.add(e.exerciseId)
+        const expectedPrescription = prescribeExercise(
+          record,
+          e.workingSets.length,
+          session.id,
+          e.rationale,
+          { ...semanticInput, targets: w.targets }
+        )
+        const prescriptionSemantics = (planned: PlannedExercise) => {
+          return {
+            exerciseId: planned.exerciseId,
+            workingSets: planned.workingSets,
+            warmupSets: planned.warmupSets,
+            restSeconds: planned.restSeconds,
+            targetMuscles: planned.targetMuscles,
+            progression: planned.progression,
+          }
+        }
+        if (
+          fingerprint(prescriptionSemantics(e as PlannedExercise)) !==
+          fingerprint(prescriptionSemantics(expectedPrescription))
+        )
+          fail(path + ".prescription")
         for (const [kind, sets] of [
           ["working", e.workingSets],
           ["warmup", e.warmupSets],
@@ -185,7 +329,16 @@ export function validateTrainingProgram(
           }
       }
       // Only evaluate well-shaped prescriptions. Never derive through malformed unknown input.
-      if (!issues.length) {
+      if (issues.length === sessionIssueStart) {
+        const expectedOrder = orderExercises(
+          session.exercises.map((exercise, order) => ({ ...exercise, order })),
+          { ...semanticInput, targets: w.targets }
+        ).map((exercise) => exercise.exerciseId)
+        if (
+          fingerprint(expectedOrder) !==
+          fingerprint(session.exercises.map((exercise) => exercise.exerciseId))
+        )
+          fail(path + ".order")
         const duration = estimateSessionDuration(session, index, program.policy)
         if (
           !isRecord(session.duration) ||
@@ -204,8 +357,56 @@ export function validateTrainingProgram(
           })
       }
     }
+    if (!program.adaptation) {
+      const focus = w.sessions.map((session) => session.focus)
+      const matchingSplits = initialSplitCandidates.filter(
+        (candidate) =>
+          fingerprint(candidate.sessions.map((session) => session.focus)) ===
+          fingerprint(focus)
+      )
+      if (!matchingSplits.length) fail(`weeks.${wi}.focus`)
+      if (
+        wi === 0 &&
+        !matchingSplits.some(
+          (candidate) => candidate.name === program.diagnostics.selectedSplit
+        )
+      )
+        fail("program.diagnostics.selectedSplit")
+    }
+  }
+  if (!issues.length && !program.adaptation) {
+    const initial = analyzeTrainingState(request, index, [], program.policy)
+    const expectedTargets = deriveProgramTargets(request, initial, program.policy)
+    for (const [wi, week] of program.weeks.entries()) {
+      if (week.targets.length !== expectedTargets.length) {
+        fail(`weeks.${wi}.targets`)
+        continue
+      }
+      for (const expected of expectedTargets) {
+        const actual = week.targets.find((t) => t.muscleId === expected.muscleId)
+        if (
+          !actual ||
+          actual.minimum !== expected.minimum ||
+          actual.preferred !== expected.preferred ||
+          actual.upperGuideline !== expected.upperGuideline ||
+          actual.importance !== expected.importance ||
+          actual.preferredExposures !== expected.preferredExposures
+        )
+          fail(`weeks.${wi}.targets.${expected.muscleId}`)
+      }
+    }
   }
   if (!issues.length) {
+    if (!validScore(program.diagnostics.score, "program.diagnostics.score")) {
+      // Shape failure is already recorded above.
+    } else {
+      const expectedScore = scoreWeek(program.weeks[0], {
+        ...semanticInput,
+        targets: program.weeks[0].targets,
+      })
+      if (fingerprint(program.diagnostics.score) !== fingerprint(expectedScore))
+        fail("program.diagnostics.score")
+    }
     const volumes = calculateProgramVolume(program, index)
     const frequencies = calculateProgramFrequency(program, index)
     for (const [wi, w] of program.weeks.entries()) {

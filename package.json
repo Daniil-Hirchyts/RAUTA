@@ -21,6 +21,7 @@
     "ios:release": "./scripts/release-testflight.sh",
     "training:example": "bun scripts/generate-training-program.ts",
     "training:audit": "bun scripts/audit-training-exercises.ts",
+    "training:media-review": "bun scripts/review-training-exercise-media.ts",
     "training:benchmark": "bun scripts/benchmark-training-engine.ts",
     "training:test": "vitest run src/training"
   },

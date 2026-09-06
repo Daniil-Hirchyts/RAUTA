@@ -6,6 +6,7 @@ import {
   analyzeTrainingState,
   createExerciseIndex,
   DEFAULT_POLICY,
+  findExerciseSubstitutions,
   generateTrainingProgram,
   validateTrainingProgram,
 } from "../src/training"
@@ -82,6 +83,9 @@ const rows = [
   }),
   benchmark("state (120 sessions / 1,440 sets)", () =>
     analyzeTrainingState(r, index)
+  ),
+  benchmark("substitution search", () =>
+    findExerciseSubstitutions("0025", r, 10)
   ),
   benchmark("generate (4 weeks, full data, history)", () =>
     generateTrainingProgram(r)

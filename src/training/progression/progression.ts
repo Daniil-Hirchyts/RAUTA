@@ -180,12 +180,54 @@ export const doubleProgression: ProgressionStrategy = {
       top ? !assistance : assistance
     )
     if (next === undefined) return hold("grid_unavailable")
-    if (
-      Math.abs(next - load.kg) >
-      Math.max(load.kg, 1) *
-        (top ? i.policy.maxLoadIncreaseFraction : i.policy.reductionFraction)
-    )
-      return hold("increment_too_large")
+    const permittedFraction = top
+      ? i.policy.maxLoadIncreaseFraction
+      : i.policy.reductionFraction
+    const coarseStep =
+      Math.abs(next - load.kg) > Math.max(load.kg, 1) * permittedFraction
+    if (coarseStep) {
+      if (!top) return hold("increment_too_large")
+      if (
+        Math.abs(next - load.kg) >
+        Math.max(load.kg, 1) * i.policy.coarseGridMaxLoadIncreaseFraction
+      )
+        return hold("increment_too_large")
+      const extendedMax = Math.min(
+        50,
+        i.reps.max + i.policy.coarseGridMaxExtraReps
+      )
+      const completedFloor = Math.min(...latest.sets.map((s) => s.reps))
+      if (completedFloor < extendedMax)
+        return recommendation(i, {
+          action: "increase_reps",
+          resistance: { ...load },
+          targetReps: {
+            min: i.reps.min,
+            max: Math.min(
+              extendedMax,
+              Math.max(i.reps.max + 1, completedFloor + 1)
+            ),
+          },
+          confidence: "low",
+          reasons: ["coarse_load_grid"],
+        })
+      const strongAtExtended = exposures
+        .slice(-i.policy.coarseGridRequiredTopExposures)
+        .filter(
+          (x) =>
+            Date.parse(i.now) - Date.parse(x.session.completedAt) <=
+              i.policy.staleAfterDays * DAY_MS &&
+            completedPairs(x.sets) >= i.requiredSets &&
+            x.sets.every(
+              (s) =>
+                same(s.resistance) &&
+                s.reps >= extendedMax &&
+                (observedRir(s) ?? -1) >= i.rir - i.policy.rirTolerance
+            )
+        ).length
+      if (strongAtExtended < i.policy.coarseGridRequiredTopExposures)
+        return hold("coarse_load_grid")
+    }
     return recommendation(i, {
       action: top
         ? assistance
@@ -196,7 +238,13 @@ export const doubleProgression: ProgressionStrategy = {
           : "decrease_load",
       resistance: { ...load, kg: next },
       confidence: "medium",
-      reasons: [top ? "top_of_range" : "repeated_underperformance"],
+      reasons: [
+        coarseStep
+          ? "coarse_load_grid"
+          : top
+            ? "top_of_range"
+            : "repeated_underperformance",
+      ],
     })
   },
 }

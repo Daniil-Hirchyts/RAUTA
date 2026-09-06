@@ -170,6 +170,10 @@ export type EffectiveSetRole = {
   role: "direct" | "indirect" | "incidental"
   provenance: "rule" | "curated"
 }
+export type AutomaticProgramming =
+  | "allowed"
+  | "specialized_only"
+  | "manual_only"
 export type ExerciseMetadata = {
   exerciseId: string
   exerciseType:
@@ -184,7 +188,16 @@ export type ExerciseMetadata = {
   skill: "basic" | "complex" | "unknown"
   setupSeconds: number
   tags: string[]
-  provenance: "rule" | "curated"
+  automaticProgramming: AutomaticProgramming
+  familyId?: string
+  variantOf?: string
+  duplicateOf?: string
+  provenance:
+    | "rule"
+    | "curated"
+    | "curated_text"
+    | "curated_video"
+    | "curated_video_and_text"
   ruleVersion: string
 }
 export type IndexedExercise = {
@@ -195,9 +208,17 @@ export type IndexedExercise = {
 export type ExerciseIndex = {
   byId: ReadonlyMap<string, IndexedExercise>
   byMuscle: ReadonlyMap<MuscleId, IndexedExercise[]>
+  byDirectMuscle: ReadonlyMap<MuscleId, IndexedExercise[]>
   byPrimaryMuscle: ReadonlyMap<MuscleId, IndexedExercise[]>
   byEquipment: ReadonlyMap<string, IndexedExercise[]>
   byMovementPattern: ReadonlyMap<MovementPattern, IndexedExercise[]>
+  byFamily: ReadonlyMap<string, IndexedExercise[]>
+  byAutomaticProgramming: ReadonlyMap<
+    AutomaticProgramming,
+    IndexedExercise[]
+  >
+  byTracking: ReadonlyMap<ExerciseMetadata["tracking"], IndexedExercise[]>
+  byMechanics: ReadonlyMap<ExerciseMetadata["mechanics"], IndexedExercise[]>
   byExerciseType: ReadonlyMap<
     ExerciseMetadata["exerciseType"],
     IndexedExercise[]
@@ -291,6 +312,10 @@ export type TrainingPolicy = {
   trendThreshold: number
   reductionFraction: number
   maxLoadIncreaseFraction: number
+  coarseGridMaxLoadIncreaseFraction: number
+  coarseGridMaxExtraReps: number
+  coarseGridRequiredTopExposures: number
+  progressionEvidenceSets: number
   maxBodyweightReps: number
   rirTolerance: number
   generalWarmupSeconds: number
@@ -326,8 +351,12 @@ export type TrainingPolicy = {
     number
   >
   similarityWeights: {
+    family: number
     patterns: number
     directMuscles: number
+    mechanics: number
+    tracking: number
+    laterality: number
     equipment: number
   }
   orderingWeights: { specific: number; priority: number; compound: number }
@@ -480,6 +509,7 @@ export type ProgressionRecommendation = {
     | "within_range"
     | "grid_unavailable"
     | "increment_too_large"
+    | "coarse_load_grid"
   )[]
 }
 export type ProgressionInput = {

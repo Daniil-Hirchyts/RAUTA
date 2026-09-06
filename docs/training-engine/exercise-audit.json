@@ -1,5 +1,5 @@
 {
-  "datasetFingerprint": "9f113563",
+  "datasetFingerprint": "104ecfee",
   "total": 1324,
   "errors": [],
   "equipment": {
@@ -70,26 +70,96 @@
     "upper-back": 260
   },
   "programmingDirectCoverage": {
-    "abs": 52,
+    "abs": 53,
     "adductors": 4,
-    "biceps": 98,
+    "biceps": 107,
     "calves": 45,
-    "chest": 108,
-    "deltoids": 61,
-    "gluteal": 105,
+    "chest": 116,
+    "deltoids": 70,
+    "gluteal": 142,
     "hamstring": 35,
     "lower-back": 10,
     "obliques": 5,
-    "quadriceps": 73,
-    "triceps": 58,
-    "upper-back": 128
+    "quadriceps": 106,
+    "triceps": 63,
+    "upper-back": 143
   },
   "types": {
     "conditioning": 16,
-    "resistance": 687,
+    "resistance": 747,
     "stretch": 56,
-    "unknown": 565
+    "unknown": 505
   },
+  "automaticProgramming": {
+    "allowed": 612,
+    "manual_only": 677,
+    "specialized_only": 35
+  },
+  "provenance": {
+    "curated_video_and_text": 12,
+    "rule": 1312
+  },
+  "curatedReviewCount": 12,
+  "videoReviewedCount": 12,
+  "textOnlyReviewedCount": 0,
+  "ruleOnlyCount": 1312,
+  "duplicates": [
+    {
+      "exerciseId": "1371",
+      "duplicateOf": "0088"
+    }
+  ],
+  "variants": [
+    {
+      "exerciseId": "0577",
+      "variantOf": "0576"
+    },
+    {
+      "exerciseId": "0656",
+      "variantOf": "0655"
+    },
+    {
+      "exerciseId": "1394",
+      "variantOf": "0763"
+    },
+    {
+      "exerciseId": "1628",
+      "variantOf": "0454"
+    }
+  ],
+  "conflicts": [
+    {
+      "exerciseId": "0656",
+      "tags": [
+        "source_media_conflict"
+      ]
+    },
+    {
+      "exerciseId": "0697",
+      "tags": [
+        "source_media_conflict"
+      ]
+    },
+    {
+      "exerciseId": "0763",
+      "tags": [
+        "source_media_conflict"
+      ]
+    },
+    {
+      "exerciseId": "1394",
+      "tags": [
+        "source_media_conflict"
+      ]
+    },
+    {
+      "exerciseId": "1766",
+      "tags": [
+        "source_equipment_conflict",
+        "source_media_conflict"
+      ]
+    }
+  ],
   "missingPrimary": [],
   "missingInstructions": [],
   "exactNameDuplicates": [
@@ -930,44 +1000,12 @@
       "name": "chest dip (on dip-pull-up cage)"
     },
     {
-      "id": "1651",
-      "name": "dumbbell bicep curl lunge with bowling motion"
-    },
-    {
-      "id": "1655",
-      "name": "dumbbell biceps curl squat"
-    },
-    {
-      "id": "1658",
-      "name": "dumbbell lunge with bicep curl"
-    },
-    {
       "id": "1688",
       "name": "lunge with twist"
     },
     {
-      "id": "1717",
-      "name": "cable squat row (with rope attachment)"
-    },
-    {
-      "id": "1728",
-      "name": "cable two arm tricep kickback"
-    },
-    {
       "id": "1730",
       "name": "dumbbell seated bent over alternate kickback"
-    },
-    {
-      "id": "1732",
-      "name": "dumbbell forward lunge triceps extension"
-    },
-    {
-      "id": "1739",
-      "name": "dumbbell standing alternating tricep kickback"
-    },
-    {
-      "id": "1742",
-      "name": "dumbbell tricep kickback with stork stance"
     },
     {
       "id": "1772",
@@ -984,10 +1022,6 @@
     {
       "id": "3119",
       "name": "potty squat"
-    },
-    {
-      "id": "3547",
-      "name": "dumbbell seated biceps curl to shoulder press"
     },
     {
       "id": "3662",
@@ -1012,6 +1046,13 @@
     "towel": 5
   },
   "reviewQueue": [
+    {
+      "id": "0001",
+      "name": "3/4 sit-up",
+      "tags": [
+        "partial_rom"
+      ]
+    },
     {
       "id": "0002",
       "name": "45° side bend",
@@ -1951,11 +1992,6 @@
       "tags": []
     },
     {
-      "id": "0454",
-      "name": "ez barbell spider curl",
-      "tags": []
-    },
-    {
       "id": "0455",
       "name": "finger curls",
       "tags": []
@@ -2328,6 +2364,15 @@
       ]
     },
     {
+      "id": "0656",
+      "name": "push-up (on stability ball)",
+      "tags": [
+        "curated_exact_name_review",
+        "manual_review_required",
+        "source_media_conflict"
+      ]
+    },
+    {
       "id": "0661",
       "name": "push-up inside leg kick",
       "tags": [
@@ -2377,6 +2422,15 @@
       "id": "0689",
       "name": "seated leg raise",
       "tags": []
+    },
+    {
+      "id": "0697",
+      "name": "self assisted inverse leg curl",
+      "tags": [
+        "curated_exact_name_review",
+        "manual_review_required",
+        "source_media_conflict"
+      ]
     },
     {
       "id": "0705",
@@ -2432,6 +2486,15 @@
       "id": "0759",
       "name": "smith incline shoulder raises",
       "tags": []
+    },
+    {
+      "id": "0763",
+      "name": "smith reverse calf raises",
+      "tags": [
+        "curated_exact_name_review",
+        "manual_review_required",
+        "source_media_conflict"
+      ]
     },
     {
       "id": "0764",
@@ -2649,7 +2712,9 @@
     {
       "id": "1003",
       "name": "band squat row",
-      "tags": []
+      "tags": [
+        "multi_pattern"
+      ]
     },
     {
       "id": "1011",
@@ -2892,6 +2957,15 @@
       ]
     },
     {
+      "id": "1394",
+      "name": "smith reverse calf raises",
+      "tags": [
+        "curated_exact_name_review",
+        "manual_review_required",
+        "source_media_conflict"
+      ]
+    },
+    {
       "id": "1396",
       "name": "smith toe raise",
       "tags": []
@@ -3120,11 +3194,6 @@
       "tags": []
     },
     {
-      "id": "1628",
-      "name": "ez barbell spider curl",
-      "tags": []
-    },
-    {
       "id": "1630",
       "name": "cable close grip curl",
       "tags": []
@@ -3160,31 +3229,10 @@
       "tags": []
     },
     {
-      "id": "1651",
-      "name": "dumbbell bicep curl lunge with bowling motion",
-      "tags": [
-        "primary_mismatch"
-      ]
-    },
-    {
-      "id": "1655",
-      "name": "dumbbell biceps curl squat",
-      "tags": [
-        "primary_mismatch"
-      ]
-    },
-    {
       "id": "1656",
       "name": "dumbbell biceps curl v sit on bosu ball",
       "tags": [
         "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "1658",
-      "name": "dumbbell lunge with bicep curl",
-      "tags": [
-        "primary_mismatch"
       ]
     },
     {
@@ -3260,7 +3308,7 @@
       "id": "1717",
       "name": "cable squat row (with rope attachment)",
       "tags": [
-        "primary_mismatch"
+        "multi_pattern"
       ]
     },
     {
@@ -3272,13 +3320,6 @@
       "id": "1721",
       "name": "barbell reverse grip skullcrusher",
       "tags": []
-    },
-    {
-      "id": "1728",
-      "name": "cable two arm tricep kickback",
-      "tags": [
-        "primary_mismatch"
-      ]
     },
     {
       "id": "1729",
@@ -3296,13 +3337,6 @@
       "id": "1731",
       "name": "dumbbell close grip press",
       "tags": []
-    },
-    {
-      "id": "1732",
-      "name": "dumbbell forward lunge triceps extension",
-      "tags": [
-        "primary_mismatch"
-      ]
     },
     {
       "id": "1733",
@@ -3323,20 +3357,6 @@
       "id": "1736",
       "name": "dumbbell one arm french press on exercise ball",
       "tags": []
-    },
-    {
-      "id": "1739",
-      "name": "dumbbell standing alternating tricep kickback",
-      "tags": [
-        "primary_mismatch"
-      ]
-    },
-    {
-      "id": "1742",
-      "name": "dumbbell tricep kickback with stork stance",
-      "tags": [
-        "primary_mismatch"
-      ]
     },
     {
       "id": "1744",
@@ -3396,6 +3416,16 @@
       "id": "1765",
       "name": "dumbbell upright row (back pov)",
       "tags": []
+    },
+    {
+      "id": "1766",
+      "name": "self assisted inverse leg curl",
+      "tags": [
+        "curated_exact_name_review",
+        "manual_review_required",
+        "source_equipment_conflict",
+        "source_media_conflict"
+      ]
     },
     {
       "id": "1772",
@@ -3562,7 +3592,8 @@
       "id": "2798",
       "name": "barbell squat jump step rear lunge",
       "tags": [
-        "complex_unreviewed"
+        "complex_unreviewed",
+        "multi_pattern"
       ]
     },
     {
@@ -3655,6 +3686,27 @@
       "id": "3193",
       "name": "glute-ham raise",
       "tags": []
+    },
+    {
+      "id": "3201",
+      "name": "quarter sit-up",
+      "tags": [
+        "partial_rom"
+      ]
+    },
+    {
+      "id": "3202",
+      "name": "half sit-up (male)",
+      "tags": [
+        "partial_rom"
+      ]
+    },
+    {
+      "id": "3203",
+      "name": "prisoner half sit-up (male)",
+      "tags": [
+        "partial_rom"
+      ]
     },
     {
       "id": "3212",
@@ -3921,13 +3973,6 @@
       "id": "3546",
       "name": "dumbbell seated alternate shoulder",
       "tags": []
-    },
-    {
-      "id": "3547",
-      "name": "dumbbell seated biceps curl to shoulder press",
-      "tags": [
-        "primary_mismatch"
-      ]
     },
     {
       "id": "3548",
