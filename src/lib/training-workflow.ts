@@ -1,4 +1,5 @@
 import { EXERCISES, EQUIPMENT_OPTIONS } from "@/lib/exercises"
+import { buildTrainingEngineInputs } from "@/lib/training-engine-adapter"
 import { useTrainingRecords } from "@/store/use-training-records"
 import { toEngineLoadPreferences } from "@/training-persistence/history"
 import { toEngineProgramSnapshot } from "@/training-persistence/program"
@@ -11,8 +12,8 @@ import {
   DEFAULT_POLICY,
 } from "@/training"
 import type {
+  PlanningPreferences,
   ProgramGenerationRequest,
-  TrainingGoal,
   UserTrainingProfile,
 } from "@/training"
 import type {
@@ -34,11 +35,11 @@ export const planningEquipment = [
   "towel",
   "suspension straps",
 ]
+/** Engine input, already translated. Callers get it from the saved profile
+ *  through `buildTrainingEngineInputs`; nothing here re-asks the user. */
 export type PlanSetup = {
-  age: number
-  experience: UserTrainingProfile["trainingExperience"]
-  goal: TrainingGoal
-  equipment: string[]
+  profile: UserTrainingProfile
+  preferences: PlanningPreferences
 }
 
 export function buildTrainingRequest(
@@ -64,15 +65,9 @@ export function buildTrainingRequest(
       all.filter((other) => other.exerciseId === c.exerciseId).length === 1
   )
   return {
-    profile: {
-      age: setup.age,
-      trainingExperience: setup.experience,
-      health: { status: "healthy" },
-    },
+    profile: setup.profile,
     preferences: {
-      goal: setup.goal,
-      availableEquipment: setup.equipment,
-      maxSessionDurationMinutes: 60,
+      ...setup.preferences,
       ...toEngineLoadPreferences(
         store.data.settings,
         selectedContexts.map((c) => c.id)
@@ -112,7 +107,7 @@ export function buildTrainingRequest(
 }
 
 export function generateAndSavePlan(
-  setup: PlanSetup,
+  setup: PlanSetup = buildTrainingEngineInputs(),
   now = new Date().toISOString(),
   source?: PersistedProgramRecord
 ) {
@@ -159,12 +154,12 @@ export function replacementIds(exerciseId: string): string[] {
       ]
     : planningEquipment
   const request = buildTrainingRequest(
-    {
-      age: 30,
-      experience: "beginner",
-      goal: source?.snapshot.goal ?? "general_fitness",
-      equipment: availableEquipment,
-    },
+    buildTrainingEngineInputs({
+      availableEquipment,
+      // A swap stays inside the plan it belongs to; the profile's current goal
+      // must not quietly re-rank alternatives for an older program.
+      ...(source ? { goal: source.snapshot.goal } : {}),
+    }),
     new Date().toISOString(),
     source
   )

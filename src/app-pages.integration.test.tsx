@@ -9,6 +9,8 @@ import { useActiveWorkout } from "@/store/use-active-workout"
 import { useFavorites } from "@/store/use-favorites"
 import { useFilters } from "@/store/use-filters"
 import { DEFAULT_SETTINGS, useSettings } from "@/store/use-settings"
+import { useTrainingProfile } from "@/store/use-training-profile"
+import { completedOnboardingState } from "@/test/profile"
 import { useWorkouts } from "@/store/use-workouts"
 
 function renderWorkoutDetail(exerciseIds = ["0001"]) {
@@ -36,6 +38,9 @@ describe("page-based app flows", () => {
       selectedMuscles: [],
     })
     useSettings.setState(DEFAULT_SETTINGS)
+    // These flows belong to someone who already uses the app; first-run setup
+    // has its own tests.
+    useTrainingProfile.setState(completedOnboardingState())
     useWorkouts.setState({ workouts: [] })
   })
 

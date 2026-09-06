@@ -1076,8 +1076,15 @@ html[data-native="ios"] .app-scroll-content {
   stroke-width: 7;
 }
 
+/* A selection can carry a degree — how much of a training week a muscle is
+   meant to take. It mixes toward the resting fill rather than fading out, so a
+   lighter region still reads as painted rather than as a hole in the figure. */
 .muscle-region.is-selected {
-  color: var(--primary);
+  color: color-mix(
+    in oklab,
+    var(--primary) calc(var(--muscle-weight, 1) * 100%),
+    #37373b
+  );
 }
 
 .muscle-region.is-selected path {
@@ -1617,6 +1624,7 @@ li:has(.interactive-spring:active),
   padding-left: 1.125rem;
   padding-right: 0.25rem;
 }
+
 
 .preset-chip[aria-pressed="true"],
 .preset-chip[data-pressed="true"] {

@@ -19,9 +19,7 @@ import {
   X,
 } from "lucide-react"
 
-import { AnimatedCheck } from "@/components/animated-check"
 import { AnimatedNumber } from "@/components/animated-number"
-import { AppImage } from "@/components/app-image"
 import { AppControlMorph, TextSwap } from "@/components/app-morph"
 import {
   AppControlButton,
@@ -34,15 +32,25 @@ import {
   PageLayerProvider,
 } from "@/components/app-shell"
 import { BodyMap } from "@/components/body-map"
+import { EquipmentGrid } from "@/components/equipment-grid"
 import {
   EquipmentPresetEditor,
   EquipmentPresets,
 } from "@/components/equipment-presets"
 import { ExerciseCard } from "@/components/exercise-card"
 import { ExerciseSearch } from "@/components/exercise-search"
+import { FlowProgress } from "@/components/flow-progress"
 import { HapticLayer } from "@/components/haptic-layer"
 import { LikeButton } from "@/components/like-button"
 import { MorphingActionSlot } from "@/components/morphing-action-slot"
+import {
+  HealthEligibilityPage,
+  MusclePrioritiesPage,
+  OnboardingPage,
+  ProfileBasicsPage,
+  ProfileEquipmentPage,
+  TrainingPreferencesPage,
+} from "@/components/profile-pages"
 import {
   EquipmentPresetPage,
   ExerciseAlternativesPage,
@@ -60,9 +68,8 @@ import { WorkoutDetailPage } from "@/components/workout-detail-page"
 import { WorkoutsPage } from "@/components/workouts-page"
 import { useEdgeSwipe } from "@/hooks/use-edge-swipe"
 import { useLoadMoreOnScroll } from "@/hooks/use-load-more-on-scroll"
-import { clearAllGymLibData } from "@/lib/app-backup"
+import { clearAllGymLibData, hasMeaningfulGymLibData } from "@/lib/app-backup"
 import {
-  EQUIPMENT_OPTIONS,
   EXERCISE_PAGE_SIZE,
   EXERCISES,
   EXERCISES_BY_ID,
@@ -72,9 +79,7 @@ import {
 import { triggerHaptic } from "@/lib/haptics"
 import { syncICloudNow } from "@/lib/icloud-sync"
 import { isNative } from "@/lib/native"
-import { titleCase } from "@/lib/text"
 import { cn } from "@/lib/utils"
-import { equipmentImage } from "@/lib/visuals"
 import {
   appNavigationReducer,
   pageHasControls,
@@ -85,10 +90,12 @@ import {
   DEFAULT_APP_SESSION,
   readAppSession,
   writeAppSession,
+  type AppSession,
 } from "@/store/app-session"
 import { useActiveWorkout } from "@/store/use-active-workout"
 import { useFavorites } from "@/store/use-favorites"
 import { useFilters } from "@/store/use-filters"
+import { useTrainingProfile } from "@/store/use-training-profile"
 import { useWorkouts } from "@/store/use-workouts"
 import type { MuscleId } from "@/types"
 
@@ -166,41 +173,25 @@ function StageSubtitle({
   return null
 }
 
-function FlowProgress({ stage }: { stage: PickerStage }) {
-  return (
-    <div
-      aria-label={`Step ${stage} of 3`}
-      aria-valuemax={3}
-      aria-valuemin={1}
-      aria-valuenow={stage}
-      className="flex items-center justify-center gap-1.5"
-      role="progressbar"
-    >
-      {[1, 2, 3].map((step) => (
-        <span
-          aria-hidden="true"
-          className={`h-1 rounded-full transition-[width,background-color] duration-250 ${
-            step === stage
-              ? "w-7 bg-primary-gradient"
-              : step < stage
-                ? "w-3.5 bg-primary/35"
-                : "w-3.5 bg-white/10"
-          }`}
-          key={step}
-        />
-      ))}
-    </div>
-  )
+/** First-run setup is offered to a genuinely new install only. Someone whose
+ *  library, presets or settings already exist has been using Gym Lib for a
+ *  while; a wizard in front of their workouts would be an ambush, and every
+ *  answer it asks for is in Settings anyway. */
+function initialPages(session: AppSession): AppPage[] {
+  const { onboarding } = useTrainingProfile.getState()
+  if (!onboarding.completed && !hasMeaningfulGymLibData())
+    return [{ type: "onboarding" }]
+  return isNative() ? DEFAULT_APP_SESSION.pages : session.pages
 }
 
 export function App() {
   const [initialSession] = useState(readAppSession)
   const [navigation, dispatchNavigation] = useReducer(
     appNavigationReducer,
-    isNative() ? DEFAULT_APP_SESSION.pages : initialSession.pages,
-    (initialPages) => ({
+    initialSession,
+    (session) => ({
       direction: "forward" as const,
-      pages: initialPages.map(createPageEntry),
+      pages: initialPages(session).map(createPageEntry),
     })
   )
   const pages = navigation.pages
@@ -524,8 +515,25 @@ export function App() {
                     void syncICloudNow()
                     resetPages([{ type: "workouts" }])
                   }}
+                  onOpenProfilePage={(type) => pushPage({ type })}
                 />
               )
+            } else if (page.type === "onboarding") {
+              content = (
+                <OnboardingPage
+                  onFinish={() => resetPages([{ type: "workouts" }])}
+                />
+              )
+            } else if (page.type === "profile-basics") {
+              content = <ProfileBasicsPage onBack={popPage} />
+            } else if (page.type === "profile-training") {
+              content = <TrainingPreferencesPage onBack={popPage} />
+            } else if (page.type === "profile-health") {
+              content = <HealthEligibilityPage onBack={popPage} />
+            } else if (page.type === "profile-equipment") {
+              content = <ProfileEquipmentPage onBack={popPage} />
+            } else if (page.type === "profile-priorities") {
+              content = <MusclePrioritiesPage onBack={popPage} />
             } else if (page.type === "workout-detail") {
               content = (
                 <WorkoutDetailPage
@@ -658,54 +666,10 @@ export function App() {
                         ref={equipmentScrollRef}
                         tabIndex={-1}
                       >
-                        <div className="grid grid-cols-2 gap-3">
-                          {EQUIPMENT_OPTIONS.map(
-                            (equipment, equipmentIndex) => {
-                              const checked =
-                                selectedEquipment.includes(equipment)
-                              return (
-                                <button
-                                  aria-checked={checked}
-                                  className={`equipment-card interactive-spring group relative overflow-hidden rounded-(--app-card-radius) border bg-[var(--equipment-card)] text-left shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-300 ${
-                                    checked
-                                      ? "border-primary/75 shadow-[0_0_0_1px_color-mix(in_oklch,var(--primary)_30%,transparent)]"
-                                      : "border-border"
-                                  }`}
-                                  key={equipment}
-                                  onClick={() => {
-                                    triggerHaptic("selection")
-                                    toggleEquipment(equipment)
-                                  }}
-                                  role="checkbox"
-                                  type="button"
-                                >
-                                  <span className="equipment-card-media relative block aspect-square overflow-hidden">
-                                    <AppImage
-                                      alt=""
-                                      className="equipment-card-image h-full w-full object-contain object-center"
-                                      decoding="async"
-                                      draggable={false}
-                                      fetchPriority={
-                                        equipmentIndex < 4 ? "high" : "low"
-                                      }
-                                      loading={
-                                        equipmentIndex < 4 ? "eager" : "lazy"
-                                      }
-                                      src={equipmentImage(equipment)}
-                                    />
-                                  </span>
-                                  <span className="flex min-h-13 items-center justify-center px-3.5 py-3 text-center text-base leading-tight font-semibold">
-                                    {titleCase(equipment)}
-                                  </span>
-                                  <AnimatedCheck
-                                    checked={checked}
-                                    className="pointer-events-none absolute top-5 right-5 size-8"
-                                  />
-                                </button>
-                              )
-                            }
-                          )}
-                        </div>
+                        <EquipmentGrid
+                          onToggle={toggleEquipment}
+                          selected={selectedEquipment}
+                        />
                       </section>
                     ) : null}
 

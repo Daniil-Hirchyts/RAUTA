@@ -1,25 +1,23 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type ReactNode,
-} from "react"
+import { useEffect, useRef, useState, type ChangeEvent } from "react"
 import { App as CapacitorApp } from "@capacitor/app"
 import {
   Activity,
   Apple,
   BellRing,
   ChevronLeft,
-  ChevronRight,
   Cloud,
   Download,
+  Dumbbell,
   FileUp,
   HeartPulse,
   Info,
+  PersonStanding,
   RefreshCw,
+  ShieldCheck,
   Smartphone,
+  Target,
   Trash2,
+  User,
   Vibrate,
 } from "lucide-react"
 
@@ -31,6 +29,11 @@ import {
   AppSurface,
 } from "@/components/app-shell"
 import { ConfirmModal } from "@/components/confirm-modal"
+import {
+  SettingsAction,
+  SettingsRow,
+  SettingsSection,
+} from "@/components/settings-rows"
 import { Button } from "@/components/ui/button"
 import { MatrixLoader } from "@/components/ui/matrix-loader"
 import { Switch } from "@/components/ui/switch"
@@ -39,122 +42,24 @@ import { openAppleHealthSettings, requestAppleHealthAccess } from "@/lib/health"
 import { triggerHaptic } from "@/lib/haptics"
 import { syncICloudNow, useICloudSync } from "@/lib/icloud-sync"
 import { isNative } from "@/lib/native"
-import { cn } from "@/lib/utils"
+import { countLabel } from "@/lib/text"
+import { experienceLabel, goalLabel } from "@/lib/training-profile"
+import type { ProfilePage } from "@/store/app-navigation"
+import { useFilters } from "@/store/use-filters"
 import { useSettings, type SettingsPreferences } from "@/store/use-settings"
-
-/** Every row in every section shares one box, so the dividers line up and a
- *  switch row is exactly as tall as the link row above it. */
-const ROW =
-  "flex min-h-16 w-full items-center gap-3 border-b border-border px-4 py-3 text-left last:border-b-0"
-
-function SettingsSection({
-  children,
-  title,
-}: {
-  children: ReactNode
-  title: string
-}) {
-  return (
-    <section>
-      <h2 className="mb-2 px-1 text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase">
-        {title}
-      </h2>
-      <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm shadow-black/10">
-        {children}
-      </div>
-    </section>
-  )
-}
-
-function RowIcon({ children }: { children: ReactNode }) {
-  return (
-    <span className="grid size-5 shrink-0 place-items-center text-primary [&_svg]:size-5">
-      {children}
-    </span>
-  )
-}
-
-function RowLabel({
-  description,
-  title,
-}: {
-  description?: string
-  title: string
-}) {
-  return (
-    <div className="min-w-0 flex-1">
-      <p className="text-base leading-snug font-semibold">{title}</p>
-      {description ? (
-        <p className="mt-0.5 text-sm leading-snug text-muted-foreground">
-          {description}
-        </p>
-      ) : null}
-    </div>
-  )
-}
-
-function SettingsRow({
-  children,
-  description,
-  icon,
-  title,
-}: {
-  children?: ReactNode
-  description?: string
-  icon: ReactNode
-  title: string
-}) {
-  return (
-    <div className={ROW}>
-      <RowIcon>{icon}</RowIcon>
-      <RowLabel description={description} title={title} />
-      {children}
-    </div>
-  )
-}
-
-function SettingsAction({
-  description,
-  icon,
-  onClick,
-  title,
-  tone = "default",
-}: {
-  description?: string
-  icon: ReactNode
-  onClick: () => void
-  title: string
-  tone?: "default" | "destructive"
-}) {
-  return (
-    <button
-      className={cn(
-        ROW,
-        "interactive-spring active:bg-muted/80",
-        tone === "destructive" && "text-primary"
-      )}
-      data-haptics="off"
-      onClick={onClick}
-      type="button"
-    >
-      <RowIcon>{icon}</RowIcon>
-      <RowLabel description={description} title={title} />
-      <ChevronRight
-        className={cn(
-          "size-5 shrink-0",
-          tone === "destructive" ? "text-primary" : "text-muted-foreground"
-        )}
-      />
-    </button>
-  )
-}
+import { useTrainingProfile } from "@/store/use-training-profile"
 
 export function SettingsPage({
   onBack,
   onClearData,
+  onOpenProfilePage,
 }: {
   onBack: () => void
   onClearData: () => void
+  /** Everything the profile holds is edited on a page of its own, grouped the
+   *  way the section above it is grouped: several questions at once rather
+   *  than a screen — or a dialog — per answer. */
+  onOpenProfilePage: (page: ProfilePage["type"]) => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const settings = useSettings()
@@ -165,6 +70,13 @@ export function SettingsPage({
   const [notice, setNotice] = useState("")
   const [appVersion, setAppVersion] = useState(packageJson.version)
   const [clearing, setClearing] = useState(false)
+  const profile = useTrainingProfile((state) => state.profile)
+  const gymEquipment = useFilters((state) => state.gymEquipment)
+
+  const openProfilePage = (page: ProfilePage["type"]) => {
+    triggerHaptic("light")
+    onOpenProfilePage(page)
+  }
 
   useEffect(() => {
     if (!isNative()) return
@@ -240,7 +152,9 @@ export function SettingsPage({
     if (!file) return
     try {
       importGymLibData(await file.text())
-      setNotice("Backup restored. Your workouts, favorites and presets are back.")
+      setNotice(
+        "Backup restored. Your workouts, favorites and presets are back."
+      )
       triggerHaptic("success")
     } catch (error) {
       setNotice(
@@ -270,6 +184,49 @@ export function SettingsPage({
           ref={scrollRef}
           tabIndex={-1}
         >
+          <SettingsSection title="Training profile">
+            {/* Two rows open a group of questions and summarise the answers
+                underneath; two open one question each. Nothing that stands on
+                its own is folded into a group to make the list shorter. */}
+            <SettingsAction
+              description={`${profile.age} · ${experienceLabel(
+                profile.trainingExperience
+              )}`}
+              icon={<User />}
+              onClick={() => openProfilePage("profile-basics")}
+              title="Profile"
+              value={profile.name || "Not set"}
+            />
+            <SettingsAction
+              description={`${goalLabel(profile.goal)} · ${
+                profile.preferredSessionDurationMinutes
+              } min`}
+              icon={<Target />}
+              onClick={() => openProfilePage("profile-training")}
+              title="Training"
+            />
+            <SettingsAction
+              icon={<PersonStanding />}
+              onClick={() => openProfilePage("profile-priorities")}
+              title="Priority muscles"
+              value={
+                profile.priorityMuscles.length > 0
+                  ? countLabel(profile.priorityMuscles.length, "muscle")
+                  : "None"
+              }
+            />
+            <SettingsAction
+              icon={<ShieldCheck />}
+              onClick={() => openProfilePage("profile-health")}
+              title="Health & eligibility"
+              value={
+                profile.health.status === "healthy"
+                  ? "Ready to train"
+                  : "Manual only"
+              }
+            />
+          </SettingsSection>
+
           <SettingsSection title="Apple Health">
             <SettingsRow
               description={
@@ -341,6 +298,17 @@ export function SettingsPage({
           </SettingsSection>
 
           <SettingsSection title="Workout & Gym">
+            <SettingsAction
+              description="What an automatic plan may use"
+              icon={<Dumbbell />}
+              onClick={() => openProfilePage("profile-equipment")}
+              title="Available equipment"
+              value={
+                gymEquipment.length > 0
+                  ? countLabel(gymEquipment.length, "item")
+                  : "Not set"
+              }
+            />
             <SettingsRow icon={<Vibrate />} title="Haptic feedback">
               <Switch
                 aria-label="Haptic feedback"

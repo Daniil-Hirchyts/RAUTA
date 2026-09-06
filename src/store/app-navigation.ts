@@ -1,6 +1,17 @@
+/** The pages the training profile is edited on. Grouped the way Settings
+ *  groups its rows, so one page answers several related questions. */
+export type ProfilePage =
+  | { type: "profile-basics" }
+  | { type: "profile-training" }
+  | { type: "profile-health" }
+  | { type: "profile-equipment" }
+  | { type: "profile-priorities" }
+
 export type AppPage =
   | { type: "workouts" }
   | { type: "settings" }
+  | { type: "onboarding" }
+  | ProfilePage
   | { type: "workout-detail"; workoutId: string }
   | { type: "muscles"; preferredWorkoutId?: string | null }
   | { type: "equipment"; preferredWorkoutId?: string | null }
@@ -42,6 +53,12 @@ export function isValidAppPage(page: AppPage) {
   switch (page.type) {
     case "workouts":
     case "settings":
+    case "onboarding":
+    case "profile-basics":
+    case "profile-training":
+    case "profile-health":
+    case "profile-equipment":
+    case "profile-priorities":
     case "muscles":
     case "equipment":
     case "exercises":

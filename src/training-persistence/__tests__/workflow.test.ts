@@ -24,10 +24,16 @@ beforeEach(() => {
 describe("workout application workflow", () => {
   it("feeds partial actual work into a validated future revision while retaining A and its lineage", async () => {
     const setup = {
-      age: 32,
-      experience: "intermediate" as const,
-      goal: "hypertrophy" as const,
-      equipment: planningEquipment,
+      profile: {
+        age: 32,
+        trainingExperience: "intermediate" as const,
+        health: { status: "healthy" as const },
+      },
+      preferences: {
+        goal: "hypertrophy" as const,
+        availableEquipment: planningEquipment,
+        maxSessionDurationMinutes: 60,
+      },
     }
     const a = generateAndSavePlan(setup, "2026-09-06T10:00:00.000Z").result
       .program
@@ -195,10 +201,16 @@ describe("workout application workflow", () => {
   it("protects observed substitutions, planned set removal, and duplicate planned starts", () => {
     const a = generateAndSavePlan(
       {
-        age: 30,
-        experience: "beginner",
-        goal: "general_fitness",
-        equipment: planningEquipment,
+        profile: {
+          age: 30,
+          trainingExperience: "beginner",
+          health: { status: "healthy" },
+        },
+        preferences: {
+          goal: "general_fitness",
+          availableEquipment: planningEquipment,
+          maxSessionDurationMinutes: 60,
+        },
       },
       "2026-09-06T10:00:00.000Z"
     ).result.program

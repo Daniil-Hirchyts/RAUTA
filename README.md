@@ -80,7 +80,7 @@ Inside the native shell, haptics call straight into UIKit's feedback
 generators; the web build keeps using the Vibration API and the Safari
 switch-overlay fallback in `src/lib/haptics.ts`.
 
-Gym Lib uses React, TypeScript, Vite, Tailwind CSS, shadcn/ui, and Zustand. It has no backend and stores filter selections and equipment presets only in the browser's local storage.
+Gym Lib uses React, TypeScript, Vite, Tailwind CSS, shadcn/ui, and Zustand. It has no backend and stores filter selections, equipment presets and the training profile only in the browser's local storage.
 
 See [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) for dataset and anatomy-map attribution.
 
@@ -98,3 +98,11 @@ bun run training:test
 bun run training:audit
 bun run training:benchmark
 ```
+
+The stable answers the engine needs — age, experience, goal, health eligibility,
+session length, priority muscles — live in the application's own training
+profile (`src/store/use-training-profile.ts`), edited during first-run setup and
+in Settings. `src/lib/training-engine-adapter.ts` is the single boundary that
+turns that profile, the saved gym equipment and an optional Apple Health body
+weight into the engine's `UserTrainingProfile` and `PlanningPreferences`, so
+generating a week never asks for any of it again.

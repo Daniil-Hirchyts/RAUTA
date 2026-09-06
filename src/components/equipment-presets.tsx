@@ -30,11 +30,24 @@ function sameSelection(left: readonly string[], right: readonly string[]) {
   )
 }
 
-export function EquipmentPresets({ className }: { className?: string }) {
-  const selectedEquipment = useFilters((state) => state.selectedEquipment)
+/** The saved presets, applied to whichever equipment selection asked for them:
+ *  the browse filter by default, or the profile's own equipment when it passes
+ *  `value` and `onChange`. One preset list, two places to spend it. */
+export function EquipmentPresets({
+  className,
+  onChange,
+  value,
+}: {
+  className?: string
+  onChange?: (equipment: string[]) => void
+  value?: string[]
+}) {
+  const filterEquipment = useFilters((state) => state.selectedEquipment)
   const presets = useFilters((state) => state.equipmentPresets)
-  const setEquipment = useFilters((state) => state.setEquipment)
+  const setFilterEquipment = useFilters((state) => state.setEquipment)
   const deletePreset = useFilters((state) => state.deleteEquipmentPreset)
+  const selectedEquipment = value ?? filterEquipment
+  const setEquipment = onChange ?? setFilterEquipment
 
   const togglePreset = (equipment: readonly string[]) => {
     triggerHaptic("selection")
@@ -105,18 +118,20 @@ export function EquipmentPresets({ className }: { className?: string }) {
 
 export function EquipmentPresetEditor({
   className,
+  equipment,
   onSaved,
 }: {
   className?: string
+  /** What the preset should hold; the browse filter when nothing is passed. */
+  equipment?: string[]
   onSaved: () => void
 }) {
   const [name, setName] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
-  const selectedEquipmentCount = useFilters(
-    (state) => state.selectedEquipment.length
-  )
+  const filterEquipment = useFilters((state) => state.selectedEquipment)
   const savePreset = useFilters((state) => state.saveEquipmentPreset)
-  const canSave = name.trim().length > 0 && selectedEquipmentCount > 0
+  const selection = equipment ?? filterEquipment
+  const canSave = name.trim().length > 0 && selection.length > 0
 
   useEffect(() => {
     inputRef.current?.focus({ preventScroll: true })
@@ -125,7 +140,7 @@ export function EquipmentPresetEditor({
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!canSave) return
-    savePreset(name)
+    savePreset(name, selection)
     triggerHaptic("success")
     onSaved()
   }

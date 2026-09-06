@@ -14,12 +14,21 @@ import {
 import { sanitizeWorkoutsState, useWorkouts } from "@/store/use-workouts"
 import { useTrainingRecords } from "@/store/use-training-records"
 import {
+  isTrainingProfileConfigured,
+  sanitizeTrainingProfileState,
+  useTrainingProfile,
+} from "@/store/use-training-profile"
+import {
   createEmptyPersistedTrainingState,
   type PersistedTrainingStateLatest,
 } from "@/training-persistence/schema"
 import { validatePersistedTrainingState } from "@/training-persistence/validation"
 
 const BACKUP_VERSION = 1
+
+function hasKey(value: unknown, key: string) {
+  return isRecord(value) && value[key] !== undefined
+}
 
 export function createGymLibBackup(
   createdAt = new Date().toISOString(),
@@ -30,6 +39,7 @@ export function createGymLibBackup(
   const filters = useFilters.getState()
   const settings = useSettings.getState()
   const workouts = useWorkouts.getState()
+  const trainingProfile = useTrainingProfile.getState()
 
   return JSON.stringify(
     {
@@ -41,7 +51,12 @@ export function createGymLibBackup(
         filters: {
           selectedMuscles: filters.selectedMuscles,
           selectedEquipment: filters.selectedEquipment,
+          gymEquipment: filters.gymEquipment,
           equipmentPresets: filters.equipmentPresets,
+        },
+        trainingProfile: {
+          profile: trainingProfile.profile,
+          onboarding: trainingProfile.onboarding,
         },
         settings: sanitizeSettings(settings),
         workouts: { workouts: workouts.workouts },
@@ -66,8 +81,10 @@ export function hasMeaningfulGymLibData() {
     favorites.favoriteIds.length > 0 ||
     filters.selectedMuscles.length > 0 ||
     filters.selectedEquipment.length > 0 ||
+    filters.gymEquipment.length > 0 ||
     filters.equipmentPresets.length > 0 ||
     workouts.workouts.length > 0 ||
+    isTrainingProfileConfigured(useTrainingProfile.getState()) ||
     JSON.stringify(settings) !== JSON.stringify(DEFAULT_SETTINGS)
   )
 }
@@ -129,9 +146,21 @@ export function importGymLibData(json: string) {
 
   useActiveWorkout.setState({ lastOutcome: "cancelled", session: null })
   useFavorites.setState(favorites)
-  useFilters.setState(filters)
+  // A backup written before a field existed says nothing about it, which is
+  // not the same as saying it is empty. Anything the file does not carry is
+  // left exactly as this device already has it.
+  useFilters.setState({
+    ...filters,
+    gymEquipment: hasKey(data.filters, "gymEquipment")
+      ? filters.gymEquipment
+      : useFilters.getState().gymEquipment,
+  })
   useSettings.setState(settings)
   useWorkouts.setState(workouts)
+  if (data.trainingProfile !== undefined)
+    useTrainingProfile.setState(
+      sanitizeTrainingProfileState(data.trainingProfile)
+    )
   if (data.training !== undefined)
     useTrainingRecords.setState({
       data: structuredClone(data.training) as PersistedTrainingStateLatest,
@@ -143,6 +172,7 @@ export function clearAllGymLibData() {
   useFavorites.setState({ favoriteIds: [] })
   useFilters.setState({
     equipmentPresets: [],
+    gymEquipment: [],
     selectedEquipment: [],
     selectedMuscles: [],
   })
@@ -152,5 +182,6 @@ export function clearAllGymLibData() {
     persistenceIssues: [],
   })
   useSettings.getState().resetSettings()
+  useTrainingProfile.getState().resetTrainingProfile()
   localStorage.removeItem("gym-lib-app-session")
 }

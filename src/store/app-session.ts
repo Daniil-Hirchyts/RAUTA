@@ -34,7 +34,16 @@ function parsePage(value: unknown): AppPage | null {
     case "workouts":
     case "settings":
     case "equipment-preset":
+    case "profile-basics":
+    case "profile-training":
+    case "profile-health":
+    case "profile-equipment":
+    case "profile-priorities":
       return { type: value.type }
+    // First-run setup is decided from the profile at launch, never restored
+    // from a session: whether it is due is the profile's answer to give.
+    case "onboarding":
+      return null
     case "workout-detail": {
       const workoutId = validString(value.workoutId)
       return workoutId ? { type: value.type, workoutId } : null

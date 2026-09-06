@@ -12,6 +12,7 @@ import { isRecord } from "@/store/persistence"
 import { useFavorites } from "@/store/use-favorites"
 import { useFilters } from "@/store/use-filters"
 import { useSettings } from "@/store/use-settings"
+import { useTrainingProfile } from "@/store/use-training-profile"
 import { useWorkouts } from "@/store/use-workouts"
 
 const SYNC_META_KEY = "gym-lib-icloud-sync"
@@ -151,6 +152,7 @@ function subscribeToLocalData() {
   useFavorites.subscribe(scheduleUpload)
   useFilters.subscribe(scheduleUpload)
   useSettings.subscribe(scheduleUpload)
+  useTrainingProfile.subscribe(scheduleUpload)
   useWorkouts.subscribe(scheduleUpload)
 }
 

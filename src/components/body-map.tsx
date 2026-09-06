@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent } from "react"
+import { useRef, useState, type CSSProperties, type PointerEvent } from "react"
 import { FlipHorizontal2 } from "lucide-react"
 
 import { AnimatedNumber } from "@/components/animated-number"
@@ -20,6 +20,10 @@ type BodyView = {
 
 type BodyMapProps = {
   selectedMuscles: MuscleId[]
+  /** How strongly each selected region paints, 0–1. Left out, every selection
+   *  paints at full strength — which is what picking muscles for one workout
+   *  means. A screen where a selection has degrees passes them here. */
+  muscleWeights?: Partial<Record<MuscleId, number>>
   onToggle: (muscle: MuscleId) => void
   onSideChange?: (side: Side) => void
   showCornerCount?: boolean
@@ -103,6 +107,7 @@ export function BodyPreview({
 
 function BodyFigure({
   label,
+  muscleWeights,
   onToggle,
   selectedMuscles,
   view,
@@ -134,6 +139,7 @@ function BodyFigure({
           }
 
           const accessibleLabel = `${label} ${MUSCLE_LABELS[muscle]}`
+          const weight = selected ? muscleWeights?.[muscle] : undefined
 
           return (
             <g
@@ -142,6 +148,11 @@ function BodyFigure({
               className={cn("muscle-region", selected && "is-selected")}
               data-muscle={muscle}
               key={part.slug}
+              style={
+                weight === undefined
+                  ? undefined
+                  : ({ "--muscle-weight": weight } as CSSProperties)
+              }
               onClick={(event) => {
                 // Real pointer taps are handled by BodyMap's pointer-up logic.
                 // Keep zero-detail clicks for assistive technology/programmatic
@@ -170,6 +181,7 @@ function BodyFigure({
 }
 
 export function BodyMap({
+  muscleWeights,
   onSideChange,
   onToggle,
   selectedMuscles,
@@ -262,6 +274,7 @@ export function BodyMap({
       >
         <BodyFigure
           label={label}
+          muscleWeights={muscleWeights}
           onToggle={onToggle}
           selectedMuscles={selectedMuscles}
           view={view}

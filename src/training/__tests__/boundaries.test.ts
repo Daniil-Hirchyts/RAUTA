@@ -21,6 +21,23 @@ import { adaptTrainingProgram } from "../planning/adapt"
 import { confidenceAtLeast } from "../numeric"
 import { calculateSessionVolume } from "../analysis/volume"
 const index = createExerciseIndex(request().exercises)
+it("stays a pure module the application depends on, never the other way round", () => {
+  const sources = import.meta.glob("../**/*.ts", {
+    eager: true,
+    import: "default",
+    query: "?raw",
+  }) as Record<string, string>
+  const files = Object.entries(sources).filter(
+    ([path]) => !path.includes("__tests__")
+  )
+  expect(files.length).toBeGreaterThan(10)
+  // The engine is imported by the application, never the reverse, and it runs
+  // wherever plain TypeScript runs: no framework, no store, no browser.
+  const forbidden =
+    /from "(react|react-dom|zustand)|from "@\/(store|components|hooks|lib)|localStorage|window\.|document\./
+  for (const [path, source] of files)
+    expect(forbidden.test(source), path).toBe(false)
+})
 it("keeps automatic planner capabilities aligned with supported tracking semantics", () => {
   for (const tracking of [
     "external_load",

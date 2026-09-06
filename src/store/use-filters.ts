@@ -15,12 +15,19 @@ export type EquipmentPreset = {
 export type FilterState = {
   selectedMuscles: MuscleId[]
   selectedEquipment: string[]
+  /** The equipment you actually have, as opposed to `selectedEquipment`, which
+   *  filters one browse and is cleared whenever a new one starts. Kept in this
+   *  store so there is one equipment vocabulary, one preset list, and one
+   *  place either selection is sanitized. */
+  gymEquipment: string[]
   equipmentPresets: EquipmentPreset[]
   toggleMuscle: (muscle: MuscleId) => void
   toggleEquipment: (equipment: string) => void
+  toggleGymEquipment: (equipment: string) => void
   setMuscles: (muscles: MuscleId[]) => void
   setEquipment: (equipment: string[]) => void
-  saveEquipmentPreset: (name: string) => void
+  setGymEquipment: (equipment: string[]) => void
+  saveEquipmentPreset: (name: string, equipment?: string[]) => void
   applyEquipmentPreset: (id: string) => void
   deleteEquipmentPreset: (id: string) => void
   reset: () => void
@@ -28,7 +35,7 @@ export type FilterState = {
 
 type PersistedFilterState = Pick<
   FilterState,
-  "selectedMuscles" | "selectedEquipment" | "equipmentPresets"
+  "selectedMuscles" | "selectedEquipment" | "gymEquipment" | "equipmentPresets"
 >
 
 const equipmentSet = new Set(EQUIPMENT_OPTIONS)
@@ -61,6 +68,7 @@ export function sanitizeFilterState(value: unknown): PersistedFilterState {
       state.selectedEquipment,
       validEquipment
     ),
+    gymEquipment: validUniqueStrings(state.gymEquipment, validEquipment),
     equipmentPresets,
   }
 }
@@ -76,6 +84,7 @@ export const useFilters = create<FilterState>()(
     (set) => ({
       selectedMuscles: [],
       selectedEquipment: [],
+      gymEquipment: [],
       equipmentPresets: [],
       toggleMuscle: (muscle) =>
         set((state) => ({
@@ -90,6 +99,12 @@ export const useFilters = create<FilterState>()(
               ),
             }))
           : undefined,
+      toggleGymEquipment: (equipment) =>
+        validEquipment(equipment)
+          ? set((state) => ({
+              gymEquipment: toggleValue(state.gymEquipment, equipment),
+            }))
+          : undefined,
       setMuscles: (muscles) =>
         set({
           selectedMuscles: validUniqueStrings(
@@ -101,11 +116,21 @@ export const useFilters = create<FilterState>()(
         set({
           selectedEquipment: validUniqueStrings(equipment, validEquipment),
         }),
-      saveEquipmentPreset: (name) =>
+      setGymEquipment: (equipment) =>
+        set({
+          gymEquipment: validUniqueStrings(equipment, validEquipment),
+        }),
+      // Saving takes an explicit selection so the same preset list can be
+      // filled from the browse filter or from the equipment the profile holds,
+      // rather than either surface growing a preset store of its own.
+      saveEquipmentPreset: (name, equipment) =>
         set((state) => {
           const normalizedName = name.trim()
-          if (!normalizedName || state.selectedEquipment.length === 0)
-            return state
+          const selection = validUniqueStrings(
+            equipment ?? state.selectedEquipment,
+            validEquipment
+          )
+          if (!normalizedName || selection.length === 0) return state
 
           const existing = state.equipmentPresets.find(
             (preset) =>
@@ -115,7 +140,7 @@ export const useFilters = create<FilterState>()(
             return {
               equipmentPresets: state.equipmentPresets.map((preset) =>
                 preset.id === existing.id
-                  ? { ...preset, equipment: [...state.selectedEquipment] }
+                  ? { ...preset, equipment: selection }
                   : preset
               ),
             }
@@ -127,7 +152,7 @@ export const useFilters = create<FilterState>()(
               {
                 id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
                 name: normalizedName,
-                equipment: [...state.selectedEquipment],
+                equipment: selection,
               },
             ],
           }
@@ -156,10 +181,12 @@ export const useFilters = create<FilterState>()(
       partialize: ({
         selectedMuscles,
         selectedEquipment,
+        gymEquipment,
         equipmentPresets,
       }) => ({
         selectedMuscles,
         selectedEquipment,
+        gymEquipment,
         equipmentPresets,
       }),
     }

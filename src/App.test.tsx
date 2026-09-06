@@ -21,6 +21,8 @@ import {
 import { useFavorites } from "@/store/use-favorites"
 import { useFilters } from "@/store/use-filters"
 import { DEFAULT_SETTINGS, useSettings } from "@/store/use-settings"
+import { useTrainingProfile } from "@/store/use-training-profile"
+import { completedOnboardingState } from "@/test/profile"
 import { useWorkouts } from "@/store/use-workouts"
 import { DEFAULT_APP_SESSION, writeAppSession } from "@/store/app-session"
 import { triggerIntersection } from "@/test/setup"
@@ -59,6 +61,9 @@ describe("App", () => {
     useFavorites.setState({ favoriteIds: [] })
     useWorkouts.setState({ workouts: [] })
     useSettings.setState(DEFAULT_SETTINGS)
+    // These flows belong to someone who already uses the app; first-run setup
+    // has its own tests.
+    useTrainingProfile.setState(completedOnboardingState())
     writeAppSession({
       ...DEFAULT_APP_SESSION,
       pages: [{ type: "workouts" }, { type: "muscles" }],

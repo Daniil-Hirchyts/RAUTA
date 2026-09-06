@@ -8,6 +8,7 @@ describe("filter store", () => {
     useFilters.setState({
       selectedMuscles: [],
       selectedEquipment: [],
+      gymEquipment: [],
       equipmentPresets: [],
     })
   })
@@ -33,6 +34,7 @@ describe("filter store", () => {
     expect(stored.state).toEqual({
       selectedMuscles: ["biceps"],
       selectedEquipment: ["dumbbell"],
+      gymEquipment: [],
       equipmentPresets: [],
     })
   })
