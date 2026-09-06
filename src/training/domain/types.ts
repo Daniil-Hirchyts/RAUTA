@@ -177,11 +177,25 @@ export type AutomaticProgramming =
 export type ExerciseMetadata = {
   exerciseId: string
   exerciseType:
-    "resistance" | "stretch" | "mobility" | "conditioning" | "unknown"
+    | "resistance"
+    | "isometric"
+    | "stretch"
+    | "mobility"
+    | "conditioning"
+    | "power"
+    | "unknown"
   movementPatterns: MovementPattern[]
   mechanics: "compound" | "isolation" | "unknown"
   laterality: "bilateral" | "unilateral" | "alternating" | "unknown"
-  tracking: "external_load" | "assistance" | "bodyweight" | "unknown"
+  tracking:
+    | "external_load"
+    | "assistance"
+    | "bodyweight"
+    | "band_resistance"
+    | "repetition_only"
+    | "timed"
+    | "distance"
+    | "unknown"
   requiredEquipment: string[]
   setRoles: EffectiveSetRole[]
   classificationConfidence: number
@@ -196,8 +210,12 @@ export type ExerciseMetadata = {
     | "rule"
     | "curated"
     | "curated_text"
+    | "curated_sampled_frames"
+    | "curated_sampled_frames_and_text"
     | "curated_video"
     | "curated_video_and_text"
+  reviewStatus?: "rule_only" | "partially_reviewed" | "fully_reviewed"
+  reviewedFields?: string[]
   ruleVersion: string
 }
 export type IndexedExercise = {
@@ -325,6 +343,8 @@ export type TrainingPolicy = {
   warmupFractions: number[]
   warmupReps: number[]
   minimumClassificationConfidence: number
+  minimumAutomaticClassificationConfidence: number
+  minimumSpecializedClassificationConfidence: number
   beamWidth: number
   candidateLimit: number
   maxExercisesPerSession: number
@@ -401,6 +421,9 @@ export type TrainingProgram = {
     asOf: string
     mode: "remaining_week" | "next_week"
   }
+}
+export type TrainingProgramValidationContext = {
+  sourceProgram?: TrainingProgram
 }
 export type ProgramGenerationRequest = {
   profile: UserTrainingProfile
@@ -495,6 +518,7 @@ export type ProgressionRecommendation = {
     | "increase_reps"
     | "reduce_assistance"
     | "increase_assistance"
+    | "coarse_grid_progression"
   resistance: ResistanceValue
   targetReps: RepRange
   confidence: Confidence
@@ -510,6 +534,12 @@ export type ProgressionRecommendation = {
     | "grid_unavailable"
     | "increment_too_large"
     | "coarse_load_grid"
+    | "coarse_grid_requires_alternative_progression"
+  )[]
+  suggestedStrategies?: (
+    | "continue_repetition_progression"
+    | "use_smaller_increment_if_available"
+    | "use_different_variation"
   )[]
 }
 export type ProgressionInput = {
@@ -538,6 +568,16 @@ export type OptimizationInput = {
   policy: TrainingPolicy
   continuityIds?: string[]
   baselineVolume?: Partial<Record<MuscleId, number>>
+  adaptation?: {
+    baselineCompletedWorkingSets: number
+    baselineMuscleVolume: Partial<Record<MuscleId, number>>
+    remainingWorkingSetBudget?: number
+    remainingMuscleVolumeBounds?: {
+      muscleId: MuscleId
+      minimum?: number
+      maximum?: number
+    }[]
+  }
 }
 export type OptimizationResult = {
   week?: TrainingWeek

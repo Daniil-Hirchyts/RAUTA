@@ -168,7 +168,7 @@ describe("strength and progression", () => {
       }).action
     ).toBe("decrease_load")
   })
-  it("rejects station transfer, missing grids, excessive increments and stale history", () => {
+  it("rejects station transfer and missing grids, routes excessive increments through coarse-grid progression, and rejects stale history", () => {
     expect(
       recommendProgression({
         ...progression(),
@@ -178,10 +178,12 @@ describe("strength and progression", () => {
     expect(
       recommendProgression({ ...progression(), loadGrid: undefined }).action
     ).toBe("calibrate")
-    expect(
-      recommendProgression({ ...progression(), loadGrid: { incrementKg: 70 } })
-        .reasons
-    ).toContain("increment_too_large")
+    const coarse = recommendProgression({
+      ...progression(),
+      loadGrid: { incrementKg: 70 },
+    })
+    expect(coarse.action).toBe("increase_reps")
+    expect(coarse.reasons).toContain("coarse_load_grid")
     expect(
       recommendProgression({
         ...progression(),

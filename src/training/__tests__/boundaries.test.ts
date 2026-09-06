@@ -16,6 +16,7 @@ import { preparation } from "../planning/generate"
 import { orderExercises } from "../scoring/scores"
 import { adaptTrainingProgram } from "../planning/adapt"
 import { confidenceAtLeast } from "../numeric"
+import { calculateSessionVolume } from "../analysis/volume"
 const index = createExerciseIndex(request().exercises)
 it("old ID-only completion never fabricates sets, load or effective volume", () => {
   const session = adaptLegacyWorkout({
@@ -93,6 +94,113 @@ it("coarse load grids progress after repeated success at the extended rep ceilin
     confidence: "medium",
   })
   expect(p.reasons).toContain("coarse_load_grid")
+})
+it("coarse grids above normal load limits extend reps, then either advance safely or return a structured alternative", () => {
+  const cases = [
+    { current: 10, next: 12.5, eventual: "increase_load" },
+    { current: 5, next: 7.5, eventual: "coarse_grid_progression" },
+    { current: 2.5, next: 5, eventual: "coarse_grid_progression" },
+  ] as const
+  for (const { current, next, eventual } of cases) {
+    const first = history([[12, 12, 12]])
+    first.sessions[0].exercises[0].sets.forEach((s) => {
+      s.resistance = {
+        type: "external_load",
+        kg: current,
+        stationId: "bench-A",
+        basis: "total",
+      }
+    })
+    const extending = recommendProgression({
+      exercise: index.byId.get("0025")!,
+      history: first,
+      now: "2026-08-12T12:00:00.000Z",
+      reps: { min: 8, max: 12 },
+      rir: 2,
+      requiredSets: 3,
+      loadGrid: { availableLoadsKg: [current, next] },
+      loadContext: { stationId: "bench-A", basis: "total" },
+      policy: DEFAULT_POLICY,
+    })
+    expect(extending.action, `${current}->${next}`).toBe("increase_reps")
+    expect(extending.targetReps.max, `${current}->${next}`).toBeGreaterThan(12)
+
+    const ceiling = history([
+      [16, 16, 16],
+      [16, 16, 16],
+    ])
+    ceiling.sessions.forEach((session) =>
+      session.exercises[0].sets.forEach((s) => {
+        s.resistance = {
+          type: "external_load",
+          kg: current,
+          stationId: "bench-A",
+          basis: "total",
+        }
+      })
+    )
+    const outcome = recommendProgression({
+      exercise: index.byId.get("0025")!,
+      history: ceiling,
+      now: "2026-08-15T12:00:00.000Z",
+      reps: { min: 8, max: 12 },
+      rir: 2,
+      requiredSets: 3,
+      loadGrid: { availableLoadsKg: [current, next] },
+      loadContext: { stationId: "bench-A", basis: "total" },
+      policy: DEFAULT_POLICY,
+    })
+    expect(outcome.action, `${current}->${next}`).toBe(eventual)
+    if (eventual === "increase_load") {
+      expect(outcome.resistance).toMatchObject({ kg: next })
+      expect(outcome.reasons).toContain("coarse_load_grid")
+    } else {
+      expect(outcome.resistance).toMatchObject({ kg: current })
+      expect(outcome.reasons).toContain(
+        "coarse_grid_requires_alternative_progression"
+      )
+      expect(outcome.suggestedStrategies).toEqual([
+        "continue_repetition_progression",
+        "use_smaller_increment_if_available",
+        "use_different_variation",
+      ])
+    }
+  }
+})
+it("coarse assistance grids preserve the inverse difficulty direction and never make an unsafe giant reduction", () => {
+  const h = history([
+    [16, 16, 16],
+    [16, 16, 16],
+  ])
+  h.sessions.forEach((session) =>
+    session.exercises[0].sets.forEach((s) => {
+      s.resistance = {
+        type: "assistance",
+        kg: 10,
+        stationId: "assist-A",
+        basis: "total",
+      }
+    })
+  )
+  const outcome = recommendProgression({
+    exercise: {
+      ...index.byId.get("0025")!,
+      metadata: { ...index.byId.get("0025")!.metadata, tracking: "assistance" },
+    },
+    history: h,
+    now: "2026-08-15T12:00:00.000Z",
+    reps: { min: 8, max: 12 },
+    rir: 2,
+    requiredSets: 3,
+    loadGrid: { availableLoadsKg: [5, 10] },
+    loadContext: { stationId: "assist-A", basis: "total" },
+    policy: DEFAULT_POLICY,
+  })
+  expect(outcome.action).toBe("coarse_grid_progression")
+  expect(outcome.resistance).toMatchObject({ type: "assistance", kg: 10 })
+  expect(outcome.reasons).toContain(
+    "coarse_grid_requires_alternative_progression"
+  )
 })
 it("confidence ordering treats high as satisfying at-least-medium requirements", () => {
   expect(confidenceAtLeast("high", "medium")).toBe(true)
@@ -202,6 +310,128 @@ it("independent validation includes actual work in remaining-week volume ceiling
       validateTrainingProgram(adapted.program, next, index).issues.some(
         (i) => i.code === "VOLUME_LIMIT"
       )
+    ).toBe(true)
+  }
+}, 30_000)
+it("remaining-week generation keeps the original 20-set cap authoritative while optimizing against the residual 12-set budget", () => {
+  const baseRequest = request()
+  const previous = generateTrainingProgram(baseRequest)
+  if (!("program" in previous)) throw new Error("fixture infeasible")
+  const next = request({
+    now: "2026-09-08T12:00:00.000Z",
+    schedule: { ...baseRequest.schedule, days: [2, 4] },
+  })
+  next.preferences.maxWeeklyWorkingSets = 20
+  next.history = {
+    coverage: "complete",
+    coverageStart: "2026-08-01T00:00:00.000Z",
+    sessions: [
+      {
+        id: "eight-completed",
+        startedAt: "2026-09-07T10:00:00.000Z",
+        completedAt: "2026-09-07T11:00:00.000Z",
+        status: "completed",
+        exercises: [
+          {
+            exerciseId: "0025",
+            sets: Array.from({ length: 8 }, (_, i) =>
+              set({ id: `completed-${i}` })
+            ),
+          },
+        ],
+      },
+    ],
+  }
+  const adapted = adaptTrainingProgram({
+    previousProgram: previous.program,
+    request: next,
+    mode: "remaining_week",
+  })
+  expect("program" in adapted).toBe(true)
+  if ("program" in adapted) {
+    const future = adapted.program.weeks[0].sessions.reduce(
+      (n, session) =>
+        n +
+        session.exercises.reduce((m, exercise) => m + exercise.workingSets.length, 0),
+      0
+    )
+    expect(future).toBeLessThanOrEqual(12)
+    expect(
+      validateTrainingProgram(adapted.program, next, index, {
+        sourceProgram: previous.program,
+      }).valid
+    ).toBe(true)
+  }
+}, 30_000)
+it("remaining-week muscle bounds optimize against the residual maximum and validate completed plus future volume against the original bound", () => {
+  const baseRequest = request()
+  const previous = generateTrainingProgram(baseRequest)
+  if (!("program" in previous)) throw new Error("fixture infeasible")
+  const next = request({
+    now: "2026-09-08T12:00:00.000Z",
+    schedule: { ...baseRequest.schedule, days: [2, 4] },
+  })
+  next.preferences.maxWeeklyWorkingSets = 20
+  next.preferences.muscleVolumeBounds = [{ muscleId: "chest", maximum: 14 }]
+  next.history = {
+    coverage: "complete",
+    coverageStart: "2026-08-01T00:00:00.000Z",
+    sessions: [
+      {
+        id: "eight-chest",
+        startedAt: "2026-09-07T10:00:00.000Z",
+        completedAt: "2026-09-07T11:00:00.000Z",
+        status: "completed",
+        exercises: [
+          {
+            exerciseId: "0025",
+            sets: Array.from({ length: 8 }, (_, i) =>
+              set({ id: `chest-${i}` })
+            ),
+          },
+        ],
+      },
+    ],
+  }
+  const adapted = adaptTrainingProgram({
+    previousProgram: previous.program,
+    request: next,
+    mode: "remaining_week",
+  })
+  expect("program" in adapted).toBe(true)
+  if ("program" in adapted) {
+    const futureChest = adapted.program.weeks[0].sessions.reduce(
+      (sum, session) =>
+        sum + calculateSessionVolume(session, index, adapted.program.policy).chest.effective,
+      0
+    )
+    // Eight completed direct chest sets leave a six-set optimization ceiling.
+    expect(futureChest).toBeLessThanOrEqual(6)
+    const valid = validateTrainingProgram(adapted.program, next, index, {
+      sourceProgram: previous.program,
+    })
+    expect(valid.valid).toBe(true)
+
+    // The independent validator must use the original weekly bound, not the
+    // residual optimizer bound. Put the boundary exactly at completed + future.
+    const exactBoundary = structuredClone(next)
+    exactBoundary.preferences.muscleVolumeBounds = [
+      { muscleId: "chest", maximum: 8 + futureChest },
+    ]
+    expect(
+      validateTrainingProgram(adapted.program, exactBoundary, index, {
+        sourceProgram: previous.program,
+      }).issues.some((issue) => issue.code === "VOLUME_LIMIT")
+    ).toBe(false)
+
+    const tighter = structuredClone(next)
+    tighter.preferences.muscleVolumeBounds = [
+      { muscleId: "chest", maximum: 8 + futureChest - 0.5 },
+    ]
+    expect(
+      validateTrainingProgram(adapted.program, tighter, index, {
+        sourceProgram: previous.program,
+      }).issues.some((issue) => issue.code === "VOLUME_LIMIT")
     ).toBe(true)
   }
 }, 30_000)

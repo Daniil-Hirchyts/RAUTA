@@ -88,6 +88,10 @@ export function validatePolicy(value: unknown): PlanningIssue[] {
     p.indirectCredit > 1 ||
     p.minimumClassificationConfidence < 0 ||
     p.minimumClassificationConfidence > 1 ||
+    p.minimumAutomaticClassificationConfidence < 0 ||
+    p.minimumAutomaticClassificationConfidence > 1 ||
+    p.minimumSpecializedClassificationConfidence < 0 ||
+    p.minimumSpecializedClassificationConfidence > 1 ||
     p.reductionFraction < 0 ||
     p.reductionFraction > 0.5 ||
     p.maxLoadIncreaseFraction <= 0 ||

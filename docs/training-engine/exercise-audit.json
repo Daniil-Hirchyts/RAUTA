@@ -1,5 +1,5 @@
 {
-  "datasetFingerprint": "104ecfee",
+  "datasetFingerprint": "e43fc6d7",
   "total": 1324,
   "errors": [],
   "equipment": {
@@ -70,39 +70,56 @@
     "upper-back": 260
   },
   "programmingDirectCoverage": {
-    "abs": 53,
-    "adductors": 4,
+    "abs": 55,
+    "adductors": 3,
     "biceps": 107,
     "calves": 45,
-    "chest": 116,
-    "deltoids": 70,
-    "gluteal": 142,
-    "hamstring": 35,
+    "chest": 117,
+    "deltoids": 76,
+    "gluteal": 136,
+    "hamstring": 36,
     "lower-back": 10,
     "obliques": 5,
-    "quadriceps": 106,
-    "triceps": 63,
-    "upper-back": 143
+    "quadriceps": 96,
+    "serratus": 2,
+    "trapezius": 5,
+    "triceps": 73,
+    "upper-back": 141
   },
   "types": {
     "conditioning": 16,
-    "resistance": 747,
+    "isometric": 10,
+    "power": 42,
+    "resistance": 757,
     "stretch": 56,
-    "unknown": 505
+    "unknown": 443
   },
   "automaticProgramming": {
-    "allowed": 612,
-    "manual_only": 677,
-    "specialized_only": 35
+    "allowed": 669,
+    "manual_only": 622,
+    "specialized_only": 33
   },
   "provenance": {
-    "curated_video_and_text": 12,
-    "rule": 1312
+    "curated": 12,
+    "curated_sampled_frames_and_text": 48,
+    "rule": 1264
   },
-  "curatedReviewCount": 12,
-  "videoReviewedCount": 12,
+  "curatedReviewCount": 60,
+  "fullyReviewedCount": 48,
+  "partiallyReviewedCount": 12,
+  "fullVideoReviewedCount": 0,
+  "sampledFramesReviewedCount": 60,
   "textOnlyReviewedCount": 0,
-  "ruleOnlyCount": 1312,
+  "reviewModality": {
+    "fullyReviewed": {
+      "sampled_frames": 48
+    },
+    "partiallyReviewed": {
+      "sampled_frames": 12
+    }
+  },
+  "ruleOnlyCount": 1264,
+  "unknownTypeCount": 443,
   "duplicates": [
     {
       "exerciseId": "1371",
@@ -110,6 +127,66 @@
     }
   ],
   "variants": [
+    {
+      "exerciseId": "0077",
+      "variantOf": "0078"
+    },
+    {
+      "exerciseId": "0119",
+      "variantOf": "0120"
+    },
+    {
+      "exerciseId": "0121",
+      "variantOf": "0120"
+    },
+    {
+      "exerciseId": "0123",
+      "variantOf": "0120"
+    },
+    {
+      "exerciseId": "0170",
+      "variantOf": "0171"
+    },
+    {
+      "exerciseId": "0197",
+      "variantOf": "0198"
+    },
+    {
+      "exerciseId": "0199",
+      "variantOf": "0238"
+    },
+    {
+      "exerciseId": "0200",
+      "variantOf": "0201"
+    },
+    {
+      "exerciseId": "0202",
+      "variantOf": "0203"
+    },
+    {
+      "exerciseId": "0237",
+      "variantOf": "0238"
+    },
+    {
+      "exerciseId": "0241",
+      "variantOf": "0201"
+    },
+    {
+      "exerciseId": "0354",
+      "variantOf": "0333"
+    },
+    {
+      "exerciseId": "0394",
+      "variantOf": "0333"
+    },
+    {
+      "exerciseId": "0398",
+      "variantOf": "0394"
+    },
+    {
+      "exerciseId": "0420",
+      "variantOf": "0333"
+    },
     {
       "exerciseId": "0577",
       "variantOf": "0576"
@@ -119,15 +196,53 @@
       "variantOf": "0655"
     },
     {
+      "exerciseId": "0661",
+      "variantOf": "0642"
+    },
+    {
+      "exerciseId": "0860",
+      "variantOf": "0354"
+    },
+    {
       "exerciseId": "1394",
       "variantOf": "0763"
     },
     {
+      "exerciseId": "1430",
+      "variantOf": "0251"
+    },
+    {
+      "exerciseId": "1461",
+      "variantOf": "0043"
+    },
+    {
+      "exerciseId": "1462",
+      "variantOf": "0043"
+    },
+    {
       "exerciseId": "1628",
       "variantOf": "0454"
+    },
+    {
+      "exerciseId": "1730",
+      "variantOf": "0394"
+    },
+    {
+      "exerciseId": "2398",
+      "variantOf": "0259"
+    },
+    {
+      "exerciseId": "3011",
+      "variantOf": "3021"
     }
   ],
   "conflicts": [
+    {
+      "exerciseId": "0172",
+      "tags": [
+        "source_media_conflict"
+      ]
+    },
     {
       "exerciseId": "0656",
       "tags": [
@@ -157,6 +272,445 @@
       "tags": [
         "source_equipment_conflict",
         "source_media_conflict"
+      ]
+    },
+    {
+      "exerciseId": "1772",
+      "tags": [
+        "source_media_conflict"
+      ]
+    }
+  ],
+  "reviewProgressByFamily": [
+    {
+      "familyId": "barbell_back_squat",
+      "total": 3,
+      "fullyReviewed": 3,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "0043",
+        "1461",
+        "1462"
+      ]
+    },
+    {
+      "familyId": "barbell_rack_pull",
+      "total": 1,
+      "fullyReviewed": 1,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "0074"
+      ]
+    },
+    {
+      "familyId": "barbell_reverse_lunge",
+      "total": 2,
+      "fullyReviewed": 2,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "0077",
+        "0078"
+      ]
+    },
+    {
+      "familyId": "barbell_upright_row",
+      "total": 4,
+      "fullyReviewed": 4,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "0119",
+        "0120",
+        "0121",
+        "0123"
+      ]
+    },
+    {
+      "familyId": "bodyweight_squat",
+      "total": 1,
+      "fullyReviewed": 1,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "3119"
+      ]
+    },
+    {
+      "familyId": "cable_incline_pushdown",
+      "total": 1,
+      "fullyReviewed": 1,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "0172"
+      ]
+    },
+    {
+      "familyId": "cable_lat_pulldown",
+      "total": 2,
+      "fullyReviewed": 2,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "0197",
+        "0198"
+      ]
+    },
+    {
+      "familyId": "cable_rear_delt_row",
+      "total": 2,
+      "fullyReviewed": 2,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "0202",
+        "0203"
+      ]
+    },
+    {
+      "familyId": "cable_straight_arm_pulldown",
+      "total": 3,
+      "fullyReviewed": 3,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "0199",
+        "0237",
+        "0238"
+      ]
+    },
+    {
+      "familyId": "cable_triceps_pushdown",
+      "total": 3,
+      "fullyReviewed": 3,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "0200",
+        "0201",
+        "0241"
+      ]
+    },
+    {
+      "familyId": "chest_dip",
+      "total": 2,
+      "fullyReviewed": 2,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "0251",
+        "1430"
+      ]
+    },
+    {
+      "familyId": "close_grip_push_up",
+      "total": 2,
+      "fullyReviewed": 2,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "0259",
+        "2398"
+      ]
+    },
+    {
+      "familyId": "ez_bar_spider_curl",
+      "total": 2,
+      "fullyReviewed": 0,
+      "partiallyReviewed": 2,
+      "ruleOnly": 0,
+      "members": [
+        "0454",
+        "1628"
+      ]
+    },
+    {
+      "familyId": "forearm_transition_push_up",
+      "total": 1,
+      "fullyReviewed": 1,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "1421"
+      ]
+    },
+    {
+      "familyId": "horizontal_press",
+      "total": 83,
+      "fullyReviewed": 0,
+      "partiallyReviewed": 2,
+      "ruleOnly": 81,
+      "members": [
+        "0025",
+        "0030",
+        "0033",
+        "0045",
+        "0047",
+        "0052",
+        "0065",
+        "0122",
+        "0151",
+        "0169",
+        "0258",
+        "0279",
+        "0283",
+        "0289",
+        "0301",
+        "0314",
+        "0352",
+        "0450",
+        "0471",
+        "0490",
+        "0493",
+        "0494",
+        "0576",
+        "0577",
+        "0653",
+        "0658",
+        "0659",
+        "0660",
+        "0662",
+        "0663",
+        "0666",
+        "0699",
+        "0717",
+        "0725",
+        "0748",
+        "0751",
+        "0753",
+        "0757",
+        "0803",
+        "0806",
+        "0975",
+        "0989",
+        "1254",
+        "1256",
+        "1257",
+        "1258",
+        "1273",
+        "1274",
+        "1275",
+        "1287",
+        "1289",
+        "1296",
+        "1298",
+        "1299",
+        "1300",
+        "1301",
+        "1307",
+        "1308",
+        "1309",
+        "1310",
+        "1311",
+        "1467",
+        "1479",
+        "1623",
+        "1624",
+        "1625",
+        "1626",
+        "1701",
+        "1719",
+        "1743",
+        "2144",
+        "2187",
+        "2328",
+        "2432",
+        "3124",
+        "3145",
+        "3211",
+        "3216",
+        "3217",
+        "3294",
+        "3327",
+        "3758",
+        "3785"
+      ]
+    },
+    {
+      "familyId": "incline_cable_fly",
+      "total": 2,
+      "fullyReviewed": 2,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "0170",
+        "0171"
+      ]
+    },
+    {
+      "familyId": "knee_flexion",
+      "total": 10,
+      "fullyReviewed": 0,
+      "partiallyReviewed": 2,
+      "ruleOnly": 8,
+      "members": [
+        "0496",
+        "0582",
+        "0586",
+        "0599",
+        "0696",
+        "0697",
+        "0795",
+        "1766",
+        "3195",
+        "3235"
+      ]
+    },
+    {
+      "familyId": "lunge_with_twist",
+      "total": 1,
+      "fullyReviewed": 1,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "1688"
+      ]
+    },
+    {
+      "familyId": "push_up_leg_kick",
+      "total": 2,
+      "fullyReviewed": 2,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "0642",
+        "0661"
+      ]
+    },
+    {
+      "familyId": "push_up_side_plank",
+      "total": 1,
+      "fullyReviewed": 1,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "0664"
+      ]
+    },
+    {
+      "familyId": "rear_delt_fly",
+      "total": 14,
+      "fullyReviewed": 2,
+      "partiallyReviewed": 0,
+      "ruleOnly": 12,
+      "members": [
+        "0075",
+        "0154",
+        "0225",
+        "0240",
+        "0359",
+        "0377",
+        "0378",
+        "0383",
+        "0386",
+        "0601",
+        "0602",
+        "0993",
+        "2292",
+        "2470"
+      ]
+    },
+    {
+      "familyId": "reverse_push_up",
+      "total": 1,
+      "fullyReviewed": 1,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "1772"
+      ]
+    },
+    {
+      "familyId": "scapular_pull_up",
+      "total": 1,
+      "fullyReviewed": 1,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "0688"
+      ]
+    },
+    {
+      "familyId": "scapular_push_up",
+      "total": 2,
+      "fullyReviewed": 2,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "3011",
+        "3021"
+      ]
+    },
+    {
+      "familyId": "seated_barbell_calf_raise",
+      "total": 2,
+      "fullyReviewed": 0,
+      "partiallyReviewed": 2,
+      "ruleOnly": 0,
+      "members": [
+        "0088",
+        "1371"
+      ]
+    },
+    {
+      "familyId": "smith_reverse_calf_raise",
+      "total": 2,
+      "fullyReviewed": 0,
+      "partiallyReviewed": 2,
+      "ruleOnly": 0,
+      "members": [
+        "0763",
+        "1394"
+      ]
+    },
+    {
+      "familyId": "spider_push_up",
+      "total": 1,
+      "fullyReviewed": 1,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "0778"
+      ]
+    },
+    {
+      "familyId": "stability_ball_hamstring_curl",
+      "total": 1,
+      "fullyReviewed": 1,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "1417"
+      ]
+    },
+    {
+      "familyId": "stability_ball_push_up",
+      "total": 2,
+      "fullyReviewed": 0,
+      "partiallyReviewed": 2,
+      "ruleOnly": 0,
+      "members": [
+        "0655",
+        "0656"
+      ]
+    },
+    {
+      "familyId": "triceps_kickback",
+      "total": 7,
+      "fullyReviewed": 7,
+      "partiallyReviewed": 0,
+      "ruleOnly": 0,
+      "members": [
+        "0333",
+        "0354",
+        "0394",
+        "0398",
+        "0420",
+        "0860",
+        "1730"
       ]
     }
   ],
@@ -1035,10 +1589,11 @@
   "ancillaryEquipment": {
     "band anchor": 18,
     "bench": 317,
-    "chair": 53,
+    "chair": 49,
+    "dip bars": 2,
     "low bar": 5,
     "partner": 2,
-    "pull-up bar": 38,
+    "pull-up bar": 37,
     "rack": 10,
     "stability ball": 51,
     "step": 26,
@@ -1046,13 +1601,6 @@
     "towel": 5
   },
   "reviewQueue": [
-    {
-      "id": "0001",
-      "name": "3/4 sit-up",
-      "tags": [
-        "partial_rom"
-      ]
-    },
     {
       "id": "0002",
       "name": "45° side bend",
@@ -1074,30 +1622,9 @@
       "tags": []
     },
     {
-      "id": "0010",
-      "name": "assisted hanging knee raise with throw down",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "0011",
       "name": "assisted hanging knee raise",
       "tags": []
-    },
-    {
-      "id": "0012",
-      "name": "assisted lying leg raise with lateral throw down",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "0013",
-      "name": "assisted lying leg raise with throw down",
-      "tags": [
-        "complex_unreviewed"
-      ]
     },
     {
       "id": "0016",
@@ -1113,20 +1640,6 @@
       "id": "0022",
       "name": "barbell pullover to press",
       "tags": []
-    },
-    {
-      "id": "0028",
-      "name": "barbell clean and press",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "0029",
-      "name": "barbell clean-grip front squat",
-      "tags": [
-        "complex_unreviewed"
-      ]
     },
     {
       "id": "0034",
@@ -1174,20 +1687,6 @@
       "tags": []
     },
     {
-      "id": "0051",
-      "name": "barbell jefferson squat",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "0053",
-      "name": "barbell jump squat",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "0055",
       "name": "barbell lying close-grip press",
       "tags": []
@@ -1203,20 +1702,6 @@
       "tags": []
     },
     {
-      "id": "0067",
-      "name": "barbell one arm snatch",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "0069",
-      "name": "barbell overhead squat",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "0072",
       "name": "barbell prone incline curl",
       "tags": []
@@ -1224,11 +1709,6 @@
     {
       "id": "0073",
       "name": "barbell pullover",
-      "tags": []
-    },
-    {
-      "id": "0074",
-      "name": "barbell rack pull",
       "tags": []
     },
     {
@@ -1282,20 +1762,6 @@
       "tags": []
     },
     {
-      "id": "0101",
-      "name": "barbell speed squat",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "0102",
-      "name": "barbell squat (on knees)",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "0103",
       "name": "barbell standing ab rollerout",
       "tags": []
@@ -1336,26 +1802,6 @@
       "tags": []
     },
     {
-      "id": "0119",
-      "name": "barbell upright row v. 2",
-      "tags": []
-    },
-    {
-      "id": "0120",
-      "name": "barbell upright row",
-      "tags": []
-    },
-    {
-      "id": "0121",
-      "name": "barbell upright row v. 3",
-      "tags": []
-    },
-    {
-      "id": "0123",
-      "name": "barbell wide-grip upright row",
-      "tags": []
-    },
-    {
       "id": "0125",
       "name": "barbell wrist curl v. 2",
       "tags": []
@@ -1364,13 +1810,6 @@
       "id": "0126",
       "name": "barbell wrist curl",
       "tags": []
-    },
-    {
-      "id": "0127",
-      "name": "barbell zercher squat",
-      "tags": [
-        "complex_unreviewed"
-      ]
     },
     {
       "id": "0128",
@@ -1403,13 +1842,6 @@
       "tags": []
     },
     {
-      "id": "0154",
-      "name": "cable cross-over revers fly",
-      "tags": [
-        "primary_mismatch"
-      ]
-    },
-    {
       "id": "0155",
       "name": "cable cross-over variation",
       "tags": []
@@ -1433,7 +1865,10 @@
       "id": "0172",
       "name": "cable incline pushdown",
       "tags": [
-        "primary_mismatch"
+        "curated_sampled_media_review",
+        "manual_review_required",
+        "primary_mismatch",
+        "source_media_conflict"
       ]
     },
     {
@@ -1467,13 +1902,6 @@
       "tags": []
     },
     {
-      "id": "0199",
-      "name": "cable pushdown (straight arm) v. 2",
-      "tags": [
-        "primary_mismatch"
-      ]
-    },
-    {
       "id": "0204",
       "name": "cable rear drive",
       "tags": []
@@ -1502,13 +1930,6 @@
       "id": "0220",
       "name": "cable shrug",
       "tags": []
-    },
-    {
-      "id": "0221",
-      "name": "cable side bend crunch (bosu ball)",
-      "tags": [
-        "complex_unreviewed"
-      ]
     },
     {
       "id": "0222",
@@ -1561,11 +1982,6 @@
       "tags": []
     },
     {
-      "id": "0251",
-      "name": "chest dip",
-      "tags": []
-    },
-    {
       "id": "0253",
       "name": "chin-ups (narrow parallel grip)",
       "tags": []
@@ -1594,13 +2010,6 @@
       "id": "0290",
       "name": "dumbbell bench seated press",
       "tags": []
-    },
-    {
-      "id": "0295",
-      "name": "dumbbell clean",
-      "tags": [
-        "complex_unreviewed"
-      ]
     },
     {
       "id": "0296",
@@ -1688,13 +2097,6 @@
       "tags": []
     },
     {
-      "id": "0333",
-      "name": "dumbbell kickback",
-      "tags": [
-        "primary_mismatch"
-      ]
-    },
-    {
       "id": "0335",
       "name": "dumbbell lateral to front raise",
       "tags": []
@@ -1750,13 +2152,6 @@
       "tags": []
     },
     {
-      "id": "0354",
-      "name": "dumbbell one arm kickback",
-      "tags": [
-        "primary_mismatch"
-      ]
-    },
-    {
       "id": "0358",
       "name": "dumbbell one arm reverse wrist curl",
       "tags": []
@@ -1797,13 +2192,6 @@
       "tags": []
     },
     {
-      "id": "0371",
-      "name": "dumbbell plyo squat",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "0374",
       "name": "dumbbell prone incline curl",
       "tags": []
@@ -1817,13 +2205,6 @@
       "id": "0376",
       "name": "dumbbell raise",
       "tags": []
-    },
-    {
-      "id": "0378",
-      "name": "dumbbell rear fly",
-      "tags": [
-        "primary_mismatch"
-      ]
     },
     {
       "id": "0385",
@@ -1851,23 +2232,9 @@
       "tags": []
     },
     {
-      "id": "0394",
-      "name": "dumbbell seated kickback",
-      "tags": [
-        "primary_mismatch"
-      ]
-    },
-    {
       "id": "0397",
       "name": "dumbbell seated neutral wrist curl",
       "tags": []
-    },
-    {
-      "id": "0398",
-      "name": "dumbbell seated one arm kickback",
-      "tags": [
-        "primary_mismatch"
-      ]
     },
     {
       "id": "0399",
@@ -1903,13 +2270,6 @@
       "id": "0419",
       "name": "dumbbell standing front raise above head",
       "tags": []
-    },
-    {
-      "id": "0420",
-      "name": "dumbbell standing kickback",
-      "tags": [
-        "primary_mismatch"
-      ]
     },
     {
       "id": "0422",
@@ -2002,11 +2362,6 @@
       "tags": []
     },
     {
-      "id": "0464",
-      "name": "front plank with twist",
-      "tags": []
-    },
-    {
       "id": "0466",
       "name": "gironda sternum chin",
       "tags": []
@@ -2015,13 +2370,6 @@
       "id": "0467",
       "name": "gorilla chin",
       "tags": []
-    },
-    {
-      "id": "0471",
-      "name": "handstand push-up",
-      "tags": [
-        "complex_unreviewed"
-      ]
     },
     {
       "id": "0472",
@@ -2059,42 +2407,9 @@
       "tags": []
     },
     {
-      "id": "0492",
-      "name": "incline push up depth jump",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "0500",
-      "name": "isometric wipers",
-      "tags": []
-    },
-    {
-      "id": "0513",
-      "name": "jump squat v. 2",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "0514",
-      "name": "jump squat",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "0517",
       "name": "kettlebell advanced windmill",
       "tags": []
-    },
-    {
-      "id": "0518",
-      "name": "kettlebell alternating hang clean",
-      "tags": [
-        "complex_unreviewed"
-      ]
     },
     {
       "id": "0519",
@@ -2112,37 +2427,9 @@
       "tags": []
     },
     {
-      "id": "0525",
-      "name": "kettlebell bottoms up clean from the hang position",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "0526",
-      "name": "kettlebell double alternating hang clean",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "0527",
-      "name": "kettlebell double jerk",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "0528",
       "name": "kettlebell double push press",
       "tags": []
-    },
-    {
-      "id": "0529",
-      "name": "kettlebell double snatch",
-      "tags": [
-        "complex_unreviewed"
-      ]
     },
     {
       "id": "0530",
@@ -2160,56 +2447,14 @@
       "tags": []
     },
     {
-      "id": "0535",
-      "name": "kettlebell hang clean",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "0537",
-      "name": "kettlebell one arm clean and jerk",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "0538",
-      "name": "kettlebell one arm jerk",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "0540",
       "name": "kettlebell one arm push press",
       "tags": []
     },
     {
-      "id": "0542",
-      "name": "kettlebell one arm snatch",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "0543",
       "name": "kettlebell pirate supper legs",
       "tags": []
-    },
-    {
-      "id": "0544",
-      "name": "kettlebell pistol squat",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "0545",
-      "name": "kettlebell plyo push-up",
-      "tags": [
-        "complex_unreviewed"
-      ]
     },
     {
       "id": "0546",
@@ -2237,13 +2482,6 @@
       "id": "0550",
       "name": "kettlebell thruster",
       "tags": []
-    },
-    {
-      "id": "0552",
-      "name": "kettlebell two arm clean",
-      "tags": [
-        "complex_unreviewed"
-      ]
     },
     {
       "id": "0554",
@@ -2333,20 +2571,6 @@
       "tags": []
     },
     {
-      "id": "0642",
-      "name": "outside leg kick push-up",
-      "tags": [
-        "primary_mismatch"
-      ]
-    },
-    {
-      "id": "0648",
-      "name": "power clean",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "0650",
       "name": "pull-in (on stability ball)",
       "tags": []
@@ -2373,20 +2597,6 @@
       ]
     },
     {
-      "id": "0661",
-      "name": "push-up inside leg kick",
-      "tags": [
-        "primary_mismatch"
-      ]
-    },
-    {
-      "id": "0664",
-      "name": "push-up to side plank",
-      "tags": [
-        "primary_mismatch"
-      ]
-    },
-    {
       "id": "0668",
       "name": "rear decline bridge",
       "tags": []
@@ -2410,13 +2620,6 @@
       "id": "0680",
       "name": "rope climb",
       "tags": []
-    },
-    {
-      "id": "0688",
-      "name": "scapular pull-up",
-      "tags": [
-        "primary_mismatch"
-      ]
     },
     {
       "id": "0689",
@@ -2517,30 +2720,9 @@
       "tags": []
     },
     {
-      "id": "0776",
-      "name": "snatch pull",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "0777",
       "name": "spell caster",
       "tags": []
-    },
-    {
-      "id": "0778",
-      "name": "spider crawl push up",
-      "tags": [
-        "primary_mismatch"
-      ]
-    },
-    {
-      "id": "0786",
-      "name": "squat jerk",
-      "tags": [
-        "complex_unreviewed"
-      ]
     },
     {
       "id": "0788",
@@ -2621,13 +2803,6 @@
       "id": "0859",
       "name": "wrist rollerer",
       "tags": []
-    },
-    {
-      "id": "0860",
-      "name": "cable kickback",
-      "tags": [
-        "primary_mismatch"
-      ]
     },
     {
       "id": "0862",
@@ -2792,13 +2967,6 @@
       "tags": []
     },
     {
-      "id": "1273",
-      "name": "clap push up",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "1281",
       "name": "dumbbell incline one arm press",
       "tags": []
@@ -2844,11 +3012,6 @@
       "tags": []
     },
     {
-      "id": "1297",
-      "name": "isometric chest squeeze",
-      "tags": []
-    },
-    {
       "id": "1302",
       "name": "medicine ball chest pass",
       "tags": []
@@ -2867,13 +3030,6 @@
       "id": "1305",
       "name": "medicine ball chest push single response",
       "tags": []
-    },
-    {
-      "id": "1306",
-      "name": "plyo push up",
-      "tags": [
-        "complex_unreviewed"
-      ]
     },
     {
       "id": "1307",
@@ -2913,13 +3069,6 @@
       "tags": []
     },
     {
-      "id": "1353",
-      "name": "medicine ball catch and overhead throw",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "1354",
       "name": "medicine ball overhead slam",
       "tags": []
@@ -2948,13 +3097,6 @@
       "id": "1368",
       "name": "ankle circles",
       "tags": []
-    },
-    {
-      "id": "1374",
-      "name": "box jump down with one leg stabilization",
-      "tags": [
-        "complex_unreviewed"
-      ]
     },
     {
       "id": "1394",
@@ -3018,30 +3160,9 @@
       "tags": []
     },
     {
-      "id": "1417",
-      "name": "exercise ball one legged diagonal kick hamstring curl",
-      "tags": [
-        "primary_mismatch"
-      ]
-    },
-    {
       "id": "1418",
       "name": "hug keens to chest",
       "tags": []
-    },
-    {
-      "id": "1420",
-      "name": "kneeling jump squat",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "1421",
-      "name": "modified push up to lower arms",
-      "tags": [
-        "primary_mismatch"
-      ]
     },
     {
       "id": "1422",
@@ -3062,20 +3183,6 @@
       "id": "1428",
       "name": "wrist circles",
       "tags": []
-    },
-    {
-      "id": "1430",
-      "name": "chest dip (on dip-pull-up cage)",
-      "tags": [
-        "primary_mismatch"
-      ]
-    },
-    {
-      "id": "1433",
-      "name": "smith front squat (clean grip)",
-      "tags": [
-        "complex_unreviewed"
-      ]
     },
     {
       "id": "1437",
@@ -3118,20 +3225,6 @@
       "tags": []
     },
     {
-      "id": "1472",
-      "name": "forward jump",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "1473",
-      "name": "backward jump",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "1489",
       "name": "sissy squat",
       "tags": []
@@ -3145,13 +3238,6 @@
       "id": "1496",
       "name": "sledge hammer",
       "tags": []
-    },
-    {
-      "id": "1545",
-      "name": "barbell full zercher squat",
-      "tags": [
-        "complex_unreviewed"
-      ]
     },
     {
       "id": "1582",
@@ -3229,13 +3315,6 @@
       "tags": []
     },
     {
-      "id": "1656",
-      "name": "dumbbell biceps curl v sit on bosu ball",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "1662",
       "name": "dumbbell lying wide curl",
       "tags": []
@@ -3274,13 +3353,6 @@
       "id": "1687",
       "name": "posterior step to overhead reach",
       "tags": []
-    },
-    {
-      "id": "1688",
-      "name": "lunge with twist",
-      "tags": [
-        "primary_mismatch"
-      ]
     },
     {
       "id": "1689",
@@ -3327,13 +3399,6 @@
       "tags": []
     },
     {
-      "id": "1730",
-      "name": "dumbbell seated bent over alternate kickback",
-      "tags": [
-        "primary_mismatch"
-      ]
-    },
-    {
       "id": "1731",
       "name": "dumbbell close grip press",
       "tags": []
@@ -3374,13 +3439,6 @@
       "tags": []
     },
     {
-      "id": "1750",
-      "name": "medicine ball supine chest throw",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "1751",
       "name": "barbell pin presses",
       "tags": []
@@ -3394,13 +3452,6 @@
       "id": "1754",
       "name": "weighted three bench dips",
       "tags": []
-    },
-    {
-      "id": "1759",
-      "name": "single leg squat (pistol) male",
-      "tags": [
-        "complex_unreviewed"
-      ]
     },
     {
       "id": "1761",
@@ -3431,13 +3482,11 @@
       "id": "1772",
       "name": "elbow lift - reverse push-up",
       "tags": [
-        "primary_mismatch"
+        "curated_sampled_media_review",
+        "manual_review_required",
+        "primary_mismatch",
+        "source_media_conflict"
       ]
-    },
-    {
-      "id": "2135",
-      "name": "weighted front plank",
-      "tags": []
     },
     {
       "id": "2136",
@@ -3540,13 +3589,6 @@
       "tags": []
     },
     {
-      "id": "2398",
-      "name": "close-grip push-up (on knees)",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "2399",
       "name": "cable seated twist",
       "tags": []
@@ -3572,13 +3614,6 @@
       "tags": []
     },
     {
-      "id": "2612",
-      "name": "jump rope",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "2705",
       "name": "dumbbell lying pronation on floor",
       "tags": []
@@ -3587,14 +3622,6 @@
       "id": "2706",
       "name": "dumbbell lying supination on floor",
       "tags": []
-    },
-    {
-      "id": "2798",
-      "name": "barbell squat jump step rear lunge",
-      "tags": [
-        "complex_unreviewed",
-        "multi_pattern"
-      ]
     },
     {
       "id": "2799",
@@ -3632,13 +3659,6 @@
       "tags": []
     },
     {
-      "id": "3011",
-      "name": "incline scapula push up",
-      "tags": [
-        "primary_mismatch"
-      ]
-    },
-    {
       "id": "3012",
       "name": "scapula dips",
       "tags": []
@@ -3652,20 +3672,6 @@
       "id": "3019",
       "name": "bench pull-ups",
       "tags": []
-    },
-    {
-      "id": "3021",
-      "name": "scapula push-up",
-      "tags": [
-        "primary_mismatch"
-      ]
-    },
-    {
-      "id": "3119",
-      "name": "potty squat",
-      "tags": [
-        "primary_mismatch"
-      ]
     },
     {
       "id": "3147",
@@ -3686,27 +3692,6 @@
       "id": "3193",
       "name": "glute-ham raise",
       "tags": []
-    },
-    {
-      "id": "3201",
-      "name": "quarter sit-up",
-      "tags": [
-        "partial_rom"
-      ]
-    },
-    {
-      "id": "3202",
-      "name": "half sit-up (male)",
-      "tags": [
-        "partial_rom"
-      ]
-    },
-    {
-      "id": "3203",
-      "name": "prisoner half sit-up (male)",
-      "tags": [
-        "partial_rom"
-      ]
     },
     {
       "id": "3212",
@@ -3751,41 +3736,8 @@
       ]
     },
     {
-      "id": "3222",
-      "name": "semi squat jump (male)",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "3223",
-      "name": "star jump (male)",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "3224",
-      "name": "jack jump (male)",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
       "id": "3231",
       "name": "two toe touch (male)",
-      "tags": []
-    },
-    {
-      "id": "3236",
-      "name": "resistance band hip thrusts on knees (female)",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "3239",
-      "name": "kneeling plank tap shoulder (male)",
       "tags": []
     },
     {
@@ -3953,18 +3905,6 @@
       "tags": []
     },
     {
-      "id": "3543",
-      "name": "bodyweight drop jump squat",
-      "tags": [
-        "complex_unreviewed"
-      ]
-    },
-    {
-      "id": "3544",
-      "name": "bodyweight incline side plank",
-      "tags": []
-    },
-    {
       "id": "3545",
       "name": "dumbbell incline alternate press",
       "tags": []
@@ -3983,13 +3923,6 @@
       "id": "3552",
       "name": "quick feet v. 2",
       "tags": []
-    },
-    {
-      "id": "3582",
-      "name": "lunge with jump",
-      "tags": [
-        "complex_unreviewed"
-      ]
     },
     {
       "id": "3636",
@@ -4033,23 +3966,6 @@
       ]
     },
     {
-      "id": "3663",
-      "name": "reverse plank with leg lift",
-      "tags": []
-    },
-    {
-      "id": "3664",
-      "name": "dumbbell side plank with rear fly",
-      "tags": [
-        "primary_mismatch"
-      ]
-    },
-    {
-      "id": "3665",
-      "name": "power point plank",
-      "tags": []
-    },
-    {
       "id": "3666",
       "name": "walking on incline treadmill",
       "tags": []
@@ -4078,13 +3994,6 @@
       "id": "3699",
       "name": "shoulder tap",
       "tags": []
-    },
-    {
-      "id": "3888",
-      "name": "dumbbell one arm snatch",
-      "tags": [
-        "complex_unreviewed"
-      ]
     }
   ]
 }

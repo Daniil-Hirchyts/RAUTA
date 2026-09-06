@@ -34,3 +34,6 @@ venv
 
 # Native release artifacts
 build
+
+# Generated training media review artifacts
+docs/training-engine/media-review/

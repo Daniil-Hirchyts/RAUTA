@@ -14,9 +14,10 @@ import { compareIds, fingerprint, finite, isRecord } from "../numeric"
 import {
   CURATION_VERSION,
   getCuratedExerciseReview,
+  isFullyCuratedReview,
 } from "./curated-exercises"
 
-const RULE_VERSION = "1.1.0"
+const RULE_VERSION = "1.2.0"
 type PatternRule = {
   match: RegExp
   exclude?: RegExp
@@ -210,6 +211,10 @@ export function inferExerciseMetadata(e: ExerciseSummary): ExerciseMetadata {
   const text = name + " " + instructions
   const detectedType = /\bstretch/.test(name)
     ? "stretch"
+    : /\b(isometric|static hold|hold)\b|\bplank\b/.test(name)
+      ? "isometric"
+      : /\b(snatch|clean|jerk|jump|plyo|throw)\b/.test(name)
+        ? "power"
     : /\b(run|running|bike|elliptical|stepmill|skierg|burpee|jumping jack|walk)\b/.test(
           name
         ) && e.primaryMuscle !== "abs"
@@ -267,7 +272,13 @@ export function inferExerciseMetadata(e: ExerciseSummary): ExerciseMetadata {
   if (/\b(towel|straps)\b/.test(name))
     equipment.add(name.includes("towel") ? "towel" : "suspension straps")
   const tracking =
-    e.equipment === "body weight"
+    exerciseType === "isometric"
+      ? "timed"
+      : exerciseType === "conditioning" && /\b(run|running|walk)\b/.test(name)
+        ? "distance"
+        : /\bband\b/.test(e.equipment)
+          ? "band_resistance"
+    : e.equipment === "body weight"
       ? "bodyweight"
       : e.equipment === "assisted" ||
           (e.equipment === "leverage machine" && /\bassisted\b/.test(name))
@@ -353,6 +364,8 @@ export function inferExerciseMetadata(e: ExerciseSummary): ExerciseMetadata {
     automaticProgramming,
     familyId,
     provenance: "rule",
+    reviewStatus: "rule_only",
+    reviewedFields: [],
     ruleVersion: RULE_VERSION,
   }
 }
@@ -361,18 +374,19 @@ function curatedProvenance(
   reviewedFrom: readonly string[]
 ): ExerciseMetadata["provenance"] {
   const video = reviewedFrom.includes("video")
+  const sampledFrames = reviewedFrom.includes("sampled_frames")
   const text = reviewedFrom.includes("name") || reviewedFrom.includes("instructions")
-  return video && text
-    ? "curated_video_and_text"
-    : video
-      ? "curated_video"
-      : "curated_text"
+  if (video) return text ? "curated_video_and_text" : "curated_video"
+  if (sampledFrames)
+    return text ? "curated_sampled_frames_and_text" : "curated_sampled_frames"
+  return "curated_text"
 }
 
 export function resolveExerciseMetadata(e: ExerciseSummary): ExerciseMetadata {
   const inferred = inferExerciseMetadata(e)
   const review = getCuratedExerciseReview(e.id)
   if (!review) return inferred
+  const fullyReviewed = isFullyCuratedReview(review)
   return {
     ...inferred,
     ...review.metadata,
@@ -380,7 +394,11 @@ export function resolveExerciseMetadata(e: ExerciseSummary): ExerciseMetadata {
     tags: [
       ...new Set([...(inferred.tags ?? []), ...(review.metadata.tags ?? [])]),
     ].sort(compareIds),
-    provenance: curatedProvenance(review.reviewedFrom),
+    provenance: fullyReviewed
+      ? curatedProvenance(review.reviewedFrom)
+      : "curated",
+    reviewStatus: fullyReviewed ? "fully_reviewed" : "partially_reviewed",
+    reviewedFields: [...(review.reviewedFields ?? [])].sort(compareIds),
     ruleVersion: `${RULE_VERSION}+curation-${CURATION_VERSION}`,
   }
 }
@@ -392,20 +410,33 @@ export function validateMetadata(
     isRecord(m) &&
     !!e &&
     m.exerciseId === e.id &&
-    ["resistance", "stretch", "mobility", "conditioning", "unknown"].includes(
-      m.exerciseType
-    ) &&
+    [
+      "resistance",
+      "isometric",
+      "stretch",
+      "mobility",
+      "conditioning",
+      "power",
+      "unknown",
+    ].includes(m.exerciseType) &&
     ["compound", "isolation", "unknown"].includes(m.mechanics) &&
     ["bilateral", "unilateral", "alternating", "unknown"].includes(
       m.laterality
     ) &&
-    ["external_load", "assistance", "bodyweight", "unknown"].includes(
-      m.tracking
-    ) &&
+    [
+      "external_load",
+      "assistance",
+      "bodyweight",
+      "band_resistance",
+      "repetition_only",
+      "timed",
+      "distance",
+      "unknown",
+    ].includes(m.tracking) &&
     finite(m.classificationConfidence, 0, 1) &&
     finite(m.setupSeconds, 0, 600) &&
     Array.isArray(m.requiredEquipment) &&
-    m.requiredEquipment.includes(e.equipment) &&
+    (m.provenance !== "rule" || m.requiredEquipment.includes(e.equipment)) &&
     m.requiredEquipment.every((x) => typeof x === "string" && x.length > 0) &&
     Array.isArray(m.setRoles) &&
     m.setRoles.every(
@@ -448,10 +479,20 @@ export function validateMetadata(
       "curated_text",
       "curated_video",
       "curated_video_and_text",
+      "curated_sampled_frames",
+      "curated_sampled_frames_and_text",
     ].includes(m.provenance) &&
     typeof m.ruleVersion === "string" &&
     !!m.ruleVersion &&
+    (m.reviewStatus === undefined ||
+      ["rule_only", "partially_reviewed", "fully_reviewed"].includes(
+        m.reviewStatus
+      )) &&
+    (m.reviewedFields === undefined ||
+      (Array.isArray(m.reviewedFields) &&
+        m.reviewedFields.every((field) => typeof field === "string"))) &&
     (m.exerciseType !== "resistance" ||
+      m.automaticProgramming === "manual_only" ||
       (m.setRoles.some((r) => r.role === "direct") &&
         !m.movementPatterns.includes("unknown") &&
         m.mechanics !== "unknown"))
@@ -628,7 +669,10 @@ export function exclusionReasons(
       !explicitlyRequested)
   const lowConfidenceRule =
     e.metadata.provenance === "rule" &&
-    e.metadata.classificationConfidence < policy.minimumClassificationConfidence
+    e.metadata.classificationConfidence <
+      (e.metadata.automaticProgramming === "specialized_only"
+        ? policy.minimumSpecializedClassificationConfidence
+        : policy.minimumAutomaticClassificationConfidence)
   if (
     e.metadata.exerciseType !== "resistance" ||
     automaticProgrammingBlocked ||

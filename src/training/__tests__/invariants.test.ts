@@ -13,6 +13,11 @@ import { exclusionReasons } from "../data/exercises"
 import { preparation } from "../planning/generate"
 import { scoreExercise } from "../scoring/scores"
 import { generateSplitCandidates } from "../planning/optimizer"
+import {
+  CORE_PROGRAMMING_FIELDS,
+  getCuratedExerciseReviews,
+  isFullyCuratedReview,
+} from "../data/curated-exercises"
 // Seeded generated cases avoid a new dependency. The seed and failing index reproduce every case.
 function random(seed: number) {
   let n = seed >>> 0
@@ -93,10 +98,11 @@ describe("generated invariants and metamorphic cases", () => {
       "1766",
       "0763",
       "1394",
-    ])
-      expect(index.byId.get(id)?.metadata.provenance).toBe(
-        "curated_video_and_text"
-      )
+    ]) {
+      const metadata = index.byId.get(id)?.metadata
+      expect(metadata?.provenance).toBe("curated")
+      expect(metadata?.reviewStatus).toBe("partially_reviewed")
+    }
     expect(index.byId.get("1371")?.metadata.duplicateOf).toBe("0088")
     expect(index.byId.get("0577")?.metadata.variantOf).toBe("0576")
     expect(index.byId.get("0656")?.metadata.tags).toContain(
@@ -121,6 +127,26 @@ describe("generated invariants and metamorphic cases", () => {
       true
     )
     expect(cycled.byId.size).toBe(0)
+  })
+
+  it("never presents partial review patches as fully curated programming metadata", () => {
+    for (const review of getCuratedExerciseReviews()) {
+      const metadata = index.byId.get(review.exerciseId)?.metadata
+      expect(metadata).toBeDefined()
+      if (isFullyCuratedReview(review)) {
+        expect(metadata?.reviewStatus).toBe("fully_reviewed")
+        const reviewed = new Set(review.reviewedFields ?? [])
+        for (const field of CORE_PROGRAMMING_FIELDS) {
+          expect(reviewed.has(field), `${review.exerciseId}:${field}`).toBe(true)
+          expect(
+            Object.prototype.hasOwnProperty.call(review.metadata, field),
+            `${review.exerciseId}:${field}`
+          ).toBe(true)
+        }
+      } else {
+        expect(metadata?.reviewStatus).toBe("partially_reviewed")
+      }
+    }
   })
 
   it("40 seeded valid profiles retain all hard invariants", () => {
@@ -282,6 +308,72 @@ describe("generated invariants and metamorphic cases", () => {
         DEFAULT_POLICY
       ).some((issue) => issue.code === "UNSUPPORTED_EXERCISE")
     ).toBe(false)
+
+    const ruleSpecialized = {
+      ...source,
+      metadata: {
+        ...source.metadata,
+        provenance: "rule" as const,
+        automaticProgramming: "specialized_only" as const,
+        classificationConfidence:
+          DEFAULT_POLICY.minimumSpecializedClassificationConfidence,
+      },
+    }
+    expect(
+      exclusionReasons(ruleSpecialized, full.preferences, DEFAULT_POLICY).some(
+        (issue) => issue.code === "UNSUPPORTED_EXERCISE"
+      )
+    ).toBe(true)
+    for (const explicit of [
+      { preferredExerciseIds: [source.exercise.id] },
+      { strengthExerciseIds: [source.exercise.id] },
+    ])
+      expect(
+        exclusionReasons(
+          ruleSpecialized,
+          { ...full.preferences, ...explicit },
+          DEFAULT_POLICY
+        ).some((issue) => issue.code === "UNSUPPORTED_EXERCISE")
+      ).toBe(false)
+
+    const ruleSpecializedLowConfidence = {
+      ...ruleSpecialized,
+      metadata: {
+        ...ruleSpecialized.metadata,
+        classificationConfidence:
+          DEFAULT_POLICY.minimumSpecializedClassificationConfidence - 0.01,
+      },
+    }
+    expect(
+      exclusionReasons(
+        ruleSpecializedLowConfidence,
+        {
+          ...full.preferences,
+          preferredExerciseIds: [source.exercise.id],
+        },
+        DEFAULT_POLICY
+      ).some((issue) => issue.code === "UNSUPPORTED_EXERCISE")
+    ).toBe(true)
+
+    const ruleAllowedLowConfidence = {
+      ...ruleSpecialized,
+      metadata: {
+        ...ruleSpecialized.metadata,
+        automaticProgramming: "allowed" as const,
+        classificationConfidence:
+          DEFAULT_POLICY.minimumAutomaticClassificationConfidence - 0.01,
+      },
+    }
+    expect(
+      exclusionReasons(
+        ruleAllowedLowConfidence,
+        {
+          ...full.preferences,
+          preferredExerciseIds: [source.exercise.id],
+        },
+        DEFAULT_POLICY
+      ).some((issue) => issue.code === "UNSUPPORTED_EXERCISE")
+    ).toBe(true)
   })
 
   it("classifies representative programming families deterministically", () => {
@@ -296,7 +388,7 @@ describe("generated invariants and metamorphic cases", () => {
       ["1463", "squat", "compound", "external_load", "bilateral", "quadriceps"],
       ["0585", "knee_extension", "isolation", "external_load", "bilateral", "quadriceps"],
       ["0586", "knee_flexion", "isolation", "external_load", "bilateral", "hamstring"],
-      ["3236", "hip_extension", "isolation", "unknown", "bilateral", "gluteal"],
+      ["3236", "hip_extension", "isolation", "band_resistance", "bilateral", "gluteal"],
       ["1370", "calf_raise", "isolation", "external_load", "bilateral", "calves"],
       ["0091", "vertical_push", "compound", "external_load", "bilateral", "deltoids"],
       ["0192", "shoulder_abduction", "isolation", "external_load", "unilateral", "deltoids"],

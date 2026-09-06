@@ -1,4 +1,4 @@
-import type { ProgramGenerationRequest } from "../domain/types"
+import type { ExerciseIndex, ProgramGenerationRequest } from "../domain/types"
 import { createExerciseIndex, exclusionReasons } from "../data/exercises"
 import { DEFAULT_POLICY } from "../policy"
 import { compareIds } from "../numeric"
@@ -17,9 +17,11 @@ const SUBSTITUTION_SIMILARITY_WEIGHTS = {
 export function findExerciseSubstitutions(
   exerciseId: string,
   request: ProgramGenerationRequest,
-  limit = 10
+  limit = 10,
+  context?: { index?: ExerciseIndex }
 ) {
-  const index = createExerciseIndex(request.exercises, request.metadata)
+  const index =
+    context?.index ?? createExerciseIndex(request.exercises, request.metadata)
   const source = index.byId.get(exerciseId)
   const policy = request.policy ?? DEFAULT_POLICY
   if (!source) return []

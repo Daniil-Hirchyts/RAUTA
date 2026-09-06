@@ -187,11 +187,6 @@ export const doubleProgression: ProgressionStrategy = {
       Math.abs(next - load.kg) > Math.max(load.kg, 1) * permittedFraction
     if (coarseStep) {
       if (!top) return hold("increment_too_large")
-      if (
-        Math.abs(next - load.kg) >
-        Math.max(load.kg, 1) * i.policy.coarseGridMaxLoadIncreaseFraction
-      )
-        return hold("increment_too_large")
       const extendedMax = Math.min(
         50,
         i.reps.max + i.policy.coarseGridMaxExtraReps
@@ -226,7 +221,30 @@ export const doubleProgression: ProgressionStrategy = {
             )
         ).length
       if (strongAtExtended < i.policy.coarseGridRequiredTopExposures)
-        return hold("coarse_load_grid")
+        return recommendation(i, {
+          action: "coarse_grid_progression",
+          resistance: { ...load },
+          targetReps: { min: i.reps.min, max: extendedMax },
+          confidence: "low",
+          reasons: ["coarse_load_grid"],
+          suggestedStrategies: ["continue_repetition_progression"],
+        })
+      if (
+        Math.abs(next - load.kg) >
+        Math.max(load.kg, 1) * i.policy.coarseGridMaxLoadIncreaseFraction
+      )
+        return recommendation(i, {
+          action: "coarse_grid_progression",
+          resistance: { ...load },
+          targetReps: { min: i.reps.min, max: extendedMax },
+          confidence: "medium",
+          reasons: ["coarse_grid_requires_alternative_progression"],
+          suggestedStrategies: [
+            "continue_repetition_progression",
+            "use_smaller_increment_if_available",
+            "use_different_variation",
+          ],
+        })
     }
     return recommendation(i, {
       action: top

@@ -1,9 +1,9 @@
 import { deepFreeze } from "./numeric"
 import type { TrainingPolicy } from "./domain/types"
-export const ENGINE_VERSION = "1.1.0"
+export const ENGINE_VERSION = "1.2.0"
 /** Exact values are versioned engineering policy; see docs/training-engine/EVIDENCE.md. */
 export const DEFAULT_POLICY: TrainingPolicy = deepFreeze({
-  version: "1.1.0",
+  version: "1.2.0",
   goals: {
     hypertrophy: {
       volume: { minimum: 6, preferred: 10, upperGuideline: 18 },
@@ -91,6 +91,8 @@ export const DEFAULT_POLICY: TrainingPolicy = deepFreeze({
   warmupFractions: [0.5, 0.75],
   warmupReps: [5, 3],
   minimumClassificationConfidence: 0.7,
+  minimumAutomaticClassificationConfidence: 0.7,
+  minimumSpecializedClassificationConfidence: 0.55,
   beamWidth: 3,
   candidateLimit: 8,
   maxExercisesPerSession: 7,

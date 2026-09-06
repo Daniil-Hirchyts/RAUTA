@@ -1,6 +1,8 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import exercises from "../src/data/exercises.generated.json"
+import { resolveExerciseMetadata } from "../src/training/data/exercises"
+import { getCuratedExerciseReview } from "../src/training/data/curated-exercises"
 import type { ExerciseSummary } from "../src/training"
 
 const data = exercises as ExerciseSummary[]
@@ -12,6 +14,7 @@ if (!requestedIds.length)
 
 const outputRoot = "docs/training-engine/media-review"
 mkdirSync(outputRoot, { recursive: true })
+const requestedFrameCount = 10
 
 function run(command: string[]): string {
   const result = Bun.spawnSync(command, { stdout: "pipe", stderr: "pipe" })
@@ -30,29 +33,64 @@ const extracted = requestedIds.map((exerciseId) => {
 
   const info = run(["webpinfo", mediaPath])
   const frameCount = Math.max(1, (info.match(/\bANMF\b/g) ?? []).length)
-  const frameNumbers = [1, Math.ceil(frameCount / 2), frameCount].filter(
-    (frame, index, values) => values.indexOf(frame) === index
-  )
+  const sampleCount = Math.min(requestedFrameCount, frameCount)
+  const frameNumbers = Array.from({ length: sampleCount }, (_, index) =>
+    sampleCount === 1
+      ? 1
+      : Math.round(1 + (index * (frameCount - 1)) / (sampleCount - 1))
+  ).filter((frame, index, values) => values.indexOf(frame) === index)
   const exerciseDir = join(outputRoot, exerciseId)
+  rmSync(exerciseDir, { recursive: true, force: true })
   mkdirSync(exerciseDir, { recursive: true })
 
-  const frames = frameNumbers.map((frame) => {
-    const temporaryWebp = join(exerciseDir, `frame-${frame}.webp`)
-    const png = join(exerciseDir, `frame-${frame}.png`)
+  const width = String(frameCount).length
+  const frames = frameNumbers.map((frame, sampleIndex) => {
+    const stem = `sample-${String(sampleIndex + 1).padStart(2, "0")}-frame-${String(frame).padStart(width, "0")}`
+    const temporaryWebp = join(exerciseDir, `${stem}.webp`)
+    const png = join(exerciseDir, `${stem}.png`)
     run(["webpmux", "-get", "frame", String(frame), mediaPath, "-o", temporaryWebp])
     run(["dwebp", temporaryWebp, "-o", png])
     rmSync(temporaryWebp, { force: true })
     return png
   })
+  const contactSheet = join(exerciseDir, "contact-sheet.png")
+  const columns = Math.min(5, frames.length)
+  const rows = Math.ceil(frames.length / columns)
+  run([
+    "ffmpeg",
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-framerate",
+    "1",
+    "-pattern_type",
+    "glob",
+    "-i",
+    join(exerciseDir, "sample-*.png"),
+    "-vf",
+    `scale=320:-1,tile=${columns}x${rows}:padding=4:margin=4`,
+    "-frames:v",
+    "1",
+    "-y",
+    contactSheet,
+  ])
+  const currentReview = getCuratedExerciseReview(exerciseId)
 
   return {
     exerciseId,
     name: exercise.name,
+    instructions: exercise.instructions,
+    sourceMuscles: exercise.muscles,
+    primaryMuscle: exercise.primaryMuscle,
+    equipment: exercise.equipment,
     mediaPath,
     frameCount,
     extractedFrames: frameNumbers,
     frameFiles: frames,
-    reviewStatus: "frames_extracted_not_reviewed" as const,
+    contactSheet,
+    inferredMetadata: resolveExerciseMetadata(exercise),
+    currentReview: currentReview ?? null,
+    reviewStatus: "package_generated_not_reviewed" as const,
   }
 })
 

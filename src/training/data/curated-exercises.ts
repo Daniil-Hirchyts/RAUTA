@@ -1,15 +1,34 @@
 import records from "./exercise-metadata.curated.json"
 import type { ExerciseMetadata } from "../domain/types"
 
-export const CURATION_VERSION = "1.0.0"
+export const CURATION_VERSION = "1.2.0"
 
-export type ExerciseReviewSource = "name" | "instructions" | "video"
+export type ExerciseReviewSource =
+  | "name"
+  | "instructions"
+  | "sampled_frames"
+  | "video"
 export type CuratedExerciseMetadataPatch = Partial<
   Omit<ExerciseMetadata, "exerciseId" | "provenance" | "ruleVersion">
 >
+export const CORE_PROGRAMMING_FIELDS = [
+  "exerciseType",
+  "movementPatterns",
+  "mechanics",
+  "laterality",
+  "tracking",
+  "requiredEquipment",
+  "setRoles",
+  "classificationConfidence",
+  "skill",
+  "setupSeconds",
+  "automaticProgramming",
+] as const
+export type CoreProgrammingField = (typeof CORE_PROGRAMMING_FIELDS)[number]
 export type CuratedExerciseReview = {
   exerciseId: string
   reviewedFrom: ExerciseReviewSource[]
+  reviewedFields?: CoreProgrammingField[]
   metadata: CuratedExerciseMetadataPatch
 }
 
@@ -27,4 +46,9 @@ export function getCuratedExerciseReview(
 
 export function getCuratedExerciseReviews(): CuratedExerciseReview[] {
   return structuredClone(CURATED_REVIEWS)
+}
+
+export function isFullyCuratedReview(review: CuratedExerciseReview): boolean {
+  const fields = new Set(review.reviewedFields ?? [])
+  return CORE_PROGRAMMING_FIELDS.every((field) => fields.has(field))
 }

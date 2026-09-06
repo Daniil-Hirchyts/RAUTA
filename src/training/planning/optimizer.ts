@@ -112,10 +112,17 @@ export function hardConstructionChecks(
     (n, s) => n + s.exercises.reduce((n, e) => n + e.workingSets.length, 0),
     0
   )
-  if (sets > (input.request.preferences.maxWeeklyWorkingSets ?? Infinity))
+  const maximumWorkingSets =
+    input.adaptation?.remainingWorkingSetBudget ??
+    input.request.preferences.maxWeeklyWorkingSets
+  if (sets > (maximumWorkingSets ?? Infinity))
     return false
   const volume = weekVolume(week, input)
-  return !(input.request.preferences.muscleVolumeBounds ?? []).some(
+  const muscleVolumeBounds =
+    input.adaptation?.remainingMuscleVolumeBounds ??
+    input.request.preferences.muscleVolumeBounds ??
+    []
+  return !muscleVolumeBounds.some(
     (b) =>
       volume[b.muscleId] > (b.maximum ?? Infinity) + 1e-6 ||
       (requireNonempty && volume[b.muscleId] < (b.minimum ?? 0) - 1e-6)

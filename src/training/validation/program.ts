@@ -6,6 +6,7 @@ import type {
   ProgramGenerationRequest,
   Score,
   TrainingProgram,
+  TrainingProgramValidationContext,
 } from "../domain/types"
 import { finite, fingerprint, isRecord, validIso, DAY_MS } from "../numeric"
 import { createExerciseIndex, exclusionReasons } from "../data/exercises"
@@ -33,7 +34,8 @@ import {
 export function validateTrainingProgram(
   value: unknown,
   request: ProgramGenerationRequest,
-  suppliedIndex?: ExerciseIndex
+  suppliedIndex?: ExerciseIndex,
+  validationContext: TrainingProgramValidationContext = {}
 ): { valid: boolean; issues: PlanningIssue[]; warnings: PlanningIssue[] } {
   const invalid = validateGenerationRequest(request)
   if (invalid.length) return { valid: false, issues: invalid, warnings: [] }
@@ -128,6 +130,75 @@ export function validateTrainingProgram(
       !["remaining_week", "next_week"].includes(program.adaptation.mode))
   )
     fail("program.adaptation")
+  if (program.adaptation && validationContext.sourceProgram) {
+    const sourceProgram = validationContext.sourceProgram
+    if (
+      sourceProgram.id !== program.adaptation.sourceProgramId ||
+      validatePolicy(sourceProgram.policy).length ||
+      sourceProgram.policyVersion !== program.policyVersion ||
+      fingerprint(sourceProgram.policy) !== fingerprint(program.policy) ||
+      sourceProgram.datasetFingerprint !== program.datasetFingerprint ||
+      !Array.isArray(sourceProgram.weeks) ||
+      !sourceProgram.weeks.length
+    ) {
+      fail("program.adaptation.source")
+    } else {
+      const adaptedWeek = program.weeks[0]
+      const sourceWeek =
+        program.adaptation.mode === "remaining_week"
+          ? sourceProgram.weeks.find((week) => week.start === adaptedWeek?.start)
+          : sourceProgram.weeks.at(-1)
+      if (!adaptedWeek || !sourceWeek) {
+        fail("program.adaptation.lineage")
+      } else {
+        const asOf = Date.parse(program.adaptation.asOf)
+        const sourceStart = Date.parse(sourceWeek.start)
+        const adaptedStart = Date.parse(adaptedWeek.start)
+        if (
+          program.adaptation.mode === "remaining_week"
+            ? adaptedStart !== sourceStart ||
+              asOf < sourceStart ||
+              asOf >= sourceStart + 7 * DAY_MS ||
+              adaptedWeek.sessions.some(
+                (session) => Date.parse(session.scheduledAt) <= asOf
+              )
+            : adaptedStart !== sourceStart + 7 * DAY_MS || asOf >= adaptedStart
+        )
+          fail("program.adaptation.lineage")
+
+        const sourceSessions = new Map(
+          sourceWeek.sessions.map((session) => [session.id, session])
+        )
+        for (const completed of request.history.sessions) {
+          if (!completed.plannedSessionId) continue
+          const completedAt = Date.parse(completed.completedAt)
+          if (
+            completedAt < sourceStart ||
+            completedAt >= sourceStart + 7 * DAY_MS
+          )
+            continue
+          const plannedSession = sourceSessions.get(completed.plannedSessionId)
+          if (!plannedSession) {
+            fail("program.adaptation.completedLineage")
+            continue
+          }
+          for (const completedExercise of completed.exercises) {
+            const plannedExercise = plannedSession.exercises.find(
+              (exercise) => exercise.exerciseId === completedExercise.exerciseId
+            )
+            for (const completedSet of completedExercise.sets) {
+              if (!completedSet.plannedSetId) continue
+              const plannedSets = plannedExercise
+                ? [...plannedExercise.workingSets, ...plannedExercise.warmupSets]
+                : []
+              if (!plannedSets.some((set) => set.id === completedSet.plannedSetId))
+                fail("program.adaptation.completedLineage")
+            }
+          }
+        }
+      }
+    }
+  }
   // Scan all numeric payload fields, including diagnostics, without trusting generator output.
   const seenObjects = new Set<object>()
   function numbers(v: unknown, path: string) {

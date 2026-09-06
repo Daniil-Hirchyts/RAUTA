@@ -147,10 +147,11 @@ export function adaptTrainingProgram({
       issues: [{ code: "INVALID_INPUT", path: "adaptation.futureDays" }],
       suggestions: ["review_input"],
     }
-  const base = preparation(
-    { ...request, policy: request.policy ?? previousProgram.policy },
-    previousProgram
-  )
+  const authoritativeRequest: ProgramGenerationRequest = {
+    ...request,
+    policy: request.policy ?? previousProgram.policy,
+  }
+  const base = preparation(authoritativeRequest, previousProgram)
   const actual = calculateHistoryVolume(
     request.history,
     base.index,
@@ -230,30 +231,17 @@ export function adaptTrainingProgram({
       issues: [{ code: "VOLUME_LIMIT" }],
       suggestions: ["relax_volume_bounds"],
     }
-  const adjustedRequest: ProgramGenerationRequest = {
-    ...request,
-    policy: base.policy,
-    preferences: {
-      ...request.preferences,
-      maxWeeklyWorkingSets: remainingBudget,
-      muscleVolumeBounds: request.preferences.muscleVolumeBounds?.map((b) => ({
-        ...b,
-        minimum: Math.max(
-          0,
-          (b.minimum ?? 0) -
-            (mode === "remaining_week" ? actual[b.muscleId].effective : 0)
-        ),
-        maximum:
-          b.maximum === undefined
-            ? undefined
-            : Math.max(
-                0,
-                b.maximum -
-                  (mode === "remaining_week" ? actual[b.muscleId].effective : 0)
-              ),
-      })),
-    },
-  }
+  const remainingMuscleVolumeBounds =
+    mode === "remaining_week"
+      ? request.preferences.muscleVolumeBounds?.map((b) => ({
+          ...b,
+          minimum: Math.max(0, (b.minimum ?? 0) - actual[b.muscleId].effective),
+          maximum:
+            b.maximum === undefined
+              ? undefined
+              : Math.max(0, b.maximum - actual[b.muscleId].effective),
+        }))
+      : undefined
   const targets = base.targets.map((t) => ({
     ...t,
     minimum: Math.max(
@@ -290,11 +278,25 @@ export function adaptTrainingProgram({
   )
   const input: OptimizationInput = {
     ...base,
-    request: adjustedRequest,
+    request: authoritativeRequest,
     targets,
     continuityIds: source.sessions.flatMap((s) =>
       s.exercises.map((e) => e.exerciseId)
     ),
+    adaptation:
+      mode === "remaining_week"
+        ? {
+            baselineCompletedWorkingSets: completedSets,
+            baselineMuscleVolume: Object.fromEntries(
+              Object.entries(actual).map(([muscleId, volume]) => [
+                muscleId,
+                volume.effective,
+              ])
+            ),
+            remainingWorkingSetBudget: remainingBudget,
+            remainingMuscleVolumeBounds,
+          }
+        : undefined,
   }
   let week: TrainingWeek = {
     id: "week-0",
@@ -336,14 +338,14 @@ export function adaptTrainingProgram({
       let e = input.index.byId.get(old.exerciseId)
       if (
         !e ||
-        exclusionReasons(e, adjustedRequest.preferences, input.policy).length
+        exclusionReasons(e, authoritativeRequest.preferences, input.policy).length
       ) {
         const preferred = input.index.byId.get(old.exerciseId)
         e = [...input.index.byId.values()]
           .filter(
             (e) =>
               !session.exercises.some((p) => p.exerciseId === e.exercise.id) &&
-              !exclusionReasons(e, adjustedRequest.preferences, input.policy)
+              !exclusionReasons(e, authoritativeRequest.preferences, input.policy)
                 .length &&
               e.metadata.setRoles.some(
                 (r) =>
@@ -421,7 +423,7 @@ export function adaptTrainingProgram({
     const e = input.index.byId.get(exerciseId)
     if (
       !e ||
-      exclusionReasons(e, adjustedRequest.preferences, input.policy).length
+      exclusionReasons(e, authoritativeRequest.preferences, input.policy).length
     )
       continue
     const template = source.sessions
@@ -554,7 +556,7 @@ export function adaptTrainingProgram({
       suggestions: ["increase_duration", "relax_volume_bounds"],
     }
   const result = generateTrainingProgram(
-    adjustedRequest,
+    authoritativeRequest,
     {
       optimize: () => ({
         week,
