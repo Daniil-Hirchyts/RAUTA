@@ -25,6 +25,7 @@
     "training:media-fingerprints:check": "bun scripts/generate-training-media-fingerprints.ts --check",
     "training:media-review": "bun scripts/review-training-exercise-media.ts",
     "training:catalogue:check": "bun run training:media-fingerprints:check && bun scripts/check-training-catalogue.ts",
+    "training:persistence:test": "vitest run src/training-persistence",
     "training:benchmark": "bun scripts/benchmark-training-engine.ts",
     "training:test": "vitest run src/training"
   },

@@ -1,6 +1,6 @@
 # Training engine architecture
 
-The engine is an offline, pure TypeScript library under `src/training`. Inputs carry an explicit clock, UTC microcycle start, healthy-adult eligibility, equipment inventory, preferences, and actual set history. No app store or device service is imported. The existing `ExerciseSummary` and muscle vocabulary are reused through a data adapter; persistence is untouched.
+The engine is an offline, pure TypeScript library under `src/training`. Inputs carry an explicit clock, UTC microcycle start, healthy-adult eligibility, equipment inventory, preferences, and actual set history. No app store or device service is imported. The existing `ExerciseSummary` and muscle vocabulary are reused through a data adapter. Versioned persistence now lives outside the engine under `src/training-persistence` and `src/store/use-training-records.ts`; explicit adapters are the only boundary into engine history/program types.
 
 ## Investigation and design decisions
 
@@ -61,7 +61,7 @@ const revision = adaptTrainingProgram({
 
 Schedule days are offsets 0–6 from an explicit UTC-midnight `weekStart`, not device-local weekdays. `now` is always supplied. Rolling hours differ from microcycles. A frontend must convert the user's timezone/day preferences into this domain contract. A remaining-week revision covers future slots only and carries source-program lineage; completed actual work contributes to original weekly hard limits during validation.
 
-IDs are scoped to program revisions. Program and source-record content IDs are deterministic non-cryptographic fingerprints; reviewed WebP files use SHA-256. Persistence should use separate storage keys. Same dataset in another iteration order produces identical indexed selection and fingerprints. Engine output contains no nondeterministic timing values.
+IDs are scoped to program revisions. Program and source-record content IDs are deterministic non-cryptographic fingerprints; reviewed WebP files use SHA-256. Structured application persistence uses the separate stable `gym-lib-training` key with an explicit schema version, while legacy workout storage remains intact. Same dataset in another iteration order produces identical indexed selection and fingerprints. Engine output contains no nondeterministic timing values.
 
 ## Development and verification
 
