@@ -10,6 +10,7 @@ import {
 import { useFavorites } from "@/store/use-favorites"
 import { useFilters } from "@/store/use-filters"
 import { DEFAULT_SETTINGS, useSettings } from "@/store/use-settings"
+import { useTrainingRecords } from "@/store/use-training-records"
 import { useWorkouts } from "@/store/use-workouts"
 
 describe("Gym Lib backup", () => {
@@ -70,4 +71,46 @@ describe("Gym Lib backup", () => {
     const backup = JSON.parse(createGymLibBackup(timestamp))
     expect(backup.createdAt).toBe(timestamp)
   })
+})
+
+it("manual backups include local training while cloud snapshots leave it local", () => {
+  clearAllGymLibData()
+  useTrainingRecords.getState().startFreeWorkout(["0025"])
+  const draft = useTrainingRecords.getState().data.activeWorkout!
+  useTrainingRecords
+    .getState()
+    .addUnplannedSet({
+      exerciseEntryId: draft.exercises[0].id,
+      setType: "working",
+      side: "both",
+      observation: {
+        reps: 9,
+        resistance: { type: "bodyweight" },
+        completed: false,
+      },
+    })
+  const expected = JSON.parse(
+    JSON.stringify(useTrainingRecords.getState().data)
+  )
+  const manual = createGymLibBackup(undefined, true, true)
+  const cloud = createGymLibBackup()
+  expect(JSON.parse(cloud).data.training).toBeUndefined()
+  clearAllGymLibData()
+  expect(useTrainingRecords.getState().data.activeWorkout).toBeNull()
+  importGymLibData(manual)
+  expect(useTrainingRecords.getState().data).toEqual(expected)
+  importGymLibData(cloud)
+  expect(useTrainingRecords.getState().data).toEqual(expected)
+})
+
+it("rejects invalid training in a manual backup before replacing current data", () => {
+  clearAllGymLibData()
+  useTrainingRecords.getState().startFreeWorkout(["0025"])
+  const before = useTrainingRecords.getState().data
+  const backup = JSON.parse(createGymLibBackup(undefined, true, true))
+  backup.data.training.schemaVersion = 999
+  expect(() => importGymLibData(JSON.stringify(backup))).toThrow(
+    /invalid training/
+  )
+  expect(useTrainingRecords.getState().data).toEqual(before)
 })

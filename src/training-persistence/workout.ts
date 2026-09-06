@@ -8,9 +8,7 @@ import type {
 } from "./schema"
 import { isValidIsoTimestamp, isValidPersistedResistance } from "./validation"
 
-export type PersistenceIdFactory = (
-  kind: "exercise" | "set"
-) => string
+export type PersistenceIdFactory = (kind: "exercise" | "set") => string
 
 function assertTimestamp(value: string, field: string) {
   if (!isValidIsoTimestamp(value)) throw new Error(`Invalid ${field}`)
@@ -138,15 +136,23 @@ export function addUnplannedSet(
 ): PersistedActiveWorkoutDraft {
   if (input.observation) assertObservation(input.observation)
   const next = structuredClone(draft)
-  const exercise = next.exercises.find((entry) => entry.id === input.exerciseEntryId)
+  const exercise = next.exercises.find(
+    (entry) => entry.id === input.exerciseEntryId
+  )
   if (!exercise) throw new Error("Active workout exercise not found")
-  if (next.exercises.some((entry) => entry.sets.some((set) => set.id === input.setDraftId)))
+  if (
+    next.exercises.some((entry) =>
+      entry.sets.some((set) => set.id === input.setDraftId)
+    )
+  )
     throw new Error("Duplicate active set ID")
   exercise.sets.push({
     id: input.setDraftId,
     setType: input.setType,
     side: input.side,
-    observation: input.observation ? structuredClone(input.observation) : undefined,
+    observation: input.observation
+      ? structuredClone(input.observation)
+      : undefined,
   })
   return next
 }
@@ -161,8 +167,14 @@ export function substituteDraftExercise(
 ): PersistedActiveWorkoutDraft {
   if (!input.exerciseId) throw new Error("Missing substitute exercise identity")
   const next = structuredClone(draft)
-  const exercise = next.exercises.find((entry) => entry.id === input.exerciseEntryId)
+  const exercise = next.exercises.find(
+    (entry) => entry.id === input.exerciseEntryId
+  )
   if (!exercise) throw new Error("Active workout exercise not found")
+  if (exercise.sets.some((set) => set.observation))
+    throw new Error(
+      "Keep the recorded exercise; add the replacement as a new exercise"
+    )
   exercise.exerciseId = input.exerciseId
   exercise.exerciseNameSnapshot = input.exerciseNameSnapshot
   return next
@@ -230,13 +242,16 @@ export function completeWorkoutDraft(
     ]
   })
 
+  if (!exercises.length)
+    throw new Error("Complete at least one set before saving")
   return {
     id: input.sessionId,
     plannedProgramId: draft.plannedProgramId,
     plannedSessionId: draft.plannedSessionId,
     startedAt: draft.startedAt,
     completedAt: input.completedAt,
-    durationSeconds: (Date.parse(input.completedAt) - Date.parse(draft.startedAt)) / 1000,
+    durationSeconds:
+      (Date.parse(input.completedAt) - Date.parse(draft.startedAt)) / 1000,
     status: input.status,
     exercises,
   }

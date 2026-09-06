@@ -40,3 +40,7 @@ docs/training-engine/media-review/
 
 # Local scratch scripts
 scripts/.tmp-*
+
+# Local browser verification and scratch artifacts
+output/playwright/
+.playwright-cli/

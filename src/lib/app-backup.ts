@@ -12,12 +12,19 @@ import {
   useSettings,
 } from "@/store/use-settings"
 import { sanitizeWorkoutsState, useWorkouts } from "@/store/use-workouts"
+import { useTrainingRecords } from "@/store/use-training-records"
+import {
+  createEmptyPersistedTrainingState,
+  type PersistedTrainingStateLatest,
+} from "@/training-persistence/schema"
+import { validatePersistedTrainingState } from "@/training-persistence/validation"
 
 const BACKUP_VERSION = 1
 
 export function createGymLibBackup(
   createdAt = new Date().toISOString(),
-  pretty = true
+  pretty = true,
+  includeLocalTraining = false
 ) {
   const favorites = useFavorites.getState()
   const filters = useFilters.getState()
@@ -38,6 +45,9 @@ export function createGymLibBackup(
         },
         settings: sanitizeSettings(settings),
         workouts: { workouts: workouts.workouts },
+        ...(includeLocalTraining
+          ? { training: useTrainingRecords.getState().data }
+          : {}),
       },
     },
     null,
@@ -63,7 +73,8 @@ export function hasMeaningfulGymLibData() {
 }
 
 export async function exportGymLibData() {
-  const data = createGymLibBackup()
+  // Manual exports include local training; the existing iCloud snapshot stays unchanged.
+  const data = createGymLibBackup(new Date().toISOString(), true, true)
   const date = new Date().toISOString().slice(0, 10)
   const filename = `gym-lib-backup-${date}.json`
 
@@ -106,6 +117,11 @@ export function importGymLibData(json: string) {
   }
 
   const data = backup.data
+  if (
+    data.training !== undefined &&
+    validatePersistedTrainingState(data.training).length
+  )
+    throw new Error("The backup contains invalid training records.")
   const favorites = sanitizeFavoritesState(data.favorites)
   const filters = sanitizeFilterState(data.filters)
   const settings = sanitizeSettings(data.settings)
@@ -116,6 +132,10 @@ export function importGymLibData(json: string) {
   useFilters.setState(filters)
   useSettings.setState(settings)
   useWorkouts.setState(workouts)
+  if (data.training !== undefined)
+    useTrainingRecords.setState({
+      data: structuredClone(data.training) as PersistedTrainingStateLatest,
+    })
 }
 
 export function clearAllGymLibData() {
@@ -127,6 +147,10 @@ export function clearAllGymLibData() {
     selectedMuscles: [],
   })
   useWorkouts.setState({ workouts: [] })
+  useTrainingRecords.setState({
+    data: createEmptyPersistedTrainingState(),
+    persistenceIssues: [],
+  })
   useSettings.getState().resetSettings()
   localStorage.removeItem("gym-lib-app-session")
 }
