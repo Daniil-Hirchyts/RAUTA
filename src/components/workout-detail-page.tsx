@@ -114,7 +114,7 @@ export function WorkoutDetailPage({
   const [editingExerciseId, setEditingExerciseId] = useState<string | null>(
     null
   )
-  const [startIssue, setStartIssue] = useState<string | null>(null)
+  const [actionIssue, setActionIssue] = useState<string | null>(null)
   const workout = useWorkouts((state) =>
     state.workouts.find((item) => item.id === workoutId)
   )
@@ -325,12 +325,12 @@ export function WorkoutDetailPage({
               </div>
             </section>
           ) : null}
-          {plannedUnavailable || startIssue ? (
+          {plannedUnavailable || actionIssue ? (
             <div
               className="mx-(--app-content-inset) rounded-3xl border border-destructive/40 bg-destructive/10 p-4 text-sm font-semibold text-foreground"
               role="alert"
             >
-              {startIssue ??
+              {actionIssue ??
                 "This planned session is no longer available. Create a current plan from My workouts."}
             </div>
           ) : null}
@@ -354,9 +354,25 @@ export function WorkoutDetailPage({
               <SortableExerciseList
                 exerciseIds={workout.exerciseIds}
                 onFindAlternative={
-                  isPast || isPlanned
+                  isPast || (isPlanned && !session)
                     ? undefined
                     : (candidate) => {
+                        if (isPlanned) {
+                          const draftExercise =
+                            trainingData.activeWorkout?.exercises.find(
+                              (item) => item.exerciseId === candidate.id
+                            )
+                          if (
+                            draftExercise?.sets.some((set) => set.observation)
+                          ) {
+                            triggerHaptic("warning")
+                            setActionIssue(
+                              "This exercise already has recorded sets, so it can’t be replaced in this session."
+                            )
+                            return
+                          }
+                        }
+                        setActionIssue(null)
                         triggerHaptic("light")
                         onFindAlternative(candidate)
                       }
@@ -577,7 +593,7 @@ export function WorkoutDetailPage({
             onCountdownChange?.(false)
             if (!startWorkout(workout)) {
               triggerHaptic("warning")
-              setStartIssue(
+              setActionIssue(
                 "This planned session can’t be started from this plan. Create a current plan from My workouts."
               )
             }

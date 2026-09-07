@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { WorkoutDatePicker } from "@/components/workout-date-picker"
 import { formatDateLong, formatDateShort, toISODate } from "@/lib/date"
-import { findExerciseAlternatives } from "@/lib/exercises"
+import { EXERCISES_BY_ID, findExerciseAlternatives } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
 import { titleCase } from "@/lib/text"
 import {
@@ -365,21 +365,30 @@ export function EquipmentPresetPage({
 }
 
 export function ExerciseAlternativesPage({
+  alternativeExerciseIds,
   excludedExerciseIds,
   exercise,
   onBack,
   onSwap,
 }: {
+  alternativeExerciseIds?: readonly string[]
   excludedExerciseIds: string[]
   exercise: ExerciseSummary
   onBack: () => void
-  onSwap: (replacement: ExerciseSummary) => void
+  onSwap: (replacement: ExerciseSummary) => string | null | void
 }) {
   const [equipment, setEquipment] = useState<string | null>(null)
-  const alternatives = useMemo(
-    () => findExerciseAlternatives(exercise, excludedExerciseIds),
-    [excludedExerciseIds, exercise]
-  )
+  const [swapIssue, setSwapIssue] = useState<string | null>(null)
+  const alternatives = useMemo(() => {
+    if (alternativeExerciseIds === undefined)
+      return findExerciseAlternatives(exercise, excludedExerciseIds)
+
+    const excluded = new Set([exercise.id, ...excludedExerciseIds])
+    return alternativeExerciseIds.flatMap((exerciseId) => {
+      const alternative = EXERCISES_BY_ID.get(exerciseId)
+      return alternative && !excluded.has(exerciseId) ? [alternative] : []
+    })
+  }, [alternativeExerciseIds, excludedExerciseIds, exercise])
   const equipmentOptions = useMemo(
     () => [...new Set(alternatives.map((item) => item.equipment))],
     [alternatives]
@@ -413,10 +422,21 @@ export function ExerciseAlternativesPage({
                 {exercise.name}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Same muscles, different equipment.
+                {alternativeExerciseIds === undefined
+                  ? "Same muscles, different equipment."
+                  : "Fits this workout and your current equipment."}
               </p>
             </div>
           </div>
+
+          {swapIssue ? (
+            <p
+              className="mt-4 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm font-semibold text-foreground"
+              role="alert"
+            >
+              {swapIssue}
+            </p>
+          ) : null}
 
           {equipmentOptions.length > 1 ? (
             <div className="-mx-(--app-content-inset) mt-4 flex gap-2 overflow-x-auto px-(--app-content-inset) pb-1">
@@ -441,8 +461,9 @@ export function ExerciseAlternativesPage({
           <div className="mt-4 space-y-2.5">
             {visibleAlternatives.length === 0 ? (
               <p className="rounded-2xl border border-border bg-card px-5 py-8 text-center text-sm leading-relaxed text-muted-foreground">
-                Nothing else works the same muscles on the equipment you have.
-                Pick a different filter above, or keep the exercise you are on.
+                {alternativeExerciseIds === undefined
+                  ? "Nothing else works the same muscles on the equipment you have. Pick a different filter above, or keep the exercise you are on."
+                  : "No other exercise fits this planned slot with your current equipment. Keep the current exercise."}
               </p>
             ) : (
               visibleAlternatives.map((alternative, alternativeIndex) => (
@@ -450,7 +471,15 @@ export function ExerciseAlternativesPage({
                   aria-label={`Swap to ${alternative.name}`}
                   className="interactive-spring flex w-full items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card p-2.5 text-left active:bg-card/90"
                   key={alternative.id}
-                  onClick={() => onSwap(alternative)}
+                  onClick={() => {
+                    const issue = onSwap(alternative)
+                    if (typeof issue === "string" && issue) {
+                      setSwapIssue(issue)
+                      triggerHaptic("warning")
+                    } else {
+                      setSwapIssue(null)
+                    }
+                  }}
                   type="button"
                 >
                   <span className="isolate size-20 shrink-0 overflow-hidden rounded-lg bg-card">

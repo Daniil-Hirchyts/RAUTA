@@ -197,6 +197,10 @@ export function generateAndSavePlan(
 export function replacementIds(exerciseId: string): string[] {
   const store = useTrainingRecords.getState()
   const activeProgramId = store.data.activeWorkout?.plannedProgramId
+  const activeExercise = store.data.activeWorkout?.exercises.find(
+    (exercise) => exercise.exerciseId === exerciseId
+  )
+  const substitutionSourceId = activeExercise?.plannedExerciseId ?? exerciseId
   const source = activeProgramId
     ? store.data.programs.find((program) => program.id === activeProgramId)
     : undefined
@@ -226,9 +230,15 @@ export function replacementIds(exerciseId: string): string[] {
     new Date().toISOString(),
     source
   )
-  return findExerciseSubstitutions(exerciseId, request, 100, {
-    index: trainingIndex(),
-  }).map((item) => item.exerciseId)
+  return [
+    ...(activeExercise?.plannedExerciseId &&
+    activeExercise.plannedExerciseId !== exerciseId
+      ? [activeExercise.plannedExerciseId]
+      : []),
+    ...findExerciseSubstitutions(substitutionSourceId, request, 100, {
+      index: trainingIndex(),
+    }).map((item) => item.exerciseId),
+  ]
 }
 
 export function nextPerformance(

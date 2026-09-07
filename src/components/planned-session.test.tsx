@@ -9,6 +9,8 @@ import {
   plannedWorkoutFor,
   type PlannedSessionView,
 } from "@/lib/training-plan"
+import { substituteRunningPlannedExercise } from "@/lib/planned-substitution"
+import { replacementIds } from "@/lib/training-workflow"
 import { useActiveWorkout } from "@/store/use-active-workout"
 import { useFilters } from "@/store/use-filters"
 import { DEFAULT_SETTINGS, useSettings } from "@/store/use-settings"
@@ -164,6 +166,80 @@ describe("planned sessions in the existing workout UI", () => {
     expect(
       recorded.sets.filter((set) => set.observation?.completed)
     ).toHaveLength(1)
+  })
+
+  it("uses an engine-approved live substitution without rewriting the prescription", async () => {
+    const user = userEvent.setup()
+    const sessions = week()
+    const workout = renderPlannedDetail(sessions[0])
+    const originalProgram = JSON.stringify(records().data.programs[0])
+
+    await startNow(user)
+
+    const before = records().data.activeWorkout!.exercises[0]
+    const replacementId = replacementIds(before.exerciseId).find(
+      (exerciseId) => !workout.exerciseIds.includes(exerciseId)
+    )
+    expect(replacementId).toBeDefined()
+
+    substituteRunningPlannedExercise(
+      workout.id,
+      before.exerciseId,
+      replacementId!
+    )
+
+    const after = records().data.activeWorkout!.exercises.find(
+      (exercise) => exercise.id === before.id
+    )!
+    expect(after.exerciseId).toBe(replacementId)
+    expect(after.plannedExerciseId).toBe(before.plannedExerciseId)
+    expect(after.sets.map((set) => set.plannedSetId)).toEqual(
+      before.sets.map((set) => set.plannedSetId)
+    )
+    expect(replacementIds(replacementId!)).toContain(before.plannedExerciseId)
+    expect(useActiveWorkout.getState().session?.exerciseIds).toContain(
+      replacementId
+    )
+    expect(
+      useWorkouts.getState().workouts.find((item) => item.id === workout.id)
+        ?.exerciseIds
+    ).toContain(replacementId)
+    expect(JSON.stringify(records().data.programs[0])).toBe(originalProgram)
+  })
+
+  it("offers planned alternatives only during the live session and locks a recorded exercise", async () => {
+    const user = userEvent.setup()
+    const sessions = week()
+    const workout = plannedWorkoutFor(sessions[0])!
+    const opened: string[] = []
+    render(
+      <WorkoutDetailPage
+        {...detailProps()}
+        onFindAlternative={(exercise) => opened.push(exercise.id)}
+        workoutId={workout.id}
+      />
+    )
+
+    expect(
+      screen.queryByRole("button", { name: "Find alternative" })
+    ).not.toBeInTheDocument()
+    await startNow(user)
+    expect(
+      screen.getAllByRole("button", { name: "Find alternative" }).length
+    ).toBeGreaterThan(0)
+
+    await user.click(
+      screen.getAllByRole("button", { name: /^Log set 1 of / })[0]
+    )
+    await user.click(screen.getByRole("button", { name: "Save set 1" }))
+    await user.click(
+      screen.getAllByRole("button", { name: "Find alternative" })[0]
+    )
+
+    expect(opened).toEqual([])
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /already has recorded sets/i
+    )
   })
 
   it("saves only performed sets when a planned session ends early", async () => {

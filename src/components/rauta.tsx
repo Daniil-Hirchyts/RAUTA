@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react"
+import { lazy, Suspense, useCallback, useEffect, useState } from "react"
 import { motion, useReducedMotion } from "motion/react"
 import { usePageLayer } from "@/hooks/use-app-shell"
 import { triggerHaptic } from "@/lib/haptics"
@@ -21,6 +21,14 @@ export type RautaProps = {
   reactionKey?: string
 }
 
+function ReadyRauta({
+  onReady,
+  ...props
+}: RautaProps & { onReady: () => void }) {
+  useEffect(() => onReady(), [onReady])
+  return <AnimatedRauta {...props} />
+}
+
 export function RautaStill() {
   return (
     <img
@@ -40,10 +48,14 @@ export function Rauta({
 }: RautaProps) {
   const reduced = useReducedMotion()
   const { active } = usePageLayer()
+  const [runtimeReady, setRuntimeReady] = useState(false)
+  const [loadingPress, setLoadingPress] = useState(false)
+  const markRuntimeReady = useCallback(() => setRuntimeReady(true), [])
   const activate = () => {
     triggerHaptic("selection")
     onActivate?.()
   }
+  const loadingGate = !runtimeReady || loadingPress
   return (
     <motion.div
       animate={
@@ -83,21 +95,38 @@ export function Rauta({
           <RautaStill />
         </button>
       ) : (
-        <Suspense
-          fallback={
+        <div className="relative h-full w-full">
+          <Suspense
+            fallback={
+              <span aria-hidden="true" className="absolute inset-0">
+                <RautaStill />
+              </span>
+            }
+          >
+            <ReadyRauta
+              {...props}
+              label={loadingGate ? undefined : label}
+              onActivate={loadingGate ? undefined : activate}
+              onReady={markRuntimeReady}
+            />
+          </Suspense>
+          {loadingGate ? (
             <button
               type="button"
               data-haptics="off"
               aria-label={label}
-              className="h-full w-full"
-              onClick={activate}
+              className="absolute inset-0 z-20 h-full w-full rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              onPointerDown={() => setLoadingPress(true)}
+              onPointerCancel={() => setLoadingPress(false)}
+              onClick={() => {
+                activate()
+                setLoadingPress(false)
+              }}
             >
-              <RautaStill />
+              <span className="sr-only">{label}</span>
             </button>
-          }
-        >
-          <AnimatedRauta {...props} label={label} onActivate={activate} />
-        </Suspense>
+          ) : null}
+        </div>
       )}
     </motion.div>
   )

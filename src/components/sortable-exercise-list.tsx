@@ -134,43 +134,46 @@ function SortableExerciseRow({
     </div>
   )
 
-  const swipeable = onRemove ? (
-    <SwipeableRow
-      actionInset={16}
-      revealWidth={onFindAlternative ? 148 : undefined}
-      action={
-        <div className="flex items-center gap-2">
-          {onFindAlternative && (
-            <button
-              aria-label="Find alternative"
-              className="interactive-spring grid size-14 place-items-center rounded-full border border-border bg-card text-primary shadow-lg shadow-black/20 active:bg-card/90 active:text-white"
-              onClick={() => {
-                onOpenChange(false)
-                onFindAlternative(exercise)
-              }}
-              type="button"
-            >
-              <ArrowLeftRight className="size-5" />
-            </button>
-          )}
-          <button
-            aria-label={`Remove ${exercise.name}`}
-            className="interactive-spring grid size-14 place-items-center rounded-full border border-primary bg-card text-primary shadow-lg shadow-black/20"
-            onClick={() => onRemove(exercise.id)}
-            type="button"
-          >
-            <Trash2 className="size-5" />
-          </button>
-        </div>
-      }
-      isOpen={isOpen}
-      onOpenChange={onOpenChange}
-    >
-      {row}
-    </SwipeableRow>
-  ) : (
-    row
-  )
+  const swipeable =
+    onRemove || onFindAlternative ? (
+      <SwipeableRow
+        actionInset={16}
+        revealWidth={onFindAlternative && onRemove ? 148 : undefined}
+        action={
+          <div className="flex items-center gap-2">
+            {onFindAlternative && (
+              <button
+                aria-label="Find alternative"
+                className="interactive-spring grid size-14 place-items-center rounded-full border border-border bg-card text-primary shadow-lg shadow-black/20 active:bg-card/90 active:text-white"
+                onClick={() => {
+                  onOpenChange(false)
+                  onFindAlternative(exercise)
+                }}
+                type="button"
+              >
+                <ArrowLeftRight className="size-5" />
+              </button>
+            )}
+            {onRemove ? (
+              <button
+                aria-label={`Remove ${exercise.name}`}
+                className="interactive-spring grid size-14 place-items-center rounded-full border border-primary bg-card text-primary shadow-lg shadow-black/20"
+                onClick={() => onRemove(exercise.id)}
+                type="button"
+              >
+                <Trash2 className="size-5" />
+              </button>
+            ) : null}
+          </div>
+        }
+        isOpen={isOpen}
+        onOpenChange={onOpenChange}
+      >
+        {row}
+      </SwipeableRow>
+    ) : (
+      row
+    )
 
   return (
     <li className="touch-pan-y" ref={ref as Ref<HTMLLIElement>}>

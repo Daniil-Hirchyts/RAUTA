@@ -80,6 +80,8 @@ import {
 import { triggerHaptic } from "@/lib/haptics"
 import { syncICloudNow } from "@/lib/icloud-sync"
 import { isNative } from "@/lib/native"
+import { substituteRunningPlannedExercise } from "@/lib/planned-substitution"
+import { replacementIds } from "@/lib/training-workflow"
 import { cn } from "@/lib/utils"
 import {
   appNavigationReducer,
@@ -1053,10 +1055,33 @@ export function App() {
               content =
                 workout && exercise ? (
                   <ExerciseAlternativesPage
+                    alternativeExerciseIds={
+                      workout.planned ? replacementIds(exercise.id) : undefined
+                    }
                     excludedExerciseIds={workout.exerciseIds}
                     exercise={exercise}
                     onBack={popPage}
                     onSwap={(replacement) => {
+                      if (workout.planned) {
+                        try {
+                          substituteRunningPlannedExercise(
+                            workout.id,
+                            exercise.id,
+                            replacement.id
+                          )
+                        } catch (error) {
+                          const message =
+                            error instanceof Error
+                              ? error.message
+                              : "This exercise can’t be replaced right now."
+                          return message.includes("recorded exercise")
+                            ? "This exercise already has recorded sets, so it can’t be replaced in this session."
+                            : message
+                        }
+                        triggerHaptic("success")
+                        popPage()
+                        return null
+                      }
                       useWorkouts.getState().updateWorkout(workout.id, {
                         exerciseIds: workout.exerciseIds.map((id) =>
                           id === exercise.id ? replacement.id : id
