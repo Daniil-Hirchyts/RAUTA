@@ -13,6 +13,7 @@ import {
   performedExerciseIds,
   syncTrainingDraftExercises,
 } from "@/lib/training-session"
+import { reconcileRestoredSession } from "@/lib/session-reconciliation"
 import { estimateStrengthCalories, isPastWorkout } from "@/lib/workout-stats"
 import { isRecord, validString, validUniqueStrings } from "@/store/persistence"
 import { useSettings } from "@/store/use-settings"
@@ -371,6 +372,27 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
     }
   )
 )
+
+/**
+ * One workout, put back together before anything can read it.
+ *
+ * All three stores have hydrated by the time this module finishes importing —
+ * `useWorkouts` and, through `@/lib/training-session`, `useTrainingRecords` —
+ * so this is the first moment the restored pieces can be compared, and the
+ * last one before the app treats them as a running session. The rules live in
+ * `@/lib/session-reconciliation`; applying the shell half is all that belongs
+ * here.
+ */
+export function reconcileRestoredActiveWorkout() {
+  const outcome = reconcileRestoredSession(useActiveWorkout.getState().session)
+  // `lastOutcome` stays null: nothing just happened in front of the person, so
+  // a repair at launch must not read as a workout that ended a moment ago.
+  if (outcome.session === "clear")
+    useActiveWorkout.setState({ session: null, lastOutcome: null })
+  return outcome
+}
+
+reconcileRestoredActiveWorkout()
 
 /**
  * A session follows the workout it is performing, wherever that workout is

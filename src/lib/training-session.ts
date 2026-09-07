@@ -82,7 +82,7 @@ export function beginTrainingDraft(
 ): boolean {
   const store = useTrainingRecords.getState()
   const stale = store.data.activeWorkout
-  if (stale) store.abortWorkout(closingTime(stale, startedAt))
+  if (stale) store.abortWorkout(draftClosingTime(stale, startedAt))
   if (planned) return startPlannedDraft(planned, startedAt, sourceWorkoutId)
   useTrainingRecords
     .getState()
@@ -113,7 +113,10 @@ function startPlannedDraft(
 /** When a stale draft is treated as having ended: now, or the moment of its own
  *  last recorded set if the device clock has since moved backwards. A session
  *  cannot have finished before the work it contains. */
-function closingTime(draft: PersistedActiveWorkoutDraft, now: string) {
+export function draftClosingTime(
+  draft: PersistedActiveWorkoutDraft,
+  now: string = new Date().toISOString()
+) {
   const instants = [
     Date.parse(now),
     Date.parse(draft.startedAt),
