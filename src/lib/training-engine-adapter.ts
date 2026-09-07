@@ -1,10 +1,14 @@
+import { EXERCISES } from "@/lib/exercises"
+import { loadContextFor, resistanceModes } from "@/lib/resistance"
 import { useFilters } from "@/store/use-filters"
 import { useSettings } from "@/store/use-settings"
+import { useTrainingRecords } from "@/store/use-training-records"
 import {
   useTrainingProfile,
   type TrainingProfile,
 } from "@/store/use-training-profile"
 import type { PlanningPreferences, UserTrainingProfile } from "@/training"
+import type { PersistedLoadConfiguration } from "@/training-persistence/schema"
 
 /**
  * The one boundary between RAUTA and the deterministic training engine.
@@ -83,6 +87,52 @@ export function toEngineEquipment(equipment: readonly string[]) {
   ]
 }
 
+/**
+ * What a kilogram means on each piece of equipment the person can reach.
+ *
+ * Availability decides which exercises are feasible; this decides how the load
+ * on them is measured. They are different questions and the engine asks both:
+ * it compares kilograms only within one station and one basis, so a
+ * prescription of 30 kg for a dumbbell press has to be per-implement — 30 in
+ * each hand — and a prescription of 30 kg for a barbell press has to be total.
+ * Without the context the two are the same number and the engine has no way to
+ * tell them apart, which is exactly how "30 kg each" becomes "30 kg between
+ * the pair" one week later.
+ *
+ * Nothing new is asked of anybody. The station, basis and increments come from
+ * the same catalogue metadata and equipment table the set editor already uses
+ * when a set is logged, so a planned load and a performed one are stated in
+ * the same terms. An explicit load configuration the person has saved wins over
+ * the table, which is what makes it worth saving.
+ *
+ * Scoped to the equipment actually selected: an exercise the planner cannot
+ * prescribe needs no loading rule, and the map stays small.
+ */
+export function buildTrainingLoadPreferences(
+  equipment: readonly string[],
+  configurations: readonly PersistedLoadConfiguration[] = []
+): Pick<PlanningPreferences, "loadContexts" | "loadGrids"> {
+  const available = new Set(toEngineEquipment(equipment))
+  const loadContexts: NonNullable<PlanningPreferences["loadContexts"]> = {}
+  const loadGrids: NonNullable<PlanningPreferences["loadGrids"]> = {}
+
+  for (const exercise of EXERCISES) {
+    if (!available.has(exercise.equipment)) continue
+    // The shape the exercise is naturally logged in. Body weight and band
+    // resistance carry no kilogram claim, so they get no station.
+    const [mode] = resistanceModes(exercise)
+    if (mode !== "external_load" && mode !== "assistance") continue
+    const saved = configurations.find((item) => item.exerciseId === exercise.id)
+    const context = loadContextFor(exercise, mode, saved)
+    loadContexts[exercise.id] = {
+      stationId: context.stationId,
+      basis: context.basis,
+    }
+    loadGrids[exercise.id] = context.grid
+  }
+  return { loadContexts, loadGrids }
+}
+
 export function buildTrainingEngineProfile(
   profile: TrainingProfile,
   options: { bodyWeightKg?: number | null } = {}
@@ -105,12 +155,14 @@ export function buildTrainingEngineProfile(
 export function buildTrainingPlanningPreferences(
   profile: TrainingProfile,
   equipment: readonly string[],
-  overrides: Partial<PlanningPreferences> = {}
+  overrides: Partial<PlanningPreferences> = {},
+  configurations: readonly PersistedLoadConfiguration[] = []
 ): PlanningPreferences {
   const preferred = profile.preferredSessionDurationMinutes
   return {
     goal: profile.goal,
     availableEquipment: toEngineEquipment(equipment),
+    ...buildTrainingLoadPreferences(equipment, configurations),
     preferredSessionDurationMinutes: preferred,
     maxSessionDurationMinutes: preferred + SESSION_DURATION_HEADROOM_MINUTES,
     ...(profile.priorityMuscles.length
@@ -136,6 +188,7 @@ export function buildTrainingEngineInputs(
   const { profile } = useTrainingProfile.getState()
   const { appleHealthEnabled, healthBodyWeightKg } = useSettings.getState()
   const { gymEquipment } = useFilters.getState()
+  const { loadConfigurations } = useTrainingRecords.getState().data.settings
 
   return {
     profile: buildTrainingEngineProfile(profile, {
@@ -144,7 +197,8 @@ export function buildTrainingEngineInputs(
     preferences: buildTrainingPlanningPreferences(
       profile,
       gymEquipment,
-      overrides
+      overrides,
+      loadConfigurations
     ),
   }
 }

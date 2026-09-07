@@ -314,7 +314,7 @@ describe("restoring one workout from three stores", () => {
           {
             id: "already",
             sourceWorkoutId: workout.id,
-            startedAt: "2026-09-08T10:00:00.000Z",
+            startedAt: draft.startedAt,
             completedAt: "2026-09-08T11:00:00.000Z",
             durationSeconds: 3600,
             status: "partial",

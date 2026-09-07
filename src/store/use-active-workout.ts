@@ -10,13 +10,18 @@ import { EXERCISES_BY_ID } from "@/lib/exercises"
 import {
   beginTrainingDraft,
   endTrainingDraft,
-  performedExerciseIds,
   syncTrainingDraftExercises,
 } from "@/lib/training-session"
 import { reconcileRestoredSession } from "@/lib/session-reconciliation"
-import { estimateStrengthCalories, isPastWorkout } from "@/lib/workout-stats"
+import {
+  recordCancelIntent,
+  recordFinishIntent,
+  recordStartIntent,
+  recoverWorkoutTransition,
+  settleWorkoutTransition,
+} from "@/lib/workout-transition"
+import { isPastWorkout } from "@/lib/workout-stats"
 import { isRecord, validString, validUniqueStrings } from "@/store/persistence"
-import { useSettings } from "@/store/use-settings"
 import { useWorkouts, type Workout } from "@/store/use-workouts"
 
 /** Why the last session stopped. Read by the Live Activity sync to decide
@@ -119,6 +124,10 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
         if (exerciseIds.length === 0) return false
 
         const now = Date.now()
+        // Write down the start before any of it happens, so a relaunch between
+        // the draft landing and the shell appearing can put back the session
+        // the person was already looking at rather than losing it.
+        recordStartIntent({ ...workout, exerciseIds }, now)
         // Open the structured record before exposing a running session. A
         // planned workout whose program/session can no longer be resolved must
         // not silently become a free workout or leave a shell session behind.
@@ -128,7 +137,10 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
           workout.id,
           workout.planned
         )
-        if (!draftStarted) return false
+        if (!draftStarted) {
+          settleWorkoutTransition()
+          return false
+        }
 
         set({
           lastOutcome: null,
@@ -144,46 +156,34 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
             startedAt: now,
           },
         })
+        settleWorkoutTransition()
         return true
       },
       finish: () => {
         const { session } = get()
         if (!session) return
 
-        const durationMs = elapsedMs(session)
-        const settings = useSettings.getState()
-        const completedAt = new Date().toISOString()
-        const shouldSync =
-          settings.appleHealthEnabled && settings.autoSyncWorkouts
-        // An exercise counts as performed if it was checked off or if it holds
-        // real sets, so the saved workout cannot claim less work than the
-        // structured session it was recorded alongside.
-        const performed = performedExerciseIds()
-
-        useWorkouts.getState().completeWorkout(session.workoutId, {
-          activeCalories: estimateStrengthCalories(
-            durationMs,
-            settings.healthBodyWeightKg
-          ),
-          completedAt,
-          completedExerciseIds: session.exerciseIds.filter(
-            (id) => session.completedIds.includes(id) || performed.has(id)
-          ),
-          durationMs,
-          healthSyncStatus: shouldSync ? "pending" : "not-requested",
-          startedAt: new Date(session.startedAt).toISOString(),
-        })
+        // Everything the finish will use — the completion instant, the session
+        // identity, the status coverage supports and the legacy numbers — is
+        // decided once and written down, so an interruption resumes to exactly
+        // this result instead of a differently-timed one.
+        recordFinishIntent(session, { durationMs: elapsedMs(session) })
         // Both records close together: the legacy workout keeps duration,
         // calories and which exercises were checked off, while the structured
         // session keeps the sets that were really performed.
-        endTrainingDraft("finished", completedAt)
+        recoverWorkoutTransition()
         set({ session: null, lastOutcome: "finished" })
+        settleWorkoutTransition()
       },
       cancel: () => {
         // A discarded session is still evidence of the sets it did produce, so
         // they are kept as a partial session rather than thrown away.
-        if (get().session) endTrainingDraft("cancelled")
+        if (get().session) {
+          recordCancelIntent(get().session!)
+          recoverWorkoutTransition()
+        }
         set({ session: null, lastOutcome: "cancelled" })
+        settleWorkoutTransition()
       },
       pause: () =>
         set(
@@ -384,6 +384,46 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
  * here.
  */
 export function reconcileRestoredActiveWorkout() {
+  // The journal goes first: where an interrupted transition said what it meant
+  // to do, finishing it is better than making its wreckage safe. Reconciliation
+  // then runs over whatever is left, which is the whole answer when no intent
+  // was in flight and a corrupt one was dropped.
+  let resumed
+  try {
+    const shell = useActiveWorkout.getState().session
+    resumed = recoverWorkoutTransition(shell?.workoutId, shell?.startedAt)
+
+    if (resumed.shell === "restore" && resumed.restore) {
+      const restore = resumed.restore
+      useActiveWorkout.setState({
+        lastOutcome: null,
+        session: {
+          workoutId: restore.workoutId,
+          workoutName: restore.workoutName,
+          workoutDate: restore.workoutDate,
+          exerciseIds: restore.exerciseIds,
+          completedIds: [],
+          currentExerciseId: restore.exerciseIds[0] ?? null,
+          runningSince: restore.startedAtMs,
+          accumulatedMs: 0,
+          startedAt: restore.startedAtMs,
+        },
+      })
+    } else if (resumed.shell === "clear") {
+      useActiveWorkout.setState({ session: null, lastOutcome: null })
+    }
+
+    if (resumed.clearIntent) settleWorkoutTransition()
+  } catch {
+    // Keep the intent for a later retry; fallback must not close a pending
+    // finish at a different time or with a different session identity.
+    return {
+      draft: "keep",
+      session: "keep",
+      reason: "transition-pending",
+    } as const
+  }
+
   const outcome = reconcileRestoredSession(useActiveWorkout.getState().session)
   // `lastOutcome` stays null: nothing just happened in front of the person, so
   // a repair at launch must not read as a workout that ended a moment ago.

@@ -11,6 +11,7 @@ import {
   type PersistedTrainingSettings,
   type PersistedTrainingStateLatest,
   type PersistedTrainingStateV0,
+  type PersistedTransitionIntent,
   type TrainingPersistenceIssue,
 } from "./schema"
 
@@ -572,6 +573,94 @@ function validateLoadConfiguration(
   return valid
 }
 
+/**
+ * The transition journal.
+ *
+ * An intent is a promise about identities and instants, so every one it names
+ * has to be there and well formed before recovery is allowed to act on it. A
+ * malformed intent is dropped rather than half-read: the draft it refers to
+ * still holds the observations, and the reconciliation layer closes that state
+ * safely on its own.
+ */
+function validateTransitionIntent(
+  value: unknown,
+  path: string,
+  issues: TrainingPersistenceIssue[]
+): value is PersistedTransitionIntent {
+  const fail = (message: string) => {
+    issues.push({ path, message })
+    return false
+  }
+  if (
+    !isRecord(value) ||
+    !nonEmptyString(value.id) ||
+    (value.kind !== "start" && value.kind !== "finish" && value.kind !== "cancel") ||
+    !isValidIsoTimestamp(value.recordedAt) ||
+    !nonEmptyString(value.sourceWorkoutId) ||
+    (value.draftId !== undefined && !nonEmptyString(value.draftId))
+  )
+    return fail("invalid transition intent")
+
+  if (value.planned !== undefined) {
+    const planned = value.planned
+    if (
+      !isRecord(planned) ||
+      !nonEmptyString(planned.programId) ||
+      !nonEmptyString(planned.sessionId)
+    )
+      return fail("invalid transition planned lineage")
+  }
+
+  if (value.shell !== undefined) {
+    const shell = value.shell
+    if (
+      !isRecord(shell) ||
+      typeof shell.workoutName !== "string" ||
+      typeof shell.workoutDate !== "string" ||
+      !Array.isArray(shell.exerciseIds) ||
+      !shell.exerciseIds.every((id) => nonEmptyString(id)) ||
+      !Number.isFinite(shell.startedAtMs) ||
+      Number(shell.startedAtMs) <= 0
+    )
+      return fail("invalid transition shell")
+  }
+
+  if (value.kind === "start" && (!value.shell ||
+      !isRecord(value.shell) || !Array.isArray(value.shell.exerciseIds) ||
+      value.shell.exerciseIds.length === 0 ||
+      new Set(value.shell.exerciseIds).size !== value.shell.exerciseIds.length ||
+      Date.parse(value.recordedAt as string) !== value.shell.startedAtMs))
+    return fail("invalid start transition")
+  if (value.kind === "cancel" &&
+      (!isValidIsoTimestamp(value.completedAt) || !nonEmptyString(value.sessionId)))
+    return fail("invalid cancel transition")
+
+  if (value.kind === "finish") {
+    if (
+      !isValidIsoTimestamp(value.completedAt) ||
+      !nonEmptyString(value.sessionId) ||
+      (value.status !== "completed" && value.status !== "partial")
+    )
+      return fail("invalid finish transition")
+    const legacy = value.legacy
+    if (
+      !isRecord(legacy) ||
+      !isValidIsoTimestamp(legacy.startedAt) ||
+      !isValidIsoTimestamp(legacy.completedAt) ||
+      legacy.completedAt !== value.completedAt ||
+      Date.parse(legacy.startedAt as string) > Date.parse(legacy.completedAt as string) ||
+      !finite(legacy.durationMs, 0, 1000 * 60 * 60 * 24 * 7) ||
+      !finite(legacy.activeCalories, 0, 100000) ||
+      !Array.isArray(legacy.completedExerciseIds) ||
+      !legacy.completedExerciseIds.every((id) => nonEmptyString(id)) ||
+      (legacy.healthSyncStatus !== "not-requested" &&
+        legacy.healthSyncStatus !== "pending")
+    )
+      return fail("invalid finish transition completion")
+  }
+  return true
+}
+
 function validateSettings(
   value: unknown,
   path: string,
@@ -696,6 +785,9 @@ export function validatePersistedTrainingState(
         issues.push({ path: "activeWorkout.plannedSessionId", message: "planned session does not exist" })
     }
   }
+
+  if (value.transition !== undefined)
+    validateTransitionIntent(value.transition, "transition", issues)
 
   validateSettings(value.settings, "settings", issues)
   return issues
@@ -894,6 +986,13 @@ export function recoverPersistedTrainingState(value: unknown): {
       finalProgramIds.has(candidate.activeProgramId)
     )
       recovered.activeProgramId = candidate.activeProgramId
+    // A corrupt intent is simply not carried over: recovery then falls back to
+    // reconciling the restored stores, which preserves observations anyway.
+    if (
+      candidate.transition !== undefined &&
+      validateTransitionIntent(candidate.transition, "transition", [])
+    )
+      recovered.transition = structuredClone(candidate.transition)
     const settingsIssues: TrainingPersistenceIssue[] = []
     if (validateSettings(candidate.settings, "settings", settingsIssues))
       recovered.settings = structuredClone(candidate.settings)

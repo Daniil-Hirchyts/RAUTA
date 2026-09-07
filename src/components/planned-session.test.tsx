@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react"
+import { act, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it } from "vitest"
 
@@ -288,6 +288,39 @@ describe("planned sessions in the existing workout UI", () => {
     expect(
       screen.getAllByRole("button", { name: "Finish workout" }).length
     ).toBeGreaterThan(0)
+  })
+
+  it("does not celebrate checkmarks while prescribed sets remain unlogged", async () => {
+    const user = userEvent.setup()
+    const sessions = week()
+    renderPlannedDetail(sessions[0])
+    await startNow(user)
+    const exercise = records().data.activeWorkout!.exercises[0]
+    const set = exercise.sets.find((item) => item.setType === "working")!
+    act(() => {
+      records().recordSet({
+        exerciseEntryId: exercise.id,
+        setDraftId: set.id,
+        observation: {
+          completed: true,
+          reps: 8,
+          resistance: {
+            type: "external_load",
+            kg: 40,
+            basis: "total",
+            stationId: "Rack A",
+          },
+        },
+      })
+      for (const id of useActiveWorkout.getState().session!.exerciseIds)
+        useActiveWorkout.getState().toggleComplete(id)
+    })
+    expect(
+      screen.getByText(/Finishing now saves this as partial/)
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText(/Every exercise done|Whole session done/)
+    ).not.toBeInTheDocument()
   })
 
   it("asks the plain question once the whole prescription is performed", async () => {

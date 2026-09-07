@@ -4,6 +4,7 @@ import { EQUIPMENT_OPTIONS, EXERCISES } from "@/lib/exercises"
 import {
   buildTrainingEngineInputs,
   buildTrainingEngineProfile,
+  buildTrainingLoadPreferences,
   buildTrainingPlanningPreferences,
   SESSION_DURATION_HEADROOM_MINUTES,
   toEngineEquipment,
@@ -185,5 +186,86 @@ describe("training engine adapter", () => {
     expect(validateGenerationRequest(request)).toEqual([])
     expect(request.profile.age).toBe(33)
     expect(request.preferences.goal).toBe("hypertrophy")
+  })
+})
+
+describe("load contexts for planning", () => {
+  it("tells the engine a dumbbell load is per implement and a barbell load is not", () => {
+    const { loadContexts, loadGrids } = buildTrainingLoadPreferences([
+      "dumbbell",
+      "barbell",
+    ])
+    const dumbbell = EXERCISES.find((item) => item.equipment === "dumbbell")!
+    const barbell = EXERCISES.find((item) => item.equipment === "barbell")!
+
+    // The hazard this closes: 30 kg prescribed for a dumbbell press is 30 in
+    // each hand, and the same number on a bar is the whole bar.
+    expect(loadContexts![dumbbell.id]).toEqual({
+      stationId: "dumbbell",
+      basis: "per_implement",
+    })
+    expect(loadContexts![barbell.id]).toEqual({
+      stationId: "barbell",
+      basis: "total",
+    })
+    // And each moves in the steps its equipment actually offers.
+    expect(loadGrids![dumbbell.id]).toMatchObject({ incrementKg: 2 })
+    expect(loadGrids![barbell.id]).toMatchObject({ incrementKg: 2.5 })
+  })
+
+  it("states loading only for equipment the person can reach", () => {
+    const { loadContexts } = buildTrainingLoadPreferences(["dumbbell"])
+    const cable = EXERCISES.find((item) => item.equipment === "cable")!
+    expect(loadContexts![cable.id]).toBeUndefined()
+    expect(Object.keys(loadContexts!).length).toBeGreaterThan(0)
+  })
+
+  it("claims no kilograms for a movement that carries none", () => {
+    const { loadContexts, loadGrids } = buildTrainingLoadPreferences([
+      "body weight",
+    ])
+    const bodyweight = EXERCISES.find(
+      (item) => item.equipment === "body weight"
+    )!
+    // Body weight is not a station, so the engine is told nothing about it
+    // rather than being given a fictional grid to progress along.
+    expect(loadContexts![bodyweight.id]).toBeUndefined()
+    expect(loadGrids![bodyweight.id]).toBeUndefined()
+  })
+
+  it("lets a saved configuration outrank the equipment table", () => {
+    const dumbbell = EXERCISES.find((item) => item.equipment === "dumbbell")!
+    const { loadContexts, loadGrids } = buildTrainingLoadPreferences(
+      ["dumbbell"],
+      [
+        {
+          id: "cfg-1",
+          exerciseId: dumbbell.id,
+          stationId: "Rack A",
+          basis: "total",
+          grid: { availableLoadsKg: [10, 12.5, 15] },
+        },
+      ]
+    )
+    expect(loadContexts![dumbbell.id]).toEqual({
+      stationId: "Rack A",
+      basis: "total",
+    })
+    expect(loadGrids![dumbbell.id]).toEqual({
+      availableLoadsKg: [10, 12.5, 15],
+    })
+  })
+
+  it("reaches the engine through the saved profile", () => {
+    useFilters.setState({
+      equipmentPresets: [],
+      gymEquipment: ["dumbbell"],
+      selectedEquipment: [],
+      selectedMuscles: [],
+    })
+    const { preferences } = buildTrainingEngineInputs()
+    const dumbbell = EXERCISES.find((item) => item.equipment === "dumbbell")!
+    expect(preferences.loadContexts?.[dumbbell.id]?.basis).toBe("per_implement")
+    expect(preferences.loadGrids?.[dumbbell.id]).toBeDefined()
   })
 })

@@ -21,6 +21,7 @@ import {
   type PersistedLoadGrid,
   type PersistedSetObservation,
   type PersistedTrainingStateLatest,
+  type PersistedTransitionIntent,
   type TrainingPersistenceIssue,
 } from "@/training-persistence/schema"
 import {
@@ -95,10 +96,17 @@ export type TrainingRecordsState = {
   discardLoggedSet: (exerciseEntryId: string, setDraftId: string) => void
   completeWorkout: (
     status?: "completed" | "partial",
-    completedAt?: string
+    completedAt?: string,
+    /** Fixed identity for the session about to be written. Supplied by a
+     *  transition intent so replaying a finish cannot add a second one. */
+    sessionId?: string
   ) => string | null
   abortWorkout: (completedAt?: string) => string | null
   cancelWorkout: () => void
+  /** Writes one transition at a time. A pending intent must be settled first. */
+  beginTransition: (intent: PersistedTransitionIntent) => void
+  /** Drops the journal entry once its transition is fully applied. */
+  clearTransition: () => void
   setHistoryCoverageUnknown: () => void
   setHistoryCoverageCompleteFrom: (coverageStart: string) => void
   saveLoadConfiguration: (input: {
@@ -270,7 +278,9 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
             isSupersededPlannedSession(state.data, programId, plannedSessionId)
           )
             throw new Error("This planned session has been replaced")
-          if (!isStartablePlannedSession(state.data, programId, plannedSessionId))
+          if (
+            !isStartablePlannedSession(state.data, programId, plannedSessionId)
+          )
             throw new Error("This planned session is no longer active")
           const program = toEngineProgramSnapshot(record.snapshot)
           const session = program.weeks
@@ -444,17 +454,28 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
           }),
         completeWorkout: (
           status = "completed",
-          completedAt = new Date().toISOString()
+          completedAt = new Date().toISOString(),
+          fixedSessionId
         ) => {
           const state = get()
           const draft = state.data.activeWorkout
           if (!draft) return null
-          const sessionId = makeId("training-session")
+          const sessionId = fixedSessionId || makeId("training-session")
+          // A fixed identity is a promise that this session is written once.
+          if (
+            fixedSessionId &&
+            state.data.sessions.some((item) => item.id === fixedSessionId)
+          )
+            return fixedSessionId
+          let childId = 0
           const session = completeWorkoutDraft(draft, {
             sessionId,
             completedAt,
             status,
-            makeId: (kind) => makeId(`completed-${kind}`),
+            makeId: (kind) =>
+              fixedSessionId
+                ? `${fixedSessionId}-${kind}-${childId++}`
+                : makeId(`completed-${kind}`),
           })
           // One persisted Zustand update is the local completion transaction.
           set({
@@ -482,6 +503,24 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
           set((state) => ({
             data: checked({ ...state.data, activeWorkout: null }),
           })),
+        beginTransition: (intent) =>
+          set((state) => {
+            if (state.data.transition && state.data.transition.id !== intent.id)
+              throw new Error("A workout transition is already pending")
+            return {
+              data: checked({
+                ...state.data,
+                transition: structuredClone(intent),
+              }),
+            }
+          }),
+        clearTransition: () =>
+          set((state) => {
+            if (!state.data.transition) return {}
+            const data = { ...state.data }
+            delete data.transition
+            return { data: checked(data) }
+          }),
         setHistoryCoverageUnknown: () =>
           set((state) => ({
             data: checked({

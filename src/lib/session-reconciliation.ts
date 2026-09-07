@@ -87,7 +87,8 @@ function alreadyRecorded(
       (draft.plannedSessionId !== undefined &&
         recorded.plannedSessionId === draft.plannedSessionId) ||
       (draft.sourceWorkoutId !== undefined &&
-        recorded.sourceWorkoutId === draft.sourceWorkoutId)
+        recorded.sourceWorkoutId === draft.sourceWorkoutId &&
+        recorded.startedAt === draft.startedAt)
   )
 }
 
@@ -150,6 +151,9 @@ export function planSessionReconciliation(input: {
         { draft: "keep", session: "clear", reason: "session-without-draft" }
       : { draft: "keep", session: "keep", reason: "idle" }
 
+  if (alreadyRecorded(training, draft))
+    return { draft: "discard", session: "clear", reason: "already-recorded" }
+
   // The shell says which workout the set editor is pointed at and the draft
   // says which one the sets land in. When those differ, every set logged from
   // here would be recorded against the wrong workout.
@@ -162,9 +166,6 @@ export function planSessionReconciliation(input: {
 
   if (draft.sourceWorkoutId && !workout)
     return { draft: "close", session: "clear", reason: "workout-missing" }
-
-  if (alreadyRecorded(training, draft))
-    return { draft: "discard", session: "clear", reason: "already-recorded" }
 
   if (workout?.completion)
     return { draft: "close", session: "clear", reason: "workout-completed" }
