@@ -59,6 +59,9 @@ export type PlannedExercisePrescription = {
   rir: number
   /** Present only where the engine could name a load from real history. */
   loadKg: number | null
+  /** How that load is carried. A dumbbell prescription of 30 kg is 30 in each
+   *  hand, and a plan that failed to say so would be read as half the work. */
+  loadBasis: "total" | "per_implement" | null
   restSeconds: number
 }
 
@@ -138,6 +141,8 @@ function prescriptionOf(
         reps: first ? { ...first.targetReps } : { min: 0, max: 0 },
         rir: first?.targetRir ?? 0,
         loadKg: resistance && "kg" in resistance ? resistance.kg : null,
+        loadBasis:
+          resistance && "basis" in resistance ? resistance.basis : null,
         restSeconds: exercise.restSeconds,
       }
     })
@@ -366,7 +371,11 @@ export function formatPrescription(item: PlannedExercisePrescription) {
   return [
     `${item.sets} × ${reps}`,
     `RIR ${item.rir}`,
-    ...(item.loadKg === null ? [] : [`${formatKg(item.loadKg)} kg`]),
+    ...(item.loadKg === null
+      ? []
+      : [
+          `${formatKg(item.loadKg)} kg${item.loadBasis === "per_implement" ? " each" : ""}`,
+        ]),
     `${Math.round(item.restSeconds)}s rest`,
   ].join(" · ")
 }

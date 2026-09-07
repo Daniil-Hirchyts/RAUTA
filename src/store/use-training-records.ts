@@ -113,10 +113,17 @@ export type TrainingRecordsState = {
     id?: string
     exerciseId: string
     stationId: string
+    mode?: "external_load" | "assistance"
     basis: "total" | "per_implement"
     grid: PersistedLoadGrid
   }) => string
   removeLoadConfiguration: (id: string) => void
+  /** Pins which saved station an exercise is being trained at; null returns it
+   *  to the equipment default. */
+  selectLoadConfiguration: (
+    exerciseId: string,
+    configurationId: string | null
+  ) => void
   getTrainingHistory: (
     legacyWorkouts?: readonly LegacyWorkoutObservation[]
   ) => TrainingHistory
@@ -131,6 +138,20 @@ function makeId(prefix: string) {
 
 function exerciseName(exerciseId: string) {
   return EXERCISES_BY_ID.get(exerciseId)?.name
+}
+
+/** The station selections that survive a configuration being deleted. */
+function activeSelectionWithout(
+  settings: PersistedTrainingStateLatest["settings"],
+  removedId: string
+): Pick<PersistedTrainingStateLatest["settings"], "activeLoadConfigurations"> {
+  const active = settings.activeLoadConfigurations
+  if (!active) return {}
+  return {
+    activeLoadConfigurations: Object.fromEntries(
+      Object.entries(active).filter(([, id]) => id !== removedId)
+    ),
+  }
 }
 
 function checked(data: PersistedTrainingStateLatest) {
@@ -542,11 +563,23 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
             }),
           })),
         saveLoadConfiguration: (input) => {
-          const id = input.id ?? makeId("load-context")
+          const mode = input.mode ?? "external_load"
+          // One station of one exercise in one measurement is one record.
+          // Describing it again — a second turn of the dial — corrects the
+          // record that is already there rather than making a rival one.
+          const existing = get().data.settings.loadConfigurations.find(
+            (item) =>
+              item.exerciseId === input.exerciseId &&
+              item.stationId === input.stationId &&
+              item.basis === input.basis &&
+              (item.mode ?? "external_load") === mode
+          )
+          const id = input.id ?? existing?.id ?? makeId("load-context")
           const configuration: PersistedLoadConfiguration = {
             id,
             exerciseId: input.exerciseId,
             stationId: input.stationId,
+            ...(mode === "external_load" ? {} : { mode }),
             basis: input.basis,
             grid: structuredClone(input.grid),
           }
@@ -576,9 +609,37 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
                   state.data.settings.loadConfigurations.filter(
                     (item) => item.id !== id
                   ),
+                // A station that no longer exists cannot stay selected: the
+                // exercise returns to its equipment default rather than to a
+                // grid nothing describes.
+                ...activeSelectionWithout(state.data.settings, id),
               },
             }),
           })),
+        selectLoadConfiguration: (exerciseId, configurationId) =>
+          set((state) => {
+            const { activeLoadConfigurations = {} } = state.data.settings
+            if (
+              configurationId &&
+              !state.data.settings.loadConfigurations.some(
+                (item) =>
+                  item.id === configurationId && item.exerciseId === exerciseId
+              )
+            )
+              throw new Error("Load configuration not found for this exercise")
+            const next = { ...activeLoadConfigurations }
+            if (configurationId) next[exerciseId] = configurationId
+            else delete next[exerciseId]
+            return {
+              data: checked({
+                ...state.data,
+                settings: {
+                  ...state.data.settings,
+                  activeLoadConfigurations: next,
+                },
+              }),
+            }
+          }),
         getTrainingHistory: (
           legacyWorkouts = useWorkouts.getState().workouts
         ) => toTrainingHistory(get().data, legacyWorkouts),

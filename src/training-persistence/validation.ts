@@ -553,6 +553,9 @@ function validateLoadConfiguration(
     !nonEmptyString(value.id) ||
     !nonEmptyString(value.exerciseId) ||
     !nonEmptyString(value.stationId) ||
+    (value.mode !== undefined &&
+      value.mode !== "external_load" &&
+      value.mode !== "assistance") ||
     !["total", "per_implement"].includes(String(value.basis)) ||
     !isRecord(value.grid)
   ) {
@@ -684,13 +687,32 @@ function validateSettings(
       valid = false
       continue
     }
-    const contextKey = `${configuration.exerciseId}\u0000${configuration.stationId}\u0000${configuration.basis}`
+    const contextKey = `${configuration.exerciseId}\u0000${configuration.stationId}\u0000${configuration.basis}\u0000${configuration.mode ?? "external_load"}`
     if (ids.has(configuration.id) || contexts.has(contextKey)) {
       issues.push({ path: configPath, message: "duplicate load configuration" })
       valid = false
     }
     ids.add(configuration.id)
     contexts.add(contextKey)
+  }
+  // A selection is a preference, not evidence. It is checked for shape only:
+  // one that no longer names a saved station resolves to the equipment default
+  // rather than taking the rest of the settings down with it.
+  if (value.activeLoadConfigurations !== undefined) {
+    const active = value.activeLoadConfigurations
+    if (
+      !isRecord(active) ||
+      Object.entries(active).some(
+        ([exerciseId, configurationId]) =>
+          !nonEmptyString(exerciseId) || !nonEmptyString(configurationId)
+      )
+    ) {
+      issues.push({
+        path: path + ".activeLoadConfigurations",
+        message: "invalid active load configuration selection",
+      })
+      valid = false
+    }
   }
   return valid
 }
@@ -810,6 +832,12 @@ function normalize<T extends PersistedTrainingStateLatest>(state: T): T {
     left.id === right.id ? left.startedAt.localeCompare(right.startedAt) : left.id.localeCompare(right.id)
   )
   copy.settings.loadConfigurations.sort((left, right) => left.id.localeCompare(right.id))
+  if (copy.settings.activeLoadConfigurations)
+    copy.settings.activeLoadConfigurations = Object.fromEntries(
+      Object.entries(copy.settings.activeLoadConfigurations).sort(
+        ([left], [right]) => left.localeCompare(right)
+      )
+    )
   return copy
 }
 

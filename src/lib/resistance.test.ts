@@ -2,14 +2,19 @@ import { describe, expect, it } from "vitest"
 
 import { EXERCISES_BY_ID } from "@/lib/exercises"
 import {
+  activeConfigurationFor,
   formatResistance,
   isMeasuredInKg,
   loadContextFor,
   makeResistance,
+  nextStationId,
   resistanceModes,
+  resolveLoadContext,
   sideOptions,
+  stationChoicesFor,
   stepLoad,
 } from "@/lib/resistance"
+import type { PersistedLoadConfiguration } from "@/training-persistence/schema"
 import type { ExerciseSummary } from "@/types"
 
 /** Real catalogue entries: the point of these tests is that the semantics come
@@ -139,5 +144,120 @@ describe("resistance semantics", () => {
   it("asks for a side only where the movement has one", () => {
     expect(sideOptions(BARBELL_BENCH)).toEqual(["both"])
     expect(sideOptions(ONE_ARM_ROW)).toEqual(["both", "left", "right"])
+  })
+
+  it("keeps a station's own steps out of another station's history", () => {
+    const stackA: PersistedLoadConfiguration = {
+      id: "config-a",
+      exerciseId: MACHINE_ROW.id,
+      stationId: "leverage machine",
+      basis: "total",
+      grid: { incrementKg: 5, minimumKg: 10 },
+    }
+    const stackB: PersistedLoadConfiguration = {
+      id: "config-b",
+      exerciseId: MACHINE_ROW.id,
+      stationId: "leverage machine-2",
+      basis: "total",
+      grid: { incrementKg: 7.5, minimumKg: 7.5 },
+    }
+    const settings = { loadConfigurations: [stackA, stackB] }
+
+    const choices = stationChoicesFor(MACHINE_ROW, "external_load", settings)
+    // The configuration on the default station describes that station rather
+    // than adding a second one beside it.
+    expect(choices).toHaveLength(2)
+    expect(choices[0]).toMatchObject({
+      id: "config-a",
+      label: "Leverage Machine",
+    })
+    expect(choices[1]).toMatchObject({
+      id: "config-b",
+      label: "Leverage Machine 2",
+    })
+    expect(ladder(10, 2, choices[0].context.grid)).toEqual([10, 15, 20])
+    expect(ladder(7.5, 2, choices[1].context.grid)).toEqual([7.5, 15, 22.5])
+
+    // With more than one station saved, nothing is assumed: the exercise stays
+    // on its equipment default until somebody says which machine they are at.
+    expect(
+      activeConfigurationFor(MACHINE_ROW.id, "external_load", settings)
+    ).toBeNull()
+    expect(
+      resolveLoadContext(MACHINE_ROW, "external_load", {
+        ...settings,
+        activeLoadConfigurations: { [MACHINE_ROW.id]: "config-b" },
+      }).stationId
+    ).toBe("leverage machine-2")
+  })
+
+  it("treats one saved station as the station and a stale selection as none", () => {
+    const only: PersistedLoadConfiguration = {
+      id: "config-a",
+      exerciseId: BARBELL_BENCH.id,
+      stationId: "barbell-2",
+      basis: "total",
+      grid: { incrementKg: 5 },
+    }
+    expect(
+      activeConfigurationFor(BARBELL_BENCH.id, "external_load", {
+        loadConfigurations: [only],
+      })
+    ).toBe(only)
+    // A selection naming a station that is gone falls back to the equipment
+    // default instead of failing or picking something else.
+    expect(
+      resolveLoadContext(BARBELL_BENCH, "external_load", {
+        loadConfigurations: [],
+        activeLoadConfigurations: { [BARBELL_BENCH.id]: "config-a" },
+      }).stationId
+    ).toBe("barbell")
+  })
+
+  it("never lets an assistance station stand in for a loaded one", () => {
+    const assist: PersistedLoadConfiguration = {
+      id: "config-assist",
+      exerciseId: ASSISTED_PULL_UP.id,
+      stationId: "assisted-2",
+      mode: "assistance",
+      basis: "total",
+      grid: { incrementKg: 4.5, minimumKg: 9 },
+    }
+    const settings = {
+      loadConfigurations: [assist],
+      activeLoadConfigurations: { [ASSISTED_PULL_UP.id]: assist.id },
+    }
+
+    const assistance = resolveLoadContext(
+      ASSISTED_PULL_UP,
+      "assistance",
+      settings
+    )
+    expect(assistance.stationId).toBe("assisted-2")
+    expect(ladder(9, 2, assistance.grid)).toEqual([9, 13.5, 18])
+
+    // The same saved station says nothing about weight hung off a belt.
+    const load = resolveLoadContext(ASSISTED_PULL_UP, "external_load", settings)
+    expect(load.stationId).not.toBe("assisted-2")
+    expect(
+      stationChoicesFor(ASSISTED_PULL_UP, "external_load", settings)
+    ).toHaveLength(1)
+  })
+
+  it("numbers a new station off the equipment and skips the ones taken", () => {
+    expect(nextStationId("cable", [])).toBe("cable-2")
+    expect(nextStationId("cable", ["cable", "cable-2", "cable-3"])).toBe(
+      "cable-4"
+    )
+  })
+
+  it("carries the saved equipment step into the default station", () => {
+    const context = resolveLoadContext(
+      BARBELL_BENCH,
+      "external_load",
+      { loadConfigurations: [] },
+      1.25
+    )
+    expect(ladder(80, 2, context.grid)).toEqual([80, 81.25, 82.5])
   })
 })

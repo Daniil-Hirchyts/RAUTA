@@ -3,7 +3,10 @@ import { Share } from "@capacitor/share"
 
 import { isNative } from "@/lib/native"
 import { isRecord } from "@/store/persistence"
-import { useActiveWorkout } from "@/store/use-active-workout"
+import {
+  reconcileRestoredActiveWorkout,
+  useActiveWorkout,
+} from "@/store/use-active-workout"
 import { sanitizeFavoritesState, useFavorites } from "@/store/use-favorites"
 import { sanitizeFilterState, useFilters } from "@/store/use-filters"
 import {
@@ -22,7 +25,7 @@ import {
   createEmptyPersistedTrainingState,
   type PersistedTrainingStateLatest,
 } from "@/training-persistence/schema"
-import { validatePersistedTrainingState } from "@/training-persistence/validation"
+import { migratePersistedTrainingState } from "@/training-persistence/validation"
 
 const BACKUP_VERSION = 1
 
@@ -77,8 +80,15 @@ export function hasMeaningfulGymLibData() {
   const filters = useFilters.getState()
   const settings = sanitizeSettings(useSettings.getState())
   const workouts = useWorkouts.getState()
+  const training = useTrainingRecords.getState().data
 
   return (
+    // Structured training is local-only, so a cloud copy says nothing about
+    // it — but a device holding real sessions, a plan or a described station
+    // is not a fresh install, whatever else is empty.
+    training.sessions.length > 0 ||
+    training.programs.length > 0 ||
+    training.settings.loadConfigurations.length > 0 ||
     favorites.favoriteIds.length > 0 ||
     filters.selectedMuscles.length > 0 ||
     filters.selectedEquipment.length > 0 ||
@@ -136,11 +146,18 @@ export function importGymLibData(json: string) {
   }
 
   const data = backup.data
-  if (
-    data.training !== undefined &&
-    validatePersistedTrainingState(data.training).length
-  )
-    throw new Error("The backup contains invalid training records.")
+  // Training records are read before anything is written: a file this device
+  // cannot make sense of leaves the app exactly as it was rather than half
+  // replaced. An older payload is migrated the same way a stored one is, so a
+  // backup taken before a field existed still restores.
+  let training: PersistedTrainingStateLatest | undefined
+  if (data.training !== undefined) {
+    try {
+      training = migratePersistedTrainingState(data.training)
+    } catch {
+      throw new Error("The backup contains invalid training records.")
+    }
+  }
   const favorites = sanitizeFavoritesState(data.favorites)
   const filters = sanitizeFilterState(data.filters)
   const settings = sanitizeSettings(data.settings)
@@ -166,10 +183,12 @@ export function importGymLibData(json: string) {
     useTrainingProfile.setState(
       sanitizeTrainingProfileState(data.trainingProfile)
     )
-  if (data.training !== undefined)
-    useTrainingRecords.setState({
-      data: structuredClone(data.training) as PersistedTrainingStateLatest,
-    })
+  if (training)
+    useTrainingRecords.setState({ data: training, persistenceIssues: [] })
+  // A restored draft, or an intent caught mid-transition, has to be settled
+  // before the app treats it as a running session — the same reconciliation
+  // a cold start performs, at the one other moment these stores all change.
+  reconcileRestoredActiveWorkout()
 }
 
 export function clearAllGymLibData() {

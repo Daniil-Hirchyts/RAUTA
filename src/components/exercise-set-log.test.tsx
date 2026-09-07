@@ -167,4 +167,117 @@ describe("logging sets during a workout", () => {
 
     expect(loggedSets()).toEqual([])
   })
+
+  it("logs at the station the person picked, and never pools two stacks", async () => {
+    const user = userEvent.setup()
+    renderRunningWorkout()
+    await start(user)
+    await user.click(screen.getByRole("button", { name: /^Log a set/ }))
+
+    // One tap adds a second bar for this exercise and moves logging to it.
+    await user.click(
+      screen.getByRole("button", {
+        name: "Add another station for this exercise",
+      })
+    )
+    await user.click(screen.getByRole("button", { name: /Log set 1/ }))
+
+    const station = records().data.settings.loadConfigurations[0]
+    expect(station).toMatchObject({ exerciseId: BENCH, stationId: "barbell-2" })
+    expect(records().data.settings.activeLoadConfigurations).toEqual({
+      [BENCH]: station.id,
+    })
+    expect(loggedSets()[0].observation?.resistance).toMatchObject({
+      stationId: "barbell-2",
+      basis: "total",
+    })
+
+    // Switching back to the default bar logs against the default station: the
+    // two are never added together, however similar the numbers look.
+    await user.click(screen.getByRole("button", { name: /^Log set 2/ }))
+    await user.click(screen.getByRole("button", { name: "Log at Barbell" }))
+    await user.click(screen.getByRole("button", { name: /Log set 2/ }))
+
+    expect(
+      loggedSets().map((set) =>
+        set.observation?.resistance && "stationId" in set.observation.resistance
+          ? set.observation.resistance.stationId
+          : null
+      )
+    ).toEqual(["barbell-2", "barbell"])
+  })
+
+  it("says what the engine decided, and only what it decided", async () => {
+    const user = userEvent.setup()
+    renderRunningWorkout()
+    await start(user)
+
+    // No logged sets anywhere: the only honest line is that there is nothing
+    // to progress from yet.
+    expect(screen.getByText(/Not enough logged sets yet/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /^Log a set/ }))
+    await step(user, "Load", "Increase", 2)
+    await user.click(screen.getByRole("button", { name: "2 reps in reserve" }))
+    await user.click(screen.getByRole("button", { name: /Log set 1/ }))
+
+    // A single set inside the running session is still not a completed
+    // exposure, so nothing claims a load was earned.
+    expect(screen.queryByText(/top of the range/i)).not.toBeInTheDocument()
+  })
+
+  it("describes a station with the dial and gives it back with one tap", async () => {
+    const user = userEvent.setup()
+    renderRunningWorkout()
+    await start(user)
+    await user.click(screen.getByRole("button", { name: /^Log a set/ }))
+    await user.click(
+      screen.getByRole("button", { name: /Show load steps for Barbell/ })
+    )
+
+    // The step this gym's bar actually offers, turned rather than typed.
+    await user.click(
+      screen.getByRole("button", { name: "Increase barbell load step" })
+    )
+    expect(records().data.settings.loadConfigurations).toEqual([
+      {
+        id: expect.any(String),
+        exerciseId: BENCH,
+        stationId: "barbell",
+        basis: "total",
+        grid: { incrementKg: 2.75, minimumKg: 0 },
+      },
+    ])
+
+    // The lightest load the station has is the other half of the same station,
+    // and describing it does not fork a second record.
+    await user.click(
+      screen.getByRole("button", { name: "Set the lightest load" })
+    )
+    await user.click(
+      screen.getByRole("button", { name: "Increase barbell lightest load" })
+    )
+    expect(records().data.settings.loadConfigurations).toMatchObject([
+      { grid: { incrementKg: 2.75, minimumKg: 0.5 } },
+    ])
+
+    // Logging follows the described station immediately.
+    await user.click(screen.getByRole("button", { name: /Increase load/ }))
+    await user.click(screen.getByRole("button", { name: /Log set 1/ }))
+    expect(loggedSets()[0].observation?.resistance).toMatchObject({
+      kg: 3.25,
+      stationId: "barbell",
+    })
+
+    // Handing the station back leaves the equipment default in place.
+    await user.click(screen.getByRole("button", { name: /^Log set 2/ }))
+    await user.click(
+      screen.getByRole("button", { name: /Show load steps for Barbell/ })
+    )
+    await user.click(
+      screen.getByRole("button", { name: /Use equipment default/ })
+    )
+    expect(records().data.settings.loadConfigurations).toEqual([])
+    expect(records().data.settings.activeLoadConfigurations).toEqual({})
+  })
 })

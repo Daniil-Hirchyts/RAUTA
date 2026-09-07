@@ -4,11 +4,7 @@ export {
   toEngineProgramSnapshot,
   toPersistedProgramSnapshot,
 } from "./program"
-export {
-  toEngineLoadPreferences,
-  toTrainingHistory,
-  type LegacyWorkoutObservation,
-} from "./history"
+export { toTrainingHistory, type LegacyWorkoutObservation } from "./history"
 export {
   addUnplannedSet,
   completeWorkoutDraft,

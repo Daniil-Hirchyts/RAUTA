@@ -1,10 +1,15 @@
 import { EXERCISES, EXERCISES_BY_ID, EQUIPMENT_OPTIONS } from "@/lib/exercises"
-import { loadContextFor, resistanceModes } from "@/lib/resistance"
+import {
+  activeConfigurationFor,
+  loadContextFor,
+  resistanceModes,
+  resolveLoadContext,
+} from "@/lib/resistance"
 import { buildTrainingEngineInputs } from "@/lib/training-engine-adapter"
 import { useFilters } from "@/store/use-filters"
 import { useTrainingRecords } from "@/store/use-training-records"
 import { useWorkouts, type Workout } from "@/store/use-workouts"
-import { toEngineLoadPreferences } from "@/training-persistence/history"
+import { toTrainingHistory } from "@/training-persistence/history"
 import {
   isSupersededPlannedSession,
   toEngineProgramSnapshot,
@@ -84,6 +89,46 @@ export function remainingTrainingSlots(
   return { week, sessions }
 }
 
+/**
+ * Where every kilogram the engine may prescribe would be measured.
+ *
+ * The same resolution the set editor uses, asked of the whole catalogue: the
+ * station and grid a set of this exercise would be logged against today. Two
+ * layers, in this order — the station the person named for the exercise, and
+ * otherwise the equipment family with whatever load step their gym actually
+ * offers. Without this the engine has no grid to round to and prescribes
+ * "calibrate" forever, however much real history exists.
+ *
+ * It states no load. It only says what a load would mean, which is the
+ * condition the engine sets before it will name one.
+ */
+export function engineLoadPreferences(
+  settings: PersistedTrainingStateLatest["settings"] = useTrainingRecords.getState()
+    .data.settings,
+  increments: Record<string, number> = useFilters.getState()
+    .equipmentLoadIncrements
+): Pick<PlanningPreferences, "loadContexts" | "loadGrids"> {
+  const loadContexts: NonNullable<PlanningPreferences["loadContexts"]> = {}
+  const loadGrids: NonNullable<PlanningPreferences["loadGrids"]> = {}
+  const index = trainingIndex()
+  for (const mode of ["external_load", "assistance"] as const)
+    for (const indexed of index.byTracking.get(mode) ?? []) {
+      const { exercise } = indexed
+      const context = resolveLoadContext(
+        exercise,
+        mode,
+        settings,
+        increments[exercise.equipment]
+      )
+      loadContexts[exercise.id] = {
+        stationId: context.stationId,
+        basis: context.basis,
+      }
+      loadGrids[exercise.id] = structuredClone(context.grid)
+    }
+  return { loadContexts, loadGrids }
+}
+
 export function buildTrainingRequest(
   setup: PlanSetup,
   now: string,
@@ -105,18 +150,11 @@ export function buildTrainingRequest(
       ? remainingTrainingSlots(source, now)
       : undefined
   const sourceWeek = remaining?.week
-  const selectedContexts = store.data.settings.loadConfigurations.filter(
-    (c, _, all) =>
-      all.filter((other) => other.exerciseId === c.exerciseId).length === 1
-  )
   return {
     profile: setup.profile,
     preferences: {
       ...setup.preferences,
-      ...toEngineLoadPreferences(
-        store.data.settings,
-        selectedContexts.map((c) => c.id)
-      ),
+      ...engineLoadPreferences(store.data.settings),
     },
     schedule: {
       weekStart: sourceWeek?.start ?? monday.toISOString(),
@@ -247,42 +285,37 @@ export function replacementIds(exerciseId: string): string[] {
 
 export function nextPerformance(
   exercise: PersistedActiveExerciseDraft,
-  now = new Date().toISOString()
+  now = new Date().toISOString(),
+  /** The records to read. Passed explicitly by React callers so a memo can
+   *  name every input it depends on; the live store otherwise. */
+  data: PersistedTrainingStateLatest = useTrainingRecords.getState().data,
+  increments: Record<string, number> = useFilters.getState()
+    .equipmentLoadIncrements
 ) {
-  const store = useTrainingRecords.getState()
   const indexed = trainingIndex().byId.get(exercise.exerciseId)
   const catalogueExercise = EXERCISES_BY_ID.get(exercise.exerciseId)
   if (!indexed || !catalogueExercise) return null
   const target = exercise.sets.find((s) => s.setType === "working")?.target
-  const latest = store
-    .getTrainingHistory()
-    .sessions.toReversed()
-    .flatMap((s) => s.exercises)
-    .find((e) => e.exerciseId === exercise.exerciseId)
-    ?.sets.at(-1)?.resistance
-  const config = store.data.settings.loadConfigurations.find(
-    (c) =>
-      c.exerciseId === exercise.exerciseId &&
-      latest &&
-      "stationId" in latest &&
-      c.stationId === latest.stationId &&
-      c.basis === latest.basis
-  )
   const mode = target?.resistance.type ?? resistanceModes(catalogueExercise)[0]
+  // Legacy workouts are read live: they carry no sets, so they can move a
+  // recommendation's staleness but never its load.
+  const history = toTrainingHistory(data, useWorkouts.getState().workouts)
   const measured = mode === "external_load" || mode === "assistance"
+  // The station this exercise is being trained at now, not the one the last
+  // set happened to be logged at: a person who moved machines must be told the
+  // history no longer compares, and only asking forward can say that.
   const context = measured
     ? loadContextFor(
         catalogueExercise,
         mode,
-        config,
-        useFilters.getState().equipmentLoadIncrements[
-          catalogueExercise.equipment
-        ]
+        activeConfigurationFor(exercise.exerciseId, mode, data.settings) ??
+          undefined,
+        increments[catalogueExercise.equipment]
       )
     : undefined
   return recommendProgression({
     exercise: indexed,
-    history: store.getTrainingHistory(),
+    history,
     now,
     reps: target?.reps ?? { min: 8, max: 12 },
     rir: target?.rir ?? 2,

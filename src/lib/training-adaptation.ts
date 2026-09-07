@@ -331,7 +331,7 @@ export function createNextTrainingWeek(input: {
   const existingChild = initialData.programs.find(
     (program) =>
       program.revision?.sourceProgramId === input.sourceProgramId &&
-      program.revision.reason === "next_week"
+      program.revision?.reason === "next_week"
   )
   if (existingChild) return nextBlocked("already_planned")
   if (initialData.activeProgramId !== input.sourceProgramId)

@@ -2,14 +2,11 @@ import { adaptLegacyWorkout } from "../training/data/legacy"
 import type {
   CompletedExercise,
   CompletedSession,
-  LoadGrid,
-  PlanningPreferences,
   ResistanceValue,
   TrainingHistory,
 } from "../training/domain/types"
 import type {
   PersistedCompletedSession,
-  PersistedTrainingSettings,
   PersistedTrainingStateLatest,
 } from "./schema"
 
@@ -90,30 +87,4 @@ export function toTrainingHistory(
         coverageStart: coverage.coverageStart,
       }
     : { sessions, coverage: "unknown" }
-}
-
-/** Selects explicit station/basis grids for a generation request; history never infers these. */
-export function toEngineLoadPreferences(
-  settings: PersistedTrainingSettings,
-  configurationIds: readonly string[]
-): Pick<PlanningPreferences, "loadContexts" | "loadGrids"> {
-  const selected = configurationIds.map((id) => {
-    const configuration = settings.loadConfigurations.find((item) => item.id === id)
-    if (!configuration) throw new Error(`Unknown load configuration: ${id}`)
-    return configuration
-  })
-  const seenExercises = new Set<string>()
-  const loadContexts: NonNullable<PlanningPreferences["loadContexts"]> = {}
-  const loadGrids: NonNullable<PlanningPreferences["loadGrids"]> = {}
-  for (const configuration of selected) {
-    if (seenExercises.has(configuration.exerciseId))
-      throw new Error(`Multiple active load contexts for ${configuration.exerciseId}`)
-    seenExercises.add(configuration.exerciseId)
-    loadContexts[configuration.exerciseId] = {
-      stationId: configuration.stationId,
-      basis: configuration.basis,
-    }
-    loadGrids[configuration.exerciseId] = structuredClone(configuration.grid) as LoadGrid
-  }
-  return { loadContexts, loadGrids }
 }

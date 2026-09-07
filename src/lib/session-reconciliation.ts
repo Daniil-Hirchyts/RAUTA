@@ -88,6 +88,15 @@ function alreadyRecorded(
         recorded.plannedSessionId === draft.plannedSessionId) ||
       (draft.sourceWorkoutId !== undefined &&
         recorded.sourceWorkoutId === draft.sourceWorkoutId &&
+        recorded.startedAt === draft.startedAt) ||
+      // A free draft carries no workout to be identified by, so the instant it
+      // started is its identity. Restoring the same one twice — from a backup,
+      // or from a copy of this device's storage — must not put the same work
+      // into history a second time under a fresh session ID.
+      (draft.sourceWorkoutId === undefined &&
+        draft.plannedSessionId === undefined &&
+        recorded.sourceWorkoutId === undefined &&
+        recorded.plannedSessionId === undefined &&
         recorded.startedAt === draft.startedAt)
   )
 }

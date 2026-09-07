@@ -16,7 +16,9 @@ import { useFilters } from "@/store/use-filters"
  *
  * The catalogue still owns whether a number means total load or "each". This
  * control only replaces the generic rack/stack increment with the user's real
- * one, so set logging and future progression speak the same load grid.
+ * one, so set logging, week generation and progression speak the same load
+ * grid. One machine that differs from the rest is described where it is used,
+ * on its own station in the set editor, rather than here.
  */
 export function EquipmentLoadSettings() {
   const gymEquipment = useFilters((state) => state.gymEquipment)
@@ -45,8 +47,8 @@ export function EquipmentLoadSettings() {
       <div className="px-1">
         <h2 className="text-lg font-black tracking-tight">Load steps</h2>
         <p className="mt-1 text-sm leading-snug text-muted-foreground">
-          Set the next weight your equipment actually offers. RAUTA uses it for
-          logging and progression.
+          Set the next weight your equipment actually offers. RAUTA logs, plans
+          and progresses in these steps.
         </p>
       </div>
 

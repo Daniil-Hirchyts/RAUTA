@@ -3,18 +3,22 @@ import { motion } from "motion/react"
 import { Plus } from "lucide-react"
 
 import { SetEditor, type SetEditorValue } from "@/components/set-editor"
+import { StationPicker } from "@/components/station-picker"
 import { EXERCISES_BY_ID } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
 import { EASE_SMOOTH_OUT } from "@/lib/motion"
+import { progressionNote } from "@/lib/progression-note"
 import {
   formatKg,
   formatResistance,
-  loadContextFor,
+  isMeasuredInKg,
+  resolveLoadContext,
   makeResistance,
   resistanceModes,
   type ResistanceMode,
 } from "@/lib/resistance"
 import { draftExercise } from "@/lib/training-session"
+import { nextPerformance } from "@/lib/training-workflow"
 import { cn } from "@/lib/utils"
 import { useFilters } from "@/store/use-filters"
 import { useTrainingRecords } from "@/store/use-training-records"
@@ -70,7 +74,7 @@ function targetSummary(target: PersistedSetTarget) {
       ? `${target.reps.max}`
       : `${target.reps.min}–${target.reps.max}`
   const load =
-    "kg" in target.resistance ? ` · ${formatKg(target.resistance.kg)} kg` : ""
+    "kg" in target.resistance ? ` · ${formatResistance(target.resistance)}` : ""
   return `${reps} reps · RIR ${target.rir}${load}`
 }
 
@@ -106,16 +110,12 @@ export function ExerciseSetLog({
   onEditingChange: (editing: boolean) => void
 }) {
   const exercise = EXERCISES_BY_ID.get(exerciseId)
-  const draft = useTrainingRecords((state) => state.data.activeWorkout)
-  const sessions = useTrainingRecords((state) => state.data.sessions)
-  const configuration = useTrainingRecords((state) =>
-    state.data.settings.loadConfigurations.find(
-      (item) => item.exerciseId === exerciseId
-    )
-  )
-  const equipmentIncrementKg = useFilters((state) =>
-    exercise ? state.equipmentLoadIncrements[exercise.equipment] : undefined
-  )
+  const data = useTrainingRecords((state) => state.data)
+  const increments = useFilters((state) => state.equipmentLoadIncrements)
+  const { activeWorkout: draft, sessions, settings } = data
+  const equipmentIncrementKg = exercise
+    ? increments[exercise.equipment]
+    : undefined
   const addUnplannedSet = useTrainingRecords((state) => state.addUnplannedSet)
   const recordSet = useTrainingRecords((state) => state.recordSet)
   const updateSetDetails = useTrainingRecords((state) => state.updateSetDetails)
@@ -128,6 +128,15 @@ export function ExerciseSetLog({
   const modes = useMemo<ResistanceMode[]>(
     () => (exercise ? resistanceModes(exercise) : ["external_load"]),
     [exercise]
+  )
+
+  // What the deterministic engine makes of this exercise right now, from the
+  // sets that were actually logged and the station they were logged at. It is
+  // recomputed from persisted records rather than remembered, so it can never
+  // outlive the evidence it was drawn from.
+  const recommendation = useMemo(
+    () => (entry ? nextPerformance(entry, undefined, data, increments) : null),
+    [data, entry, increments]
   )
 
   // What the editor opens on: this session's last set for the exercise, then
@@ -144,6 +153,17 @@ export function ExerciseSetLog({
         previous.observation.rir,
         previous.side
       )
+    // What the engine says to put on, where it could name a load from real
+    // sets. It is where the dial starts, not a record of anything: the set is
+    // written only when somebody confirms it.
+    if (recommendation && "kg" in recommendation.resistance)
+      return {
+        mode: recommendation.resistance.type,
+        kg: recommendation.resistance.kg,
+        reps: recommendation.targetReps.max,
+        rir: null,
+        side: "both",
+      }
     const performed = lastPerformedSet(sessions, exerciseId)
     if (performed)
       return editorValueOf(
@@ -153,15 +173,15 @@ export function ExerciseSetLog({
         performed.side
       )
     return { mode: modes[0], kg: 0, reps: BLANK_REPS, rir: null, side: "both" }
-  }, [entry, exerciseId, modes, sessions])
+  }, [entry, exerciseId, modes, recommendation, sessions])
 
   if (!exercise || !entry) return null
 
   const value = pending ?? defaults
-  const context = loadContextFor(
+  const context = resolveLoadContext(
     exercise,
     value.mode,
-    configuration,
+    settings,
     equipmentIncrementKg
   )
   // The button offers the next set after the ones already on the card,
@@ -170,6 +190,21 @@ export function ExerciseSetLog({
     ? `Log set ${entry.sets.length + 1}`
     : "Log a set"
   const editedSet = entry.sets.find((set) => set.id === editedSetId) ?? null
+  const previous = lastPerformedSet(sessions, exerciseId)
+  // A step is only quoted when it is a step from the same measurement: the
+  // difference between two stations is not a progression.
+  const previousKg =
+    previous &&
+    "kg" in previous.resistance &&
+    recommendation &&
+    "kg" in recommendation.resistance &&
+    previous.resistance.stationId === recommendation.resistance.stationId &&
+    previous.resistance.basis === recommendation.resistance.basis
+      ? previous.resistance.kg
+      : undefined
+  const note = recommendation
+    ? progressionNote(recommendation, previousKg)
+    : null
   // The working set is the prescription somebody is training towards; a warm-up
   // target is real but is not what this card is a summary of.
   const target =
@@ -248,6 +283,18 @@ export function ExerciseSetLog({
         </p>
       ) : null}
 
+      {note ? (
+        <p className="px-1 pb-2 text-[11px] leading-snug font-semibold text-muted-foreground">
+          <span className="mr-1 font-black tracking-[0.14em] text-primary uppercase">
+            Rauta
+          </span>
+          {note.kg === null
+            ? null
+            : `${formatKg(note.kg)} kg${note.basis === "per_implement" ? " each" : ""} · `}
+          {note.text}
+        </p>
+      ) : null}
+
       {entry.sets.length ? (
         <>
           <div className="grid grid-cols-[1.5rem_1fr_2.75rem_2.75rem] gap-1.5 px-2 pb-1 text-[10px] font-black tracking-[0.14em] text-muted-foreground uppercase">
@@ -308,6 +355,15 @@ export function ExerciseSetLog({
           transition={EDITOR_TRANSITION}
         >
           <div className="pt-2">
+            {isMeasuredInKg(value.mode) ? (
+              <div className="pb-2">
+                <StationPicker
+                  equipmentIncrementKg={equipmentIncrementKg}
+                  exercise={exercise}
+                  mode={value.mode}
+                />
+              </div>
+            ) : null}
             <SetEditor
               context={context}
               exercise={exercise}

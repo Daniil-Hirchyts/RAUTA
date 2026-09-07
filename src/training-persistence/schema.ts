@@ -251,6 +251,10 @@ export type PersistedLoadConfiguration = {
   id: string
   exerciseId: string
   stationId: string
+  /** Which measurement this station carries. Absent means external load: a
+   *  configuration written before assisted machines were describable says
+   *  nothing about assistance rather than claiming to cover it. */
+  mode?: "external_load" | "assistance"
   basis: "total" | "per_implement"
   grid: PersistedLoadGrid
 }
@@ -259,6 +263,15 @@ export type PersistedTrainingSettings = {
   historyCoverage:
     { status: "unknown" } | { status: "complete"; coverageStart: string }
   loadConfigurations: PersistedLoadConfiguration[]
+  /**
+   * The station each exercise is currently trained at, by exercise ID.
+   *
+   * A pointer, not evidence: an entry that no longer resolves simply means the
+   * exercise falls back to its equipment default, which is why a stale one is
+   * never allowed to fail persistence. Absent for every exercise trained at
+   * one station, which is nearly all of them.
+   */
+  activeLoadConfigurations?: Record<string, string>
 }
 
 /**

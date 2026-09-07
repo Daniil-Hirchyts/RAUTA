@@ -142,6 +142,19 @@ describe("RAUTA backup", () => {
     expect(hasMeaningfulGymLibData()).toBe(true)
   })
 
+  it("counts local training records as data worth keeping", () => {
+    expect(hasMeaningfulGymLibData()).toBe(false)
+    useTrainingRecords.getState().saveLoadConfiguration({
+      exerciseId: "0025",
+      stationId: "barbell-2",
+      basis: "total",
+      grid: { incrementKg: 5 },
+    })
+    expect(hasMeaningfulGymLibData()).toBe(true)
+    clearAllGymLibData()
+    expect(hasMeaningfulGymLibData()).toBe(false)
+  })
+
   it("can stamp a cloud backup with the conflict-resolution timestamp", () => {
     const timestamp = "2026-09-01T09:30:00.000Z"
     const backup = JSON.parse(createGymLibBackup(timestamp))
@@ -160,21 +173,76 @@ it("manual backups include local training while cloud snapshots leave it local",
     observation: {
       reps: 9,
       resistance: { type: "bodyweight" },
-      completed: false,
+      completed: true,
+      timestamp: "2026-09-01T12:05:00.000Z",
     },
   })
-  const expected = JSON.parse(
-    JSON.stringify(useTrainingRecords.getState().data)
-  )
   const manual = createGymLibBackup(undefined, true, true)
   const cloud = createGymLibBackup()
   expect(JSON.parse(cloud).data.training).toBeUndefined()
   clearAllGymLibData()
   expect(useTrainingRecords.getState().data.activeWorkout).toBeNull()
+
+  // An imported draft has no live session behind it, so the same rules a
+  // relaunch applies decide what happens to it: the work that was really
+  // logged survives as a partial session, and nothing is left half restored.
   importGymLibData(manual)
-  expect(useTrainingRecords.getState().data).toEqual(expected)
+  const imported = useTrainingRecords.getState().data
+  expect(imported.activeWorkout).toBeNull()
+  expect(imported.sessions).toHaveLength(1)
+  expect(imported.sessions[0]).toMatchObject({
+    status: "partial",
+    sourceWorkoutId: undefined,
+  })
+  expect(imported.sessions[0].exercises[0].sets).toMatchObject([
+    { reps: 9, resistance: { type: "bodyweight" } },
+  ])
+
+  // Idempotent: importing the same file again recovers the same one session
+  // rather than putting the same work into history twice.
+  importGymLibData(manual)
+  const again = useTrainingRecords.getState().data
+  expect(again.activeWorkout).toBeNull()
+  expect(again.sessions).toHaveLength(1)
+  expect(again.sessions[0]).toMatchObject({
+    status: "partial",
+    startedAt: imported.sessions[0].startedAt,
+  })
+  expect(again.sessions[0].exercises[0].sets).toMatchObject([
+    { reps: 9, resistance: { type: "bodyweight" } },
+  ])
+  // A cloud snapshot carries no training block at all, so local records stand.
   importGymLibData(cloud)
-  expect(useTrainingRecords.getState().data).toEqual(expected)
+  expect(useTrainingRecords.getState().data).toEqual(again)
+})
+
+it("drops an imported draft that never observed anything", () => {
+  clearAllGymLibData()
+  useTrainingRecords.getState().startFreeWorkout(["0025"])
+  const backup = createGymLibBackup(undefined, true, true)
+  clearAllGymLibData()
+  importGymLibData(backup)
+  expect(useTrainingRecords.getState().data.activeWorkout).toBeNull()
+  expect(useTrainingRecords.getState().data.sessions).toEqual([])
+})
+
+it("restores training records written before newer fields existed", () => {
+  clearAllGymLibData()
+  useTrainingRecords.getState().saveLoadConfiguration({
+    exerciseId: "0025",
+    stationId: "barbell",
+    basis: "total",
+    grid: { incrementKg: 2.5 },
+  })
+  const backup = JSON.parse(createGymLibBackup(undefined, true, true))
+  // A backup taken before stations could be selected says nothing about the
+  // selection; it must still restore rather than being refused.
+  delete backup.data.training.settings.activeLoadConfigurations
+  clearAllGymLibData()
+  importGymLibData(JSON.stringify(backup))
+  const { settings } = useTrainingRecords.getState().data
+  expect(settings.loadConfigurations).toHaveLength(1)
+  expect(settings.activeLoadConfigurations).toBeUndefined()
 })
 
 it("rejects invalid training in a manual backup before replacing current data", () => {

@@ -71,7 +71,7 @@ function ChipRow({
 }) {
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <span className="w-9 shrink-0 text-[10px] font-black tracking-[0.14em] text-muted-foreground uppercase">
+      <span className="w-11 shrink-0 text-[10px] font-black tracking-[0.14em] text-muted-foreground uppercase">
         {label}
       </span>
       <div

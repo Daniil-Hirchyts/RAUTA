@@ -1,10 +1,12 @@
 import { EXERCISES_BY_ID } from "@/lib/exercises"
+import { titleCase } from "@/lib/text"
 import { resolveExerciseMetadata, roundLoad } from "@/training"
 import type { ExerciseMetadata, LoadGrid } from "@/training"
 import type {
   PersistedCompletedSet,
   PersistedLoadConfiguration,
   PersistedResistance,
+  PersistedTrainingSettings,
 } from "@/training-persistence/schema"
 import type { ExerciseSummary } from "@/types"
 
@@ -24,6 +26,11 @@ import type { ExerciseSummary } from "@/types"
  */
 
 export type ResistanceMode = PersistedResistance["type"]
+/** The modes that carry kilograms, and so a station and a grid. */
+export type MeasuredMode = Extract<
+  ResistanceMode,
+  "external_load" | "assistance"
+>
 export type SetSide = PersistedCompletedSet["side"]
 
 /** Station and basis a set is measured against, plus the steps its load moves
@@ -33,6 +40,14 @@ export type LoadContext = {
   stationId: string
   basis: "total" | "per_implement"
   grid: LoadGrid
+}
+
+/** One station a set can be logged against, as the editor offers it. */
+export type StationChoice = {
+  /** The saved configuration, or null for the equipment default. */
+  id: string | null
+  label: string
+  context: LoadContext
 }
 
 /**
@@ -136,6 +151,15 @@ export function isMeasuredInKg(mode: ResistanceMode) {
   return mode === "external_load" || mode === "assistance"
 }
 
+/** The measurement a saved station describes. A configuration written before
+ *  assisted machines could be described is an external-load station, which is
+ *  what every one of them was. */
+export function configurationMode(
+  configuration: PersistedLoadConfiguration
+): ResistanceMode {
+  return configuration.mode ?? "external_load"
+}
+
 /**
  * Where the kilograms are measured and in what steps.
  *
@@ -158,7 +182,10 @@ export function loadContextFor(
     equipmentIncrementKg > 0
       ? equipmentIncrementKg
       : equipment.incrementKg
-  if (configuration && mode === "external_load")
+  // A station describes one measurement. An assisted machine and a loaded bar
+  // can both be saved against the same exercise, and neither may stand in for
+  // the other: the configuration applies only to the mode it was made in.
+  if (configuration && configurationMode(configuration) === mode)
     return {
       stationId: configuration.stationId,
       basis: configuration.basis,
@@ -254,4 +281,131 @@ export function formatResistance(resistance: PersistedResistance) {
 export function sideOptions(exercise: ExerciseSummary): SetSide[] {
   const { laterality } = exerciseMetadata(exercise)
   return laterality === "unilateral" ? ["both", "left", "right"] : ["both"]
+}
+
+/**
+ * What to call a station on screen.
+ *
+ * Stations this app creates are numbered off the equipment they belong to, so
+ * the name stays put when an earlier one is deleted. Anything else — a station
+ * from a backup, or one named by hand — is shown as it was written.
+ */
+export function stationLabel(stationId: string, defaultStationId: string) {
+  const suffix = stationId.startsWith(`${defaultStationId}-`)
+    ? stationId.slice(defaultStationId.length + 1)
+    : null
+  return suffix && /^\d+$/.test(suffix)
+    ? `${titleCase(defaultStationId)} ${suffix}`
+    : titleCase(stationId)
+}
+
+/** The next free numbered station name for this equipment. */
+export function nextStationId(
+  defaultStationId: string,
+  taken: readonly string[]
+) {
+  const used = new Set(taken)
+  let number = 2
+  while (used.has(`${defaultStationId}-${number}`)) number += 1
+  return `${defaultStationId}-${number}`
+}
+
+/**
+ * The stations saved for one exercise in one measurement, plus the equipment
+ * default they sit above.
+ *
+ * The default is always offered and always first: a person who has never named
+ * a machine still logs against a stable station, and the ones they did name are
+ * additions to that rather than a replacement vocabulary.
+ */
+export function stationChoicesFor(
+  exercise: ExerciseSummary,
+  mode: ResistanceMode,
+  settings: Pick<PersistedTrainingSettings, "loadConfigurations">,
+  equipmentIncrementKg?: number
+): StationChoice[] {
+  const fallback = loadContextFor(
+    exercise,
+    mode,
+    undefined,
+    equipmentIncrementKg
+  )
+  const choices: StationChoice[] = [
+    { id: null, label: titleCase(fallback.stationId), context: fallback },
+  ]
+  for (const configuration of settings.loadConfigurations) {
+    if (
+      configuration.exerciseId !== exercise.id ||
+      configurationMode(configuration) !== mode
+    )
+      continue
+    const context = loadContextFor(
+      exercise,
+      mode,
+      configuration,
+      equipmentIncrementKg
+    )
+    // A configuration on the default station is that station described
+    // properly — a stack that starts at 5 rather than 0 — not a second one.
+    if (configuration.stationId === fallback.stationId)
+      choices[0] = { ...choices[0], id: configuration.id, context }
+    else
+      choices.push({
+        id: configuration.id,
+        label: stationLabel(configuration.stationId, fallback.stationId),
+        context,
+      })
+  }
+  return choices
+}
+
+/**
+ * The station this exercise is currently trained at, or null for the equipment
+ * default.
+ *
+ * A selection that no longer names a saved station in this measurement is not
+ * an error and not a guess — it simply falls back to the default, which is what
+ * every exercise nobody has configured uses anyway.
+ */
+export function activeConfigurationFor(
+  exerciseId: string,
+  mode: ResistanceMode,
+  settings: Pick<
+    PersistedTrainingSettings,
+    "loadConfigurations" | "activeLoadConfigurations"
+  >
+): PersistedLoadConfiguration | null {
+  const selectedId = settings.activeLoadConfigurations?.[exerciseId]
+  const forExercise = settings.loadConfigurations.filter(
+    (configuration) =>
+      configuration.exerciseId === exerciseId &&
+      configurationMode(configuration) === mode
+  )
+  // A selection names one station in one measurement. Anywhere it does not
+  // apply — the other measurement, or a station since deleted — the rule is the
+  // one that governs every exercise nobody has chosen for: a single saved
+  // station is that exercise's station, and anything more waits to be told.
+  const selected = selectedId
+    ? forExercise.find((item) => item.id === selectedId)
+    : undefined
+  if (selected) return selected
+  return forExercise.length === 1 ? forExercise[0] : null
+}
+
+/** The station and grid a set of this exercise is measured against right now. */
+export function resolveLoadContext(
+  exercise: ExerciseSummary,
+  mode: ResistanceMode,
+  settings: Pick<
+    PersistedTrainingSettings,
+    "loadConfigurations" | "activeLoadConfigurations"
+  >,
+  equipmentIncrementKg?: number
+): LoadContext {
+  return loadContextFor(
+    exercise,
+    mode,
+    activeConfigurationFor(exercise.id, mode, settings) ?? undefined,
+    equipmentIncrementKg
+  )
 }

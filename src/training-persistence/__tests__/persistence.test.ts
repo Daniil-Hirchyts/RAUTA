@@ -17,7 +17,8 @@ import type {
   TrainingPolicy,
   TrainingProgram,
 } from "../../training/domain/types"
-import { toEngineLoadPreferences, toTrainingHistory } from "../history"
+import { activeConfigurationFor } from "../../lib/resistance"
+import { toTrainingHistory } from "../history"
 import {
   createPersistedProgramRecord,
   toEngineProgramSnapshot,
@@ -516,13 +517,17 @@ describe("versioned training persistence", () => {
       stationId: "gym-b-dumbbells",
       basis: "per_implement",
     })
-    expect(toEngineLoadPreferences(state.settings, ["grid-a"])).toEqual({
-      loadContexts: { "0025": { stationId: "gym-a-bench", basis: "total" } },
-      loadGrids: {
-        "0025": { incrementKg: 2.5, minimumKg: 20, maximumKg: 200 },
-      },
-    })
-    expect(() => toEngineLoadPreferences(state.settings, ["grid-a", "grid-b"])).toThrow()
+    // Two stations for one exercise: neither may stand for the other, and the
+    // engine is only ever told about the one being trained at.
+    expect(
+      activeConfigurationFor("0025", "external_load", state.settings)
+    ).toBeNull()
+    expect(
+      activeConfigurationFor("0025", "external_load", {
+        ...state.settings,
+        activeLoadConfigurations: { "0025": "grid-b" },
+      })
+    ).toMatchObject({ id: "grid-b", basis: "per_implement" })
   })
 
   it.each([
@@ -701,5 +706,103 @@ describe("versioned training persistence", () => {
       reps: 10,
       plannedSetId: program.weeks[0].sessions[0].exercises[0].workingSets[0].id,
     })
+  })
+
+  it("keeps a station selection honest across saving, switching and deleting", async () => {
+    const store = () => useTrainingRecords.getState()
+    useTrainingRecords.setState({ data: createEmptyPersistedTrainingState() })
+    const first = store().saveLoadConfiguration({
+      exerciseId: "0025",
+      stationId: "barbell-2",
+      basis: "total",
+      grid: { incrementKg: 5 },
+    })
+    const second = store().saveLoadConfiguration({
+      exerciseId: "0025",
+      stationId: "barbell-3",
+      basis: "total",
+      grid: { incrementKg: 2.5, minimumKg: 20 },
+    })
+    // Nothing is selected until somebody selects it.
+    expect(store().data.settings.activeLoadConfigurations).toBeUndefined()
+
+    store().selectLoadConfiguration("0025", second)
+    expect(store().data.settings.activeLoadConfigurations).toEqual({
+      "0025": second,
+    })
+    // A station belongs to the exercise it was saved for.
+    expect(() => store().selectLoadConfiguration("0033", second)).toThrow()
+
+    // Deleting the selected station returns the exercise to its default rather
+    // than leaving a pointer to a grid nothing describes.
+    store().removeLoadConfiguration(second)
+    expect(store().data.settings.activeLoadConfigurations).toEqual({})
+    expect(store().data.settings.loadConfigurations).toHaveLength(1)
+
+    store().selectLoadConfiguration("0025", first)
+    localStorage.setItem(
+      "gym-lib-training",
+      localStorage.getItem("gym-lib-training")!
+    )
+    await useTrainingRecords.persist.rehydrate()
+    expect(store().data.settings.activeLoadConfigurations).toEqual({
+      "0025": first,
+    })
+
+    store().selectLoadConfiguration("0025", null)
+    expect(store().data.settings.activeLoadConfigurations).toEqual({})
+  })
+
+  it("corrects a station rather than saving a rival copy of it", () => {
+    const store = () => useTrainingRecords.getState()
+    useTrainingRecords.setState({ data: createEmptyPersistedTrainingState() })
+    const first = store().saveLoadConfiguration({
+      exerciseId: "0025",
+      stationId: "barbell-2",
+      basis: "total",
+      grid: { incrementKg: 5 },
+    })
+    // The same station described again — one more turn of the dial — is the
+    // same record, so nothing can end up with two grids for one machine.
+    const second = store().saveLoadConfiguration({
+      exerciseId: "0025",
+      stationId: "barbell-2",
+      basis: "total",
+      grid: { incrementKg: 2.5, minimumKg: 20 },
+    })
+    expect(second).toBe(first)
+    expect(store().data.settings.loadConfigurations).toEqual([
+      {
+        id: first,
+        exerciseId: "0025",
+        stationId: "barbell-2",
+        basis: "total",
+        grid: { incrementKg: 2.5, minimumKg: 20 },
+      },
+    ])
+  })
+
+  it("separates an assisted station from a loaded one on the same exercise", () => {
+    const store = () => useTrainingRecords.getState()
+    useTrainingRecords.setState({ data: createEmptyPersistedTrainingState() })
+    store().saveLoadConfiguration({
+      exerciseId: "0017",
+      stationId: "assisted-2",
+      mode: "assistance",
+      basis: "total",
+      grid: { incrementKg: 4.5 },
+    })
+    // Same exercise, same station name, other measurement: two records, not a
+    // duplicate, because 20 kg of help is not 20 kg of load.
+    store().saveLoadConfiguration({
+      exerciseId: "0017",
+      stationId: "assisted-2",
+      basis: "total",
+      grid: { incrementKg: 1.25 },
+    })
+    expect(store().data.settings.loadConfigurations).toHaveLength(2)
+    expect(
+      store().data.settings.loadConfigurations.map((item) => item.mode)
+    ).toEqual(expect.arrayContaining(["assistance", undefined]))
   })
 })
