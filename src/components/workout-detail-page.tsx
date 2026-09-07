@@ -48,6 +48,7 @@ import {
   plannedSessionView,
   type PlannedSessionView,
 } from "@/lib/training-plan"
+import { activePlannedCoverage } from "@/lib/training-session"
 import { cn } from "@/lib/utils"
 import { shareWorkout } from "@/lib/workout-sharing"
 import { isPastWorkout } from "@/lib/workout-stats"
@@ -130,6 +131,13 @@ export function WorkoutDetailPage({
         ? plannedSessionView(programId, plannedSessionId, trainingData)
         : null,
     [plannedSessionId, programId, trainingData]
+  )
+  // Exactly the question the domain answers when the session is written, asked
+  // one tap earlier so the confirmation can say what is about to be recorded.
+  // The policy itself stays in `activePlannedCoverage`; this only reads it.
+  const finishRecordsPartial = useMemo(
+    () => activePlannedCoverage(trainingData)?.complete === false,
+    [trainingData]
   )
   const updateWorkout = useWorkouts((state) => state.updateWorkout)
   const duplicateWorkout = useWorkouts((state) => state.duplicateWorkout)
@@ -478,7 +486,11 @@ export function WorkoutDetailPage({
               aria-label="Finish workout"
               onClick={() => {
                 triggerHaptic("medium")
-                setConfirming("finish-workout")
+                setConfirming(
+                  finishRecordsPartial
+                    ? "finish-workout-partial"
+                    : "finish-workout"
+                )
               }}
             >
               <Flag />
@@ -608,7 +620,11 @@ export function WorkoutDetailPage({
           setConfirming(null)
           if (confirming === "delete-workout") onDelete()
           else if (confirming === "discard-session") onDiscard()
-          else if (confirming === "finish-workout") onFinish()
+          else if (
+            confirming === "finish-workout" ||
+            confirming === "finish-workout-partial"
+          )
+            onFinish()
         }}
       />
     </AppScreen>

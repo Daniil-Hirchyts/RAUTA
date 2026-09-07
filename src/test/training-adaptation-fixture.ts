@@ -3,7 +3,6 @@ import {
   plannedWorkoutFor,
   type PlannedSessionView,
 } from "@/lib/training-plan"
-import { endTrainingDraft } from "@/lib/training-session"
 import { useActiveWorkout } from "@/store/use-active-workout"
 import { useFilters } from "@/store/use-filters"
 import { DEFAULT_SETTINGS, useSettings } from "@/store/use-settings"
@@ -108,10 +107,17 @@ export function logPlannedSession(
         })
     }
   }
-  const id = endTrainingDraft(
-    status === "completed" ? "finished" : "cancelled",
-    `${date}T10:30:00.000Z`
-  )!
+  // History with a stated status, written directly: what these fixtures need
+  // is a session the engine reads as completed or partial, not a rehearsal of
+  // how the Finish button decides between the two. `endTrainingDraft` owns that
+  // decision and is covered where it is made.
+  const draft = records().data.activeWorkout!
+  const performed = draft.exercises.some((exercise) =>
+    exercise.sets.some((set) => set.observation?.completed)
+  )
+  let id: string | null = null
+  if (performed) id = records().completeWorkout(status, `${date}T10:30:00.000Z`)
+  else records().cancelWorkout()
   if (status === "completed")
     useWorkouts.getState().completeWorkout(workout.id, {
       startedAt: `${date}T10:00:00.000Z`,
@@ -121,5 +127,5 @@ export function logPlannedSession(
       completedExerciseIds: options.empty ? [] : [exercise.exerciseId],
       healthSyncStatus: "not-requested",
     })
-  return id
+  return id!
 }

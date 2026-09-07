@@ -269,3 +269,79 @@ export function completeWorkoutDraft(
     exercises,
   }
 }
+
+/** How much of a planned session's prescribed work has actually been done. */
+export type PlannedWorkCoverage = {
+  /** Working sets the prescription asked for. */
+  prescribed: number
+  /** Of those, the ones answered by a real completed observation. */
+  performed: number
+  /** Whether the prescription itself could be read out of its snapshot. */
+  verified: boolean
+  /** Whether the whole prescription was verifiably carried out. */
+  complete: boolean
+}
+
+/**
+ * Coverage of a planned session's prescription by the work really performed.
+ *
+ * The immutable snapshot is the prescription, and its `workingSets` are what
+ * was asked for — the domain keeps warmups in a separate array precisely
+ * because they prepare for the prescription rather than being it, so an
+ * unlogged warmup never makes a session partial. The draft says only what was
+ * performed and never gets a say in what was asked for: a draft that was
+ * edited, restored, or otherwise diverged cannot widen, narrow or stale the
+ * prescription it is measured against.
+ *
+ * A set counts as performed only when it carries a completed observation. A
+ * check mark, a target, or a row the UI shows as done is not evidence that
+ * anything was lifted.
+ *
+ * Coverage follows planned identity rather than exercise identity, so a
+ * substituted exercise still answers the prescription its `plannedSetId`
+ * lineage points at, while an extra set — which has no `plannedSetId` — is
+ * real work that can never stand in for a prescribed set nobody performed.
+ *
+ * Returns null for a free workout: there is no prescription to cover.
+ */
+export function plannedWorkCoverage(
+  draft: PersistedActiveWorkoutDraft,
+  session: PlannedSession | null
+): PlannedWorkCoverage | null {
+  if (!draft.plannedSessionId) return null
+
+  const source = session?.id === draft.plannedSessionId ? session : null
+  const prescribed = new Set(
+    source
+      ? source.exercises.flatMap((exercise) =>
+          exercise.workingSets.map((set) => set.id)
+        )
+      : // Its snapshot is unreadable, so there is nothing to be measured
+        // against. What the draft still lists says how much work is in flight,
+        // but a prescription nobody can read is never certified as carried out.
+        draft.exercises.flatMap((exercise) =>
+          exercise.sets.flatMap((set) =>
+            set.plannedSetId && set.setType !== "warmup"
+              ? [set.plannedSetId]
+              : []
+          )
+        )
+  )
+
+  const performed = new Set<string>()
+  for (const exercise of draft.exercises)
+    for (const set of exercise.sets)
+      if (
+        set.plannedSetId &&
+        set.observation?.completed &&
+        prescribed.has(set.plannedSetId)
+      )
+        performed.add(set.plannedSetId)
+
+  return {
+    prescribed: prescribed.size,
+    performed: performed.size,
+    verified: source !== null,
+    complete: source !== null && performed.size === prescribed.size,
+  }
+}

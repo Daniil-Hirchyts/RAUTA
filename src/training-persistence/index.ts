@@ -14,8 +14,10 @@ export {
   completeWorkoutDraft,
   createActiveWorkoutFromPlannedSession,
   createFreeWorkoutDraft,
+  plannedWorkCoverage,
   recordSetObservation,
   substituteDraftExercise,
+  type PlannedWorkCoverage,
 } from "./workout"
 export {
   isValidIsoTimestamp,

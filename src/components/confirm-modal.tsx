@@ -9,7 +9,11 @@ import { useFilters } from "@/store/use-filters"
 import { useWorkouts } from "@/store/use-workouts"
 
 export type ConfirmationKind =
-  "clear-data" | "delete-workout" | "discard-session" | "finish-workout"
+  | "clear-data"
+  | "delete-workout"
+  | "discard-session"
+  | "finish-workout"
+  | "finish-workout-partial"
 
 const CONFIRMATION_COPY: Record<
   ConfirmationKind,
@@ -47,6 +51,16 @@ const CONFIRMATION_COPY: Record<
     action: "Finish workout",
     description:
       "Your session progress and elapsed time will be saved to your history.",
+    title: "Finish workout?",
+    tone: "default",
+  },
+  // Finishing early is allowed; what it must not do is go into history looking
+  // like the whole plan was done. Saying so here is the one place the person
+  // can still decide to go back and finish the sets instead.
+  "finish-workout-partial": {
+    action: "Finish workout",
+    description:
+      "Some prescribed sets have not been logged, so this is saved to your history as a partial session.",
     title: "Finish workout?",
     tone: "default",
   },
@@ -116,7 +130,11 @@ export function ConfirmModal({
                 setClearConfirmed(true)
                 return
               }
-              triggerHaptic(kind === "finish-workout" ? "success" : "warning")
+              triggerHaptic(
+                kind === "finish-workout" || kind === "finish-workout-partial"
+                  ? "success"
+                  : "warning"
+              )
               onConfirm()
             }}
             variant={copy.tone === "destructive" ? "destructive" : "default"}

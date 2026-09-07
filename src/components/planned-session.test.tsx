@@ -271,6 +271,57 @@ describe("planned sessions in the existing workout UI", () => {
     expect(JSON.stringify(records().data.programs[0])).toBe(original)
   })
 
+  it("says the session will be recorded as partial when the plan is unfinished", async () => {
+    const user = userEvent.setup()
+    const sessions = week()
+    renderPlannedDetail(sessions[0])
+
+    await startNow(user)
+    await user.click(
+      screen.getAllByRole("button", { name: /^Log set 1 of / })[0]
+    )
+    await user.click(screen.getByRole("button", { name: "Save set 1" }))
+    await user.click(screen.getByRole("button", { name: "Finish workout" }))
+
+    // The same confirmation, telling the truth about what it is about to write.
+    expect(screen.getByRole("dialog")).toHaveTextContent(/partial session/i)
+    expect(
+      screen.getAllByRole("button", { name: "Finish workout" }).length
+    ).toBeGreaterThan(0)
+  })
+
+  it("asks the plain question once the whole prescription is performed", async () => {
+    const user = userEvent.setup()
+    const sessions = week()
+    renderPlannedDetail(sessions[0])
+
+    await startNow(user)
+    for (const exercise of records().data.activeWorkout!.exercises)
+      for (const set of exercise.sets)
+        if (set.setType !== "warmup")
+          records().recordSet({
+            exerciseEntryId: exercise.id,
+            setDraftId: set.id,
+            observation: {
+              reps: 8,
+              rir: 2,
+              resistance: {
+                type: "external_load",
+                kg: 40,
+                basis: "total",
+                stationId: "Rack A",
+              },
+              completed: true,
+            },
+          })
+
+    await user.click(screen.getByRole("button", { name: "Finish workout" }))
+
+    const dialog = screen.getByRole("dialog")
+    expect(dialog).not.toHaveTextContent(/partial session/i)
+    expect(dialog).toHaveTextContent(/saved to your history/i)
+  })
+
   it("keeps a hand-built workout free of any program identity", async () => {
     const user = userEvent.setup()
     week()

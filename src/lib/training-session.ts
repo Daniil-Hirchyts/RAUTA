@@ -1,9 +1,16 @@
 import { useTrainingRecords } from "@/store/use-training-records"
 import type { PlannedWorkoutReference } from "@/store/use-workouts"
+import { toEngineProgramSnapshot } from "@/training-persistence/program"
 import type {
   PersistedActiveExerciseDraft,
   PersistedActiveWorkoutDraft,
+  PersistedTrainingStateLatest,
 } from "@/training-persistence/schema"
+import {
+  plannedWorkCoverage,
+  type PlannedWorkCoverage,
+} from "@/training-persistence/workout"
+import type { PlannedSession } from "@/training/domain/types"
 
 /**
  * The seam between the workout a person is running and the structured record
@@ -139,14 +146,52 @@ export function syncTrainingDraftExercises(exerciseIds: readonly string[]) {
   }
 }
 
+/** The planned session a draft is performing, read back out of the immutable
+ *  snapshot it was opened from. Null for a free draft, and for a planned one
+ *  whose program has since gone — which persistence validation refuses to
+ *  store, and which coverage treats as an unverifiable prescription. */
+function plannedSessionOf(
+  data: PersistedTrainingStateLatest,
+  draft: PersistedActiveWorkoutDraft
+): PlannedSession | null {
+  const record = data.programs.find(
+    (program) => program.id === draft.plannedProgramId
+  )
+  if (!record) return null
+  return (
+    toEngineProgramSnapshot(record.snapshot)
+      .weeks.flatMap((week) => week.sessions)
+      .find((session) => session.id === draft.plannedSessionId) ?? null
+  )
+}
+
+/**
+ * How much of the running session's prescription has been performed, or null
+ * when there is nothing prescribed — no draft at all, or a free workout, which
+ * promises nothing and so can never fall short of it.
+ */
+export function activePlannedCoverage(
+  data: PersistedTrainingStateLatest = useTrainingRecords.getState().data
+): PlannedWorkCoverage | null {
+  const draft = data.activeWorkout
+  if (!draft) return null
+  return plannedWorkCoverage(draft, plannedSessionOf(data, draft))
+}
+
 /**
  * Closes the draft the way the session ended.
  *
- * A finished workout is a completed session; one the person walked away from
- * is partial. Either way only sets with a real observation are written, so a
- * session abandoned after two exercises persists those two exercises and
- * nothing else. A draft with no logged sets leaves no structured session at
- * all — the legacy workout record still carries that the workout happened.
+ * Only sets with a real observation are written, so a session abandoned after
+ * two exercises persists those two exercises and nothing else. A draft with no
+ * logged sets leaves no structured session at all — the legacy workout record
+ * still carries that the workout happened.
+ *
+ * The status is what the evidence supports rather than which button was
+ * pressed. A session walked away from is partial. A finished one is completed
+ * only when every prescribed working set was actually performed: pressing
+ * Finish with half the plan untouched records half a session, so the engine
+ * reads a prescription that was cut short as exactly that. A free workout
+ * prescribes nothing, so finishing it is always completion.
  */
 export function endTrainingDraft(
   outcome: "finished" | "cancelled",
@@ -158,8 +203,9 @@ export function endTrainingDraft(
     store.cancelWorkout()
     return null
   }
+  const covered = activePlannedCoverage(store.data)?.complete ?? true
   return store.completeWorkout(
-    outcome === "finished" ? "completed" : "partial",
+    outcome === "finished" && covered ? "completed" : "partial",
     completedAt
   )
 }
