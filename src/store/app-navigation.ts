@@ -13,7 +13,7 @@ export type AppPage =
   | { type: "onboarding" }
   | ProfilePage
   | { type: "workout-detail"; workoutId: string }
-  | { type: "plan-week" }
+  | { type: "plan-week"; sourceProgramId?: string }
   | { type: "muscles"; preferredWorkoutId?: string | null }
   | { type: "equipment"; preferredWorkoutId?: string | null }
   | { type: "exercises"; preferredWorkoutId?: string | null }
@@ -65,8 +65,12 @@ export function isValidAppPage(page: AppPage) {
     case "exercises":
     case "workout-destination":
     case "equipment-preset":
-    case "plan-week":
       return true
+    case "plan-week":
+      return (
+        page.sourceProgramId === undefined ||
+        validIdentifier(page.sourceProgramId)
+      )
     case "workout-detail":
       return validIdentifier(page.workoutId)
     case "exercise-detail":

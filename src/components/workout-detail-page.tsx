@@ -53,7 +53,7 @@ import { shareWorkout } from "@/lib/workout-sharing"
 import { isPastWorkout } from "@/lib/workout-stats"
 import { useActiveWorkout } from "@/store/use-active-workout"
 import { useTrainingRecords } from "@/store/use-training-records"
-import { isSupersededPlannedSession } from "@/training-persistence/program"
+import { isStartablePlannedSession } from "@/training-persistence/program"
 import { useWorkouts } from "@/store/use-workouts"
 import type { ExerciseSummary } from "@/types"
 
@@ -169,7 +169,7 @@ export function WorkoutDetailPage({
   const plannedUnavailable =
     isPlanned &&
     (!plannedSession ||
-      isSupersededPlannedSession(trainingData, programId!, plannedSessionId!))
+      !isStartablePlannedSession(trainingData, programId!, plannedSessionId!))
   const isPast = !session && isPastWorkout(workout)
   const completion = workout.completion
 

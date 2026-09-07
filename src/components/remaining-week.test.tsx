@@ -161,7 +161,7 @@ describe("RAUTA remaining-week actions", () => {
     expect(records().data.programs).toHaveLength(1)
   })
 
-  it("does not offer empty work, and explains when there are no future slots", async () => {
+  it("does not offer empty work, and rolls into next-week planning when slots are exhausted", async () => {
     const user = userEvent.setup()
     render(page())
     await user.click(screen.getByRole("button", { name: "Open RAUTA actions" }))
@@ -178,7 +178,10 @@ describe("RAUTA remaining-week actions", () => {
     await user.click(screen.getByRole("button", { name: "Open RAUTA actions" }))
     expect(
       within(screen.getByRole("dialog")).getByRole("status")
-    ).toHaveTextContent(/no future sessions/)
+    ).toHaveTextContent(/This week is done/)
+    expect(
+      screen.getByRole("button", { name: "Plan next week" })
+    ).toBeInTheDocument()
   })
 
   it("keeps stale withdrawn projections invisible and unstartable even after their dates pass", () => {

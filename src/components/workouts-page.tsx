@@ -315,7 +315,7 @@ export function WorkoutsPage({
   onSettings,
 }: {
   onCreate: () => void
-  onCreatePlan: () => void
+  onCreatePlan: (sourceProgramId?: string) => void
   onDelete: (workoutId: string) => void
   onSelect: (workout: Workout) => void
   onSettings: () => void

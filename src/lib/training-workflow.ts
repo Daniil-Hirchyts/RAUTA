@@ -51,6 +51,8 @@ export type PlanSetup = {
  *  genuinely week-specific answer the profile cannot already give. */
 export const DEFAULT_TRAINING_DAYS: readonly number[] = [0, 2, 4]
 
+export type TrainingAdaptationMode = "remaining_week" | "next_week"
+
 /** The source week's own untouched future slots, shared by eligibility and
  * the engine request. Even a set-less application completion reserves its slot. */
 export function remainingTrainingSlots(
@@ -84,9 +86,10 @@ export function buildTrainingRequest(
   setup: PlanSetup,
   now: string,
   source?: PersistedProgramRecord,
-  /** Which days of the coming week can be trained. Ignored when revising an
-   *  existing week: that week's own remaining slots decide. */
-  availableDays: readonly number[] = DEFAULT_TRAINING_DAYS
+  /** Which days of the coming week can be trained. A remaining-week revision
+   *  keeps the source week's slots; next-week adaptation uses this selection. */
+  availableDays: readonly number[] = DEFAULT_TRAINING_DAYS,
+  adaptationMode: TrainingAdaptationMode = "remaining_week"
 ): ProgramGenerationRequest {
   const store = useTrainingRecords.getState()
   const monday = new Date(now)
@@ -95,7 +98,10 @@ export function buildTrainingRequest(
   // A new plan starts on the next Monday, including today when generated before its slots.
   if (monday.getTime() <= Date.parse(now))
     monday.setUTCDate(monday.getUTCDate() + 7)
-  const remaining = source ? remainingTrainingSlots(source, now) : undefined
+  const remaining =
+    source && adaptationMode === "remaining_week"
+      ? remainingTrainingSlots(source, now)
+      : undefined
   const sourceWeek = remaining?.week
   const selectedContexts = store.data.settings.loadConfigurations.filter(
     (c, _, all) =>
@@ -112,7 +118,7 @@ export function buildTrainingRequest(
     },
     schedule: {
       weekStart: sourceWeek?.start ?? monday.toISOString(),
-      days: source
+      days: source && adaptationMode === "remaining_week"
         ? [
             ...new Set(
               (remaining?.sessions ?? []).map((s) =>
@@ -144,9 +150,16 @@ export function planTrainingWeek(
   setup: PlanSetup = buildTrainingEngineInputs(),
   now = new Date().toISOString(),
   source?: PersistedProgramRecord,
-  availableDays: readonly number[] = DEFAULT_TRAINING_DAYS
+  availableDays: readonly number[] = DEFAULT_TRAINING_DAYS,
+  adaptationMode: TrainingAdaptationMode = "remaining_week"
 ) {
-  const request = buildTrainingRequest(setup, now, source, availableDays)
+  const request = buildTrainingRequest(
+    setup,
+    now,
+    source,
+    availableDays,
+    adaptationMode
+  )
   if (!request.schedule.days.length)
     throw new Error(
       "There are no future sessions left in this week. Create a new training week instead."
@@ -155,7 +168,7 @@ export function planTrainingWeek(
     ? adaptTrainingProgram({
         previousProgram: toEngineProgramSnapshot(source.snapshot),
         request,
-        mode: "remaining_week",
+        mode: adaptationMode,
       })
     : generateTrainingProgram(request)
   return { request, result }

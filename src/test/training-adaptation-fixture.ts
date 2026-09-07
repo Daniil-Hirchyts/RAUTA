@@ -47,6 +47,11 @@ export function logPlannedSession(
     date?: string
     exerciseId?: string
     sets?: number
+    reps?: number
+    rir?: number
+    loadKg?: number
+    stationId?: string
+    basis?: "total" | "per_implement"
   } = {}
 ) {
   const date = options.date ?? session.date
@@ -77,13 +82,13 @@ export function logPlannedSession(
         index
       ]
       const observation = {
-        reps: 13,
-        rir: 2,
+        reps: options.reps ?? 13,
+        rir: options.rir ?? 2,
         resistance: {
           type: "external_load" as const,
-          kg: 40,
-          stationId: "Rack A",
-          basis: "total" as const,
+          kg: options.loadKg ?? 40,
+          stationId: options.stationId ?? "Rack A",
+          basis: options.basis ?? ("total" as const),
         },
         completed: true,
         timestamp: `${date}T10:05:00.000Z`,

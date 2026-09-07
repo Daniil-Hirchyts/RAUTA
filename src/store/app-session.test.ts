@@ -38,6 +38,21 @@ describe("app session v3", () => {
     })
   })
 
+  it("preserves next-week lineage when planning is restored", () => {
+    writeAppSession({
+      ...DEFAULT_APP_SESSION,
+      pages: [
+        { type: "workouts" },
+        { type: "plan-week", sourceProgramId: "program-source" },
+      ],
+    })
+
+    expect(readAppSession().pages).toEqual([
+      { type: "workouts" },
+      { type: "plan-week", sourceProgramId: "program-source" },
+    ])
+  })
+
   // Confirmations used to be pages, and a session written by that build can
   // still be sitting in storage.
   it("drops a stored page this build no longer has", () => {

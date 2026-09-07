@@ -14,6 +14,7 @@ import { RautaSpeech } from "@/components/rauta-speech"
 import { Button } from "@/components/ui/button"
 import { MatrixLoader } from "@/components/ui/matrix-loader"
 import { triggerHaptic } from "@/lib/haptics"
+import { createNextTrainingWeek } from "@/lib/training-adaptation"
 import {
   createTrainingWeek,
   DEFAULT_TRAINING_DAYS,
@@ -45,15 +46,20 @@ export function PlanWeekPage({
   onBack,
   onCreated,
   onOpenProfilePage,
+  sourceProgramId,
 }: {
   onBack: () => void
   onCreated: (programId: string) => void
   onOpenProfilePage: (page: PlanBlockPage) => void
+  sourceProgramId?: string
 }) {
   const profile = useTrainingProfile((state) => state.profile)
+  const continuing = Boolean(sourceProgramId)
   const [days, setDays] = useState<number[]>([...DEFAULT_TRAINING_DAYS])
   const [working, setWorking] = useState(false)
-  const [block, setBlock] = useState<PlanBlock | null>(null)
+  const [block, setBlock] = useState<
+    Pick<PlanBlock, "message" | "page" | "issues"> | null
+  >(null)
 
   const toggle = (offset: number) => {
     triggerHaptic("selection")
@@ -73,11 +79,12 @@ export function PlanWeekPage({
     requestAnimationFrame(() => {
       let outcome
       try {
-        outcome = createTrainingWeek({ days })
+        outcome = sourceProgramId
+          ? createNextTrainingWeek({ days, sourceProgramId })
+          : createTrainingWeek({ days })
       } catch (error) {
         setWorking(false)
         setBlock({
-          reason: "input",
           message: error instanceof Error ? error.message : String(error),
           page: null,
           issues: [],
@@ -105,7 +112,7 @@ export function PlanWeekPage({
               <ChevronLeft />
             </AppHeaderButton>
           }
-          title="Create training week"
+          title={continuing ? "Plan next week" : "Create training week"}
         />
 
         <div className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-(--app-content-inset) pt-5 pb-6">
@@ -115,7 +122,9 @@ export function PlanWeekPage({
             </span>
             <RautaSpeech>
               <strong className="block text-[15px] leading-snug tracking-tight">
-                Tell me which days you can train. I know the rest.
+                {continuing
+                  ? "This week is done. Let’s plan the next one."
+                  : "Tell me which days you can train. I know the rest."}
               </strong>
               <span className="mt-1.5 block text-[11px] text-muted-foreground">
                 {GOAL_CHOICES[profile.goal].title} ·{" "}
@@ -188,12 +197,12 @@ export function PlanWeekPage({
           >
             {working ? (
               <MatrixLoader
-                label="Building your week"
+                label={continuing ? "Planning next week" : "Building your week"}
                 rounded
                 variant="orbit"
               />
             ) : (
-              "Create plan"
+              continuing ? "Plan next week" : "Create plan"
             )}
           </Button>
         </AppControlMorph>
@@ -206,7 +215,7 @@ function PlanBlockNotice({
   block,
   onOpenProfilePage,
 }: {
-  block: PlanBlock
+  block: Pick<PlanBlock, "message" | "page" | "issues">
   onOpenProfilePage: (page: PlanBlockPage) => void
 }) {
   const page = block.page

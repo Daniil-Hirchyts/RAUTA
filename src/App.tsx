@@ -498,9 +498,9 @@ export function App() {
               content = (
                 <WorkoutsPage
                   onCreate={() => startExerciseFlow()}
-                  onCreatePlan={() => {
+                  onCreatePlan={(sourceProgramId) => {
                     triggerHaptic("medium")
-                    pushPage({ type: "plan-week" })
+                    pushPage({ type: "plan-week", sourceProgramId })
                   }}
                   onDelete={(workoutId) =>
                     useWorkouts.getState().deleteWorkout(workoutId)
@@ -531,6 +531,7 @@ export function App() {
                   // finishing lands back on the workout list it now fills.
                   onCreated={() => resetPages([{ type: "workouts" }])}
                   onOpenProfilePage={(type) => pushPage({ type })}
+                  sourceProgramId={page.sourceProgramId}
                 />
               )
             } else if (page.type === "onboarding") {

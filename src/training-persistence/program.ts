@@ -285,3 +285,22 @@ export function isSupersededPlannedSession(
     )
   })
 }
+
+/** Planned sessions are startable only from the active revision. Archived
+ * snapshots remain readable as history, but an unperformed old projection
+ * cannot be resumed as if it still belonged to the current prescription. */
+export function isStartablePlannedSession(
+  data: PersistedTrainingStateLatest,
+  programId: string,
+  sessionId: string
+): boolean {
+  const program = data.programs.find((item) => item.id === programId)
+  return Boolean(
+    data.activeProgramId === programId &&
+      program?.lifecycle === "active" &&
+      program.snapshot.weeks.some((week) =>
+        week.sessions.some((session) => session.id === sessionId)
+      ) &&
+      !isSupersededPlannedSession(data, programId, sessionId)
+  )
+}

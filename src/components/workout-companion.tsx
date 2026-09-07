@@ -7,6 +7,7 @@ import { Button } from "./ui/button"
 import { MatrixLoader } from "./ui/matrix-loader"
 import {
   adjustRemainingWeek,
+  nextWeekEligibility,
   remainingWeekEligibility,
   type RemainingWeekOutcome,
 } from "@/lib/training-adaptation"
@@ -17,6 +18,7 @@ import { useTrainingRecords } from "@/store/use-training-records"
 import { GOAL_CHOICES } from "@/lib/training-profile"
 import { toISODate } from "@/lib/date"
 import {
+  activeProgramRecord,
   activePlannedSessions,
   isPlannedSessionRecorded,
 } from "@/lib/training-plan"
@@ -32,8 +34,10 @@ function planLine(input: {
   todaySession: string | null
   remaining: number
   hasPlan: boolean
+  nextWeekReady: boolean
 }) {
   if (input.todaySession) return `${input.todaySession} is ready.`
+  if (input.nextWeekReady) return "Your next week is ready."
   if (input.remaining === 1) return "One session left this week."
   if (input.remaining > 1) return `${input.remaining} sessions fit this week.`
   if (input.hasPlan) return "This week's plan is done. Ask me for the next one."
@@ -47,7 +51,7 @@ export function WorkoutCompanion({
   onResume,
 }: {
   onCreate: () => void
-  onCreatePlan: () => void
+  onCreatePlan: (sourceProgramId?: string) => void
   onSettings: () => void
   onResume?: () => void
 }) {
@@ -58,13 +62,19 @@ export function WorkoutCompanion({
   const profile = useTrainingProfile((state) => state.profile)
   const trainingData = useTrainingRecords((state) => state.data)
   const workouts = useWorkouts((state) => state.workouts)
+  const now = new Date().toISOString()
   const eligibility = remainingWeekEligibility(
     trainingData,
-    new Date().toISOString(),
+    now,
     workouts
   )
+  const nextEligibility = nextWeekEligibility(trainingData, now, workouts)
   const canAdjust = !onResume && eligibility.status === "eligible"
+  const canPlanNext = !onResume && nextEligibility.status === "eligible"
+  const nextSourceId =
+    nextEligibility.status === "eligible" ? nextEligibility.source.id : null
   const offer = "I can adjust the rest of your week from what you logged."
+  const nextOffer = "This week is done. Let’s plan the next one."
   const today = toISODate(new Date())
 
   const plan = useMemo(() => {
@@ -72,6 +82,11 @@ export function WorkoutCompanion({
       (session) => !isPlannedSessionRecorded(session.sessionId, trainingData)
     )
     const ahead = sessions.filter((session) => session.date >= today)
+    const active = activeProgramRecord(trainingData)
+    const nextWeekReady =
+      active?.revision?.reason === "next_week" &&
+      ahead.length > 0 &&
+      ahead.every((session) => session.date > today)
     return {
       line: planLine({
         today,
@@ -79,8 +94,10 @@ export function WorkoutCompanion({
           ahead.find((session) => session.date === today)?.title ?? null,
         remaining: ahead.length,
         hasPlan: Boolean(trainingData.activeProgramId),
+        nextWeekReady,
       }),
       hasPlan: Boolean(trainingData.activeProgramId),
+      nextWeekReady,
     }
   }, [today, trainingData])
 
@@ -129,6 +146,7 @@ export function WorkoutCompanion({
                 ? "Your workout is waiting. Want to continue?"
                 : (outcome?.message ??
                   (canAdjust ? offer : null) ??
+                  (canPlanNext ? nextOffer : null) ??
                   plan.line ??
                   (profile.name
                     ? `Ready, ${profile.name}? I can shape today's session.`
@@ -166,6 +184,10 @@ export function WorkoutCompanion({
             {outcome?.message ??
               (canAdjust
                 ? offer
+                : canPlanNext
+                  ? nextOffer
+                  : plan.nextWeekReady
+                    ? plan.line
                 : plan.hasPlan && eligibility.status === "blocked"
                   ? eligibility.message
                   : "Let me plan the week, choose your own exercises, or tune your training preferences.")}
@@ -184,6 +206,16 @@ export function WorkoutCompanion({
                 )}
               </Button>
             ) : null}
+            {canPlanNext && nextSourceId ? (
+              <Button
+                className="w-full"
+                disabled={working}
+                onClick={() => act(() => onCreatePlan(nextSourceId))}
+              >
+                <CalendarRange className="size-4" />
+                Plan next week
+              </Button>
+            ) : null}
             {onResume ? (
               <Button
                 className="w-full"
@@ -196,7 +228,9 @@ export function WorkoutCompanion({
             <Button
               className="w-full"
               disabled={working}
-              variant={onResume || canAdjust ? "secondary" : "default"}
+              variant={
+                onResume || canAdjust || canPlanNext ? "secondary" : "default"
+              }
               onClick={() => act(onCreatePlan)}
             >
               <CalendarRange className="size-4" />

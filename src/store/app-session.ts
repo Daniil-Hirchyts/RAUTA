@@ -34,13 +34,19 @@ function parsePage(value: unknown): AppPage | null {
     case "workouts":
     case "settings":
     case "equipment-preset":
-    case "plan-week":
     case "profile-basics":
     case "profile-training":
     case "profile-health":
     case "profile-equipment":
     case "profile-priorities":
       return { type: value.type }
+    case "plan-week": {
+      if (value.sourceProgramId === undefined) return { type: "plan-week" }
+      const sourceProgramId = validString(value.sourceProgramId)
+      return sourceProgramId
+        ? { type: "plan-week", sourceProgramId }
+        : null
+    }
     // First-run setup is decided from the profile at launch, never restored
     // from a session: whether it is due is the profile's answer to give.
     case "onboarding":

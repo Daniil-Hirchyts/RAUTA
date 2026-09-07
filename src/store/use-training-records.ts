@@ -5,6 +5,7 @@ import { EXERCISES_BY_ID } from "@/lib/exercises"
 import { useWorkouts } from "@/store/use-workouts"
 import {
   createPersistedProgramRecord,
+  isStartablePlannedSession,
   isSupersededPlannedSession,
   toEngineProgramSnapshot,
 } from "@/training-persistence/program"
@@ -269,6 +270,8 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
             isSupersededPlannedSession(state.data, programId, plannedSessionId)
           )
             throw new Error("This planned session has been replaced")
+          if (!isStartablePlannedSession(state.data, programId, plannedSessionId))
+            throw new Error("This planned session is no longer active")
           const program = toEngineProgramSnapshot(record.snapshot)
           const session = program.weeks
             .flatMap((week) => week.sessions)
