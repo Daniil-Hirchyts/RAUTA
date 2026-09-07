@@ -1,8 +1,12 @@
 import { EXERCISES, EQUIPMENT_OPTIONS } from "@/lib/exercises"
 import { buildTrainingEngineInputs } from "@/lib/training-engine-adapter"
 import { useTrainingRecords } from "@/store/use-training-records"
+import { useWorkouts, type Workout } from "@/store/use-workouts"
 import { toEngineLoadPreferences } from "@/training-persistence/history"
-import { toEngineProgramSnapshot } from "@/training-persistence/program"
+import {
+  isSupersededPlannedSession,
+  toEngineProgramSnapshot,
+} from "@/training-persistence/program"
 import {
   adaptTrainingProgram,
   createExerciseIndex,
@@ -19,6 +23,7 @@ import type {
 import type {
   PersistedActiveExerciseDraft,
   PersistedProgramRecord,
+  PersistedTrainingStateLatest,
 } from "@/training-persistence/schema"
 
 let index: ReturnType<typeof createExerciseIndex> | undefined
@@ -46,6 +51,35 @@ export type PlanSetup = {
  *  genuinely week-specific answer the profile cannot already give. */
 export const DEFAULT_TRAINING_DAYS: readonly number[] = [0, 2, 4]
 
+/** The source week's own untouched future slots, shared by eligibility and
+ * the engine request. Even a set-less application completion reserves its slot. */
+export function remainingTrainingSlots(
+  source: PersistedProgramRecord,
+  now: string,
+  data: PersistedTrainingStateLatest = useTrainingRecords.getState().data,
+  workouts: readonly Workout[] = useWorkouts.getState().workouts
+) {
+  const week = source.snapshot.weeks.find(
+    (item) => Date.parse(now) < Date.parse(item.start) + 7 * 86400000
+  )
+  const sessions =
+    week?.sessions.filter(
+      (session) =>
+        Date.parse(session.scheduledAt) > Date.parse(now) &&
+        !isSupersededPlannedSession(data, source.id, session.id) &&
+        !data.sessions.some(
+          (actual) => actual.plannedSessionId === session.id
+        ) &&
+        !workouts.some(
+          (workout) =>
+            workout.completion &&
+            workout.planned?.programId === source.id &&
+            workout.planned.sessionId === session.id
+        )
+    ) ?? []
+  return { week, sessions }
+}
+
 export function buildTrainingRequest(
   setup: PlanSetup,
   now: string,
@@ -61,12 +95,8 @@ export function buildTrainingRequest(
   // A new plan starts on the next Monday, including today when generated before its slots.
   if (monday.getTime() <= Date.parse(now))
     monday.setUTCDate(monday.getUTCDate() + 7)
-  const sourceWeek =
-    source?.snapshot.weeks.find(
-      (w) =>
-        Date.parse(w.start) <= Date.parse(now) &&
-        Date.parse(now) < Date.parse(w.start) + 7 * 86400000
-    ) ?? source?.snapshot.weeks[0]
+  const remaining = source ? remainingTrainingSlots(source, now) : undefined
+  const sourceWeek = remaining?.week
   const selectedContexts = store.data.settings.loadConfigurations.filter(
     (c, _, all) =>
       all.filter((other) => other.exerciseId === c.exerciseId).length === 1
@@ -82,23 +112,15 @@ export function buildTrainingRequest(
     },
     schedule: {
       weekStart: sourceWeek?.start ?? monday.toISOString(),
-      days: sourceWeek
+      days: source
         ? [
             ...new Set(
-              sourceWeek.sessions
-                .filter(
-                  (s) =>
-                    Date.parse(s.scheduledAt) > Date.parse(now) &&
-                    !store.data.sessions.some(
-                      (actual) => actual.plannedSessionId === s.id
-                    )
+              (remaining?.sessions ?? []).map((s) =>
+                Math.floor(
+                  (Date.parse(s.scheduledAt) - Date.parse(sourceWeek!.start)) /
+                    86400000
                 )
-                .map((s) =>
-                  Math.floor(
-                    (Date.parse(s.scheduledAt) - Date.parse(sourceWeek.start)) /
-                      86400000
-                  )
-                )
+              )
             ),
           ].sort((a, b) => a - b)
         : [...new Set(availableDays)].sort((a, b) => a - b),

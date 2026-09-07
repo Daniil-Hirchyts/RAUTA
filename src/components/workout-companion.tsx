@@ -1,9 +1,17 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { ArrowRight, CalendarRange, SlidersHorizontal, X } from "lucide-react"
 import { Rauta } from "./rauta"
 import { RautaSpeech } from "./rauta-speech"
 import { AppModal } from "./app-modal"
 import { Button } from "./ui/button"
+import { MatrixLoader } from "./ui/matrix-loader"
+import {
+  adjustRemainingWeek,
+  remainingWeekEligibility,
+  type RemainingWeekOutcome,
+} from "@/lib/training-adaptation"
+import { triggerHaptic } from "@/lib/haptics"
+import { useWorkouts } from "@/store/use-workouts"
 import { useTrainingProfile } from "@/store/use-training-profile"
 import { useTrainingRecords } from "@/store/use-training-records"
 import { GOAL_CHOICES } from "@/lib/training-profile"
@@ -44,8 +52,19 @@ export function WorkoutCompanion({
   onResume?: () => void
 }) {
   const [open, setOpen] = useState(false)
+  const [working, setWorking] = useState(false)
+  const busy = useRef(false)
+  const [outcome, setOutcome] = useState<RemainingWeekOutcome | null>(null)
   const profile = useTrainingProfile((state) => state.profile)
   const trainingData = useTrainingRecords((state) => state.data)
+  const workouts = useWorkouts((state) => state.workouts)
+  const eligibility = remainingWeekEligibility(
+    trainingData,
+    new Date().toISOString(),
+    workouts
+  )
+  const canAdjust = !onResume && eligibility.status === "eligible"
+  const offer = "I can adjust the rest of your week from what you logged."
   const today = toISODate(new Date())
 
   const plan = useMemo(() => {
@@ -65,7 +84,26 @@ export function WorkoutCompanion({
     }
   }, [today, trainingData])
 
-  const close = () => setOpen(false)
+  const close = () => {
+    if (!busy.current) setOpen(false)
+  }
+  const adjust = () => {
+    if (busy.current) return
+    busy.current = true
+    setWorking(true)
+    setOutcome(null)
+    // Let the existing loader paint before the synchronous engine runs.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const result = adjustRemainingWeek()
+        busy.current = false
+        setWorking(false)
+        setOutcome(result)
+        triggerHaptic(result.status === "adjusted" ? "success" : "warning")
+        if (result.status === "adjusted") setOpen(false)
+      })
+    )
+  }
   const act = (action: () => void) => {
     close()
     action()
@@ -89,7 +127,9 @@ export function WorkoutCompanion({
             <strong className="block text-[15px] leading-snug tracking-tight">
               {onResume
                 ? "Your workout is waiting. Want to continue?"
-                : (plan.line ??
+                : (outcome?.message ??
+                  (canAdjust ? offer : null) ??
+                  plan.line ??
                   (profile.name
                     ? `Ready, ${profile.name}? I can shape today's session.`
                     : "Tell me what we're training today."))}
@@ -97,7 +137,10 @@ export function WorkoutCompanion({
             <span className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
               {GOAL_CHOICES[profile.goal].title} ·{" "}
               {profile.preferredSessionDurationMinutes} min
-              <ArrowRight aria-hidden="true" className="size-3.5 text-primary" />
+              <ArrowRight
+                aria-hidden="true"
+                className="size-3.5 text-primary"
+              />
             </span>
           </RautaSpeech>
         </button>
@@ -113,20 +156,47 @@ export function WorkoutCompanion({
           >
             <X className="size-5" />
           </button>
-          <h2 className="pr-9 text-xl font-bold">RAUTA is ready.</h2>
-          <p className="mt-2 mb-5 text-sm text-muted-foreground">
-            Let me plan the week, choose your own exercises, or tune your
-            training preferences.
+          <h2 className="pr-9 text-xl font-bold">
+            {working ? "Adjusting your week." : "RAUTA is ready."}
+          </h2>
+          <p
+            className="mt-2 mb-5 text-sm text-muted-foreground"
+            role={outcome?.status === "blocked" ? "alert" : "status"}
+          >
+            {outcome?.message ??
+              (canAdjust
+                ? offer
+                : plan.hasPlan && eligibility.status === "blocked"
+                  ? eligibility.message
+                  : "Let me plan the week, choose your own exercises, or tune your training preferences.")}
           </p>
           <div className="space-y-2">
+            {canAdjust || working ? (
+              <Button className="w-full" disabled={working} onClick={adjust}>
+                {working ? (
+                  <MatrixLoader
+                    label="Adjusting your week"
+                    rounded
+                    variant="orbit"
+                  />
+                ) : (
+                  "Adjust remaining week"
+                )}
+              </Button>
+            ) : null}
             {onResume ? (
-              <Button className="w-full" onClick={() => act(onResume)}>
+              <Button
+                className="w-full"
+                disabled={working}
+                onClick={() => act(onResume)}
+              >
                 Resume workout <ArrowRight className="size-4" />
               </Button>
             ) : null}
             <Button
               className="w-full"
-              variant={onResume ? "secondary" : "default"}
+              disabled={working}
+              variant={onResume || canAdjust ? "secondary" : "default"}
               onClick={() => act(onCreatePlan)}
             >
               <CalendarRange className="size-4" />
@@ -134,6 +204,7 @@ export function WorkoutCompanion({
             </Button>
             <Button
               className="w-full"
+              disabled={working}
               variant="secondary"
               onClick={() => act(onCreate)}
             >
@@ -141,6 +212,7 @@ export function WorkoutCompanion({
             </Button>
             <Button
               className="w-full"
+              disabled={working}
               variant="ghost"
               onClick={() => act(onSettings)}
             >

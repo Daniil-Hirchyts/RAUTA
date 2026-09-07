@@ -27,6 +27,7 @@ import { WorkoutCompanion } from "@/components/workout-companion"
 import { WorkoutHeatmap } from "@/components/workout-heatmap"
 import { useElapsedMs } from "@/hooks/use-elapsed-ms"
 import { formatDuration, sessionProgress } from "@/lib/active-workout"
+import { isObsoleteProjection } from "@/lib/training-adaptation"
 import { formatDateShort, formatWeekdayShort, toISODate } from "@/lib/date"
 import { musclesForExerciseIds } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
@@ -321,6 +322,7 @@ export function WorkoutsPage({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const workouts = useWorkouts((state) => state.workouts)
+  const trainingData = useTrainingRecords((state) => state.data)
   const duplicateWorkout = useWorkouts((state) => state.duplicateWorkout)
   const [openRowId, setOpenRowId] = useState<string | null>(null)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
@@ -333,6 +335,7 @@ export function WorkoutsPage({
     const pastWorkouts: Workout[] = []
     const upcomingWorkouts: Workout[] = []
     for (const workout of workouts) {
+      if (isObsoleteProjection(workout, trainingData)) continue
       const running = session?.workoutId === workout.id
       if (!running && isPastWorkout(workout)) pastWorkouts.push(workout)
       // A planned session that has not been performed yet is already on the
@@ -348,7 +351,7 @@ export function WorkoutsPage({
       past: pastWorkouts,
       upcoming: upcomingWorkouts,
     }
-  }, [session?.workoutId, workouts])
+  }, [session?.workoutId, trainingData, workouts])
 
   // The projection is created the moment a planned session is opened, so the
   // workout the detail page is asked for always exists by the time it renders.

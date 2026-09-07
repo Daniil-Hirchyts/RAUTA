@@ -6,7 +6,10 @@ import {
 } from "@/lib/training-workflow"
 import { useTrainingRecords } from "@/store/use-training-records"
 import { useWorkouts, type Workout } from "@/store/use-workouts"
-import { toEngineProgramSnapshot } from "@/training-persistence/program"
+import {
+  isSupersededPlannedSession,
+  toEngineProgramSnapshot,
+} from "@/training-persistence/program"
 import type {
   PersistedProgramRecord,
   PersistedTrainingStateLatest,
@@ -161,7 +164,7 @@ function toView(
   }
 }
 
-function sessionViews(program: TrainingProgram): PlannedSessionView[] {
+export function sessionViews(program: TrainingProgram): PlannedSessionView[] {
   return program.weeks
     .flatMap((week) => week.sessions)
     .sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt))
@@ -184,7 +187,12 @@ export function activePlannedSessions(
   data: PersistedTrainingStateLatest = currentState()
 ): PlannedSessionView[] {
   const record = activeProgramRecord(data)
-  return record ? sessionViews(toEngineProgramSnapshot(record.snapshot)) : []
+  return record
+    ? sessionViews(toEngineProgramSnapshot(record.snapshot)).filter(
+        (session) =>
+          !isSupersededPlannedSession(data, record.id, session.sessionId)
+      )
+    : []
 }
 
 /** One planned session, read straight back out of its own program snapshot. */

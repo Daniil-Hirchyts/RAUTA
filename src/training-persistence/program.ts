@@ -15,6 +15,7 @@ import type {
   PersistedProgressionRecommendation,
   PersistedResistance,
   PersistedScore,
+  PersistedTrainingStateLatest,
 } from "./schema"
 
 const cloneResistance = (value: ResistanceValue | PersistedResistance) =>
@@ -221,6 +222,8 @@ export function createPersistedProgramRecord(
     lifecycle?: PersistedProgramRecord["lifecycle"]
     manualSourceProgramId?: string
     manualRevisionAt?: string
+    incorporatedSessionIds?: string[]
+    replacedSessionIds?: string[]
   } = {}
 ): PersistedProgramRecord {
   const snapshot = toPersistedProgramSnapshot(program)
@@ -229,6 +232,12 @@ export function createPersistedProgramRecord(
         sourceProgramId: program.adaptation.sourceProgramId,
         reason: program.adaptation.mode,
         asOf: program.adaptation.asOf,
+        ...(options.incorporatedSessionIds
+          ? { incorporatedSessionIds: [...options.incorporatedSessionIds] }
+          : {}),
+        ...(options.replacedSessionIds
+          ? { replacedSessionIds: [...options.replacedSessionIds] }
+          : {}),
       }
     : options.manualSourceProgramId
       ? {
@@ -244,4 +253,35 @@ export function createPersistedProgramRecord(
     snapshot,
     revision,
   }
+}
+
+/** A revision withdraws only the future slots it replaced. Historical
+ * prescriptions remain readable even when their source is archived. */
+export function isSupersededPlannedSession(
+  data: PersistedTrainingStateLatest,
+  programId: string,
+  sessionId: string
+): boolean {
+  return data.programs.some((program) => {
+    const revision = program.revision
+    if (
+      revision?.sourceProgramId !== programId ||
+      revision.reason !== "remaining_week"
+    )
+      return false
+    if (revision.replacedSessionIds)
+      return revision.replacedSessionIds.includes(sessionId)
+    // Compatibility with revisions saved before explicit slot metadata.
+    const source = data.programs.find((item) => item.id === programId)
+    const session = source?.snapshot.weeks
+      .flatMap((week) => week.sessions)
+      .find((item) => item.id === sessionId)
+    return Boolean(
+      session &&
+      session.scheduledAt > revision.asOf &&
+      program.snapshot.weeks.some((week) =>
+        week.sessions.some((item) => item.scheduledAt === session.scheduledAt)
+      )
+    )
+  })
 }

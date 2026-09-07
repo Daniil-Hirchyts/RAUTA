@@ -154,6 +154,10 @@ export type PersistedProgramRecord = {
     sourceProgramId: string
     reason: "remaining_week" | "next_week" | "manual_regeneration"
     asOf: string
+    /** Actual structured session IDs consumed by this revision. */
+    incorporatedSessionIds?: string[]
+    /** Source prescriptions replaced by this revision, never performed slots. */
+    replacedSessionIds?: string[]
   }
 }
 

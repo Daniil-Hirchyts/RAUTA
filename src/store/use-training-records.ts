@@ -5,6 +5,7 @@ import { EXERCISES_BY_ID } from "@/lib/exercises"
 import { useWorkouts } from "@/store/use-workouts"
 import {
   createPersistedProgramRecord,
+  isSupersededPlannedSession,
   toEngineProgramSnapshot,
 } from "@/training-persistence/program"
 import {
@@ -52,6 +53,8 @@ export type TrainingRecordsState = {
       activate?: boolean
       manualSourceProgramId?: string
       manualRevisionAt?: string
+      incorporatedSessionIds?: string[]
+      replacedSessionIds?: string[]
     }
   ) => void
   activateProgram: (programId: string) => void
@@ -159,6 +162,8 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
             lifecycle: options.activate === false ? "archived" : "active",
             manualSourceProgramId: options.manualSourceProgramId,
             manualRevisionAt: options.manualRevisionAt,
+            incorporatedSessionIds: options.incorporatedSessionIds,
+            replacedSessionIds: options.replacedSessionIds,
           })
           set((state) => {
             const existing = state.data.programs.find(
@@ -260,6 +265,10 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
             (program) => program.id === programId
           )
           if (!record) throw new Error("Program not found")
+          if (
+            isSupersededPlannedSession(state.data, programId, plannedSessionId)
+          )
+            throw new Error("This planned session has been replaced")
           const program = toEngineProgramSnapshot(record.snapshot)
           const session = program.weeks
             .flatMap((week) => week.sessions)

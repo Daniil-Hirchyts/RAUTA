@@ -325,7 +325,13 @@ function validateProgramRecord(
       !["remaining_week", "next_week", "manual_regeneration"].includes(
         String(revision.reason)
       ) ||
-      !isValidIsoTimestamp(revision.asOf)
+      !isValidIsoTimestamp(revision.asOf) ||
+      [revision.incorporatedSessionIds, revision.replacedSessionIds].some(
+        (ids) => ids !== undefined && (
+          !Array.isArray(ids) || !ids.every(nonEmptyString) ||
+          new Set(ids).size !== ids.length
+        )
+      )
     ) {
       issues.push({ path: path + ".revision", message: "invalid program revision lineage" })
       valid = false
