@@ -79,6 +79,11 @@ const ASSISTANCE_STATION = "assistance"
 
 const DEFAULT_LOAD = { basis: "total", incrementKg: 2.5 } as const
 
+export function equipmentLoadSpec(equipment: string) {
+  const spec = EQUIPMENT_LOAD[equipment]
+  return spec ? { ...spec } : null
+}
+
 const metadataCache = new Map<string, ExerciseMetadata>()
 
 /** Catalogue metadata for one exercise, without paying for the whole engine
@@ -143,9 +148,16 @@ export function isMeasuredInKg(mode: ResistanceMode) {
 export function loadContextFor(
   exercise: ExerciseSummary,
   mode: ResistanceMode,
-  configuration?: PersistedLoadConfiguration
+  configuration?: PersistedLoadConfiguration,
+  equipmentIncrementKg?: number
 ): LoadContext {
   const equipment = EQUIPMENT_LOAD[exercise.equipment] ?? DEFAULT_LOAD
+  const incrementKg =
+    typeof equipmentIncrementKg === "number" &&
+    Number.isFinite(equipmentIncrementKg) &&
+    equipmentIncrementKg > 0
+      ? equipmentIncrementKg
+      : equipment.incrementKg
   if (configuration && mode === "external_load")
     return {
       stationId: configuration.stationId,
@@ -159,14 +171,20 @@ export function loadContextFor(
           ? exercise.equipment
           : ASSISTANCE_STATION,
       basis: "total",
-      grid: { incrementKg: EQUIPMENT_LOAD.assisted.incrementKg, minimumKg: 0 },
+      grid: {
+        incrementKg:
+          exercise.equipment === "assisted"
+            ? incrementKg
+            : EQUIPMENT_LOAD.assisted.incrementKg,
+        minimumKg: 0,
+      },
     }
   return {
     stationId: EQUIPMENT_LOAD[exercise.equipment]
       ? exercise.equipment
       : ADDED_LOAD_STATION,
     basis: equipment.basis,
-    grid: { incrementKg: equipment.incrementKg, minimumKg: 0 },
+    grid: { incrementKg, minimumKg: 0 },
   }
 }
 

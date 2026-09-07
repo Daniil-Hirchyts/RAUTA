@@ -110,7 +110,8 @@ export function toEngineEquipment(equipment: readonly string[]) {
  */
 export function buildTrainingLoadPreferences(
   equipment: readonly string[],
-  configurations: readonly PersistedLoadConfiguration[] = []
+  configurations: readonly PersistedLoadConfiguration[] = [],
+  equipmentLoadIncrements: Readonly<Record<string, number>> = {}
 ): Pick<PlanningPreferences, "loadContexts" | "loadGrids"> {
   const available = new Set(toEngineEquipment(equipment))
   const loadContexts: NonNullable<PlanningPreferences["loadContexts"]> = {}
@@ -123,7 +124,12 @@ export function buildTrainingLoadPreferences(
     const [mode] = resistanceModes(exercise)
     if (mode !== "external_load" && mode !== "assistance") continue
     const saved = configurations.find((item) => item.exerciseId === exercise.id)
-    const context = loadContextFor(exercise, mode, saved)
+    const context = loadContextFor(
+      exercise,
+      mode,
+      saved,
+      equipmentLoadIncrements[exercise.equipment]
+    )
     loadContexts[exercise.id] = {
       stationId: context.stationId,
       basis: context.basis,
@@ -156,13 +162,18 @@ export function buildTrainingPlanningPreferences(
   profile: TrainingProfile,
   equipment: readonly string[],
   overrides: Partial<PlanningPreferences> = {},
-  configurations: readonly PersistedLoadConfiguration[] = []
+  configurations: readonly PersistedLoadConfiguration[] = [],
+  equipmentLoadIncrements: Readonly<Record<string, number>> = {}
 ): PlanningPreferences {
   const preferred = profile.preferredSessionDurationMinutes
   return {
     goal: profile.goal,
     availableEquipment: toEngineEquipment(equipment),
-    ...buildTrainingLoadPreferences(equipment, configurations),
+    ...buildTrainingLoadPreferences(
+      equipment,
+      configurations,
+      equipmentLoadIncrements
+    ),
     preferredSessionDurationMinutes: preferred,
     maxSessionDurationMinutes: preferred + SESSION_DURATION_HEADROOM_MINUTES,
     ...(profile.priorityMuscles.length
@@ -187,7 +198,7 @@ export function buildTrainingEngineInputs(
 ): { profile: UserTrainingProfile; preferences: PlanningPreferences } {
   const { profile } = useTrainingProfile.getState()
   const { appleHealthEnabled, healthBodyWeightKg } = useSettings.getState()
-  const { gymEquipment } = useFilters.getState()
+  const { gymEquipment, equipmentLoadIncrements } = useFilters.getState()
   const { loadConfigurations } = useTrainingRecords.getState().data.settings
 
   return {
@@ -198,7 +209,8 @@ export function buildTrainingEngineInputs(
       profile,
       gymEquipment,
       overrides,
-      loadConfigurations
+      loadConfigurations,
+      equipmentLoadIncrements
     ),
   }
 }

@@ -1,5 +1,7 @@
-import { EXERCISES, EQUIPMENT_OPTIONS } from "@/lib/exercises"
+import { EXERCISES, EXERCISES_BY_ID, EQUIPMENT_OPTIONS } from "@/lib/exercises"
+import { loadContextFor, resistanceModes } from "@/lib/resistance"
 import { buildTrainingEngineInputs } from "@/lib/training-engine-adapter"
+import { useFilters } from "@/store/use-filters"
 import { useTrainingRecords } from "@/store/use-training-records"
 import { useWorkouts, type Workout } from "@/store/use-workouts"
 import { toEngineLoadPreferences } from "@/training-persistence/history"
@@ -118,18 +120,20 @@ export function buildTrainingRequest(
     },
     schedule: {
       weekStart: sourceWeek?.start ?? monday.toISOString(),
-      days: source && adaptationMode === "remaining_week"
-        ? [
-            ...new Set(
-              (remaining?.sessions ?? []).map((s) =>
-                Math.floor(
-                  (Date.parse(s.scheduledAt) - Date.parse(sourceWeek!.start)) /
-                    86400000
+      days:
+        source && adaptationMode === "remaining_week"
+          ? [
+              ...new Set(
+                (remaining?.sessions ?? []).map((s) =>
+                  Math.floor(
+                    (Date.parse(s.scheduledAt) -
+                      Date.parse(sourceWeek!.start)) /
+                      86400000
+                  )
                 )
-              )
-            ),
-          ].sort((a, b) => a - b)
-        : [...new Set(availableDays)].sort((a, b) => a - b),
+              ),
+            ].sort((a, b) => a - b)
+          : [...new Set(availableDays)].sort((a, b) => a - b),
       durationWeeks: 1,
     },
     history: store.getTrainingHistory(),
@@ -247,7 +251,8 @@ export function nextPerformance(
 ) {
   const store = useTrainingRecords.getState()
   const indexed = trainingIndex().byId.get(exercise.exerciseId)
-  if (!indexed) return null
+  const catalogueExercise = EXERCISES_BY_ID.get(exercise.exerciseId)
+  if (!indexed || !catalogueExercise) return null
   const target = exercise.sets.find((s) => s.setType === "working")?.target
   const latest = store
     .getTrainingHistory()
@@ -263,6 +268,18 @@ export function nextPerformance(
       c.stationId === latest.stationId &&
       c.basis === latest.basis
   )
+  const mode = target?.resistance.type ?? resistanceModes(catalogueExercise)[0]
+  const measured = mode === "external_load" || mode === "assistance"
+  const context = measured
+    ? loadContextFor(
+        catalogueExercise,
+        mode,
+        config,
+        useFilters.getState().equipmentLoadIncrements[
+          catalogueExercise.equipment
+        ]
+      )
+    : undefined
   return recommendProgression({
     exercise: indexed,
     history: store.getTrainingHistory(),
@@ -274,9 +291,9 @@ export function nextPerformance(
       exercise.sets.filter((s) => s.setType === "working").length
     ),
     policy: DEFAULT_POLICY,
-    loadGrid: config?.grid,
-    loadContext: config
-      ? { stationId: config.stationId, basis: config.basis }
+    loadGrid: context?.grid,
+    loadContext: context
+      ? { stationId: context.stationId, basis: context.basis }
       : undefined,
   })
 }

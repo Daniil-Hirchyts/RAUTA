@@ -391,6 +391,17 @@ describe("training profile in Settings", () => {
     await user.click(screen.getByRole("checkbox", { name: "Dumbbell" }))
     expect(useFilters.getState().gymEquipment).toContain("dumbbell")
 
+    // Load steps stay on this same equipment screen and use the rotary control
+    // rather than introducing a numeric input or another planning wizard.
+    await user.click(screen.getByRole("button", { name: "Dumbbell" }))
+    expect(
+      screen.getByRole("slider", { name: "Dumbbell load increment" })
+    ).toHaveAttribute("aria-valuenow", "2")
+    await user.click(
+      screen.getByRole("button", { name: "Increase dumbbell load increment" })
+    )
+    expect(useFilters.getState().equipmentLoadIncrements.dumbbell).toBe(2.25)
+
     // Saving from here fills the same preset list the picker uses.
     await user.click(
       screen.getByRole("button", { name: "Create equipment preset" })

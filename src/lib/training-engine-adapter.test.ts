@@ -256,16 +256,38 @@ describe("load contexts for planning", () => {
     })
   })
 
+  it("uses a saved equipment step for every compatible exercise", () => {
+    const dumbbells = EXERCISES.filter(
+      (item) => item.equipment === "dumbbell"
+    ).slice(0, 2)
+    const { loadContexts, loadGrids } = buildTrainingLoadPreferences(
+      ["dumbbell"],
+      [],
+      { dumbbell: 1.5 }
+    )
+
+    for (const exercise of dumbbells) {
+      expect(loadContexts![exercise.id]).toMatchObject({
+        stationId: "dumbbell",
+        basis: "per_implement",
+      })
+      expect(loadGrids![exercise.id]).toMatchObject({ incrementKg: 1.5 })
+    }
+  })
+
   it("reaches the engine through the saved profile", () => {
     useFilters.setState({
       equipmentPresets: [],
       gymEquipment: ["dumbbell"],
+      equipmentLoadIncrements: { dumbbell: 1.5 },
       selectedEquipment: [],
       selectedMuscles: [],
     })
     const { preferences } = buildTrainingEngineInputs()
     const dumbbell = EXERCISES.find((item) => item.equipment === "dumbbell")!
     expect(preferences.loadContexts?.[dumbbell.id]?.basis).toBe("per_implement")
-    expect(preferences.loadGrids?.[dumbbell.id]).toBeDefined()
+    expect(preferences.loadGrids?.[dumbbell.id]).toMatchObject({
+      incrementKg: 1.5,
+    })
   })
 })

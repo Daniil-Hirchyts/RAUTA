@@ -53,6 +53,7 @@ export function createGymLibBackup(
           selectedEquipment: filters.selectedEquipment,
           gymEquipment: filters.gymEquipment,
           equipmentPresets: filters.equipmentPresets,
+          equipmentLoadIncrements: filters.equipmentLoadIncrements,
         },
         trainingProfile: {
           profile: trainingProfile.profile,
@@ -83,6 +84,7 @@ export function hasMeaningfulGymLibData() {
     filters.selectedEquipment.length > 0 ||
     filters.gymEquipment.length > 0 ||
     filters.equipmentPresets.length > 0 ||
+    Object.keys(filters.equipmentLoadIncrements).length > 0 ||
     workouts.workouts.length > 0 ||
     isTrainingProfileConfigured(useTrainingProfile.getState()) ||
     JSON.stringify(settings) !== JSON.stringify(DEFAULT_SETTINGS)
@@ -154,6 +156,9 @@ export function importGymLibData(json: string) {
     gymEquipment: hasKey(data.filters, "gymEquipment")
       ? filters.gymEquipment
       : useFilters.getState().gymEquipment,
+    equipmentLoadIncrements: hasKey(data.filters, "equipmentLoadIncrements")
+      ? filters.equipmentLoadIncrements
+      : useFilters.getState().equipmentLoadIncrements,
   })
   useSettings.setState(settings)
   useWorkouts.setState(workouts)
@@ -172,6 +177,7 @@ export function clearAllGymLibData() {
   useFavorites.setState({ favoriteIds: [] })
   useFilters.setState({
     equipmentPresets: [],
+    equipmentLoadIncrements: {},
     gymEquipment: [],
     selectedEquipment: [],
     selectedMuscles: [],

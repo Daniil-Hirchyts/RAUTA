@@ -12,6 +12,8 @@ export type EquipmentPreset = {
   equipment: string[]
 }
 
+export type EquipmentLoadIncrements = Record<string, number>
+
 export type FilterState = {
   selectedMuscles: MuscleId[]
   selectedEquipment: string[]
@@ -21,12 +23,18 @@ export type FilterState = {
    *  place either selection is sanitized. */
   gymEquipment: string[]
   equipmentPresets: EquipmentPreset[]
+  /** Physical load step offered by the user's actual equipment. The basis
+   *  (total vs each) remains catalogue-defined; this only describes the rack,
+   *  stack or plates the person has access to. */
+  equipmentLoadIncrements: EquipmentLoadIncrements
   toggleMuscle: (muscle: MuscleId) => void
   toggleEquipment: (equipment: string) => void
   toggleGymEquipment: (equipment: string) => void
   setMuscles: (muscles: MuscleId[]) => void
   setEquipment: (equipment: string[]) => void
   setGymEquipment: (equipment: string[]) => void
+  setEquipmentLoadIncrement: (equipment: string, incrementKg: number) => void
+  clearEquipmentLoadIncrement: (equipment: string) => void
   saveEquipmentPreset: (name: string, equipment?: string[]) => void
   applyEquipmentPreset: (id: string) => void
   deleteEquipmentPreset: (id: string) => void
@@ -35,7 +43,11 @@ export type FilterState = {
 
 type PersistedFilterState = Pick<
   FilterState,
-  "selectedMuscles" | "selectedEquipment" | "gymEquipment" | "equipmentPresets"
+  | "selectedMuscles"
+  | "selectedEquipment"
+  | "gymEquipment"
+  | "equipmentPresets"
+  | "equipmentLoadIncrements"
 >
 
 const equipmentSet = new Set(EQUIPMENT_OPTIONS)
@@ -58,6 +70,20 @@ export function sanitizeFilterState(value: unknown): PersistedFilterState {
 
     return id && name && equipment.length > 0 ? [{ id, name, equipment }] : []
   })
+  const rawLoadIncrements = isRecord(state.equipmentLoadIncrements)
+    ? state.equipmentLoadIncrements
+    : {}
+  const equipmentLoadIncrements = Object.fromEntries(
+    Object.entries(rawLoadIncrements).flatMap(([equipment, value]) =>
+      validEquipment(equipment) &&
+      typeof value === "number" &&
+      Number.isFinite(value) &&
+      value >= 0.25 &&
+      value <= 50
+        ? [[equipment, Math.round(value * 100) / 100]]
+        : []
+    )
+  )
 
   return {
     selectedMuscles: validUniqueStrings(
@@ -70,6 +96,7 @@ export function sanitizeFilterState(value: unknown): PersistedFilterState {
     ),
     gymEquipment: validUniqueStrings(state.gymEquipment, validEquipment),
     equipmentPresets,
+    equipmentLoadIncrements,
   }
 }
 
@@ -86,6 +113,7 @@ export const useFilters = create<FilterState>()(
       selectedEquipment: [],
       gymEquipment: [],
       equipmentPresets: [],
+      equipmentLoadIncrements: {},
       toggleMuscle: (muscle) =>
         set((state) => ({
           selectedMuscles: toggleValue(state.selectedMuscles, muscle),
@@ -119,6 +147,25 @@ export const useFilters = create<FilterState>()(
       setGymEquipment: (equipment) =>
         set({
           gymEquipment: validUniqueStrings(equipment, validEquipment),
+        }),
+      setEquipmentLoadIncrement: (equipment, incrementKg) =>
+        validEquipment(equipment) &&
+        Number.isFinite(incrementKg) &&
+        incrementKg >= 0.25 &&
+        incrementKg <= 50
+          ? set((state) => ({
+              equipmentLoadIncrements: {
+                ...state.equipmentLoadIncrements,
+                [equipment]: Math.round(incrementKg * 100) / 100,
+              },
+            }))
+          : undefined,
+      clearEquipmentLoadIncrement: (equipment) =>
+        set((state) => {
+          if (!(equipment in state.equipmentLoadIncrements)) return state
+          const equipmentLoadIncrements = { ...state.equipmentLoadIncrements }
+          delete equipmentLoadIncrements[equipment]
+          return { equipmentLoadIncrements }
         }),
       // Saving takes an explicit selection so the same preset list can be
       // filled from the browse filter or from the equipment the profile holds,
@@ -183,11 +230,13 @@ export const useFilters = create<FilterState>()(
         selectedEquipment,
         gymEquipment,
         equipmentPresets,
+        equipmentLoadIncrements,
       }) => ({
         selectedMuscles,
         selectedEquipment,
         gymEquipment,
         equipmentPresets,
+        equipmentLoadIncrements,
       }),
     }
   )

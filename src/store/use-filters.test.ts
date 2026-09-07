@@ -10,6 +10,7 @@ describe("filter store", () => {
       selectedEquipment: [],
       gymEquipment: [],
       equipmentPresets: [],
+      equipmentLoadIncrements: {},
     })
   })
 
@@ -36,6 +37,40 @@ describe("filter store", () => {
       selectedEquipment: ["dumbbell"],
       gymEquipment: [],
       equipmentPresets: [],
+      equipmentLoadIncrements: {},
+    })
+  })
+
+  it("persists and sanitizes equipment load increments", async () => {
+    useFilters.getState().setEquipmentLoadIncrement("dumbbell", 2.5)
+    expect(useFilters.getState().equipmentLoadIncrements).toEqual({
+      dumbbell: 2.5,
+    })
+
+    useFilters.getState().clearEquipmentLoadIncrement("dumbbell")
+    expect(useFilters.getState().equipmentLoadIncrements).toEqual({})
+
+    localStorage.setItem(
+      "gym-lib-filters",
+      JSON.stringify({
+        state: {
+          selectedMuscles: [],
+          selectedEquipment: [],
+          gymEquipment: ["dumbbell"],
+          equipmentPresets: [],
+          equipmentLoadIncrements: {
+            dumbbell: 1.25,
+            barbell: 0,
+            cable: 100,
+            unknown: 5,
+          },
+        },
+        version: 1,
+      })
+    )
+    await useFilters.persist.rehydrate()
+    expect(useFilters.getState().equipmentLoadIncrements).toEqual({
+      dumbbell: 1.25,
     })
   })
 
@@ -77,6 +112,7 @@ describe("filter store", () => {
           equipmentPresets: [
             { id: "gym", name: "Gym", equipment: ["barbell"] },
           ],
+          equipmentLoadIncrements: { barbell: 2.5 },
         },
         version: 0,
       })
@@ -88,6 +124,9 @@ describe("filter store", () => {
     expect(useFilters.getState().equipmentPresets).toEqual([
       { id: "gym", name: "Gym", equipment: ["barbell"] },
     ])
+    expect(useFilters.getState().equipmentLoadIncrements).toEqual({
+      barbell: 2.5,
+    })
   })
 
   it("migrates and removes invalid persisted filter values", async () => {
@@ -105,6 +144,11 @@ describe("filter store", () => {
             },
             { id: "invalid", name: "Empty", equipment: ["unknown"] },
           ],
+          equipmentLoadIncrements: {
+            dumbbell: 1.5,
+            unknown: 5,
+            cable: -1,
+          },
         },
         version: 0,
       })
@@ -118,5 +162,8 @@ describe("filter store", () => {
     expect(useFilters.getState().equipmentPresets).toEqual([
       { id: "valid", name: "Garage", equipment: ["dumbbell"] },
     ])
+    expect(useFilters.getState().equipmentLoadIncrements).toEqual({
+      dumbbell: 1.5,
+    })
   })
 })

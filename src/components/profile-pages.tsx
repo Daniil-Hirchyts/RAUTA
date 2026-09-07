@@ -11,6 +11,7 @@ import {
   AppSurface,
 } from "@/components/app-shell"
 import { EquipmentPresetEditor } from "@/components/equipment-presets"
+import { EquipmentLoadSettings } from "@/components/equipment-load-settings"
 import { FlowProgress } from "@/components/flow-progress"
 import { MorphingActionSlot } from "@/components/morphing-action-slot"
 import {
@@ -265,6 +266,7 @@ export function ProfileEquipmentPage({ onBack }: { onBack: () => void }) {
           tabIndex={-1}
         >
           <ProfileEquipmentPicker />
+          <EquipmentLoadSettings />
         </section>
         {presetEditorOpen ? null : (
           <div className="app-surface-bottom-dock equipment-presets-dock">

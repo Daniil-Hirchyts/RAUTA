@@ -16,6 +16,7 @@ import {
 } from "@/lib/resistance"
 import { draftExercise } from "@/lib/training-session"
 import { cn } from "@/lib/utils"
+import { useFilters } from "@/store/use-filters"
 import { useTrainingRecords } from "@/store/use-training-records"
 import type {
   PersistedActiveSetDraft,
@@ -112,6 +113,9 @@ export function ExerciseSetLog({
       (item) => item.exerciseId === exerciseId
     )
   )
+  const equipmentIncrementKg = useFilters((state) =>
+    exercise ? state.equipmentLoadIncrements[exercise.equipment] : undefined
+  )
   const addUnplannedSet = useTrainingRecords((state) => state.addUnplannedSet)
   const recordSet = useTrainingRecords((state) => state.recordSet)
   const updateSetDetails = useTrainingRecords((state) => state.updateSetDetails)
@@ -154,7 +158,12 @@ export function ExerciseSetLog({
   if (!exercise || !entry) return null
 
   const value = pending ?? defaults
-  const context = loadContextFor(exercise, value.mode, configuration)
+  const context = loadContextFor(
+    exercise,
+    value.mode,
+    configuration,
+    equipmentIncrementKg
+  )
   // The button offers the next set after the ones already on the card,
   // prescribed or performed; with an empty card it simply offers a set.
   const addSetLabel = entry.sets.length
