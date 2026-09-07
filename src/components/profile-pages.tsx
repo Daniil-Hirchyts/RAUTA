@@ -24,6 +24,7 @@ import {
   ProfileNameField,
   SessionDurationKnob,
 } from "@/components/profile-controls"
+import { ProfileCompanion } from "@/components/profile-companion"
 import { Button } from "@/components/ui/button"
 import { triggerHaptic } from "@/lib/haptics"
 import { countLabel } from "@/lib/text"
@@ -120,6 +121,7 @@ function ProfileStepFlow({
           key={step.title}
         >
           <div className="m-auto w-full">
+            <ProfileCompanion step={step.title} />
             {step.content}
             {step.caption ? (
               <p className="mt-3 px-1 text-center text-sm text-muted-foreground">
@@ -166,7 +168,7 @@ function ProfileStepFlow({
 const NAME_STEP: ProfileFlowStep = {
   title: "Your name",
   content: <ProfileNameField />,
-  caption: "Optional — nothing ever leaves this phone.",
+  caption: "Optional — you can change it in Settings.",
 }
 const AGE_STEP: ProfileFlowStep = {
   title: "Age",

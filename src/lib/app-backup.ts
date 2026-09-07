@@ -43,7 +43,7 @@ export function createGymLibBackup(
 
   return JSON.stringify(
     {
-      app: "Gym Lib",
+      app: "RAUTA",
       createdAt,
       version: BACKUP_VERSION,
       data: {
@@ -93,7 +93,7 @@ export async function exportGymLibData() {
   // Manual exports include local training; the existing iCloud snapshot stays unchanged.
   const data = createGymLibBackup(new Date().toISOString(), true, true)
   const date = new Date().toISOString().slice(0, 10)
-  const filename = `gym-lib-backup-${date}.json`
+  const filename = `rauta-backup-${date}.json`
 
   if (isNative()) {
     const file = await Filesystem.writeFile({
@@ -103,9 +103,9 @@ export async function exportGymLibData() {
       path: filename,
     })
     await Share.share({
-      dialogTitle: "Export Gym Lib data",
+      dialogTitle: "Export RAUTA data",
       files: [file.uri],
-      title: "Gym Lib backup",
+      title: "RAUTA backup",
     })
     return
   }
@@ -124,10 +124,10 @@ export function importGymLibData(json: string) {
   const backup: unknown = JSON.parse(json)
   if (
     !isRecord(backup) ||
-    backup.app !== "Gym Lib" ||
+    (backup.app !== "RAUTA" && backup.app !== "Gym Lib") ||
     backup.version !== BACKUP_VERSION
   ) {
-    throw new Error("This is not a supported Gym Lib backup.")
+    throw new Error("This is not a supported RAUTA backup.")
   }
   if (!isRecord(backup.data)) {
     throw new Error("The backup does not contain app data.")

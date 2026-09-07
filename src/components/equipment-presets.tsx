@@ -98,7 +98,7 @@ export function EquipmentPresets({
               </button>
               <button
                 aria-label={`Delete ${preset.name} preset`}
-                className="interactive-spring hit-target ml-1.5 grid size-8 shrink-0 place-items-center rounded-full text-primary opacity-65 hover:opacity-100 active:opacity-100"
+                className="interactive-spring hit-target ml-1.5 grid size-8 shrink-0 place-items-center rounded-full text-primary opacity-65 active:opacity-100"
                 data-haptics="off"
                 onClick={() => {
                   triggerHaptic("warning")

@@ -14,7 +14,7 @@ import { useTrainingRecords } from "@/store/use-training-records"
 import { useTrainingProfile } from "@/store/use-training-profile"
 import { useWorkouts } from "@/store/use-workouts"
 
-describe("Gym Lib backup", () => {
+describe("RAUTA backup", () => {
   beforeEach(() => {
     localStorage.clear()
     clearAllGymLibData()
@@ -52,7 +52,7 @@ describe("Gym Lib backup", () => {
 
   it("rejects unrelated JSON", () => {
     expect(() => importGymLibData('{"version":99}')).toThrow(
-      "not a supported Gym Lib backup"
+      "not a supported RAUTA backup"
     )
   })
 

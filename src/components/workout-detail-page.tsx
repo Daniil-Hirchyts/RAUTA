@@ -14,6 +14,7 @@ import {
 
 import { ActiveWorkoutHero } from "@/components/active-workout-hero"
 import { ActiveWorkoutTimer } from "@/components/active-workout-timer"
+import { ExerciseSetLog } from "@/components/exercise-set-log"
 import { ConfirmModal, type ConfirmationKind } from "@/components/confirm-modal"
 import { AppControlMorph } from "@/components/app-morph"
 import { usePageLayer } from "@/hooks/use-app-shell"
@@ -31,6 +32,7 @@ import { Button } from "@/components/ui/button"
 import { MatrixLoader } from "@/components/ui/matrix-loader"
 import { WorkoutCountdown } from "@/components/workout-countdown"
 import { WorkoutDatePicker } from "@/components/workout-date-picker"
+import { WorkoutSessionCompanion } from "@/components/workout-session-companion"
 import {
   currentExercise,
   exerciseStatus,
@@ -71,6 +73,10 @@ export function WorkoutDetailPage({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [confirming, setConfirming] = useState<ConfirmationKind | null>(null)
+  // At most one set editor is open at a time, and only where it was asked for.
+  const [editingExerciseId, setEditingExerciseId] = useState<string | null>(
+    null
+  )
   const workout = useWorkouts((state) =>
     state.workouts.find((item) => item.id === workoutId)
   )
@@ -242,6 +248,8 @@ export function WorkoutDetailPage({
                 />
               )}
 
+              {session && <WorkoutSessionCompanion session={session} />}
+
               <SortableExerciseList
                 exerciseIds={workout.exerciseIds}
                 onFindAlternative={
@@ -266,6 +274,19 @@ export function WorkoutDetailPage({
                       }
                 }
                 onReorder={isPast ? undefined : setExerciseIds}
+                renderBelow={
+                  session
+                    ? (exerciseId) => (
+                        <ExerciseSetLog
+                          editing={editingExerciseId === exerciseId}
+                          exerciseId={exerciseId}
+                          onEditingChange={(editing) =>
+                            setEditingExerciseId(editing ? exerciseId : null)
+                          }
+                        />
+                      )
+                    : undefined
+                }
                 onToggleComplete={
                   session
                     ? (id) => {

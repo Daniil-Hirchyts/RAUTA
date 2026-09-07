@@ -7,6 +7,12 @@ import {
   type ActiveWorkoutSession,
 } from "@/lib/active-workout"
 import { EXERCISES_BY_ID } from "@/lib/exercises"
+import {
+  beginTrainingDraft,
+  endTrainingDraft,
+  performedExerciseIds,
+  syncTrainingDraftExercises,
+} from "@/lib/training-session"
 import { estimateStrengthCalories, isPastWorkout } from "@/lib/workout-stats"
 import { isRecord, validString, validUniqueStrings } from "@/store/persistence"
 import { useSettings } from "@/store/use-settings"
@@ -126,6 +132,9 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
             startedAt: now,
           },
         })
+        // The structured draft opens empty and stays that way until a set is
+        // actually logged: listing an exercise is not performing it.
+        beginTrainingDraft(exerciseIds, new Date(now).toISOString(), workout.id)
       },
       finish: () => {
         const { session } = get()
@@ -136,6 +145,10 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
         const completedAt = new Date().toISOString()
         const shouldSync =
           settings.appleHealthEnabled && settings.autoSyncWorkouts
+        // An exercise counts as performed if it was checked off or if it holds
+        // real sets, so the saved workout cannot claim less work than the
+        // structured session it was recorded alongside.
+        const performed = performedExerciseIds()
 
         useWorkouts.getState().completeWorkout(session.workoutId, {
           activeCalories: estimateStrengthCalories(
@@ -143,16 +156,25 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
             settings.healthBodyWeightKg
           ),
           completedAt,
-          completedExerciseIds: session.exerciseIds.filter((id) =>
-            session.completedIds.includes(id)
+          completedExerciseIds: session.exerciseIds.filter(
+            (id) => session.completedIds.includes(id) || performed.has(id)
           ),
           durationMs,
           healthSyncStatus: shouldSync ? "pending" : "not-requested",
           startedAt: new Date(session.startedAt).toISOString(),
         })
+        // Both records close together: the legacy workout keeps duration,
+        // calories and which exercises were checked off, while the structured
+        // session keeps the sets that were really performed.
+        endTrainingDraft("finished", completedAt)
         set({ session: null, lastOutcome: "finished" })
       },
-      cancel: () => set({ session: null, lastOutcome: "cancelled" }),
+      cancel: () => {
+        // A discarded session is still evidence of the sets it did produce, so
+        // they are kept as a partial session rather than thrown away.
+        if (get().session) endTrainingDraft("cancelled")
+        set({ session: null, lastOutcome: "cancelled" })
+      },
       pause: () =>
         set(
           patchSession((session) =>
@@ -238,7 +260,8 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
             }
           })
         ),
-      syncExercises: (exerciseIds, movedExerciseId) =>
+      syncExercises: (exerciseIds, movedExerciseId) => {
+        const wasRunning = get().session !== null
         set((state) => {
           const { session } = state
           if (!session) return {}
@@ -289,7 +312,13 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
               currentExerciseId,
             },
           }
-        }),
+        })
+
+        if (!wasRunning) return
+        const running = get().session
+        if (running) syncTrainingDraftExercises(running.exerciseIds)
+        else endTrainingDraft("cancelled")
+      },
       syncWorkout: (workout) => {
         const { session } = get()
         if (!session || session.workoutId !== workout.id) return

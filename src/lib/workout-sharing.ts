@@ -17,8 +17,8 @@ export function workoutShareContent(workout: Workout) {
   })
 
   return {
-    title: `Gym Lib workout — ${date}`,
-    text: [date, "", ...exercises, "", "Shared from Gym Lib"].join("\n"),
+    title: `RAUTA workout — ${date}`,
+    text: [date, "", ...exercises, "", "Shared from RAUTA"].join("\n"),
   }
 }
 

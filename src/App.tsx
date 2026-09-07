@@ -174,7 +174,7 @@ function StageSubtitle({
 }
 
 /** First-run setup is offered to a genuinely new install only. Someone whose
- *  library, presets or settings already exist has been using Gym Lib for a
+ *  library, presets or settings already exist has been using RAUTA for a
  *  while; a wizard in front of their workouts would be an ambush, and every
  *  answer it asks for is in Settings anyway. */
 function initialPages(session: AppSession): AppPage[] {

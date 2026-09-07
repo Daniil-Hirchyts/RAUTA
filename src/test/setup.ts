@@ -104,3 +104,14 @@ Object.defineProperty(window, "matchMedia", {
 })
 
 HTMLElement.prototype.scrollIntoView = () => {}
+
+// Canvas/WebAssembly rendering is verified in the browser. Keep application tests
+// on the real companion/actions while replacing only the Rive SDK boundary.
+vi.mock("@rive-app/react-canvas", () => ({
+  RuntimeLoader: { setWasmUrl: vi.fn() },
+  Layout: class {},
+  Fit: { Contain: "contain" },
+  Alignment: { Center: "center" },
+  useRive: () => ({ rive: null, RiveComponent: () => null }),
+  useStateMachineInput: () => null,
+}))

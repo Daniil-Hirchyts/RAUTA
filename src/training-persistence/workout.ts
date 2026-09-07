@@ -83,11 +83,16 @@ export function createFreeWorkoutDraft(input: {
   exerciseIds: string[]
   makeId: PersistenceIdFactory
   exerciseNameSnapshot?: (exerciseId: string) => string | undefined
+  /** The application workout being performed, when the draft came from one. */
+  sourceWorkoutId?: string
 }): PersistedActiveWorkoutDraft {
   assertTimestamp(input.startedAt, "workout start")
   if (!input.draftId) throw new Error("Missing workout identity")
   return {
     id: input.draftId,
+    ...(input.sourceWorkoutId
+      ? { sourceWorkoutId: input.sourceWorkoutId }
+      : {}),
     startedAt: input.startedAt,
     exercises: input.exerciseIds.map((exerciseId) => {
       if (!exerciseId) throw new Error("Missing exercise identity")
@@ -246,6 +251,7 @@ export function completeWorkoutDraft(
     throw new Error("Complete at least one set before saving")
   return {
     id: input.sessionId,
+    sourceWorkoutId: draft.sourceWorkoutId,
     plannedProgramId: draft.plannedProgramId,
     plannedSessionId: draft.plannedSessionId,
     startedAt: draft.startedAt,

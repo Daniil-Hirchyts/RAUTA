@@ -138,7 +138,7 @@ export function SettingsPage({
       setPreference("appleHealthEnabled", false)
       setPreference("healthStatus", "error")
       setNotice(
-        "Apple Health did not grant access. Allow it in Settings › Health › Data Access & Devices › Gym Lib, then turn this back on."
+        "Apple Health did not grant access. Allow it in Settings › Health › Data Access & Devices › RAUTA, then turn this back on."
       )
       triggerHaptic("warning")
     } finally {
@@ -160,7 +160,7 @@ export function SettingsPage({
       setNotice(
         error instanceof Error
           ? error.message
-          : "That file is not a Gym Lib backup. Pick the .json file this app exported."
+          : "That file is not a RAUTA backup. Pick the .json file this app exported."
       )
       triggerHaptic("warning")
     }
@@ -392,7 +392,7 @@ export function SettingsPage({
               title="Export data"
             />
             <SettingsAction
-              description="Restore from a Gym Lib backup file"
+              description="Restore from a RAUTA backup file"
               icon={<FileUp />}
               onClick={() => {
                 triggerHaptic("light")

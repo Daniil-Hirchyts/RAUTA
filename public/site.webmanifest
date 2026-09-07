@@ -1,7 +1,7 @@
 {
-  "name": "Gym Lib — Exercise Finder",
-  "short_name": "Gym Lib",
-  "description": "Choose muscles and equipment. Find matching exercises.",
+  "name": "RAUTA — Training",
+  "short_name": "RAUTA",
+  "description": "Personal training shaped by RAUTA.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#171718",

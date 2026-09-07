@@ -184,6 +184,13 @@ export type PersistedCompletedExercise = {
 export type PersistedCompletedSession = {
   /** Actual workout identity; never a planned-session ID. */
   id: string
+  /**
+   * The application workout record this session was performed from, when one
+   * exists. It is the join that keeps one training history: a legacy
+   * `gym-lib-workouts` record naming the same workout contributes identity and
+   * time only until a structured session claims it, and then not at all.
+   */
+  sourceWorkoutId?: string
   plannedProgramId?: string
   plannedSessionId?: string
   startedAt: string
@@ -228,6 +235,9 @@ export type PersistedActiveExerciseDraft = {
 
 export type PersistedActiveWorkoutDraft = {
   id: string
+  /** The application workout being performed, carried into the completed
+   *  session so the two histories never count it twice. */
+  sourceWorkoutId?: string
   plannedProgramId?: string
   plannedSessionId?: string
   startedAt: string

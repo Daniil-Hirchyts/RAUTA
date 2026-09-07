@@ -39,7 +39,7 @@ const CONFIRMATION_COPY: Record<
   "discard-session": {
     action: "Discard session",
     description:
-      "The timer and everything checked off are lost. The workout itself stays saved.",
+      "The timer and everything checked off are lost. The workout stays saved, and so do the sets you logged.",
     title: "Discard this session?",
     tone: "destructive",
   },

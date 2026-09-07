@@ -61,7 +61,11 @@ export type TrainingRecordsState = {
     plannedSessionId: string,
     startedAt?: string
   ) => string
-  startFreeWorkout: (exerciseIds: string[], startedAt?: string) => string
+  startFreeWorkout: (
+    exerciseIds: string[],
+    startedAt?: string,
+    sourceWorkoutId?: string
+  ) => string
   recordSet: (input: {
     exerciseEntryId: string
     setDraftId: string
@@ -83,6 +87,7 @@ export type TrainingRecordsState = {
     details: Pick<PersistedActiveSetDraft, "setType" | "side">
   ) => void
   removeUnplannedSet: (exerciseEntryId: string, setDraftId: string) => void
+  discardLoggedSet: (exerciseEntryId: string, setDraftId: string) => void
   completeWorkout: (
     status?: "completed" | "partial",
     completedAt?: string
@@ -272,7 +277,8 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
         },
         startFreeWorkout: (
           exerciseIds,
-          startedAt = new Date().toISOString()
+          startedAt = new Date().toISOString(),
+          sourceWorkoutId
         ) => {
           const state = get()
           if (state.data.activeWorkout)
@@ -284,6 +290,7 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
             exerciseIds,
             makeId: (kind) => makeId(`draft-${kind}`),
             exerciseNameSnapshot: exerciseName,
+            sourceWorkoutId,
           })
           set({ data: checked({ ...state.data, activeWorkout: draft }) })
           return draftId
@@ -311,11 +318,30 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
             })
             return { data: checked({ ...state.data, activeWorkout }) }
           }),
-        reorderExercises: (exerciseEntryIds) => set((state) => {
-          const draft = state.data.activeWorkout
-          if (!draft || exerciseEntryIds.length !== draft.exercises.length || new Set(exerciseEntryIds).size !== exerciseEntryIds.length || exerciseEntryIds.some((id) => !draft.exercises.some((e) => e.id === id))) throw new Error("Invalid exercise order")
-          return { data: checked({ ...state.data, activeWorkout: { ...draft, exercises: exerciseEntryIds.map((id) => draft.exercises.find((e) => e.id === id)!) } }) }
-        }),
+        reorderExercises: (exerciseEntryIds) =>
+          set((state) => {
+            const draft = state.data.activeWorkout
+            if (
+              !draft ||
+              exerciseEntryIds.length !== draft.exercises.length ||
+              new Set(exerciseEntryIds).size !== exerciseEntryIds.length ||
+              exerciseEntryIds.some(
+                (id) => !draft.exercises.some((e) => e.id === id)
+              )
+            )
+              throw new Error("Invalid exercise order")
+            return {
+              data: checked({
+                ...state.data,
+                activeWorkout: {
+                  ...draft,
+                  exercises: exerciseEntryIds.map((id) =>
+                    draft.exercises.find((e) => e.id === id)!
+                  ),
+                },
+              }),
+            }
+          }),
         moveExercise: (exerciseEntryId, direction) =>
           set((state) => {
             if (!state.data.activeWorkout) throw new Error("No active workout")
@@ -358,6 +384,22 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
               item.observation?.completed
             )
               throw new Error("Only unfinished additional sets can be removed")
+            exercise.sets = exercise.sets.filter((s) => s.id !== setDraftId)
+            return { data: checked({ ...state.data, activeWorkout }) }
+          }),
+        discardLoggedSet: (exerciseEntryId, setDraftId) =>
+          set((state) => {
+            if (!state.data.activeWorkout) throw new Error("No active workout")
+            const activeWorkout = structuredClone(state.data.activeWorkout)
+            const exercise = activeWorkout.exercises.find(
+              (e) => e.id === exerciseEntryId
+            )
+            const item = exercise?.sets.find((s) => s.id === setDraftId)
+            // A live draft is not history: only completion writes evidence, so
+            // a set logged by mistake can still be taken back until then. A
+            // planned set is the prescription rather than a record and stays.
+            if (!exercise || !item || item.plannedSetId)
+              throw new Error("Prescribed sets stay in the workout")
             exercise.sets = exercise.sets.filter((s) => s.id !== setDraftId)
             return { data: checked({ ...state.data, activeWorkout }) }
           }),

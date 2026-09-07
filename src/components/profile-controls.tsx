@@ -1,9 +1,10 @@
-import { useState, type ReactNode } from "react"
+import { useState, type ReactNode, type KeyboardEvent } from "react"
 
 import { AnimatedCheck } from "@/components/animated-check"
 import { BodyMap } from "@/components/body-map"
 import { EquipmentGrid } from "@/components/equipment-grid"
 import { EquipmentPresets } from "@/components/equipment-presets"
+import { RautaStill } from "@/components/rauta"
 import { DotPattern } from "@/components/ui/dot-pattern"
 import { Input } from "@/components/ui/input"
 import { RotaryKnob } from "@/components/ui/rotary-knob"
@@ -35,6 +36,24 @@ import type { MuscleId } from "@/types"
  * the two surfaces are two ways into the same value rather than two copies of
  * it.
  */
+
+function moveRadio(event: KeyboardEvent<HTMLDivElement>) {
+  const delta = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[
+    event.key
+  ]
+  if (delta === undefined) return
+  const choices = [
+    ...event.currentTarget.querySelectorAll<HTMLButtonElement>(
+      '[role="radio"]'
+    ),
+  ]
+  const current = choices.indexOf(document.activeElement as HTMLButtonElement)
+  if (current < 0) return
+  event.preventDefault()
+  const next = choices[(current + delta + choices.length) % choices.length]
+  next.focus()
+  next.click()
+}
 
 export function ChoiceRow({
   checked,
@@ -111,6 +130,7 @@ export function ProfileNameField() {
 
   return (
     <Input
+      className="!h-20 !rounded-3xl !border-0 !border-b-2 !bg-transparent !px-3 !text-center !text-3xl !font-bold !shadow-none focus-visible:!ring-0"
       aria-label="Your name"
       autoComplete="given-name"
       enterKeyHint="done"
@@ -176,36 +196,130 @@ export function ExperiencePicker() {
   const updateProfile = useTrainingProfile((state) => state.updateProfile)
 
   return (
-    <ChoiceGroup label="Training experience">
-      {EXPERIENCE_LEVELS.map((level) => (
-        <ChoiceRow
-          checked={experience === level}
-          description={EXPERIENCE_CHOICES[level].description}
+    <div
+      role="radiogroup"
+      onKeyDown={moveRadio}
+      aria-label="Training experience"
+      className="space-y-3"
+    >
+      {EXPERIENCE_LEVELS.map((level, index) => (
+        <button
+          type="button"
+          role="radio"
+          aria-checked={experience === level}
+          tabIndex={experience === level ? 0 : -1}
           key={level}
-          onClick={() => updateProfile({ trainingExperience: level })}
-          title={EXPERIENCE_CHOICES[level].title}
-        />
+          data-haptics="off"
+          className={cn(
+            "interactive-spring flex w-full items-center gap-5 rounded-3xl border p-5 text-left transition-colors",
+            experience === level
+              ? "border-primary/60 bg-primary/10"
+              : "border-border bg-card"
+          )}
+          onClick={() => {
+            triggerHaptic("selection")
+            updateProfile({ trainingExperience: level })
+          }}
+        >
+          <span className="relative h-16 w-20 shrink-0 overflow-hidden rounded-2xl bg-muted" aria-hidden="true">
+            <span className="absolute -right-2 -bottom-4 size-20 opacity-80">
+              <RautaStill />
+            </span>
+            <span className="absolute bottom-2 left-2 flex items-end gap-1">
+              {[0, 1, 2].map((bar) => (
+                <span
+                  key={bar}
+                  className={cn(
+                    "w-1.5 rounded-full shadow-sm",
+                    bar <= index ? "bg-primary" : "bg-foreground/20"
+                  )}
+                  style={{ height: 9 + bar * 7 }}
+                />
+              ))}
+            </span>
+          </span>
+          <span className="min-w-0 flex-1">
+            <strong className="block text-lg">
+              {EXPERIENCE_CHOICES[level].title}
+            </strong>
+            <span className="mt-1 block text-sm text-muted-foreground">
+              {EXPERIENCE_CHOICES[level].description}
+            </span>
+          </span>
+          <AnimatedCheck
+            checked={experience === level}
+            className="size-6 shrink-0"
+          />
+        </button>
       ))}
-    </ChoiceGroup>
+    </div>
   )
+}
+
+const GOAL_ART = {
+  hypertrophy: "scale-[1.2] -rotate-6 translate-y-2",
+  strength: "scale-[1.28] rotate-5 translate-y-1",
+  strength_hypertrophy: "scale-[1.22] -rotate-2 translate-y-2",
+  general_fitness: "scale-[1.06] rotate-6 -translate-y-1",
+  fat_loss_support: "scale-[1.12] -rotate-5 translate-x-2",
+  muscular_endurance: "scale-[1.18] rotate-2 translate-y-2",
 }
 
 export function GoalPicker() {
   const goal = useTrainingProfile((state) => state.profile.goal)
   const updateProfile = useTrainingProfile((state) => state.updateProfile)
-
   return (
-    <ChoiceGroup label="Training goal">
-      {SUPPORTED_GOALS.map((option) => (
-        <ChoiceRow
-          checked={goal === option}
-          description={GOAL_CHOICES[option].description}
-          key={option}
-          onClick={() => updateProfile({ goal: option })}
-          title={GOAL_CHOICES[option].title}
-        />
-      ))}
-    </ChoiceGroup>
+    <div
+      role="radiogroup"
+      onKeyDown={moveRadio}
+      aria-label="Training goal"
+      className="grid grid-cols-2 gap-3"
+    >
+      {SUPPORTED_GOALS.map((option) => {
+        const selected = goal === option
+        return (
+          <button
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            tabIndex={selected ? 0 : -1}
+            key={option}
+            data-haptics="off"
+            className={cn(
+              "interactive-spring relative flex min-h-48 flex-col items-start overflow-hidden rounded-3xl border p-3.5 text-left transition-colors",
+              selected
+                ? "border-primary/60 bg-primary/10"
+                : "border-border bg-card"
+            )}
+            onClick={() => {
+              triggerHaptic("selection")
+              updateProfile({ goal: option })
+            }}
+          >
+            <span className="relative mb-3 h-24 w-full overflow-hidden rounded-[1.15rem] bg-muted" aria-hidden="true">
+              <span className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,color-mix(in_oklch,var(--primary)_34%,transparent),transparent_52%)]" />
+              <span
+                className={cn(
+                  "absolute right-1 -bottom-5 size-28 transition-transform duration-300",
+                  GOAL_ART[option]
+                )}
+              >
+                <RautaStill />
+              </span>
+            </span>
+            <span className="absolute top-4 right-3">
+              <AnimatedCheck checked={selected} className="size-5" />
+            </span>
+            <strong className="text-[15px] leading-tight">
+              {GOAL_CHOICES[option].title}
+            </strong>
+            <span className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+              {GOAL_CHOICES[option].description}
+            </span>
+          </button>
+        )
+      })}
+    </div>
   )
 }
 

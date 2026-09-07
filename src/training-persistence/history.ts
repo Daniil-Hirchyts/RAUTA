@@ -63,7 +63,15 @@ export function toTrainingHistory(
   legacyWorkouts: readonly LegacyWorkoutObservation[] = []
 ): TrainingHistory {
   const structured = state.sessions.map(toEngineCompletedSession)
-  const structuredIds = new Set(structured.map((session) => session.id))
+  // A workout performed with structured logging is one session, not two: its
+  // legacy record names the same workout and would otherwise be counted again
+  // as a second, set-less exposure.
+  const structuredIds = new Set(
+    state.sessions.flatMap((session) => [
+      session.id,
+      ...(session.sourceWorkoutId ? [session.sourceWorkoutId] : []),
+    ])
+  )
   const legacy = legacyWorkouts.flatMap((workout) => {
     if (structuredIds.has(workout.id)) return []
     const adapted = adaptLegacyWorkout(structuredClone(workout))

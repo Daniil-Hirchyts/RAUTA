@@ -1,7 +1,7 @@
 import { DragDropProvider } from "@dnd-kit/react"
 import { isSortable, useSortable } from "@dnd-kit/react/sortable"
 import { ArrowLeftRight, GripVertical, Trash2 } from "lucide-react"
-import { useState, type Ref } from "react"
+import { useState, type ReactNode, type Ref } from "react"
 
 import { AnimatedCheck } from "@/components/animated-check"
 import { AppGrain } from "@/components/app-grain"
@@ -18,6 +18,7 @@ import {
 import type { ExerciseSummary } from "@/types"
 
 function SortableExerciseRow({
+  below,
   exercise,
   index,
   isOpen,
@@ -29,6 +30,9 @@ function SortableExerciseRow({
   reorderable,
   status,
 }: {
+  /** Rendered under the row, inside the same item: the set log of a workout
+   *  being performed belongs to its exercise, not to a screen of its own. */
+  below?: ReactNode
   exercise: ExerciseSummary
   index: number
   isOpen: boolean
@@ -130,45 +134,48 @@ function SortableExerciseRow({
     </div>
   )
 
+  const swipeable = onRemove ? (
+    <SwipeableRow
+      actionInset={16}
+      revealWidth={onFindAlternative ? 148 : undefined}
+      action={
+        <div className="flex items-center gap-2">
+          {onFindAlternative && (
+            <button
+              aria-label="Find alternative"
+              className="interactive-spring grid size-14 place-items-center rounded-full border border-border bg-card text-primary shadow-lg shadow-black/20 active:bg-card/90 active:text-white"
+              onClick={() => {
+                onOpenChange(false)
+                onFindAlternative(exercise)
+              }}
+              type="button"
+            >
+              <ArrowLeftRight className="size-5" />
+            </button>
+          )}
+          <button
+            aria-label={`Remove ${exercise.name}`}
+            className="interactive-spring grid size-14 place-items-center rounded-full border border-primary bg-card text-primary shadow-lg shadow-black/20"
+            onClick={() => onRemove(exercise.id)}
+            type="button"
+          >
+            <Trash2 className="size-5" />
+          </button>
+        </div>
+      }
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+    >
+      {row}
+    </SwipeableRow>
+  ) : (
+    row
+  )
+
   return (
     <li className="touch-pan-y" ref={ref as Ref<HTMLLIElement>}>
-      {onRemove ? (
-        <SwipeableRow
-          actionInset={16}
-          revealWidth={onFindAlternative ? 148 : undefined}
-          action={
-            <div className="flex items-center gap-2">
-              {onFindAlternative && (
-                <button
-                  aria-label="Find alternative"
-                  className="interactive-spring grid size-14 place-items-center rounded-full border border-border bg-card text-primary shadow-lg shadow-black/20 active:bg-card/90 active:text-white"
-                  onClick={() => {
-                    onOpenChange(false)
-                    onFindAlternative(exercise)
-                  }}
-                  type="button"
-                >
-                  <ArrowLeftRight className="size-5" />
-                </button>
-              )}
-              <button
-                aria-label={`Remove ${exercise.name}`}
-                className="interactive-spring grid size-14 place-items-center rounded-full border border-primary bg-card text-primary shadow-lg shadow-black/20"
-                onClick={() => onRemove(exercise.id)}
-                type="button"
-              >
-                <Trash2 className="size-5" />
-              </button>
-            </div>
-          }
-          isOpen={isOpen}
-          onOpenChange={onOpenChange}
-        >
-          {row}
-        </SwipeableRow>
-      ) : (
-        row
-      )}
+      {swipeable}
+      {below}
     </li>
   )
 }
@@ -180,6 +187,7 @@ export function SortableExerciseList({
   onRemove,
   onReorder,
   onToggleComplete,
+  renderBelow,
   statusOf,
 }: {
   exerciseIds: string[]
@@ -190,6 +198,8 @@ export function SortableExerciseList({
   /** Pass both to add check-off and status to the list of a running workout.
    *  Reordering, removing and swapping stay available either way. */
   onToggleComplete?: (id: string) => void
+  /** Extra content for each exercise, kept inside its list item. */
+  renderBelow?: (exerciseId: string) => ReactNode
   statusOf?: (id: string) => ExerciseStatus
 }) {
   const [openRowId, setOpenRowId] = useState<string | null>(null)
@@ -218,6 +228,7 @@ export function SortableExerciseList({
           if (!exercise) return null
           return (
             <SortableExerciseRow
+              below={renderBelow?.(id)}
               exercise={exercise}
               index={index}
               isOpen={openRowId === id}

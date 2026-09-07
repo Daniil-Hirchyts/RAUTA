@@ -57,6 +57,8 @@ validated active draft
 
 Only sets with an explicit completed observation are emitted. Unperformed planned sets remain absent from completed history and can be inferred as skipped later from plan lineage. Additional unplanned sets have no `plannedSetId`. Free workouts have no program/session lineage. Exercise substitution preserves the originally planned canonical exercise ID while storing the canonical exercise ID actually performed.
 
+A set logged by mistake can be taken back while the draft is live: `discardLoggedSet` removes an unplanned draft set whether or not it carries an observation, because only completion writes evidence. Prescribed sets are never removed this way — they are the prescription, not a record.
+
 ## Completed observations
 
 A completed structured set persists:
@@ -103,8 +105,23 @@ Calories remain legacy/application metadata and are not training-engine evidence
 
 Migration/adapters clone inputs and do not mutate callers. `serializePersistedTrainingState` normalizes top-level record ordering and uses stable key ordering for deterministic serialized output while preserving meaningful program/session/set array order.
 
-## Legacy UI compatibility
+## Application workouts as structured sessions
 
-The existing `useWorkouts` and `useActiveWorkout` UI stores remain untouched. They continue to serve the current ID-level workout UI and legacy history. The new `useTrainingRecords` application store is the structured logging foundation for the next UI integration pass.
+`useWorkouts` and `useActiveWorkout` keep serving the manual flow — muscles, equipment, exercises, workout, perform — unchanged. `src/lib/training-session.ts` is the single seam between that session and the structured record:
 
-That next pass can start a planned or free workout, record real observations, complete or partially complete it, reload exact structured history, and feed `toTrainingHistory(...)` into generation/adaptation without changing the deterministic engine or persistence schema fundamentals.
+```text
+start a workout   → free draft, exercises listed, zero sets
+log a set         → one completed observation appended to the draft
+finish            → completed structured session
+discard           → partial structured session, or no session when nothing was logged
+```
+
+A free workout has no program, planned session, planned exercise or planned set, and none is invented for it. Its performed sets are the same structured observations a generated session will produce, in the same history.
+
+`sourceWorkoutId` names the application workout a structured session was performed from. It is lineage between the two application stores, not plan lineage, and it exists so there is one training history rather than two: `toTrainingHistory` drops the legacy `gym-lib-workouts` record of any workout a structured session already claims, instead of counting the same session twice — once with sets and once as a set-less exposure. Workouts performed before this integration keep contributing through `adaptLegacyWorkout` exactly as before.
+
+The field is optional inside schema version 1: payloads written before it validate and load unchanged, and its absence means "no known application workout", never a guess.
+
+## Set-level observations from the application UI
+
+The active-workout screen collects observations through `src/lib/resistance.ts`, which decides from catalogue metadata and equipment which resistance shape an exercise is measured in — external load per implement or total, assistance, body weight, band — and in which increments its load moves. Prefilling the editor from the previous set, or from the last session, is a convenience; nothing is persisted until the set is confirmed, and an exercise that was never logged produces no record when the workout ends.

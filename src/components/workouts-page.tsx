@@ -23,6 +23,7 @@ import { BodyPreview } from "@/components/body-map"
 import { ConfirmModal } from "@/components/confirm-modal"
 import { SwipeableRow } from "@/components/swipeable-row"
 import { Button } from "@/components/ui/button"
+import { WorkoutCompanion } from "@/components/workout-companion"
 import { WorkoutHeatmap } from "@/components/workout-heatmap"
 import { useElapsedMs } from "@/hooks/use-elapsed-ms"
 import { formatDuration, sessionProgress } from "@/lib/active-workout"
@@ -309,6 +310,18 @@ export function WorkoutsPage({
           tabIndex={-1}
         >
           <div className="space-y-7">
+            <WorkoutCompanion
+              onCreate={onCreate}
+              onSettings={onSettings}
+              onResume={
+                session && workouts.some((w) => w.id === session.workoutId)
+                  ? () =>
+                      onSelect(
+                        workouts.find((w) => w.id === session.workoutId)!
+                      )
+                  : undefined
+              }
+            />
             {upcoming.length > 0 ? (
               <section aria-labelledby="upcoming-workouts-heading">
                 <div id="upcoming-workouts-heading">

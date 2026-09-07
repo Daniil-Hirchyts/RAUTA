@@ -372,6 +372,7 @@ function validateCompletedSession(
     !["completed", "partial"].includes(String(value.status)) ||
     (value.durationSeconds !== undefined && !finite(value.durationSeconds, 0, 86_400)) ||
     !Array.isArray(value.exercises) ||
+    (value.sourceWorkoutId !== undefined && !nonEmptyString(value.sourceWorkoutId)) ||
     (value.plannedProgramId !== undefined && !nonEmptyString(value.plannedProgramId)) ||
     (value.plannedSessionId !== undefined && !nonEmptyString(value.plannedSessionId)) ||
     (value.plannedSessionId !== undefined && value.plannedProgramId === undefined)
@@ -477,6 +478,7 @@ function validateActiveWorkout(
     !isRecord(value) ||
     !nonEmptyString(value.id) ||
     !isValidIsoTimestamp(value.startedAt) ||
+    (value.sourceWorkoutId !== undefined && !nonEmptyString(value.sourceWorkoutId)) ||
     (value.plannedProgramId !== undefined && !nonEmptyString(value.plannedProgramId)) ||
     (value.plannedSessionId !== undefined && !nonEmptyString(value.plannedSessionId)) ||
     (value.plannedSessionId !== undefined && value.plannedProgramId === undefined) ||

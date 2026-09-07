@@ -40,7 +40,7 @@ export type TrainingProfileHealth =
   { status: "healthy" } | { status: "unsupported"; reasons: HealthLimitation[] }
 
 /**
- * What Gym Lib knows about the person training, kept stable so a generated
+ * What RAUTA knows about the person training, kept stable so a generated
  * week never has to ask again. Deliberately not the engine's request object:
  * this is application state a person edits, versioned and migration-safe,
  * while the request is derived from it at the moment a plan is built.

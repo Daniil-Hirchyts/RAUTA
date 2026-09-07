@@ -1,4 +1,4 @@
-# Gym Lib
+# RAUTA
 
 A deliberately simple, mobile-first exercise finder. Move through three focused stages: choose muscles, select equipment or reuse a saved preset, then browse visual matching exercises from the bundled dataset.
 
@@ -57,7 +57,7 @@ Distribution is wired up: the App ID `com.hirchyts.gymlib` is registered, an
 Apple Distribution certificate and App Store profile exist, and
 `ios/ExportOptions.plist` targets team `89NA3C53R8`.
 `ITSAppUsesNonExemptEncryption` is declared `false` in `App/Info.plist`, so
-builds skip the export-compliance prompt — Gym Lib has no backend and no
+builds skip the export-compliance prompt — RAUTA has no backend and no
 custom cryptography.
 
 Uploads authenticate with an App Store Connect API key. Keep the `.p8` in
@@ -80,7 +80,7 @@ Inside the native shell, haptics call straight into UIKit's feedback
 generators; the web build keeps using the Vibration API and the Safari
 switch-overlay fallback in `src/lib/haptics.ts`.
 
-Gym Lib uses React, TypeScript, Vite, Tailwind CSS, shadcn/ui, and Zustand. It has no backend and stores filter selections, equipment presets and the training profile only in the browser's local storage.
+RAUTA uses React, TypeScript, Vite, Tailwind CSS, shadcn/ui, and Zustand. It has no backend and stores filter selections, equipment presets and the training profile only in the browser's local storage.
 
 See [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) for dataset and anatomy-map attribution.
 
@@ -98,6 +98,14 @@ bun run training:test
 bun run training:audit
 bun run training:benchmark
 ```
+
+Workouts built by hand feed the same engine. Starting one opens a structured
+draft alongside the existing session; each set logged during the workout — load,
+reps, reps in reserve, with the resistance semantics the equipment implies — is
+persisted as a real observation, and finishing or abandoning the workout writes
+exactly those sets into the one training history the engine reads. Nothing is
+recorded for an exercise that was listed but not performed, and workouts from
+before structured logging keep their original, lower-information records.
 
 The stable answers the engine needs — age, experience, goal, health eligibility,
 session length, priority muscles — live in the application's own training

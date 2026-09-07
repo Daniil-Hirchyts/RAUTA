@@ -17,9 +17,9 @@ describe("workout sharing", () => {
 
     const content = workoutShareContent(workout)
 
-    expect(content.title).toBe("Gym Lib workout — Tuesday, September 1")
+    expect(content.title).toBe("RAUTA workout — Tuesday, September 1")
     expect(content.text).toContain("1. 3/4 Sit-Up\n   Body Weight")
     expect(content.text).toContain("2. 45° Side Bend\n   Body Weight")
-    expect(content.text).toMatch(/Shared from Gym Lib$/)
+    expect(content.text).toMatch(/Shared from RAUTA$/)
   })
 })

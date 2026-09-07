@@ -7,7 +7,7 @@ import {
 import type { PlanningPreferences, UserTrainingProfile } from "@/training"
 
 /**
- * The one boundary between Gym Lib and the deterministic training engine.
+ * The one boundary between RAUTA and the deterministic training engine.
  *
  * Everything above it is application state a person edits — a profile, an
  * equipment selection, an Apple Health reading. Everything below it is the

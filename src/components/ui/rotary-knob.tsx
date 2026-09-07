@@ -30,7 +30,7 @@ const START_ANGLE = -135
 const VIEWBOX = 120
 const CENTER = VIEWBOX / 2
 const RADIUS = 50
-const TRACK_WIDTH = 9
+const TRACK_WIDTH = 2
 
 function polar(angleDegrees: number, radius = RADIUS) {
   // 0° points at 12 o'clock and grows clockwise, the way the dial is read.
@@ -63,7 +63,7 @@ export function RotaryKnob({
   max,
   min,
   onChange,
-  size = 168,
+  size = 232,
   step = 1,
   unit,
   value,
@@ -97,7 +97,7 @@ export function RotaryKnob({
   const span = max - min
   const fraction = span > 0 ? (current - min) / span : 0
   const valueAngle = START_ANGLE + fraction * SWEEP_DEGREES
-  const handle = polar(valueAngle)
+  const handle = polar(valueAngle, 40)
 
   const commit = (next: number) => {
     const snapped = snapToRange(next, range)
@@ -199,7 +199,7 @@ export function RotaryKnob({
         aria-valuenow={current}
         aria-valuetext={unit ? `${format(current)} ${unit}` : format(current)}
         className={cn(
-          "relative grid touch-none place-items-center rounded-full outline-none select-none",
+          "relative grid touch-none place-items-center rounded-full drop-shadow-[0_14px_18px_rgba(0,0,0,0.3)] outline-none select-none",
           "focus-visible:ring-3 focus-visible:ring-ring/30",
           disabled && "opacity-50"
         )}
@@ -229,6 +229,43 @@ export function RotaryKnob({
               <stop offset="100%" stopColor="var(--primary-gradient-end)" />
             </linearGradient>
           </defs>
+          <circle
+            cx={CENTER}
+            cy={CENTER}
+            r={43}
+            fill="var(--card)"
+            stroke="var(--border)"
+            strokeWidth="0.6"
+          />
+          <circle
+            cx={CENTER}
+            cy={CENTER}
+            r={36}
+            fill="var(--background)"
+            stroke="var(--border)"
+            strokeWidth="0.4"
+          />
+          {Array.from({ length: 55 }, (_, i) => {
+            const angle = START_ANGLE + i * 5
+            const inner = polar(angle, i % 5 === 0 ? 53 : 55)
+            const outer = polar(angle, 58)
+            return (
+              <line
+                key={i}
+                x1={inner.x}
+                y1={inner.y}
+                x2={outer.x}
+                y2={outer.y}
+                stroke={
+                  angle <= valueAngle
+                    ? "var(--primary)"
+                    : "var(--muted-foreground)"
+                }
+                opacity={angle <= valueAngle ? 1 : 0.35}
+                strokeWidth={i % 5 === 0 ? 1 : 0.5}
+              />
+            )
+          })}
           <path
             d={arcPath(START_ANGLE, START_ANGLE + SWEEP_DEGREES)}
             fill="none"
@@ -245,15 +282,10 @@ export function RotaryKnob({
               strokeWidth={TRACK_WIDTH}
             />
           ) : null}
-          <circle
-            cx={handle.x}
-            cy={handle.y}
-            fill="var(--foreground)"
-            r={TRACK_WIDTH / 2 - 1.5}
-          />
+          <circle cx={handle.x} cy={handle.y} fill="var(--primary)" r={2} />
         </svg>
-        <span className="pointer-events-none flex flex-col items-center">
-          <span className="font-heading text-[2.75rem] leading-none font-black tracking-[-0.03em] tabular-nums">
+        <span className="pointer-events-none relative z-10 flex flex-col items-center">
+          <span className="font-heading text-[3.25rem] leading-none font-black tracking-[-0.03em] tabular-nums">
             {format(current)}
           </span>
           {unit ? (
@@ -262,6 +294,38 @@ export function RotaryKnob({
             </span>
           ) : null}
         </span>
+      </div>
+      <div
+        className="flex items-center gap-5 text-xs font-semibold text-muted-foreground"
+        aria-hidden="true"
+      >
+        <span>{min}</span>
+        <span className="text-[10px] tracking-[0.18em] uppercase">
+          Turn to adjust
+        </span>
+        <span>{max}</span>
+      </div>
+      <div className="flex gap-3">
+        <button
+          type="button"
+          data-haptics="off"
+          aria-label={`Decrease ${ariaLabel.toLowerCase()}`}
+          disabled={disabled || current <= min}
+          onClick={() => commit(current - step)}
+          className="interactive-spring grid size-11 place-items-center rounded-full border border-border bg-card text-xl disabled:opacity-35"
+        >
+          −
+        </button>
+        <button
+          type="button"
+          data-haptics="off"
+          aria-label={`Increase ${ariaLabel.toLowerCase()}`}
+          disabled={disabled || current >= max}
+          onClick={() => commit(current + step)}
+          className="interactive-spring grid size-11 place-items-center rounded-full border border-border bg-card text-xl disabled:opacity-35"
+        >
+          +
+        </button>
       </div>
     </div>
   )
