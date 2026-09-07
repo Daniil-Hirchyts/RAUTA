@@ -41,6 +41,7 @@ export {
 export { validateTrainingProgram } from "./validation/program"
 export { validateGenerationRequest } from "./validation/input"
 export { findExerciseSubstitutions } from "./planning/substitutions"
+export { SPLIT_MUSCLE_GROUPS } from "./planning/optimizer"
 export { adaptTrainingProgram } from "./planning/adapt"
 export type { AdaptationRequest } from "./planning/adapt"
 export { summarizeProgram } from "./summary"

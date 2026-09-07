@@ -42,10 +42,17 @@ export type PlanSetup = {
   preferences: PlanningPreferences
 }
 
+/** Mon–Sun as offsets from the week the engine is asked to plan. The only
+ *  genuinely week-specific answer the profile cannot already give. */
+export const DEFAULT_TRAINING_DAYS: readonly number[] = [0, 2, 4]
+
 export function buildTrainingRequest(
   setup: PlanSetup,
   now: string,
-  source?: PersistedProgramRecord
+  source?: PersistedProgramRecord,
+  /** Which days of the coming week can be trained. Ignored when revising an
+   *  existing week: that week's own remaining slots decide. */
+  availableDays: readonly number[] = DEFAULT_TRAINING_DAYS
 ): ProgramGenerationRequest {
   const store = useTrainingRecords.getState()
   const monday = new Date(now)
@@ -94,7 +101,7 @@ export function buildTrainingRequest(
                 )
             ),
           ].sort((a, b) => a - b)
-        : [0, 2, 4],
+        : [...new Set(availableDays)].sort((a, b) => a - b),
       durationWeeks: 1,
     },
     history: store.getTrainingHistory(),
@@ -106,12 +113,18 @@ export function buildTrainingRequest(
   }
 }
 
-export function generateAndSavePlan(
+/**
+ * Asks the engine for a week and hands back exactly what it said, refusals
+ * included. Nothing is persisted here: a caller that wants to show the
+ * engine's own diagnostics needs the structured result, not an exception.
+ */
+export function planTrainingWeek(
   setup: PlanSetup = buildTrainingEngineInputs(),
   now = new Date().toISOString(),
-  source?: PersistedProgramRecord
+  source?: PersistedProgramRecord,
+  availableDays: readonly number[] = DEFAULT_TRAINING_DAYS
 ) {
-  const request = buildTrainingRequest(setup, now, source)
+  const request = buildTrainingRequest(setup, now, source, availableDays)
   if (!request.schedule.days.length)
     throw new Error(
       "There are no future sessions left in this week. Create a new training week instead."
@@ -123,6 +136,21 @@ export function generateAndSavePlan(
         mode: "remaining_week",
       })
     : generateTrainingProgram(request)
+  return { request, result }
+}
+
+export function generateAndSavePlan(
+  setup: PlanSetup = buildTrainingEngineInputs(),
+  now = new Date().toISOString(),
+  source?: PersistedProgramRecord,
+  availableDays: readonly number[] = DEFAULT_TRAINING_DAYS
+) {
+  const { request, result } = planTrainingWeek(
+    setup,
+    now,
+    source,
+    availableDays
+  )
   if (!("program" in result))
     throw new Error(
       `No plan could be created (${result.status}). Check available equipment and future training days.`

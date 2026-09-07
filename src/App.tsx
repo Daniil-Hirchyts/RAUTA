@@ -58,6 +58,7 @@ import {
   WorkoutDestinationPage,
   WorkoutFormPage,
 } from "@/components/secondary-pages"
+import { PlanWeekPage } from "@/components/plan-week-page"
 import { SettingsEffects } from "@/components/settings-effects"
 import { SettingsPage } from "@/components/settings-page"
 import { SvgFilterDefs } from "@/components/svg-filters"
@@ -497,6 +498,10 @@ export function App() {
               content = (
                 <WorkoutsPage
                   onCreate={() => startExerciseFlow()}
+                  onCreatePlan={() => {
+                    triggerHaptic("medium")
+                    pushPage({ type: "plan-week" })
+                  }}
                   onDelete={(workoutId) =>
                     useWorkouts.getState().deleteWorkout(workoutId)
                   }
@@ -515,6 +520,16 @@ export function App() {
                     void syncICloudNow()
                     resetPages([{ type: "workouts" }])
                   }}
+                  onOpenProfilePage={(type) => pushPage({ type })}
+                />
+              )
+            } else if (page.type === "plan-week") {
+              content = (
+                <PlanWeekPage
+                  onBack={popPage}
+                  // The plan is the destination, not the page that made it:
+                  // finishing lands back on the workout list it now fills.
+                  onCreated={() => resetPages([{ type: "workouts" }])}
                   onOpenProfilePage={(type) => pushPage({ type })}
                 />
               )

@@ -25,7 +25,7 @@ export type ActiveWorkoutOutcome = "finished" | "cancelled"
 export type ActiveWorkoutState = {
   session: ActiveWorkoutSession | null
   lastOutcome: ActiveWorkoutOutcome | null
-  start: (workout: Workout) => void
+  start: (workout: Workout) => boolean
   finish: () => void
   cancel: () => void
   pause: () => void
@@ -111,13 +111,24 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
       session: null,
       lastOutcome: null,
       start: (workout) => {
-        if (isPastWorkout(workout)) return
+        if (isPastWorkout(workout)) return false
         const exerciseIds = workout.exerciseIds.filter((id) =>
           EXERCISES_BY_ID.has(id)
         )
-        if (exerciseIds.length === 0) return
+        if (exerciseIds.length === 0) return false
 
         const now = Date.now()
+        // Open the structured record before exposing a running session. A
+        // planned workout whose program/session can no longer be resolved must
+        // not silently become a free workout or leave a shell session behind.
+        const draftStarted = beginTrainingDraft(
+          exerciseIds,
+          new Date(now).toISOString(),
+          workout.id,
+          workout.planned
+        )
+        if (!draftStarted) return false
+
         set({
           lastOutcome: null,
           session: {
@@ -132,9 +143,7 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
             startedAt: now,
           },
         })
-        // The structured draft opens empty and stays that way until a set is
-        // actually logged: listing an exercise is not performing it.
-        beginTrainingDraft(exerciseIds, new Date(now).toISOString(), workout.id)
+        return true
       },
       finish: () => {
         const { session } = get()

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   Activity,
   Check,
@@ -6,6 +6,8 @@ import {
   ChevronLeft,
   Clock3,
   Flag,
+  Layers,
+  ListChecks,
   Plus,
   Share,
   Trash2,
@@ -41,12 +43,46 @@ import {
 } from "@/lib/active-workout"
 import { formatDateLong } from "@/lib/date"
 import { triggerHaptic } from "@/lib/haptics"
+import {
+  formatPrescription,
+  plannedSessionView,
+  type PlannedSessionView,
+} from "@/lib/training-plan"
 import { cn } from "@/lib/utils"
 import { shareWorkout } from "@/lib/workout-sharing"
 import { isPastWorkout } from "@/lib/workout-stats"
 import { useActiveWorkout } from "@/store/use-active-workout"
+import { useTrainingRecords } from "@/store/use-training-records"
 import { useWorkouts } from "@/store/use-workouts"
 import type { ExerciseSummary } from "@/types"
+
+/**
+ * The prescription, in the row of the exercise it belongs to.
+ *
+ * It is only ever read out of the immutable program snapshot, so what a
+ * planned session promises before it is performed and what its sets were
+ * measured against afterwards are one and the same statement.
+ */
+function PlannedTargets({
+  exerciseId,
+  session,
+}: {
+  exerciseId: string
+  session: PlannedSessionView
+}) {
+  const item = session.prescription.find(
+    (entry) => entry.exerciseId === exerciseId
+  )
+  if (!item) return null
+  return (
+    <p className="mx-(--app-content-inset) mt-1.5 overflow-x-auto rounded-2xl border border-border bg-card/60 px-3 py-2 text-[13px] font-semibold whitespace-nowrap text-muted-foreground tabular-nums">
+      <span className="mr-2 font-black tracking-[0.14em] text-primary uppercase">
+        Plan
+      </span>
+      {formatPrescription(item)}
+    </p>
+  )
+}
 
 export function WorkoutDetailPage({
   onAddExercise,
@@ -77,8 +113,22 @@ export function WorkoutDetailPage({
   const [editingExerciseId, setEditingExerciseId] = useState<string | null>(
     null
   )
+  const [startIssue, setStartIssue] = useState<string | null>(null)
   const workout = useWorkouts((state) =>
     state.workouts.find((item) => item.id === workoutId)
+  )
+  const trainingData = useTrainingRecords((state) => state.data)
+  const programId = workout?.planned?.programId
+  const plannedSessionId = workout?.planned?.sessionId
+  // Read back out of the stored program every time the program changes, and
+  // never copied into state: the snapshot is the prescription, and this page
+  // must not hold a second version of it that could drift.
+  const plannedSession = useMemo(
+    () =>
+      programId && plannedSessionId
+        ? plannedSessionView(programId, plannedSessionId, trainingData)
+        : null,
+    [plannedSessionId, programId, trainingData]
   )
   const updateWorkout = useWorkouts((state) => state.updateWorkout)
   const duplicateWorkout = useWorkouts((state) => state.duplicateWorkout)
@@ -114,6 +164,8 @@ export function WorkoutDetailPage({
 
   if (!workout) return null
 
+  const isPlanned = Boolean(workout.planned)
+  const plannedUnavailable = isPlanned && !plannedSession
   const isPast = !session && isPastWorkout(workout)
   const completion = workout.completion
 
@@ -174,7 +226,9 @@ export function WorkoutDetailPage({
           right={shareButton}
           scrollRef={scrollRef}
           title={
-            isPast ? (
+            // A planned session sits on the day the program gave it; moving it
+            // would leave the plan and the workout describing different weeks.
+            isPast || isPlanned ? (
               formatDateLong(workout.date)
             ) : (
               <WorkoutDatePicker
@@ -233,6 +287,49 @@ export function WorkoutDetailPage({
               </div>
             </section>
           ) : null}
+          {plannedSession && !session && !isPast ? (
+            <section
+              aria-label="Planned session"
+              className="mx-(--app-content-inset) grid grid-cols-3 gap-1.5 rounded-3xl border border-border bg-card/70 p-1.5"
+            >
+              <div className="rounded-2xl bg-muted/45 p-3 text-center">
+                <ListChecks className="mx-auto size-4 text-primary" />
+                <p className="mt-1.5 text-xl font-black tracking-tight tabular-nums">
+                  {plannedSession.prescription.length}
+                </p>
+                <p className="text-xs font-semibold text-muted-foreground">
+                  Exercises
+                </p>
+              </div>
+              <div className="rounded-2xl bg-muted/45 p-3 text-center">
+                <Layers className="mx-auto size-4 text-primary" />
+                <p className="mt-1.5 text-xl font-black tracking-tight tabular-nums">
+                  {plannedSession.workingSets}
+                </p>
+                <p className="text-xs font-semibold text-muted-foreground">
+                  Sets
+                </p>
+              </div>
+              <div className="rounded-2xl bg-muted/45 p-3 text-center">
+                <Clock3 className="mx-auto size-4 text-primary" />
+                <p className="mt-1.5 text-xl font-black tracking-tight tabular-nums">
+                  {plannedSession.minutes}
+                </p>
+                <p className="text-xs font-semibold text-muted-foreground">
+                  Minutes
+                </p>
+              </div>
+            </section>
+          ) : null}
+          {plannedUnavailable || startIssue ? (
+            <div
+              className="mx-(--app-content-inset) rounded-3xl border border-destructive/40 bg-destructive/10 p-4 text-sm font-semibold text-foreground"
+              role="alert"
+            >
+              {startIssue ??
+                "This planned session is no longer available. Create a current plan from My workouts."}
+            </div>
+          ) : null}
           {workout.exerciseIds.length === 0 ? (
             <div className="flex min-h-[18rem] flex-col items-center justify-center gap-3 px-8 text-center">
               <p className="text-base text-muted-foreground">
@@ -253,7 +350,7 @@ export function WorkoutDetailPage({
               <SortableExerciseList
                 exerciseIds={workout.exerciseIds}
                 onFindAlternative={
-                  isPast
+                  isPast || isPlanned
                     ? undefined
                     : (candidate) => {
                         triggerHaptic("light")
@@ -262,7 +359,10 @@ export function WorkoutDetailPage({
                 }
                 onOpenExercise={onOpenExercise}
                 onRemove={
-                  isPast
+                  // A planned session's exercises are the plan's, not this
+                  // page's: dropping one here would leave the projection
+                  // describing a session the program never prescribed.
+                  isPast || isPlanned
                     ? undefined
                     : (id) => {
                         triggerHaptic("warning")
@@ -273,20 +373,26 @@ export function WorkoutDetailPage({
                         )
                       }
                 }
-                onReorder={isPast ? undefined : setExerciseIds}
-                renderBelow={
-                  session
-                    ? (exerciseId) => (
-                        <ExerciseSetLog
-                          editing={editingExerciseId === exerciseId}
-                          exerciseId={exerciseId}
-                          onEditingChange={(editing) =>
-                            setEditingExerciseId(editing ? exerciseId : null)
-                          }
-                        />
-                      )
-                    : undefined
-                }
+                onReorder={isPast || isPlanned ? undefined : setExerciseIds}
+                renderBelow={(exerciseId) => (
+                  <>
+                    {plannedSession && !session ? (
+                      <PlannedTargets
+                        exerciseId={exerciseId}
+                        session={plannedSession}
+                      />
+                    ) : null}
+                    {session ? (
+                      <ExerciseSetLog
+                        editing={editingExerciseId === exerciseId}
+                        exerciseId={exerciseId}
+                        onEditingChange={(editing) =>
+                          setEditingExerciseId(editing ? exerciseId : null)
+                        }
+                      />
+                    ) : null}
+                  </>
+                )}
                 onToggleComplete={
                   session
                     ? (id) => {
@@ -308,9 +414,7 @@ export function WorkoutDetailPage({
             <ActiveWorkoutTimer
               exercise={exercise}
               onNext={
-                skipTarget
-                  ? () => setCurrentExercise(skipTarget)
-                  : undefined
+                skipTarget ? () => setCurrentExercise(skipTarget) : undefined
               }
               onPause={pauseWorkout}
               onResume={resumeWorkout}
@@ -321,7 +425,15 @@ export function WorkoutDetailPage({
       </AppSurface>
 
       <AppControls
-        transitionKey={`workout:${session ? "running" : isPast ? "past" : "planned"}`}
+        transitionKey={`workout:${
+          session
+            ? "running"
+            : isPast
+              ? "past"
+              : isPlanned
+                ? "prescribed"
+                : "planned"
+        }`}
       >
         {session ? (
           <div className="flex items-center gap-2.5">
@@ -334,9 +446,14 @@ export function WorkoutDetailPage({
             >
               <X />
             </AppControlButton>
-            <AppControlButton aria-label="Add exercise" onClick={onAddExercise}>
-              <Plus />
-            </AppControlButton>
+            {isPlanned ? null : (
+              <AppControlButton
+                aria-label="Add exercise"
+                onClick={onAddExercise}
+              >
+                <Plus />
+              </AppControlButton>
+            )}
             <AppControlButton
               aria-label="Finish workout"
               onClick={() => {
@@ -389,28 +506,35 @@ export function WorkoutDetailPage({
           </div>
         ) : (
           <div className="flex min-w-0 items-center">
-            <AppControlButton
-              aria-label="Delete workout"
-              className="mr-2.5"
-              onClick={() => {
-                triggerHaptic("warning")
-                setConfirming("delete-workout")
-              }}
-              variant="destructive"
-            >
-              <Trash2 />
-            </AppControlButton>
-            <MorphingActionSlot visible={workout.exerciseIds.length > 0}>
-              <AppControlButton
-                aria-label="Add exercise"
-                onClick={onAddExercise}
-              >
-                <Plus />
-              </AppControlButton>
-            </MorphingActionSlot>
+            {/* A planned session is the program's to withdraw, not this
+                page's: there is nothing here to delete or add to. */}
+            {isPlanned ? null : (
+              <>
+                <AppControlButton
+                  aria-label="Delete workout"
+                  className="mr-2.5"
+                  onClick={() => {
+                    triggerHaptic("warning")
+                    setConfirming("delete-workout")
+                  }}
+                  variant="destructive"
+                >
+                  <Trash2 />
+                </AppControlButton>
+                <MorphingActionSlot visible={workout.exerciseIds.length > 0}>
+                  <AppControlButton
+                    aria-label="Add exercise"
+                    onClick={onAddExercise}
+                  >
+                    <Plus />
+                  </AppControlButton>
+                </MorphingActionSlot>
+              </>
+            )}
             <AppControlMorph className="app-command-fill" role="primary">
               <Button
                 className="w-full"
+                disabled={plannedUnavailable}
                 onClick={() => {
                   if (workout.exerciseIds.length === 0) {
                     onAddExercise()
@@ -422,7 +546,9 @@ export function WorkoutDetailPage({
                 }}
                 size="cta"
               >
-                {workout.exerciseIds.length === 0 ? (
+                {plannedUnavailable ? (
+                  "Plan unavailable"
+                ) : workout.exerciseIds.length === 0 ? (
                   <>
                     <Plus className="size-5" />
                     Add exercise
@@ -445,7 +571,12 @@ export function WorkoutDetailPage({
           onComplete={() => {
             setCountingDown(false)
             onCountdownChange?.(false)
-            startWorkout(workout)
+            if (!startWorkout(workout)) {
+              triggerHaptic("warning")
+              setStartIssue(
+                "This planned session can’t be started from this plan. Create a current plan from My workouts."
+              )
+            }
           }}
         />
       )}

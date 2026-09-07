@@ -161,7 +161,11 @@ export function ExerciseSetLog({
     ? `Log set ${entry.sets.length + 1}`
     : "Log a set"
   const editedSet = entry.sets.find((set) => set.id === editedSetId) ?? null
-  const target = entry.sets.find((set) => set.target)?.target
+  // The working set is the prescription somebody is training towards; a warm-up
+  // target is real but is not what this card is a summary of.
+  const target =
+    entry.sets.find((set) => set.setType === "working" && set.target)?.target ??
+    entry.sets.find((set) => set.target)?.target
 
   const close = () => {
     setPending(null)

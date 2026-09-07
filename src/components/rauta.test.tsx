@@ -63,11 +63,13 @@ describe("RAUTA interaction boundary", () => {
 
   it("routes explicit bot actions through existing workout and settings callbacks", () => {
     const create = vi.fn(),
+      plan = vi.fn(),
       settings = vi.fn(),
       resume = vi.fn()
     render(
       <WorkoutCompanion
         onCreate={create}
+        onCreatePlan={plan}
         onSettings={settings}
         onResume={resume}
       />

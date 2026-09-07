@@ -34,6 +34,7 @@ function parsePage(value: unknown): AppPage | null {
     case "workouts":
     case "settings":
     case "equipment-preset":
+    case "plan-week":
     case "profile-basics":
     case "profile-training":
     case "profile-health":

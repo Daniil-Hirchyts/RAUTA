@@ -59,7 +59,8 @@ export type TrainingRecordsState = {
   startPlannedWorkout: (
     programId: string,
     plannedSessionId: string,
-    startedAt?: string
+    startedAt?: string,
+    sourceWorkoutId?: string
   ) => string
   startFreeWorkout: (
     exerciseIds: string[],
@@ -243,7 +244,8 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
         startPlannedWorkout: (
           programId,
           plannedSessionId,
-          startedAt = new Date().toISOString()
+          startedAt = new Date().toISOString(),
+          sourceWorkoutId
         ) => {
           const state = get()
           if (state.data.activeWorkout)
@@ -271,6 +273,7 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
             startedAt,
             makeId: (kind) => makeId(`draft-${kind}`),
             exerciseNameSnapshot: exerciseName,
+            sourceWorkoutId,
           })
           set({ data: checked({ ...state.data, activeWorkout: draft }) })
           return draftId

@@ -27,11 +27,19 @@ import { WorkoutCompanion } from "@/components/workout-companion"
 import { WorkoutHeatmap } from "@/components/workout-heatmap"
 import { useElapsedMs } from "@/hooks/use-elapsed-ms"
 import { formatDuration, sessionProgress } from "@/lib/active-workout"
-import { formatDateShort } from "@/lib/date"
+import { formatDateShort, formatWeekdayShort, toISODate } from "@/lib/date"
 import { musclesForExerciseIds } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
+import {
+  activePlannedSessions,
+  ensurePlannedWorkout,
+  isPlannedSessionRecorded,
+  plannedSessionMuscles,
+  type PlannedSessionView,
+} from "@/lib/training-plan"
 import { isCompletedWorkout, isPastWorkout } from "@/lib/workout-stats"
 import { useActiveWorkout } from "@/store/use-active-workout"
+import { useTrainingRecords } from "@/store/use-training-records"
 import { useWorkouts, type Workout } from "@/store/use-workouts"
 
 type ActiveSession = ReturnType<typeof useActiveWorkout.getState>["session"]
@@ -220,13 +228,93 @@ function WorkoutRow({
   )
 }
 
+/**
+ * The active program's remaining sessions, above the workouts somebody built
+ * themselves. Every value on a row is read back out of the immutable program
+ * snapshot; the row's only job is to open the session in the same
+ * workout-detail page every other workout opens in.
+ */
+function TrainingPlanSection({
+  onOpen,
+}: {
+  onOpen: (workoutId: string) => void
+}) {
+  const trainingData = useTrainingRecords((state) => state.data)
+  const today = toISODate(new Date())
+
+  const upcoming = useMemo(
+    () =>
+      activePlannedSessions(trainingData).filter(
+        (session) =>
+          session.date >= today &&
+          !isPlannedSessionRecorded(session.sessionId, trainingData)
+      ),
+    [today, trainingData]
+  )
+
+  if (upcoming.length === 0) return null
+
+  return (
+    <section aria-labelledby="training-plan-heading">
+      <div id="training-plan-heading">
+        <SectionHeading count={upcoming.length} title="Training plan" />
+      </div>
+      <ul className="space-y-2">
+        {upcoming.map((session) => (
+          <li key={session.sessionId}>
+            <PlannedSessionRow onOpen={onOpen} session={session} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function PlannedSessionRow({
+  onOpen,
+  session,
+}: {
+  onOpen: (workoutId: string) => void
+  session: PlannedSessionView
+}) {
+  return (
+    <button
+      className="interactive-spring mx-(--app-content-inset) flex w-[calc(100%_-_2_*_var(--app-content-inset))] items-center gap-3 rounded-3xl border border-border bg-card p-3 text-left active:bg-muted/80"
+      data-haptics="off"
+      onClick={() => {
+        triggerHaptic("selection")
+        onOpen(ensurePlannedWorkout(session))
+      }}
+      type="button"
+    >
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[17px] font-bold tracking-[-0.01em]">
+          {formatWeekdayShort(session.date)} · {session.title}
+        </p>
+        <p className="mt-0.5 text-[13px] font-semibold text-muted-foreground tabular-nums">
+          {session.prescription.length} exercise
+          {session.prescription.length === 1 ? "" : "s"} ·{" "}
+          {session.workingSets} sets · {session.minutes} min
+        </p>
+      </div>
+      <BodyPreview
+        className="h-11 w-16 shrink-0"
+        selectedMuscles={plannedSessionMuscles(session)}
+      />
+      <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+    </button>
+  )
+}
+
 export function WorkoutsPage({
   onCreate,
+  onCreatePlan,
   onDelete,
   onSelect,
   onSettings,
 }: {
   onCreate: () => void
+  onCreatePlan: () => void
   onDelete: (workoutId: string) => void
   onSelect: (workout: Workout) => void
   onSettings: () => void
@@ -247,6 +335,10 @@ export function WorkoutsPage({
     for (const workout of workouts) {
       const running = session?.workoutId === workout.id
       if (!running && isPastWorkout(workout)) pastWorkouts.push(workout)
+      // A planned session that has not been performed yet is already on the
+      // page, in the plan section above; once it is history it belongs with
+      // every other past workout.
+      else if (!running && workout.planned) continue
       else upcomingWorkouts.push(workout)
     }
     upcomingWorkouts.sort((left, right) => left.date.localeCompare(right.date))
@@ -257,6 +349,15 @@ export function WorkoutsPage({
       upcoming: upcomingWorkouts,
     }
   }, [session?.workoutId, workouts])
+
+  // The projection is created the moment a planned session is opened, so the
+  // workout the detail page is asked for always exists by the time it renders.
+  const openPlannedSession = (workoutId: string) => {
+    const workout = useWorkouts
+      .getState()
+      .workouts.find((item) => item.id === workoutId)
+    if (workout) onSelect(workout)
+  }
 
   const copyWorkout = (workout: Workout) => {
     duplicateWorkout(workout.id)
@@ -312,6 +413,7 @@ export function WorkoutsPage({
           <div className="space-y-7">
             <WorkoutCompanion
               onCreate={onCreate}
+              onCreatePlan={onCreatePlan}
               onSettings={onSettings}
               onResume={
                 session && workouts.some((w) => w.id === session.workoutId)
@@ -322,6 +424,8 @@ export function WorkoutsPage({
                   : undefined
               }
             />
+            <TrainingPlanSection onOpen={openPlannedSession} />
+
             {upcoming.length > 0 ? (
               <section aria-labelledby="upcoming-workouts-heading">
                 <div id="upcoming-workouts-heading">

@@ -47,6 +47,10 @@ export function createActiveWorkoutFromPlannedSession(input: {
   startedAt: string
   makeId: PersistenceIdFactory
   exerciseNameSnapshot?: (exerciseId: string) => string | undefined
+  /** The application workout this planned session is being performed from,
+   *  when the shell projected one. It keeps the two histories from counting
+   *  the same session twice. */
+  sourceWorkoutId?: string
 }): PersistedActiveWorkoutDraft {
   assertTimestamp(input.startedAt, "workout start")
   if (!input.draftId || !input.programId || !input.session.id)
@@ -54,6 +58,9 @@ export function createActiveWorkoutFromPlannedSession(input: {
 
   return {
     id: input.draftId,
+    ...(input.sourceWorkoutId
+      ? { sourceWorkoutId: input.sourceWorkoutId }
+      : {}),
     plannedProgramId: input.programId,
     plannedSessionId: input.session.id,
     startedAt: input.startedAt,

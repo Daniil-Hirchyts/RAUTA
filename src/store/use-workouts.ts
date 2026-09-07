@@ -16,6 +16,19 @@ export type WorkoutCompletion = {
   healthSyncStatus: HealthSyncStatus
 }
 
+/**
+ * The planned session an application workout stands for.
+ *
+ * It is a reference into an immutable program snapshot, never a copy of the
+ * prescription: sets, reps, RIR, load and rest are only ever read back from
+ * the snapshot these two IDs name. A workout without it was built by hand and
+ * belongs to nobody's plan.
+ */
+export type PlannedWorkoutReference = {
+  programId: string
+  sessionId: string
+}
+
 export type Workout = {
   id: string
   name: string
@@ -24,6 +37,7 @@ export type Workout = {
   completion: WorkoutCompletion | null
   createdAt: string
   updatedAt: string
+  planned?: PlannedWorkoutReference
 }
 
 export type WorkoutsState = {
@@ -32,6 +46,7 @@ export type WorkoutsState = {
     name: string
     date: string
     exerciseIds: string[]
+    planned?: PlannedWorkoutReference
   }) => string
   updateWorkout: (
     id: string,
@@ -63,6 +78,7 @@ export function sanitizeWorkoutsState(value: unknown): PersistedWorkoutsState {
       const completionValue = isRecord(value.completion)
         ? value.completion
         : null
+      const planned = sanitizePlannedReference(value.planned)
       const completedAt = completionValue
         ? validString(completionValue.completedAt)
         : ""
@@ -104,10 +120,22 @@ export function sanitizeWorkoutsState(value: unknown): PersistedWorkoutsState {
               : null,
           createdAt: validString(value.createdAt),
           updatedAt: validString(value.updatedAt),
+          ...(planned ? { planned } : {}),
         },
       ]
     }),
   }
+}
+
+/** A half-written reference names no session, so it is dropped rather than
+ *  kept as a workout that claims a lineage it cannot prove. */
+function sanitizePlannedReference(
+  value: unknown
+): PlannedWorkoutReference | null {
+  if (!isRecord(value)) return null
+  const programId = validString(value.programId)
+  const sessionId = validString(value.sessionId)
+  return programId && sessionId ? { programId, sessionId } : null
 }
 
 const HEALTH_SYNC_STATUSES = new Set<HealthSyncStatus>([
@@ -138,7 +166,7 @@ export const useWorkouts = create<WorkoutsState>()(
   persist<WorkoutsState, [], [], PersistedWorkoutsState>(
     (set, get) => ({
       workouts: [],
-      createWorkout: ({ name, date, exerciseIds }) => {
+      createWorkout: ({ name, date, exerciseIds, planned }) => {
         const id = makeId()
         const now = new Date().toISOString()
         const workout: Workout = {
@@ -149,6 +177,7 @@ export const useWorkouts = create<WorkoutsState>()(
           completion: null,
           createdAt: now,
           updatedAt: now,
+          ...(planned ? { planned: { ...planned } } : {}),
         }
         set((state) => ({ workouts: [...state.workouts, workout] }))
         return id
@@ -175,11 +204,14 @@ export const useWorkouts = create<WorkoutsState>()(
         if (!source) return null
         const newId = makeId()
         const now = new Date().toISOString()
+        // Listed field by field on purpose: a copy is a workout somebody chose
+        // to repeat, not the session a program prescribed, so it starts life
+        // without a plan behind it.
         const copy: Workout = {
-          ...source,
           id: newId,
           name: `${source.name} copy`,
           date: toISODate(new Date()),
+          exerciseIds: [...source.exerciseIds],
           completion: null,
           createdAt: now,
           updatedAt: now,

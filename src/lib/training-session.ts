@@ -1,4 +1,5 @@
 import { useTrainingRecords } from "@/store/use-training-records"
+import type { PlannedWorkoutReference } from "@/store/use-workouts"
 import type {
   PersistedActiveExerciseDraft,
   PersistedActiveWorkoutDraft,
@@ -58,18 +59,48 @@ function draftHasObservations(draft: PersistedActiveWorkoutDraft | null) {
  * restored backup — is closed first rather than discarded: whatever sets it
  * holds were genuinely performed, and they belong in history under their own
  * session, not in this one.
+ *
+ * A workout that stands for a planned session opens the *planned* draft: its
+ * sets come from the program snapshot with their targets and their planned
+ * program, session, exercise and set identities attached. A workout somebody
+ * built by hand opens a free draft with none of those invented for it. A
+ * planned workout must keep that lineage: when its planned draft cannot be
+ * opened, this returns false and no free draft is substituted for it.
  */
 export function beginTrainingDraft(
   exerciseIds: string[],
   startedAt: string,
-  sourceWorkoutId: string
-) {
+  sourceWorkoutId: string,
+  planned?: PlannedWorkoutReference
+): boolean {
   const store = useTrainingRecords.getState()
   const stale = store.data.activeWorkout
   if (stale) store.abortWorkout(closingTime(stale, startedAt))
+  if (planned) return startPlannedDraft(planned, startedAt, sourceWorkoutId)
   useTrainingRecords
     .getState()
     .startFreeWorkout(exerciseIds, startedAt, sourceWorkoutId)
+  return true
+}
+
+function startPlannedDraft(
+  planned: PlannedWorkoutReference,
+  startedAt: string,
+  sourceWorkoutId: string
+) {
+  try {
+    useTrainingRecords
+      .getState()
+      .startPlannedWorkout(
+        planned.programId,
+        planned.sessionId,
+        startedAt,
+        sourceWorkoutId
+      )
+    return true
+  } catch {
+    return false
+  }
 }
 
 /** When a stale draft is treated as having ended: now, or the moment of its own

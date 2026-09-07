@@ -29,6 +29,13 @@ const UPPER: MuscleId[] = [
 ]
 const PUSH: MuscleId[] = ["chest", "deltoids", "triceps", "serratus"]
 const PULL: MuscleId[] = ["upper-back", "biceps", "trapezius", "forearm"]
+/** The muscle groups the split candidates are cut along. Exported so a caller
+ *  can name a session from its own focus without restating the split here. */
+export const SPLIT_MUSCLE_GROUPS = {
+  upper: UPPER as readonly MuscleId[],
+  push: PUSH as readonly MuscleId[],
+  pull: PULL as readonly MuscleId[],
+} as const
 export function generateSplitCandidates(input: OptimizationInput) {
   const all = input.targets
     .filter((t) => t.preferred > 0)

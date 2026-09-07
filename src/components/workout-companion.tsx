@@ -1,23 +1,70 @@
-import { useState } from "react"
-import { ArrowRight, SlidersHorizontal, X } from "lucide-react"
+import { useMemo, useState } from "react"
+import { ArrowRight, CalendarRange, SlidersHorizontal, X } from "lucide-react"
 import { Rauta } from "./rauta"
 import { RautaSpeech } from "./rauta-speech"
 import { AppModal } from "./app-modal"
 import { Button } from "./ui/button"
 import { useTrainingProfile } from "@/store/use-training-profile"
+import { useTrainingRecords } from "@/store/use-training-records"
 import { GOAL_CHOICES } from "@/lib/training-profile"
+import { toISODate } from "@/lib/date"
+import {
+  activePlannedSessions,
+  isPlannedSessionRecorded,
+} from "@/lib/training-plan"
+
+/**
+ * What RAUTA has to say, decided from application state alone.
+ *
+ * There is no conversation and no network behind any of this: a plan either
+ * has sessions left this week or it does not, and the line follows from that.
+ */
+function planLine(input: {
+  today: string
+  todaySession: string | null
+  remaining: number
+  hasPlan: boolean
+}) {
+  if (input.todaySession) return `${input.todaySession} is ready.`
+  if (input.remaining === 1) return "One session left this week."
+  if (input.remaining > 1) return `${input.remaining} sessions fit this week.`
+  if (input.hasPlan) return "This week's plan is done. Ask me for the next one."
+  return null
+}
 
 export function WorkoutCompanion({
   onCreate,
+  onCreatePlan,
   onSettings,
   onResume,
 }: {
   onCreate: () => void
+  onCreatePlan: () => void
   onSettings: () => void
   onResume?: () => void
 }) {
   const [open, setOpen] = useState(false)
   const profile = useTrainingProfile((state) => state.profile)
+  const trainingData = useTrainingRecords((state) => state.data)
+  const today = toISODate(new Date())
+
+  const plan = useMemo(() => {
+    const sessions = activePlannedSessions(trainingData).filter(
+      (session) => !isPlannedSessionRecorded(session.sessionId, trainingData)
+    )
+    const ahead = sessions.filter((session) => session.date >= today)
+    return {
+      line: planLine({
+        today,
+        todaySession:
+          ahead.find((session) => session.date === today)?.title ?? null,
+        remaining: ahead.length,
+        hasPlan: Boolean(trainingData.activeProgramId),
+      }),
+      hasPlan: Boolean(trainingData.activeProgramId),
+    }
+  }, [today, trainingData])
+
   const close = () => setOpen(false)
   const act = (action: () => void) => {
     close()
@@ -27,7 +74,7 @@ export function WorkoutCompanion({
     <>
       <div className="mx-(--app-content-inset) flex items-center gap-1.5">
         <Rauta
-          mood={onResume ? "focused" : "calm"}
+          mood={onResume ? "focused" : plan.line ? "proud" : "calm"}
           size={108}
           label="Open RAUTA actions"
           onActivate={() => setOpen(true)}
@@ -42,12 +89,14 @@ export function WorkoutCompanion({
             <strong className="block text-[15px] leading-snug tracking-tight">
               {onResume
                 ? "Your workout is waiting. Want to continue?"
-                : profile.name
-                  ? `Ready, ${profile.name}? I can shape today's session.`
-                  : "Tell me what we're training today."}
+                : (plan.line ??
+                  (profile.name
+                    ? `Ready, ${profile.name}? I can shape today's session.`
+                    : "Tell me what we're training today."))}
             </strong>
             <span className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              {GOAL_CHOICES[profile.goal].title} · {profile.preferredSessionDurationMinutes} min
+              {GOAL_CHOICES[profile.goal].title} ·{" "}
+              {profile.preferredSessionDurationMinutes} min
               <ArrowRight aria-hidden="true" className="size-3.5 text-primary" />
             </span>
           </RautaSpeech>
@@ -66,7 +115,8 @@ export function WorkoutCompanion({
           </button>
           <h2 className="pr-9 text-xl font-bold">RAUTA is ready.</h2>
           <p className="mt-2 mb-5 text-sm text-muted-foreground">
-            Choose your exercises, or tune your training preferences.
+            Let me plan the week, choose your own exercises, or tune your
+            training preferences.
           </p>
           <div className="space-y-2">
             {onResume ? (
@@ -77,6 +127,14 @@ export function WorkoutCompanion({
             <Button
               className="w-full"
               variant={onResume ? "secondary" : "default"}
+              onClick={() => act(onCreatePlan)}
+            >
+              <CalendarRange className="size-4" />
+              {plan.hasPlan ? "New training week" : "Create training week"}
+            </Button>
+            <Button
+              className="w-full"
+              variant="secondary"
               onClick={() => act(onCreate)}
             >
               Choose exercises <ArrowRight className="size-4" />
