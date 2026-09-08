@@ -6,8 +6,12 @@ import { describe, expect, it, vi } from "vitest"
 import { RotaryKnob } from "@/components/ui/rotary-knob"
 import { snapToRange } from "@/lib/utils"
 
-const SIZE = 200
-const CENTER = SIZE / 2
+const WIDTH = 240
+const HEIGHT = 178
+/** The wheel the drawing is a crown of: its centre sits below the box. These
+ *  mirror the control's own geometry, which is what a drag is measured in. */
+const ARC_RADIUS = 162
+const ARC_CENTER = { x: WIDTH / 2, y: 206 }
 
 function Dial({
   initial = 30,
@@ -44,12 +48,12 @@ function dial() {
   // jsdom lays nothing out, so the dial is told where it is on screen.
   knob.getBoundingClientRect = () =>
     ({
-      bottom: SIZE,
-      height: SIZE,
+      bottom: HEIGHT,
+      height: HEIGHT,
       left: 0,
-      right: SIZE,
+      right: WIDTH,
       top: 0,
-      width: SIZE,
+      width: WIDTH,
       x: 0,
       y: 0,
       toJSON: () => "",
@@ -57,13 +61,14 @@ function dial() {
   return knob
 }
 
-/** A point on the dial's circle, measured the way the control reads angles:
- *  zero at twelve o'clock, growing clockwise. */
-function at(degrees: number, distance = 90) {
-  const radians = ((degrees - 90) * Math.PI) / 180
+/** A point on the wheel, measured the way the control reads angles: zero at
+ *  the marker, growing clockwise — so a negative angle is a push to the
+ *  left, which brings higher notches under the marker. */
+function at(degrees: number) {
+  const radians = (degrees * Math.PI) / 180
   return {
-    clientX: CENTER + distance * Math.cos(radians),
-    clientY: CENTER + distance * Math.sin(radians),
+    clientX: ARC_CENTER.x + ARC_RADIUS * Math.sin(radians),
+    clientY: ARC_CENTER.y - ARC_RADIUS * Math.cos(radians),
   }
 }
 
@@ -93,7 +98,9 @@ describe("RotaryKnob", () => {
     expect(knob).toHaveAttribute("aria-valuemax", "100")
     expect(knob).toHaveAttribute("aria-valuetext", "24 years")
     expect(knob).toHaveAttribute("tabindex", "0")
-    expect(screen.getByText("24")).toBeVisible()
+    // The readout is a row of digits that pop in one at a time; what it says
+    // is carried on the group rather than in a single text node.
+    expect(screen.getByLabelText("24")).toBeVisible()
     expect(screen.getByText("years")).toBeVisible()
   })
 
@@ -104,36 +111,100 @@ describe("RotaryKnob", () => {
     expect(document.querySelector("input")).toBeNull()
   })
 
-  it("turns with a drag around its centre and stops at both ends", () => {
+  it("turns with a drag along the band and stops at both ends", () => {
     const onChange = vi.fn()
     render(<Dial initial={50} onChange={onChange} />)
     const knob = dial()
 
-    fireEvent.pointerDown(knob, { pointerId: 1, ...at(0) })
-    // 90° of the 270° sweep is a third of the 18–100 range.
-    fireEvent.pointerMove(knob, { pointerId: 1, ...at(90) })
-    expect(knob).toHaveAttribute("aria-valuenow", "77")
+    fireEvent.pointerDown(knob, { pointerId: 1, buttons: 1, ...at(0) })
+    // The notches go with the finger: pushing the band left brings the ones
+    // to its right — the higher ones — under the marker. Ten degrees of the
+    // wheel is 28px of band, and the band is spaced ten to a notch.
+    fireEvent.pointerMove(knob, { pointerId: 1, buttons: 1, ...at(-10) })
+    expect(knob).toHaveAttribute("aria-valuenow", "53")
+    fireEvent.pointerMove(knob, { pointerId: 1, buttons: 1, ...at(-20) })
+    expect(knob).toHaveAttribute("aria-valuenow", "56")
 
     // Grabbing anywhere never jumps the value: only the turn since the grab
     // counts, so coming back to where the drag started restores it exactly.
-    fireEvent.pointerMove(knob, { pointerId: 1, ...at(0) })
+    fireEvent.pointerMove(knob, { pointerId: 1, buttons: 1, ...at(0) })
     expect(knob).toHaveAttribute("aria-valuenow", "50")
 
-    fireEvent.pointerMove(knob, { pointerId: 1, ...at(-90) })
-    expect(knob).toHaveAttribute("aria-valuenow", "23")
+    fireEvent.pointerMove(knob, { pointerId: 1, buttons: 1, ...at(10) })
+    expect(knob).toHaveAttribute("aria-valuenow", "47")
 
     // Winding past the end pins the value there, and turning back answers on
-    // the first degree rather than unwinding the overshoot first.
-    fireEvent.pointerMove(knob, { pointerId: 1, ...at(-179) })
+    // the first notch rather than unwinding the overshoot first.
+    fireEvent.pointerMove(knob, { pointerId: 1, buttons: 1, ...at(120) })
     expect(knob).toHaveAttribute("aria-valuenow", "18")
-    fireEvent.pointerMove(knob, { pointerId: 1, ...at(-135) })
-    expect(knob).toHaveAttribute("aria-valuenow", "31")
+    fireEvent.pointerMove(knob, { pointerId: 1, buttons: 1, ...at(110) })
+    expect(knob).toHaveAttribute("aria-valuenow", "21")
     fireEvent.pointerUp(knob, { pointerId: 1 })
 
     // Released: the dial no longer follows the pointer across the screen.
-    fireEvent.pointerMove(knob, { pointerId: 1, ...at(90) })
-    expect(knob).toHaveAttribute("aria-valuenow", "31")
+    fireEvent.pointerMove(knob, { pointerId: 1, buttons: 1, ...at(0) })
+    expect(knob).toHaveAttribute("aria-valuenow", "21")
     expect(onChange).toHaveBeenCalled()
+  })
+
+  it("lets go when the pointer comes back up somewhere it could not see", () => {
+    render(<Dial initial={50} />)
+    const knob = dial()
+
+    fireEvent.pointerDown(knob, { pointerId: 1, buttons: 1, ...at(0) })
+    fireEvent.pointerMove(knob, { pointerId: 1, buttons: 1, ...at(-10) })
+    expect(knob).toHaveAttribute("aria-valuenow", "53")
+
+    // No release ever arrived — capture lost to another window, say. The next
+    // move with nothing held ends the gesture instead of turning the dial.
+    fireEvent.pointerMove(knob, { pointerId: 1, buttons: 0, ...at(-40) })
+    fireEvent.pointerMove(knob, { pointerId: 1, buttons: 0, ...at(-80) })
+    expect(knob).toHaveAttribute("aria-valuenow", "53")
+  })
+
+  it("paints a wider scale than it will accept, and stops at the range", () => {
+    const onChange = vi.fn()
+    render(
+      <RotaryKnob
+        ariaLabel="Age"
+        max={75}
+        min={18}
+        onChange={onChange}
+        scaleMax={100}
+        scaleMin={0}
+        value={20}
+      />
+    )
+    const knob = dial()
+
+    // Years the app will not train are still on the band, greyed out.
+    expect(knob).toHaveTextContent("10")
+    expect(knob).toHaveAttribute("aria-valuemin", "18")
+
+    fireEvent.pointerDown(knob, { pointerId: 1, buttons: 1, ...at(0) })
+    fireEvent.pointerMove(knob, { pointerId: 1, buttons: 1, ...at(60) })
+    expect(onChange).toHaveBeenLastCalledWith(18)
+    expect(onChange).not.toHaveBeenCalledWith(17)
+  })
+
+  it("pops the digits on a step, and holds them still through a drag", () => {
+    render(<Dial initial={50} />)
+    const knob = dial()
+    const digits = () => knob.querySelector(".t-digit-group")
+
+    // Arriving is not changing: the first value is drawn at rest.
+    expect(digits()).not.toHaveClass("is-animating")
+
+    fireEvent.keyDown(knob, { key: "ArrowUp" })
+    expect(knob).toHaveAttribute("aria-valuenow", "51")
+    expect(digits()).toHaveClass("is-animating")
+
+    // A dial passing over a notch a frame would restart the pop before it had
+    // played, so the number stays legible while it is being turned.
+    fireEvent.pointerDown(knob, { pointerId: 1, buttons: 1, ...at(0) })
+    fireEvent.pointerMove(knob, { pointerId: 1, buttons: 1, ...at(-10) })
+    expect(knob).toHaveAttribute("aria-valuenow", "54")
+    expect(digits()).not.toHaveClass("is-animating")
   })
 
   it("keeps the page still while it is being turned", () => {
@@ -144,7 +215,7 @@ describe("RotaryKnob", () => {
 
     fireEvent.pointerDown(knob, { pointerId: 1, ...at(0) })
     const move = new Event("pointermove", { bubbles: true, cancelable: true })
-    Object.assign(move, { pointerId: 1, ...at(45) })
+    Object.assign(move, { pointerId: 1, buttons: 1, ...at(20) })
     knob.dispatchEvent(move)
     expect(move.defaultPrevented).toBe(true)
   })
@@ -184,7 +255,7 @@ describe("RotaryKnob", () => {
     const knob = dial()
 
     fireEvent.pointerDown(knob, { pointerId: 1, ...at(0) })
-    fireEvent.pointerMove(knob, { pointerId: 1, ...at(90) })
+    fireEvent.pointerMove(knob, { pointerId: 1, buttons: 1, ...at(-30) })
     fireEvent.keyDown(knob, { key: "ArrowUp" })
 
     expect(onChange).not.toHaveBeenCalled()

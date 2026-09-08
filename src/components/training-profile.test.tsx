@@ -46,16 +46,15 @@ describe("first-run profile setup", () => {
     render(<App />)
 
     expect(
-      screen.getByRole("heading", { name: "Your name" })
+      screen.getByRole("heading", { name: "About you" })
     ).toBeInTheDocument()
     expect(screen.getByRole("progressbar")).toHaveAttribute(
       "aria-label",
-      "Step 1 of 7"
+      "Step 1 of 5"
     )
 
+    // Name and age are the one screen: both are answered before moving on.
     await user.type(screen.getByRole("textbox", { name: "Your name" }), "Alex")
-    await user.click(screen.getByRole("button", { name: "Continue to Age" }))
-
     await user.click(screen.getByRole("slider", { name: "Age" }))
     await user.keyboard("{ArrowUp}{ArrowUp}")
     await user.click(
@@ -63,6 +62,20 @@ describe("first-run profile setup", () => {
     )
 
     await user.click(screen.getByRole("radio", { name: /Intermediate/ }))
+    // Health is the optional half of this screen: the row states the answer
+    // almost everybody gives, and the question is a dialog behind it.
+    const healthRow = screen.getByRole("button", { name: /^Health/ })
+    expect(healthRow).toHaveTextContent("Ready to train")
+    await user.click(healthRow)
+    const healthDialog = await screen.findByRole("dialog", { name: "Health" })
+    await user.click(
+      within(healthDialog).getByRole("checkbox", { name: /Injury/ })
+    )
+    await user.click(within(healthDialog).getByRole("button", { name: "Done" }))
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    )
+    expect(healthRow).toHaveTextContent("1 limitation")
     await user.click(screen.getByRole("button", { name: "Continue to Goal" }))
 
     await user.click(screen.getByRole("radio", { name: /Build muscle/ }))
@@ -82,9 +95,6 @@ describe("first-run profile setup", () => {
       screen.getByRole("heading", { name: "Your gym" })
     ).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Home kit" }))
-    await user.click(screen.getByRole("button", { name: "Continue to Health" }))
-
-    await user.click(screen.getByRole("checkbox", { name: /Injury/ }))
     await user.click(screen.getByRole("button", { name: "Finish setup" }))
 
     expect(
@@ -107,11 +117,13 @@ describe("first-run profile setup", () => {
     render(<App />)
 
     await user.type(screen.getByRole("textbox", { name: "Your name" }), "Alex")
-    await user.click(screen.getByRole("button", { name: "Continue to Age" }))
+    await user.click(
+      screen.getByRole("button", { name: "Continue to Experience" })
+    )
     await user.click(screen.getByRole("button", { name: "Previous step" }))
 
     expect(
-      screen.getByRole("heading", { name: "Your name" })
+      screen.getByRole("heading", { name: "About you" })
     ).toBeInTheDocument()
     expect(screen.getByRole("textbox", { name: "Your name" })).toHaveValue(
       "Alex"
@@ -132,14 +144,7 @@ describe("first-run profile setup", () => {
       "Your name",
     ])
 
-    for (const next of [
-      "Age",
-      "Experience",
-      "Goal",
-      "Session length",
-      "Your gym",
-      "Health",
-    ]) {
+    for (const next of ["Experience", "Goal", "Session length", "Your gym"]) {
       await user.click(
         screen.getByRole("button", { name: `Continue to ${next}` })
       )
@@ -209,12 +214,14 @@ describe("training profile in Settings", () => {
     useTrainingProfile.setState(completedOnboardingState())
   })
 
-  it("lists two groups and two single entries, each summarised", () => {
+  it("lists two groups and one single entry, each summarised", () => {
     openSettings()
 
     const profileRow = screen.getByRole("button", { name: /^Profile/ })
     expect(profileRow).toHaveTextContent("Not set")
     expect(profileRow).toHaveTextContent("30 · Beginner")
+    // Nothing declared is not worth a word in the summary.
+    expect(profileRow).not.toHaveTextContent("Manual only")
     expect(screen.getByRole("button", { name: /^Training/ })).toHaveTextContent(
       "General fitness · 60 min"
     )
@@ -222,16 +229,17 @@ describe("training profile in Settings", () => {
       screen.getByRole("button", { name: /^Priority muscles/ })
     ).toHaveTextContent("None")
     expect(
-      screen.getByRole("button", { name: /^Health & eligibility/ })
-    ).toHaveTextContent("Ready to train")
-    expect(
       screen.getByRole("button", { name: /^Available equipment/ })
     ).toHaveTextContent("Not set")
 
-    // The questions those two rows group are not also rows of their own.
+    // The questions those two rows group are not also rows of their own —
+    // health included, now that it is answered alongside experience.
     expect(screen.queryByRole("button", { name: /^Age/ })).toBeNull()
     expect(screen.queryByRole("button", { name: /^Experience/ })).toBeNull()
     expect(screen.queryByRole("button", { name: /^Session length/ })).toBeNull()
+    expect(
+      screen.queryByRole("button", { name: /^Health & eligibility/ })
+    ).toBeNull()
   })
 
   it("walks the profile group one question at a time", async () => {
@@ -240,19 +248,18 @@ describe("training profile in Settings", () => {
 
     await user.click(screen.getByRole("button", { name: /^Profile/ }))
     expect(
-      screen.getByRole("heading", { name: "Your name" })
+      screen.getByRole("heading", { name: "About you" })
     ).toBeInTheDocument()
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     expect(screen.getByRole("progressbar")).toHaveAttribute(
       "aria-label",
-      "Step 1 of 3"
+      "Step 1 of 2"
     )
 
     await user.type(
       screen.getByRole("textbox", { name: "Your name" }),
       "Sam Fisher"
     )
-    await user.click(screen.getByRole("button", { name: "Continue to Age" }))
     await user.click(screen.getByRole("slider", { name: "Age" }))
     await user.keyboard("{PageUp}")
     await user.click(
@@ -307,20 +314,58 @@ describe("training profile in Settings", () => {
     const user = userEvent.setup()
     openSettings()
 
+    // Health is answered next to experience now, not on a row of its own.
+    await user.click(screen.getByRole("button", { name: /^Profile/ }))
     await user.click(
-      screen.getByRole("button", { name: /^Health & eligibility/ })
+      screen.getByRole("button", { name: "Continue to Experience" })
     )
-    expect(screen.getByRole("heading", { name: "Health" })).toBeInTheDocument()
-    await user.click(screen.getByRole("checkbox", { name: /rehabilitation/i }))
-    await user.click(screen.getByRole("button", { name: /^Done with health/ }))
 
+    // The row is the answer; the question is a dialog behind it.
+    expect(
+      screen.queryByRole("checkbox", { name: /rehabilitation/i })
+    ).toBeNull()
+    await user.click(screen.getByRole("button", { name: /^Health/ }))
+    const dialog = await screen.findByRole("dialog", { name: "Health" })
+    await user.click(
+      within(dialog).getByRole("checkbox", { name: /rehabilitation/i })
+    )
     expect(profile().health).toEqual({
       status: "unsupported",
       reasons: ["rehabilitation"],
     })
+
+    await user.click(within(dialog).getByRole("button", { name: "Done" }))
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    )
+    await user.click(screen.getByRole("button", { name: "Done with profile" }))
+    expect(screen.getByRole("button", { name: /^Profile/ })).toHaveTextContent(
+      "Manual only"
+    )
+  })
+
+  it("says what it is holding without being opened", async () => {
+    const user = userEvent.setup()
+    useTrainingProfile.getState().toggleHealthLimitation("active_injury")
+    openSettings()
+
+    await user.click(screen.getByRole("button", { name: /^Profile/ }))
+    await user.click(
+      screen.getByRole("button", { name: "Continue to Experience" })
+    )
+
+    const healthRow = screen.getByRole("button", { name: /^Health/ })
+    expect(healthRow).toHaveTextContent("1 limitation")
+
+    // And the dialog opens on what was said, not on the default.
+    await user.click(healthRow)
+    const dialog = await screen.findByRole("dialog", { name: "Health" })
     expect(
-      screen.getByRole("button", { name: /^Health & eligibility/ })
-    ).toHaveTextContent("Manual only")
+      within(dialog).getByRole("checkbox", { name: /Injury/ })
+    ).toHaveAttribute("aria-checked", "true")
+    expect(
+      within(dialog).getByRole("radio", { name: /Ready to train/ })
+    ).toHaveAttribute("aria-checked", "false")
   })
 
   it("sets muscle priority by tapping the body map, and shows it in the paint", async () => {

@@ -9,14 +9,19 @@ export function ProfileCompanion({ step }: { step: string }) {
   const profile = useTrainingProfile((state) => state.profile)
   const [greeted, setGreeted] = useState(false)
   const guidance: Record<string, { mood: RautaMood; text: string }> = {
-    "Your name": {
-      mood: "listening",
+    "About you": {
+      mood: profile.name ? "curious" : "listening",
       text: profile.name
-        ? `Good to meet you, ${profile.name}.`
-        : "I'm RAUTA. Let's make this yours.",
+        ? `Good to meet you, ${profile.name}. Now turn the dial to your age.`
+        : "I'm RAUTA. Tell me your name, then turn the dial to your age.",
     },
-    Age: { mood: "curious", text: "Turn the dial. One notch, one year." },
-    Experience: { mood: "focused", text: "Start where you are today." },
+    Experience: {
+      mood: "focused",
+      text:
+        profile.health.status === "healthy"
+          ? "Start where you are today. Say if anything limits you."
+          : "Noted. I will leave the planning to you and stay out of the way.",
+    },
     Goal: {
       mood: "happy",
       text: `${GOAL_CHOICES[profile.goal].title}. That's our direction.`,

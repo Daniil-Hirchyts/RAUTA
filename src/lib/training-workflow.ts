@@ -5,6 +5,7 @@ import {
   resistanceModes,
   resolveLoadContext,
   type ResistanceMode,
+  type LoadContext,
 } from "@/lib/resistance"
 import { buildTrainingEngineInputs } from "@/lib/training-engine-adapter"
 import { useFilters } from "@/store/use-filters"
@@ -295,7 +296,8 @@ export function nextPerformance(
   /** The measurement being logged, when the editor is open on one. A set
    *  logged as assistance must not be answered with a recommendation about
    *  load, and the wording on screen has to match the dial under it. */
-  loggedMode?: ResistanceMode
+  loggedMode?: ResistanceMode,
+  loggedContext?: LoadContext
 ) {
   const indexed = trainingIndex().byId.get(exercise.exerciseId)
   const catalogueExercise = EXERCISES_BY_ID.get(exercise.exerciseId)
@@ -313,13 +315,14 @@ export function nextPerformance(
   // set happened to be logged at: a person who moved machines must be told the
   // history no longer compares, and only asking forward can say that.
   const context = measured
-    ? loadContextFor(
+    ? (loggedContext ??
+      loadContextFor(
         catalogueExercise,
         mode,
         activeConfigurationFor(exercise.exerciseId, mode, data.settings) ??
           undefined,
         increments[catalogueExercise.equipment]
-      )
+      ))
     : undefined
   return recommendProgression({
     exercise: indexed,

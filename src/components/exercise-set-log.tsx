@@ -167,9 +167,16 @@ export function ExerciseSetLog({
   const recommendation = useMemo(
     () =>
       entry
-        ? nextPerformance(entry, undefined, data, increments, loggedMode)
+        ? nextPerformance(
+            entry,
+            undefined,
+            data,
+            increments,
+            loggedMode,
+            editing ? pending?.context : undefined
+          )
         : null,
-    [data, entry, increments, loggedMode]
+    [data, entry, increments, loggedMode, editing, pending?.context]
   )
 
   // Where the next set will be measured: the station selected for this
@@ -233,15 +240,10 @@ export function ExerciseSetLog({
         kg: recommendation.resistance.kg,
         reps: recommendation.targetReps.max,
       }
-    const performed = lastPerformedSet(sessions, exerciseId)
-    if (performed) {
-      const kg = carryOverLoad(performed.resistance, mode, context)
-      return kg === null
-        ? blank
-        : { ...blank, kg, reps: performed.reps, rir: performed.rir ?? null }
-    }
+    // Historical loads are offered only through the engine. Falling back to
+    // history here would bypass its stale-history and calibration decisions.
     return blank
-  }, [entry, exerciseId, modes, nextContext, recommendation, sessions])
+  }, [entry, modes, nextContext, recommendation])
 
   if (!exercise || !entry) return null
 
@@ -329,23 +331,41 @@ export function ExerciseSetLog({
    */
   /** The load really logged in this measurement at this station — this
    *  session first, then history — or nothing at all. */
-  const carried = (mode: ResistanceMode, context: LoadContext) =>
-    carryOverLoad(
-      entry.sets.toReversed().find((set) => set.observation?.completed)
-        ?.observation?.resistance,
-      mode,
-      context
-    ) ??
-    carryOverLoad(
-      lastPerformedSet(sessions, exerciseId)?.resistance,
+  const carried = (mode: ResistanceMode, context: LoadContext) => {
+    for (const set of entry.sets.toReversed()) {
+      if (!set.observation?.completed) continue
+      const load = carryOverLoad(set.observation.resistance, mode, context)
+      if (load !== null) return load
+    }
+    const next = nextPerformance(
+      entry,
+      undefined,
+      data,
+      increments,
       mode,
       context
     )
+    return next && next.action !== "calibrate"
+      ? carryOverLoad(next.resistance, mode, context)
+      : null
+  }
 
   const selectStation = (context: LoadContext) => {
     setPending((current) => {
       const from = current ?? defaults
-      if (sameLoadContext(from.context, context)) return { ...from, context }
+      if (sameLoadContext(from.context, context))
+        return {
+          ...from,
+          context,
+          kg:
+            editedSet?.observation?.completed || from.kg === null
+              ? from.kg
+              : carryOverLoad(
+                  makeResistance(from.mode, from.kg, from.context),
+                  from.mode,
+                  context
+                ),
+        }
       if (editedSet?.observation?.completed)
         return {
           ...from,
@@ -476,6 +496,7 @@ export function ExerciseSetLog({
             {isMeasuredInKg(value.mode) ? (
               <div className="pb-2">
                 <StationPicker
+                  key={`${value.mode}:${value.context.stationId}:${value.context.basis}`}
                   context={value.context}
                   equipmentIncrementKg={equipmentIncrementKg}
                   exercise={exercise}

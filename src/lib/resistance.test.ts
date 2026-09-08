@@ -301,13 +301,13 @@ describe("resistance semantics", () => {
       carryOverLoad({ type: "bodyweight" }, "external_load", context)
     ).toBeNull()
     expect(carryOverLoad(undefined, "external_load", context)).toBeNull()
-    // A load the station cannot make is snapped to one it can.
+    // A load the station cannot make requires calibration, not silent rounding.
     expect(
       carryOverLoad({ ...here, kg: 81 }, "external_load", {
         ...context,
         grid: { availableLoadsKg: [70, 80, 90] },
       })
-    ).toBe(80)
+    ).toBeNull()
     expect(
       carryOverLoad(here, "external_load", {
         ...context,

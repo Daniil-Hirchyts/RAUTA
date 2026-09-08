@@ -111,6 +111,7 @@ export function WorkoutDetailPage({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [confirming, setConfirming] = useState<ConfirmationKind | null>(null)
+  const [confirmationIssue, setConfirmationIssue] = useState<string | null>(null)
   // At most one set editor is open at a time, and only where it was asked for.
   const [editingExerciseId, setEditingExerciseId] = useState<string | null>(
     null
@@ -614,17 +615,26 @@ export function WorkoutDetailPage({
       )}
 
       <ConfirmModal
+        error={confirmationIssue}
         kind={confirming}
-        onCancel={() => setConfirming(null)}
-        onConfirm={() => {
+        onCancel={() => {
           setConfirming(null)
-          if (confirming === "delete-workout") onDelete()
-          else if (confirming === "discard-session") onDiscard()
-          else if (
-            confirming === "finish-workout" ||
-            confirming === "finish-workout-partial"
-          )
-            onFinish()
+          setConfirmationIssue(null)
+        }}
+        onConfirm={() => {
+          try {
+            if (confirming === "delete-workout") onDelete()
+            else if (confirming === "discard-session") onDiscard()
+            else if (
+              confirming === "finish-workout" ||
+              confirming === "finish-workout-partial"
+            ) onFinish()
+            setConfirming(null)
+            setConfirmationIssue(null)
+          } catch {
+            triggerHaptic("warning")
+            setConfirmationIssue("Couldn’t save this change. Please try again.")
+          }
         }}
       />
     </AppScreen>

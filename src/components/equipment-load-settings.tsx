@@ -101,7 +101,7 @@ export function EquipmentLoadSettings() {
           max={20}
           min={0.25}
           onChange={(incrementKg) => setIncrement(equipment, incrementKg)}
-          size={184}
+          size={260}
           step={0.25}
           unit="kg step"
           value={value}

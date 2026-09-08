@@ -11,8 +11,20 @@ import { cn } from "@/lib/utils"
  * of the muscle map was enough to make the whole figure read as drifting. So
  * the first value is drawn at rest, and only the ones that replace it move.
  */
-export function AnimatedNumber({ value }: { value: number }) {
-  const characters = String(value).split("")
+export function AnimatedNumber({
+  format = String,
+  still = false,
+  value,
+}: {
+  format?: (value: number) => string
+  /** This change is not one to animate. A dial passing over a notch a frame
+   *  restarts the pop before it has played, and the digits never reach full
+   *  strength — while it is being turned the number stays put and legible. */
+  still?: boolean
+  value: number
+}) {
+  const text = format(value)
+  const characters = text.split("")
   // Comparing against the last value rendered, rather than against the first
   // one, so a count that returns to where it started still animates. Setting
   // state during render is how React stores what the previous render saw: the
@@ -24,14 +36,14 @@ export function AnimatedNumber({ value }: { value: number }) {
 
   if (shown !== value) {
     setShown(value)
-    setChanged(true)
+    setChanged(!still)
   }
 
   return (
     <span
-      aria-label={String(value)}
+      aria-label={text}
       className={cn("t-digit-group", changed && "is-animating")}
-      key={value}
+      key={text}
     >
       {characters.map((character, index) => (
         <span
@@ -44,7 +56,7 @@ export function AnimatedNumber({ value }: { value: number }) {
                 ? "2"
                 : undefined
           }
-          key={`${value}-${index}`}
+          key={`${text}-${index}`}
         >
           {character}
         </span>

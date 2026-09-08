@@ -151,11 +151,19 @@ export const PRIORITY_PAINT_WEIGHTS = Object.fromEntries(
 
 /** The dial starts where the planner does: `planningEligibility` refuses
  *  under-18s, and the request validator accepts an age up to 120. */
-export const PROFILE_AGE = { min: 18, max: 100, step: 1 } as const
+export const PROFILE_AGE = { min: 18, max: 75, step: 1 } as const
+/** What the age dial paints, as opposed to what it accepts: a life read
+ *  against a round scale, with the years the app will not train greyed out at
+ *  either end rather than absent. */
+export const PROFILE_AGE_SCALE = { min: 0, max: 100 } as const
 
 /** Whole five-minute steps across the range a single session realistically
  *  runs; the engine validates 1–300 minutes. */
 export const SESSION_DURATION = { min: 20, max: 120, step: 5 } as const
+/** What the session dial paints: the quarter hour either side of what the
+ *  app will plan, greyed out, so the two ends read as limits it has rather
+ *  than as the scale simply stopping. */
+export const SESSION_DURATION_SCALE = { min: 0, max: 140 } as const
 
 const GOAL_SET = new Set<string>(SUPPORTED_GOALS)
 const EXPERIENCE_SET = new Set<string>(EXPERIENCE_LEVELS)

@@ -18,6 +18,7 @@ import {
   AgeKnob,
   ExperiencePicker,
   GoalPicker,
+  HealthDisclosure,
   HealthPicker,
   MusclePriorityPicker,
   ProfileEquipmentPicker,
@@ -166,18 +167,30 @@ function ProfileStepFlow({
   )
 }
 
-const NAME_STEP: ProfileFlowStep = {
-  title: "Your name",
-  content: <ProfileNameField />,
-  caption: "Optional — you can change it in Settings.",
+/** Name and age share a screen: they are the two things the app needs before
+ *  it can say anything about you, neither is a question worth a screen of its
+ *  own, and the dial reads better with something above it than with the whole
+ *  page to itself. */
+const ABOUT_STEP: ProfileFlowStep = {
+  title: "About you",
+  content: (
+    <div className="flex flex-col gap-4">
+      <ProfileNameField />
+      <AgeKnob label={null} />
+    </div>
+  ),
 }
-const AGE_STEP: ProfileFlowStep = {
-  title: "Age",
-  content: <AgeKnob label={null} />,
-}
+/** Health rides along with experience: both are statements about the body
+ *  that is going to train, neither is answered often, and for most people the
+ *  health half is one glance at a row that already says "Ready to train". */
 const EXPERIENCE_STEP: ProfileFlowStep = {
   title: "Experience",
-  content: <ExperiencePicker />,
+  content: (
+    <div className="flex flex-col gap-5">
+      <ExperiencePicker />
+      <HealthDisclosure />
+    </div>
+  ),
 }
 const GOAL_STEP: ProfileFlowStep = { title: "Goal", content: <GoalPicker /> }
 const DURATION_STEP: ProfileFlowStep = {
@@ -189,12 +202,15 @@ const GYM_STEP: ProfileFlowStep = {
   content: <ProfileEquipmentPicker />,
   dock: <ProfileEquipmentPresets className="px-(--app-content-inset)" />,
 }
+/** The same question on a screen of its own, for the one place that arrives
+ *  at it directly: a refusal to plan sends people straight here to change the
+ *  answer that caused it. */
 const HEALTH_STEP: ProfileFlowStep = {
   title: "Health",
   content: <HealthPicker />,
 }
 
-const PROFILE_STEPS = [NAME_STEP, AGE_STEP, EXPERIENCE_STEP]
+const PROFILE_STEPS = [ABOUT_STEP, EXPERIENCE_STEP]
 const TRAINING_STEPS = [GOAL_STEP, DURATION_STEP]
 
 export function ProfileBasicsPage({ onBack }: { onBack: () => void }) {
@@ -399,7 +415,7 @@ export function MusclePrioritiesPage({ onBack }: { onBack: () => void }) {
 
 /** Setup asks the same questions as the Settings groups, in the same order and
  *  on the same screens — there is no separate first-run product to learn. */
-const SETUP_STEPS = [...PROFILE_STEPS, ...TRAINING_STEPS, GYM_STEP, HEALTH_STEP]
+const SETUP_STEPS = [...PROFILE_STEPS, ...TRAINING_STEPS, GYM_STEP]
 
 export function OnboardingPage({ onFinish }: { onFinish: () => void }) {
   const completeOnboarding = useTrainingProfile(

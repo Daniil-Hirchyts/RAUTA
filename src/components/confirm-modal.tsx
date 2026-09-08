@@ -72,10 +72,12 @@ const CONFIRMATION_COPY: Record<
  * it applies to still on screen behind it. `kind` drives it — null is closed.
  */
 export function ConfirmModal({
+  error,
   kind,
   onCancel,
   onConfirm,
 }: {
+  error?: string | null
   kind: ConfirmationKind | null
   onCancel: () => void
   onConfirm: () => void
@@ -106,7 +108,11 @@ export function ConfirmModal({
         ? "No other device keeps a copy, and reinstalling will not bring one back. Export a backup first if you might want any of this later."
         : `${countLabel(workoutCount, "workout")}, ${countLabel(favoriteCount, "favorite")} and ${countLabel(presetCount, "equipment preset")} are deleted, and your settings go back to their defaults.`
       : copy?.description
-  const action = finalClear ? "Delete everything" : copy?.action
+  const action = error
+    ? "Try again"
+    : finalClear
+      ? "Delete everything"
+      : copy?.action
 
   let body: ReactNode = null
   if (copy) {
@@ -118,6 +124,7 @@ export function ConfirmModal({
             {description}
           </p>
         </div>
+        {error ? <p className="mt-3 text-center text-sm text-destructive" role="alert">{error}</p> : null}
         <div className="mt-4 flex items-center gap-2">
           <Button className="flex-1" onClick={onCancel} variant="ghost">
             Cancel

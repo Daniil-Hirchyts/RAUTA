@@ -13,7 +13,6 @@ import {
   Info,
   PersonStanding,
   RefreshCw,
-  ShieldCheck,
   Smartphone,
   Target,
   Trash2,
@@ -186,12 +185,18 @@ export function SettingsPage({
         >
           <SettingsSection title="Training profile">
             {/* Two rows open a group of questions and summarise the answers
-                underneath; two open one question each. Nothing that stands on
+                underneath; one opens a single question. Nothing that stands on
                 its own is folded into a group to make the list shorter. */}
             <SettingsAction
-              description={`${profile.age} · ${experienceLabel(
-                profile.trainingExperience
-              )}`}
+              // Health is answered inside this group, so it is summarised
+              // here — and only when it is something, since "nothing to
+              // declare" is what the row would say for almost everyone.
+              description={[
+                `${profile.age} · ${experienceLabel(
+                  profile.trainingExperience
+                )}`,
+                ...(profile.health.status === "healthy" ? [] : ["Manual only"]),
+              ].join(" · ")}
               icon={<User />}
               onClick={() => openProfilePage("profile-basics")}
               title="Profile"
@@ -213,16 +218,6 @@ export function SettingsPage({
                 profile.priorityMuscles.length > 0
                   ? countLabel(profile.priorityMuscles.length, "muscle")
                   : "None"
-              }
-            />
-            <SettingsAction
-              icon={<ShieldCheck />}
-              onClick={() => openProfilePage("profile-health")}
-              title="Health & eligibility"
-              value={
-                profile.health.status === "healthy"
-                  ? "Ready to train"
-                  : "Manual only"
               }
             />
           </SettingsSection>

@@ -6,50 +6,74 @@ import {
   type PointerEvent,
 } from "react"
 
+import { AnimatedNumber } from "@/components/animated-number"
 import { triggerHaptic } from "@/lib/haptics"
 import { cn, snapToRange } from "@/lib/utils"
 
 /**
  * A dial for a number that would otherwise need a keyboard.
  *
- * Turning it is the whole point: a phone keyboard covers half the screen to
- * collect two digits, and every number this app asks for — an age, how long a
- * session should run — is a value you nudge rather than type. The gesture is
- * relative, so grabbing the dial never jumps the value, and it tracks the
- * angle around the centre, so a small circle at the edge is as usable as a
- * wide one. Hardware keyboards and assistive technology drive the same value
- * through ARIA slider semantics.
+ * Only the crown of the wheel is on screen: a shallow band of notches with a
+ * fixed marker at the top, so the value under the marker is the value you
+ * have. Turning it is the whole point — a phone keyboard covers half the
+ * screen to collect two digits, and every number this app asks for (an age,
+ * how long a session should run, a load step) is one you nudge rather than
+ * type. The notches follow the finger, so the gesture is a push on a wheel
+ * rather than a value to aim at, and the ends of what it will accept are lit
+ * notches on the band — with the rest of the scale greyed out past them, when
+ * the caller gives it one. Hardware keyboards and assistive technology drive
+ * the same value through ARIA slider semantics.
  */
 
-/** How much of the circle the range is spread over, and where it starts.
- *  Leaving the bottom open is what makes the dial read as a gauge with two
- *  ends rather than an endless wheel. */
-const SWEEP_DEGREES = 270
-const START_ANGLE = -135
+/** The drawing is laid out in these units and scaled to whatever width the
+ *  caller asks for; everything below is in them. */
+const VIEWBOX_W = 240
+const VIEWBOX_H = 178
 
-const VIEWBOX = 120
-const CENTER = VIEWBOX / 2
-const RADIUS = 50
-const TRACK_WIDTH = 2
+/** The wheel is mostly below the box. A radius this much wider than the box
+ *  is what leaves an arc rather than a circle; the two go together, since the
+ *  radius is what decides how much of the wheel reaches the box's edges. */
+const ARC_RADIUS = 162
+const ARC_TOP = 44
+const CENTER_X = VIEWBOX_W / 2
+const CENTER_Y = ARC_TOP + ARC_RADIUS
+const EDGE_DEGREES = 48
 
-function polar(angleDegrees: number, radius = RADIUS) {
-  // 0° points at 12 o'clock and grows clockwise, the way the dial is read.
-  const radians = ((angleDegrees - 90) * Math.PI) / 180
+/** Where the readout sits in the hollow under the arc. */
+const READOUT_TOP = 114
+
+/** The marker stands proud of the band so it reads as pointing at it. */
+const MARKER_RISE = 7
+
+const MAJOR_EVERY = 5
+const MINOR_TICK = 8
+const MAJOR_TICK = 15
+/** The notches the value stops at, drawn long and lit so the end of what the
+ *  dial will accept is something you see coming rather than a dial that stops
+ *  answering. */
+const END_TICK = 21
+
+/** How far apart the notches sit, kept between these so a short range does
+ *  not bunch into a smear and a long one still turns at a readable pace. */
+const MIN_TICK_DEGREES = 3
+const MAX_TICK_DEGREES = 9
+
+/** A small dial has a short arc, and tracking it exactly would spend a whole
+ *  range in a thumb's width; below this the wheel turns slower than the
+ *  finger instead. */
+const MIN_PIXELS_PER_NOTCH = 10
+
+function polar(degrees: number, radius: number) {
+  // 0° points at 12 o'clock and grows clockwise, the way the band is read.
+  const radians = ((degrees - 90) * Math.PI) / 180
   return {
-    x: CENTER + radius * Math.cos(radians),
-    y: CENTER + radius * Math.sin(radians),
+    x: CENTER_X + radius * Math.cos(radians),
+    y: CENTER_Y + radius * Math.sin(radians),
   }
 }
 
-function arcPath(fromDegrees: number, toDegrees: number) {
-  const from = polar(fromDegrees)
-  const to = polar(toDegrees)
-  const largeArc = Math.abs(toDegrees - fromDegrees) > 180 ? 1 : 0
-  return `M ${from.x} ${from.y} A ${RADIUS} ${RADIUS} 0 ${largeArc} 1 ${to.x} ${to.y}`
-}
-
-/** Shortest way round from one angle to another, so a drag that crosses the
- *  gap at the bottom counts as a few degrees rather than most of a turn. */
+/** Shortest way round from one angle to another, so a drag never counts as
+ *  most of a turn. */
 function angleDelta(from: number, to: number) {
   return ((((to - from) % 360) + 540) % 360) - 180
 }
@@ -63,7 +87,9 @@ export function RotaryKnob({
   max,
   min,
   onChange,
-  size = 232,
+  scaleMax,
+  scaleMin,
+  size = 480,
   step = 1,
   unit,
   value,
@@ -76,6 +102,14 @@ export function RotaryKnob({
   max: number
   min: number
   onChange: (value: number) => void
+  /** How much of the wheel is painted, when that is more than the dial will
+   *  accept. Numbers like an age read better against the whole scale they
+   *  belong to, with the part that is out of bounds greyed rather than
+   *  missing. Defaults to the accepted range itself. */
+  scaleMax?: number
+  scaleMin?: number
+  /** The widest the dial will draw itself; it takes the room it is given up
+   *  to this. */
   size?: number
   step?: number
   unit?: string
@@ -83,21 +117,35 @@ export function RotaryKnob({
 }) {
   // Two dials on one page must not both answer to the same paint server, and
   // React's generated ids carry colons an SVG reference cannot use.
-  const gradientId = `rotary-knob-${useId().replace(/:/g, "")}`
+  const paintId = `rotary-knob-${useId().replace(/:/g, "")}`
   const [dragging, setDragging] = useState(false)
+  const [focused, setFocused] = useState(false)
   const gesture = useRef<{
     angle: number
+    notches: number
     pointerId: number
-    rotation: number
     value: number
   } | null>(null)
 
   const range = { max, min, step }
+  const isCompact = size < 300
   const current = snapToRange(value, range)
-  const span = max - min
-  const fraction = span > 0 ? (current - min) / span : 0
-  const valueAngle = START_ANGLE + fraction * SWEEP_DEGREES
-  const handle = polar(valueAngle, 40)
+  const scaleFrom = Math.min(scaleMin ?? min, min)
+  const scaleTo = Math.max(scaleMax ?? max, max)
+  const notchCount = step > 0 ? Math.round((scaleTo - scaleFrom) / step) : 0
+  const notch = Math.round((current - scaleFrom) / (step || 1))
+  const lowNotch = Math.round((min - scaleFrom) / (step || 1))
+  const highNotch = Math.round((max - scaleFrom) / (step || 1))
+  const tickDegrees =
+    notchCount > 0
+      ? Math.min(
+          MAX_TICK_DEGREES,
+          Math.max(MIN_TICK_DEGREES, (EDGE_DEGREES * 2) / notchCount)
+        )
+      : MAX_TICK_DEGREES
+  // Only the notches that can reach the visible band are drawn, so a range of
+  // hundreds of steps costs the same as a range of ten.
+  const visibleNotches = Math.ceil(EDGE_DEGREES / tickDegrees) + 1
 
   const commit = (next: number) => {
     const snapped = snapToRange(next, range)
@@ -108,58 +156,81 @@ export function RotaryKnob({
     onChange(snapped)
   }
 
-  const pointerAngle = (event: PointerEvent<HTMLDivElement>) => {
+  /** Where the pointer sits on the wheel, and how big the wheel currently is
+   *  on screen — both read off the box the dial was laid out in. */
+  const readPointer = (event: PointerEvent<HTMLDivElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect()
-    const dx = event.clientX - (bounds.left + bounds.width / 2)
-    const dy = event.clientY - (bounds.top + bounds.height / 2)
+    if (bounds.width === 0) return null
+    const scale = bounds.width / VIEWBOX_W
+    const dx = event.clientX - (bounds.left + CENTER_X * scale)
+    const dy = event.clientY - (bounds.top + CENTER_Y * scale)
     if (dx === 0 && dy === 0) return null
-    return (Math.atan2(dx, -dy) * 180) / Math.PI
+    return {
+      angle: (Math.atan2(dx, -dy) * 180) / Math.PI,
+      radius: ARC_RADIUS * scale,
+    }
   }
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (disabled || event.button > 0) return
-    const angle = pointerAngle(event)
-    if (angle === null) return
+    const pointer = readPointer(event)
+    if (!pointer) return
     // The dial owns this gesture from here: `touch-none` already keeps the
     // page from scrolling under the finger, and capture keeps the value
-    // tracking once the finger wanders outside the circle.
+    // tracking once the finger wanders outside the band.
     try {
       event.currentTarget.setPointerCapture(event.pointerId)
     } catch {
       // Capture is an enhancement; the drag still works without it.
     }
     gesture.current = {
-      angle,
+      angle: pointer.angle,
+      notches: 0,
       pointerId: event.pointerId,
-      rotation: 0,
       value: current,
     }
     setDragging(true)
     event.currentTarget.focus({ preventScroll: true })
   }
 
-  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    const state = gesture.current
-    if (!state || state.pointerId !== event.pointerId) return
-    const angle = pointerAngle(event)
-    if (angle === null) return
-    event.preventDefault()
-
-    const travelled = state.rotation + angleDelta(state.angle, angle)
-    // Held at the range's own edge rather than allowed to wind up past it, so
-    // turning back answers on the first degree.
-    const lower = span > 0 ? ((min - state.value) / span) * SWEEP_DEGREES : 0
-    const upper = span > 0 ? ((max - state.value) / span) * SWEEP_DEGREES : 0
-    state.rotation = Math.min(upper, Math.max(lower, travelled))
-    state.angle = angle
-
-    commit(state.value + (state.rotation / SWEEP_DEGREES) * span)
-  }
-
   const endGesture = (event: PointerEvent<HTMLDivElement>) => {
     if (gesture.current?.pointerId !== event.pointerId) return
     gesture.current = null
     setDragging(false)
+  }
+
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const state = gesture.current
+    if (!state || state.pointerId !== event.pointerId) return
+    // A pointer that is no longer held is not turning anything: a release the
+    // dial never saw — capture lost to another window, a touch cancelled —
+    // would otherwise leave it tracking every stray move across the band.
+    if (event.buttons === 0) {
+      endGesture(event)
+      return
+    }
+    const pointer = readPointer(event)
+    if (!pointer) return
+    event.preventDefault()
+
+    const turned = angleDelta(state.angle, pointer.angle)
+    state.angle = pointer.angle
+
+    const travelled = (turned * Math.PI * pointer.radius) / 180
+    const perNotch = Math.max(
+      MIN_PIXELS_PER_NOTCH,
+      (pointer.radius * tickDegrees * Math.PI) / 180
+    )
+    // The strip goes with the finger: pushing it right brings the notches on
+    // its left — the lower ones — under the marker.
+    state.notches = Math.min(
+      (max - state.value) / step,
+      // Held at the range's own edge rather than allowed to wind up past it,
+      // so turning back answers on the first notch.
+      Math.max((min - state.value) / step, state.notches - travelled / perNotch)
+    )
+
+    commit(state.value + state.notches * step)
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -184,8 +255,80 @@ export function RotaryKnob({
     commit(current + delta)
   }
 
+  const ticks: {
+    blocked: boolean
+    end: boolean
+    key: number
+    label: string | null
+    labelX: number
+    labelY: number
+    major: boolean
+    opacity: number
+    tint: number
+    upright: string
+    x1: number
+    x2: number
+    y1: number
+    y2: number
+  }[] = []
+  for (
+    let index = Math.max(0, notch - visibleNotches);
+    index <= Math.min(notchCount, notch + visibleNotches);
+    index += 1
+  ) {
+    const offset = (index - notch) * tickDegrees
+    if (Math.abs(offset) > EDGE_DEGREES) continue
+    const major = index % MAJOR_EVERY === 0
+    const end = index === lowNotch || index === highNotch
+    const blocked = index < lowNotch || index > highNotch
+    // Absolute angles inside a rotated group, so the whole strip is one
+    // transform away from where it was and can be animated as a piece.
+    const angle = index * tickDegrees
+    const length = end ? END_TICK : major ? MAJOR_TICK : MINOR_TICK
+    const outer = polar(angle, ARC_RADIUS)
+    const inner = polar(angle, ARC_RADIUS - length)
+    const seat = polar(angle, ARC_RADIUS - MAJOR_TICK - 12)
+    const reach = Math.abs(offset) / EDGE_DEGREES
+    ticks.push({
+      blocked,
+      end,
+      key: index,
+      // Only the numbers that stay near the band get written: the ones out
+      // at the ends sprawl away from it and read as litter.
+      label:
+        major && !isCompact && Math.abs(offset) < EDGE_DEGREES * 0.72
+          ? format(scaleFrom + index * step)
+          : null,
+      labelX: seat.x,
+      labelY: seat.y,
+      major,
+      // Full strength until the band is nearly at the edge of the box, then
+      // gone, so it reads as curving away rather than being cut short.
+      opacity:
+        (major ? 0.95 : 0.55) *
+        (blocked ? 0.3 : 1) *
+        Math.min(1, Math.max(0, (1 - reach) / 0.3)),
+      // The notches warm up as they come under the marker, so the value you
+      // have is lit and the ones you are heading for are not.
+      tint: blocked ? 0 : Math.max(0, 1 - reach * 1.8),
+      // Undoes the wheel's turn about the label's own seat, so the numbers
+      // stay upright while the band beneath them rotates.
+      upright: `rotate(${notch * tickDegrees} ${seat.x} ${seat.y})`,
+      x1: inner.x,
+      x2: outer.x,
+      y1: inner.y,
+      y2: outer.y,
+    })
+  }
+
   return (
-    <div className={cn("flex flex-col items-center gap-2.5", className)}>
+    <div
+      className={cn(
+        "flex flex-col items-center",
+        isCompact ? "gap-2" : "gap-4",
+        className
+      )}
+    >
       {label ? (
         <p className="text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase">
           {label}
@@ -199,8 +342,7 @@ export function RotaryKnob({
         aria-valuenow={current}
         aria-valuetext={unit ? `${format(current)} ${unit}` : format(current)}
         className={cn(
-          "relative grid touch-none place-items-center rounded-full drop-shadow-[0_14px_18px_rgba(0,0,0,0.3)] outline-none select-none",
-          "focus-visible:ring-3 focus-visible:ring-ring/30",
+          "relative w-full touch-none outline-none select-none",
           disabled && "opacity-50"
         )}
         data-dragging={dragging ? "true" : undefined}
@@ -208,6 +350,16 @@ export function RotaryKnob({
         // The dial reads a drag of its own; the shell's edge-swipe navigation
         // and the direct-touch haptic overlay both stay out of it.
         data-swipe-ignore
+        onBlur={() => setFocused(false)}
+        // A ring drawn round a band this wide reads as a box someone put on
+        // the screen; the marker's own light comes up instead.
+        onFocus={(event) => {
+          try {
+            setFocused(event.currentTarget.matches(":focus-visible"))
+          } catch {
+            setFocused(true)
+          }
+        }}
         onKeyDown={onKeyDown}
         onLostPointerCapture={endGesture}
         onPointerCancel={endGesture}
@@ -215,104 +367,166 @@ export function RotaryKnob({
         onPointerMove={onPointerMove}
         onPointerUp={endGesture}
         role="slider"
-        style={{ height: size, width: size }}
+        // Wide as the space allows, up to what the caller asked for: the
+        // band is read across, and the geometry scales off the box it lands
+        // in rather than a fixed width.
+        style={{ aspectRatio: `${VIEWBOX_W} / ${VIEWBOX_H}`, maxWidth: size }}
         tabIndex={disabled ? -1 : 0}
       >
         <svg
           aria-hidden="true"
-          className="absolute inset-0 h-full w-full overflow-visible"
-          viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}
+          className="absolute inset-0 h-full w-full"
+          viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
         >
           <defs>
-            <linearGradient id={gradientId} x1="0" x2="1" y1="0" y2="1">
+            <linearGradient
+              gradientUnits="userSpaceOnUse"
+              id={`${paintId}-marker`}
+              x1="0"
+              x2="0"
+              y1={ARC_TOP - MARKER_RISE}
+              y2={ARC_TOP + MAJOR_TICK + 2}
+            >
               <stop offset="0%" stopColor="var(--primary-gradient-start)" />
               <stop offset="100%" stopColor="var(--primary-gradient-end)" />
             </linearGradient>
-          </defs>
-          <circle
-            cx={CENTER}
-            cy={CENTER}
-            r={43}
-            fill="var(--card)"
-            stroke="var(--border)"
-            strokeWidth="0.6"
-          />
-          <circle
-            cx={CENTER}
-            cy={CENTER}
-            r={36}
-            fill="var(--background)"
-            stroke="var(--border)"
-            strokeWidth="0.4"
-          />
-          {Array.from({ length: 55 }, (_, i) => {
-            const angle = START_ANGLE + i * 5
-            const inner = polar(angle, i % 5 === 0 ? 53 : 55)
-            const outer = polar(angle, 58)
-            return (
-              <line
-                key={i}
-                x1={inner.x}
-                y1={inner.y}
-                x2={outer.x}
-                y2={outer.y}
-                stroke={
-                  angle <= valueAngle
-                    ? "var(--primary)"
-                    : "var(--muted-foreground)"
-                }
-                opacity={angle <= valueAngle ? 1 : 0.35}
-                strokeWidth={i % 5 === 0 ? 1 : 0.5}
+            <radialGradient id={`${paintId}-glow`}>
+              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.34" />
+              <stop
+                offset="55%"
+                stopColor="var(--primary)"
+                stopOpacity="0.12"
               />
-            )
-          })}
-          <path
-            d={arcPath(START_ANGLE, START_ANGLE + SWEEP_DEGREES)}
-            fill="none"
-            stroke="var(--input)"
-            strokeLinecap="round"
-            strokeWidth={TRACK_WIDTH}
+              <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          {/* The marker's own light, cast on the band it sits over. */}
+          <ellipse
+            className="transition-all duration-300"
+            cx={CENTER_X}
+            cy={ARC_TOP + 6}
+            fill={`url(#${paintId}-glow)`}
+            opacity={focused || dragging ? 1 : 0.8}
+            rx={focused || dragging ? 62 : 46}
+            ry={focused || dragging ? 42 : 32}
           />
-          {fraction > 0 ? (
-            <path
-              d={arcPath(START_ANGLE, valueAngle)}
-              fill="none"
-              stroke={`url(#${gradientId})`}
-              strokeLinecap="round"
-              strokeWidth={TRACK_WIDTH}
-            />
-          ) : null}
-          <circle cx={handle.x} cy={handle.y} fill="var(--primary)" r={2} />
+          <g
+            style={{
+              transform: `rotate(${-notch * tickDegrees}deg)`,
+              transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
+              transition: dragging
+                ? "none"
+                : "transform 260ms cubic-bezier(0.2, 0.9, 0.3, 1)",
+            }}
+          >
+            {ticks.map((tick) => (
+              <line
+                key={tick.key}
+                opacity={tick.opacity}
+                stroke="var(--muted-foreground)"
+                strokeLinecap="round"
+                strokeWidth={tick.major ? 1.7 : 1}
+                x1={tick.x1}
+                x2={tick.x2}
+                y1={tick.y1}
+                y2={tick.y2}
+              />
+            ))}
+            {ticks
+              .filter((tick) => tick.tint > 0.02 || (tick.end && !tick.blocked))
+              .map((tick) => (
+                <line
+                  key={tick.key}
+                  opacity={tick.end ? Math.max(0.75, tick.tint) : tick.tint}
+                  stroke="var(--primary)"
+                  strokeLinecap="round"
+                  strokeWidth={tick.end ? 2 : tick.major ? 1.7 : 1}
+                  x1={tick.x1}
+                  x2={tick.x2}
+                  y1={tick.y1}
+                  y2={tick.y2}
+                />
+              ))}
+            {ticks
+              .filter((tick) => tick.label !== null)
+              .map((tick) => (
+                <text
+                  fill={
+                    tick.end || tick.key === notch
+                      ? "var(--primary)"
+                      : "var(--muted-foreground)"
+                  }
+                  fontSize={8}
+                  fontWeight={700}
+                  key={tick.key}
+                  letterSpacing={0.3}
+                  opacity={tick.opacity * 0.9}
+                  textAnchor="middle"
+                  transform={tick.upright}
+                  x={tick.labelX}
+                  y={tick.labelY + 3}
+                >
+                  {tick.label}
+                </text>
+              ))}
+          </g>
+          <line
+            opacity={0.3}
+            stroke={`url(#${paintId}-marker)`}
+            strokeLinecap="round"
+            strokeWidth={8}
+            x1={CENTER_X}
+            x2={CENTER_X}
+            y1={ARC_TOP - MARKER_RISE}
+            y2={ARC_TOP + MAJOR_TICK + 2}
+          />
+          <line
+            stroke={`url(#${paintId}-marker)`}
+            strokeLinecap="round"
+            strokeWidth={2.6}
+            x1={CENTER_X}
+            x2={CENTER_X}
+            y1={ARC_TOP - MARKER_RISE}
+            y2={ARC_TOP + MAJOR_TICK + 2}
+          />
         </svg>
-        <span className="pointer-events-none relative z-10 flex flex-col items-center">
-          <span className="font-heading text-[3.25rem] leading-none font-black tracking-[-0.03em] tabular-nums">
-            {format(current)}
+        <span
+          className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center justify-center"
+          style={{ top: `${(READOUT_TOP / VIEWBOX_H) * 100}%` }}
+        >
+          <span
+            className={cn(
+              "font-heading leading-none font-black tracking-[-0.03em] tabular-nums",
+              isCompact ? "text-2xl" : "text-[3.25rem]"
+            )}
+          >
+            <AnimatedNumber format={format} still={dragging} value={current} />
           </span>
           {unit ? (
-            <span className="mt-1.5 text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase">
+            <span
+              className={cn(
+                "font-bold text-muted-foreground uppercase",
+                isCompact
+                  ? "mt-0.5 text-[10px] tracking-[0.14em]"
+                  : "mt-1.5 text-xs tracking-[0.18em]"
+              )}
+            >
               {unit}
             </span>
           ) : null}
         </span>
       </div>
-      <div
-        className="flex items-center gap-5 text-xs font-semibold text-muted-foreground"
-        aria-hidden="true"
-      >
-        <span>{min}</span>
-        <span className="text-[10px] tracking-[0.18em] uppercase">
-          Turn to adjust
-        </span>
-        <span>{max}</span>
-      </div>
-      <div className="flex gap-3">
+      <div className={cn("flex", isCompact ? "gap-2" : "gap-3")}>
         <button
           type="button"
           data-haptics="off"
           aria-label={`Decrease ${ariaLabel.toLowerCase()}`}
           disabled={disabled || current <= min}
           onClick={() => commit(current - step)}
-          className="interactive-spring grid size-11 place-items-center rounded-full border border-border bg-card text-xl disabled:opacity-35"
+          className={cn(
+            "interactive-spring grid place-items-center rounded-full border border-border bg-card shadow-sm shadow-black/10 active:bg-card/90 disabled:opacity-35",
+            isCompact ? "size-9 text-base" : "size-12 text-xl font-bold"
+          )}
         >
           −
         </button>
@@ -322,7 +536,10 @@ export function RotaryKnob({
           aria-label={`Increase ${ariaLabel.toLowerCase()}`}
           disabled={disabled || current >= max}
           onClick={() => commit(current + step)}
-          className="interactive-spring grid size-11 place-items-center rounded-full border border-border bg-card text-xl disabled:opacity-35"
+          className={cn(
+            "interactive-spring grid place-items-center rounded-full border border-border bg-card shadow-sm shadow-black/10 active:bg-card/90 disabled:opacity-35",
+            isCompact ? "size-9 text-base" : "size-12 text-xl font-bold"
+          )}
         >
           +
         </button>

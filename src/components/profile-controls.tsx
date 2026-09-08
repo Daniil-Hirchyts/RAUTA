@@ -1,14 +1,18 @@
-import { useState, type ReactNode, type KeyboardEvent } from "react"
+import { useState, type KeyboardEvent } from "react"
+import { ChevronRight, X } from "lucide-react"
 
 import { AnimatedCheck } from "@/components/animated-check"
+import { AppModal } from "@/components/app-modal"
 import { BodyMap } from "@/components/body-map"
 import { EquipmentGrid } from "@/components/equipment-grid"
 import { EquipmentPresets } from "@/components/equipment-presets"
 import { RautaStill } from "@/components/rauta"
+import { Button } from "@/components/ui/button"
+import { CoverflowCarousel } from "@/components/ui/coverflow-carousel"
 import { DotPattern } from "@/components/ui/dot-pattern"
-import { Input } from "@/components/ui/input"
 import { RotaryKnob } from "@/components/ui/rotary-knob"
 import { triggerHaptic } from "@/lib/haptics"
+import { countLabel } from "@/lib/text"
 import {
   EXPERIENCE_CHOICES,
   EXPERIENCE_LEVELS,
@@ -18,9 +22,12 @@ import {
   PRIORITY_LEVEL_LABELS,
   PRIORITY_PAINT_WEIGHTS,
   PROFILE_AGE,
+  PROFILE_AGE_SCALE,
   SELECTABLE_PRIORITY_LEVELS,
   SESSION_DURATION,
+  SESSION_DURATION_SCALE,
   SUPPORTED_GOALS,
+  type SupportedTrainingGoal,
 } from "@/lib/training-profile"
 import { cn } from "@/lib/utils"
 import { useFilters } from "@/store/use-filters"
@@ -55,65 +62,6 @@ function moveRadio(event: KeyboardEvent<HTMLDivElement>) {
   next.click()
 }
 
-export function ChoiceRow({
-  checked,
-  description,
-  onClick,
-  role = "radio",
-  title,
-}: {
-  checked: boolean
-  description?: string
-  onClick: () => void
-  role?: "radio" | "checkbox"
-  title: string
-}) {
-  return (
-    <button
-      aria-checked={checked}
-      className={cn(
-        "interactive-spring flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left",
-        checked
-          ? "border-primary/50 bg-[color-mix(in_oklch,var(--card),var(--primary)_10%)]"
-          : "border-border bg-card active:bg-muted/80"
-      )}
-      data-haptics="off"
-      onClick={() => {
-        triggerHaptic("selection")
-        onClick()
-      }}
-      role={role}
-      type="button"
-    >
-      <span className="min-w-0 flex-1">
-        <span className="block text-base font-bold">{title}</span>
-        {description ? (
-          <span className="mt-0.5 block text-sm leading-snug text-muted-foreground">
-            {description}
-          </span>
-        ) : null}
-      </span>
-      <AnimatedCheck checked={checked} className="size-7 shrink-0" />
-    </button>
-  )
-}
-
-function ChoiceGroup({
-  children,
-  label,
-  role = "radiogroup",
-}: {
-  children: ReactNode
-  label: string
-  role?: "radiogroup" | "group"
-}) {
-  return (
-    <div aria-label={label} className="space-y-2.5" role={role}>
-      {children}
-    </div>
-  )
-}
-
 export function ProfileNameField() {
   const storedName = useTrainingProfile((state) => state.profile.name)
   const updateProfile = useTrainingProfile((state) => state.updateProfile)
@@ -129,19 +77,50 @@ export function ProfileNameField() {
   }
 
   return (
-    <Input
-      className="!h-20 !rounded-3xl !border-0 !border-b-2 !bg-transparent !px-3 !text-center !text-3xl !font-bold !shadow-none focus-visible:!ring-0"
-      aria-label="Your name"
-      autoComplete="given-name"
-      enterKeyHint="done"
-      maxLength={MAX_PROFILE_NAME_LENGTH}
-      onChange={(event) => {
-        setDraft(event.target.value)
-        updateProfile({ name: event.target.value })
-      }}
-      placeholder="Name (optional)"
-      value={draft}
-    />
+    <div className="group relative w-full">
+      <input
+        aria-label="Your name"
+        autoComplete="given-name"
+        className="w-full bg-transparent pb-3 text-center font-heading text-[2.25rem] leading-tight font-black tracking-[-0.03em] caret-primary outline-none placeholder:font-black placeholder:text-muted-foreground/30"
+        enterKeyHint="done"
+        maxLength={MAX_PROFILE_NAME_LENGTH}
+        onChange={(event) => {
+          setDraft(event.target.value)
+          updateProfile({ name: event.target.value })
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.currentTarget.blur()
+          }
+        }}
+        placeholder="Your name"
+        value={draft}
+      />
+      {/* A rail rather than a box: it lights along its whole length on focus,
+          and stays lit once the field has something in it. */}
+      <span className="absolute inset-x-0 bottom-0 h-px rounded-full bg-border" />
+      <span
+        className={cn(
+          "absolute inset-x-0 bottom-0 h-[3px] origin-center rounded-full bg-primary-gradient transition-transform duration-500 ease-out group-focus-within:scale-x-100",
+          draft.trim() === "" ? "scale-x-0" : "scale-x-100"
+        )}
+      />
+      {draft !== "" && (
+        <button
+          aria-label="Clear name"
+          className="interactive-spring hit-target absolute right-0 bottom-4 grid size-8 place-items-center rounded-full border border-border bg-card text-muted-foreground active:bg-card/90"
+          data-haptics="off"
+          onClick={() => {
+            triggerHaptic("selection")
+            setDraft("")
+            updateProfile({ name: "" })
+          }}
+          type="button"
+        >
+          <X className="size-4" />
+        </button>
+      )}
+    </div>
   )
 }
 
@@ -156,6 +135,8 @@ export function AgeKnob({ label = "Age" }: { label?: string | null }) {
       max={PROFILE_AGE.max}
       min={PROFILE_AGE.min}
       onChange={(value) => updateProfile({ age: value })}
+      scaleMax={PROFILE_AGE_SCALE.max}
+      scaleMin={PROFILE_AGE_SCALE.min}
       step={PROFILE_AGE.step}
       unit="years"
       value={age}
@@ -182,6 +163,8 @@ export function SessionDurationKnob({
       onChange={(value) =>
         updateProfile({ preferredSessionDurationMinutes: value })
       }
+      scaleMax={SESSION_DURATION_SCALE.max}
+      scaleMin={SESSION_DURATION_SCALE.min}
       step={SESSION_DURATION.step}
       unit="minutes"
       value={minutes}
@@ -200,7 +183,7 @@ export function ExperiencePicker() {
       role="radiogroup"
       onKeyDown={moveRadio}
       aria-label="Training experience"
-      className="space-y-3"
+      className="space-y-2.5"
     >
       {EXPERIENCE_LEVELS.map((level, index) => (
         <button
@@ -211,7 +194,7 @@ export function ExperiencePicker() {
           key={level}
           data-haptics="off"
           className={cn(
-            "interactive-spring flex w-full items-center gap-5 rounded-3xl border p-5 text-left transition-colors",
+            "interactive-spring flex w-full items-center gap-4 rounded-3xl border p-4 text-left transition-colors",
             experience === level
               ? "border-primary/60 bg-primary/10"
               : "border-border bg-card"
@@ -221,8 +204,11 @@ export function ExperiencePicker() {
             updateProfile({ trainingExperience: level })
           }}
         >
-          <span className="relative h-16 w-20 shrink-0 overflow-hidden rounded-2xl bg-muted" aria-hidden="true">
-            <span className="absolute -right-2 -bottom-4 size-20 opacity-80">
+          <span
+            className="relative h-14 w-18 shrink-0 overflow-hidden rounded-2xl bg-muted"
+            aria-hidden="true"
+          >
+            <span className="absolute -right-2 -bottom-4 size-18 opacity-80">
               <RautaStill />
             </span>
             <span className="absolute bottom-2 left-2 flex items-end gap-1">
@@ -239,10 +225,10 @@ export function ExperiencePicker() {
             </span>
           </span>
           <span className="min-w-0 flex-1">
-            <strong className="block text-lg">
+            <strong className="block text-base">
               {EXPERIENCE_CHOICES[level].title}
             </strong>
-            <span className="mt-1 block text-sm text-muted-foreground">
+            <span className="mt-0.5 block text-[13px] leading-snug text-muted-foreground">
               {EXPERIENCE_CHOICES[level].description}
             </span>
           </span>
@@ -256,7 +242,11 @@ export function ExperiencePicker() {
   )
 }
 
-const GOAL_ART = {
+/** Stand-in art until the generated goal pictures land. One RAUTA per goal,
+ *  posed differently, so a deck of six cards is told apart by looking rather
+ *  than by reading — which is the whole reason the goal is picked from
+ *  pictures. Swapping in the real thing is swapping the body of `GoalArt`. */
+const GOAL_ART: Record<SupportedTrainingGoal, string> = {
   hypertrophy: "scale-[1.2] -rotate-6 translate-y-2",
   strength: "scale-[1.28] rotate-5 translate-y-1",
   strength_hypertrophy: "scale-[1.22] -rotate-2 translate-y-2",
@@ -265,65 +255,53 @@ const GOAL_ART = {
   muscular_endurance: "scale-[1.18] rotate-2 translate-y-2",
 }
 
-export function GoalPicker() {
-  const goal = useTrainingProfile((state) => state.profile.goal)
-  const updateProfile = useTrainingProfile((state) => state.updateProfile)
+function GoalArt({ goal }: { goal: SupportedTrainingGoal }) {
   return (
-    <div
-      role="radiogroup"
-      onKeyDown={moveRadio}
-      aria-label="Training goal"
-      className="grid grid-cols-2 gap-3"
-    >
-      {SUPPORTED_GOALS.map((option) => {
-        const selected = goal === option
-        return (
-          <button
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            tabIndex={selected ? 0 : -1}
-            key={option}
-            data-haptics="off"
-            className={cn(
-              "interactive-spring relative flex min-h-48 flex-col items-start overflow-hidden rounded-3xl border p-3.5 text-left transition-colors",
-              selected
-                ? "border-primary/60 bg-primary/10"
-                : "border-border bg-card"
-            )}
-            onClick={() => {
-              triggerHaptic("selection")
-              updateProfile({ goal: option })
-            }}
-          >
-            <span className="relative mb-3 h-24 w-full overflow-hidden rounded-[1.15rem] bg-muted" aria-hidden="true">
-              <span className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,color-mix(in_oklch,var(--primary)_34%,transparent),transparent_52%)]" />
-              <span
-                className={cn(
-                  "absolute right-1 -bottom-5 size-28 transition-transform duration-300",
-                  GOAL_ART[option]
-                )}
-              >
-                <RautaStill />
-              </span>
-            </span>
-            <span className="absolute top-4 right-3">
-              <AnimatedCheck checked={selected} className="size-5" />
-            </span>
-            <strong className="text-[15px] leading-tight">
-              {GOAL_CHOICES[option].title}
-            </strong>
-            <span className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-              {GOAL_CHOICES[option].description}
-            </span>
-          </button>
-        )
-      })}
-    </div>
+    <span className="absolute inset-0 bg-muted">
+      <span className="absolute inset-0 bg-[radial-gradient(circle_at_68%_78%,color-mix(in_oklch,var(--primary)_34%,transparent),transparent_58%)]" />
+      <span
+        className={cn(
+          "absolute right-1 -bottom-6 size-[78%] transition-transform duration-300",
+          GOAL_ART[goal]
+        )}
+      >
+        <RautaStill />
+      </span>
+    </span>
   )
 }
 
-export function HealthPicker() {
+/** The goal is the one answer in setup that is a direction rather than a
+ *  number, so it is asked for as a deck of pictures turned one at a time: the
+ *  card facing you is the goal, and there is nothing to confirm. */
+export function GoalPicker() {
+  const goal = useTrainingProfile((state) => state.profile.goal)
+  const updateProfile = useTrainingProfile((state) => state.updateProfile)
+
+  return (
+    <CoverflowCarousel
+      // Full width of the screen rather than of the content column: the deck
+      // is meant to run off both edges.
+      className="-mx-(--app-content-inset)"
+      label="Training goal"
+      onChange={(next) => updateProfile({ goal: next })}
+      slides={SUPPORTED_GOALS.map((option) => ({
+        description: GOAL_CHOICES[option].description,
+        id: option,
+        media: <GoalArt goal={option} />,
+        title: GOAL_CHOICES[option].title,
+      }))}
+      value={goal}
+    />
+  )
+}
+
+/** One list, not a card apiece.
+ *
+ * These are five lines of the same question, and boxing each of them turns a
+ * short answer into a page of scenery. The first line is the answer almost
+ * everyone gives; ticking any of the others is what takes it away. */
+function HealthOptions() {
   const health = useTrainingProfile((state) => state.profile.health)
   const setHealthy = useTrainingProfile((state) => state.setHealthy)
   const toggleHealthLimitation = useTrainingProfile(
@@ -332,34 +310,140 @@ export function HealthPicker() {
   const reasons = health.status === "unsupported" ? health.reasons : []
 
   return (
-    <div className="space-y-2.5">
+    <div
+      aria-label="Health"
+      className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card"
+      role="group"
+    >
+      <HealthOption
+        checked={health.status === "healthy"}
+        onClick={setHealthy}
+        role="radio"
+        title="Ready to train"
+      />
+      {HEALTH_LIMITATIONS.map((limitation) => (
+        <HealthOption
+          checked={reasons.includes(limitation)}
+          key={limitation}
+          onClick={() => toggleHealthLimitation(limitation)}
+          role="checkbox"
+          title={HEALTH_LIMITATION_LABELS[limitation]}
+        />
+      ))}
+    </div>
+  )
+}
+
+function HealthOption({
+  checked,
+  onClick,
+  role,
+  title,
+}: {
+  checked: boolean
+  onClick: () => void
+  role: "radio" | "checkbox"
+  title: string
+}) {
+  return (
+    <button
+      aria-checked={checked}
+      className="flex w-full items-center gap-3 px-3.5 py-3 text-left active:bg-muted/60"
+      data-haptics="off"
+      onClick={() => {
+        triggerHaptic("selection")
+        onClick()
+      }}
+      role={role}
+      type="button"
+    >
+      <span
+        className={cn(
+          "min-w-0 flex-1 text-[15px]",
+          checked ? "font-bold" : "text-muted-foreground"
+        )}
+      >
+        {title}
+      </span>
+      <AnimatedCheck checked={checked} className="size-6 shrink-0" />
+    </button>
+  )
+}
+
+/** The question on its own, for the screen that asks nothing else. */
+export function HealthPicker() {
+  return (
+    <div className="space-y-3">
       {/* Said before the choice rather than under it: this is the boundary the
           planner works inside, not a footnote about it. */}
       <p className="px-1 text-sm leading-relaxed text-muted-foreground">
         Plans are only built for you while none of these apply. Browsing and
         building your own workouts always works.
       </p>
-      <ChoiceRow
-        checked={health.status === "healthy"}
-        description="Nothing that changes how you should train"
-        onClick={setHealthy}
-        title="Ready to train"
-      />
-      <p className="px-1 text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase">
-        Or what applies
-      </p>
-      <ChoiceGroup label="Health limitations" role="group">
-        {HEALTH_LIMITATIONS.map((limitation) => (
-          <ChoiceRow
-            checked={reasons.includes(limitation)}
-            key={limitation}
-            onClick={() => toggleHealthLimitation(limitation)}
-            role="checkbox"
-            title={HEALTH_LIMITATION_LABELS[limitation]}
-          />
-        ))}
-      </ChoiceGroup>
+      <HealthOptions />
     </div>
+  )
+}
+
+/** Health folded into the answer above it.
+ *
+ * For almost everyone the answer is "nothing that changes how I train", and a
+ * whole screen to say so is a screen spent on nothing — so it rides along with
+ * experience as one row that states the answer it already has. The question
+ * itself is a dialog rather than a panel that unfolds: the step is meant to
+ * fit the screen, and pushing everything under it down the page to ask an
+ * optional question is what a dialog exists to avoid. */
+export function HealthDisclosure() {
+  const health = useTrainingProfile((state) => state.profile.health)
+  const limited = health.status === "unsupported"
+  const [open, setOpen] = useState(false)
+  const close = () => setOpen(false)
+
+  return (
+    <>
+      <button
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        className={cn(
+          "interactive-spring flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left",
+          limited
+            ? "border-primary/50 bg-[color-mix(in_oklch,var(--card),var(--primary)_10%)]"
+            : "border-border bg-card active:bg-muted/80"
+        )}
+        data-haptics="off"
+        onClick={() => {
+          triggerHaptic("light")
+          setOpen(true)
+        }}
+        type="button"
+      >
+        <span className="min-w-0 flex-1 text-base font-bold">Health</span>
+        <span className="max-w-[55%] truncate text-sm font-medium text-muted-foreground">
+          {limited
+            ? countLabel(health.reasons.length, "limitation")
+            : "Ready to train"}
+        </span>
+        <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+      </button>
+
+      <AppModal label="Health" onClose={close} open={open}>
+        <div className="px-3 pt-3 pb-1 text-center">
+          <h2 className="font-heading text-lg font-black tracking-[-0.02em]">
+            Anything to train around?
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Plans are only built for you while none of these apply. Browsing and
+            building your own workouts always works.
+          </p>
+        </div>
+        <div className="mt-4">
+          <HealthOptions />
+        </div>
+        <Button className="mt-2 w-full" onClick={close}>
+          Done
+        </Button>
+      </AppModal>
+    </>
   )
 }
 

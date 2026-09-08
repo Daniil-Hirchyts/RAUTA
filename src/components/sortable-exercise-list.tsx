@@ -179,7 +179,11 @@ function SortableExerciseRow({
     )
 
   return (
-    <li className="touch-pan-y" ref={ref as Ref<HTMLLIElement>}>
+    <li
+      className="touch-pan-y"
+      key={reorderable ? "sortable" : "static"}
+      ref={reorderable ? (ref as Ref<HTMLLIElement>) : undefined}
+    >
       {swipeable}
       {below}
     </li>

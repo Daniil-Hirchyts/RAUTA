@@ -513,4 +513,68 @@ describe("logging sets during a workout", () => {
       minimumKg: 20,
     })
   }, 30000)
+
+  it("keeps stale history unset when the engine requests calibration", async () => {
+    const user = userEvent.setup()
+    records().startFreeWorkout([BENCH], "2020-01-01T10:00:00.000Z")
+    const entry = records().data.activeWorkout!.exercises[0]
+    records().addUnplannedSet({
+      exerciseEntryId: entry.id,
+      setType: "working",
+      side: "both",
+      observation: {
+        reps: 12,
+        rir: 2,
+        completed: true,
+        timestamp: "2020-01-01T10:05:00.000Z",
+        resistance: {
+          type: "external_load",
+          kg: 80,
+          basis: "total",
+          stationId: "barbell",
+        },
+      },
+    })
+    records().completeWorkout("completed", "2020-01-01T10:30:00.000Z")
+    renderRunningWorkout()
+    await start(user)
+    expect(screen.getByText(/It has been a while/)).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: /^Log a set/ }))
+    expect(screen.getByRole("group", { name: "Load" })).toHaveTextContent("—")
+    await user.click(screen.getByRole("button", { name: "Dial in the load" }))
+    expect(loggedSets()).toEqual([])
+  })
+
+  it("discards an unsaved load list when another station is selected", async () => {
+    const user = userEvent.setup()
+    renderRunningWorkout()
+    await start(user)
+    await user.click(screen.getByRole("button", { name: /^Log a set/ }))
+    await user.click(
+      screen.getByRole("button", { name: /Show load steps for Barbell/ })
+    )
+    await user.click(
+      screen.getByRole("button", { name: "List the loads this station has" })
+    )
+    await user.click(screen.getByRole("button", { name: "Add 20 kg" }))
+    expect(records().data.settings.loadConfigurations).toEqual([])
+    await user.click(
+      screen.getByRole("button", {
+        name: "Add another station for this exercise",
+      })
+    )
+    await user.click(
+      screen.getByRole("button", { name: /Show load steps for Barbell 2/ })
+    )
+    await user.click(
+      screen.getByRole("button", { name: "List the loads this station has" })
+    )
+    expect(
+      screen.queryByRole("button", { name: "Remove 20 kg from Barbell 2" })
+    ).toBeNull()
+    await user.click(screen.getByRole("button", { name: "Save loads" }))
+    expect(records().data.settings.loadConfigurations[0].grid).toHaveProperty(
+      "incrementKg"
+    )
+  })
 })

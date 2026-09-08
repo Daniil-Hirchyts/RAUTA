@@ -462,7 +462,9 @@ export function carryOverLoad(
     return null
   if (!sameLoadContext(resistance, context)) return null
   const rounded = roundLoad(resistance.kg, context.grid)
-  return rounded ?? null
+  return rounded !== undefined && Math.abs(rounded - resistance.kg) < 1e-6
+    ? resistance.kg
+    : null
 }
 
 /**
