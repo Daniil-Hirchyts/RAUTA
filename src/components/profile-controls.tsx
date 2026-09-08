@@ -6,7 +6,6 @@ import { AppModal } from "@/components/app-modal"
 import { BodyMap, type BodySide } from "@/components/body-map"
 import { EquipmentGrid } from "@/components/equipment-grid"
 import { EquipmentPresets } from "@/components/equipment-presets"
-import { RautaStill } from "@/components/rauta"
 import { Button } from "@/components/ui/button"
 import { CoverflowCarousel } from "@/components/ui/coverflow-carousel"
 import { DotPattern } from "@/components/ui/dot-pattern"
@@ -205,24 +204,19 @@ export function ExperiencePicker() {
           }}
         >
           <span
-            className="relative h-14 w-18 shrink-0 overflow-hidden rounded-2xl bg-muted"
+            className="flex shrink-0 items-end gap-1 px-1"
             aria-hidden="true"
           >
-            <span className="absolute -right-2 -bottom-4 size-18 opacity-80">
-              <RautaStill />
-            </span>
-            <span className="absolute bottom-2 left-2 flex items-end gap-1">
-              {[0, 1, 2].map((bar) => (
-                <span
-                  key={bar}
-                  className={cn(
-                    "w-1.5 rounded-full shadow-sm",
-                    bar <= index ? "bg-primary" : "bg-foreground/20"
-                  )}
-                  style={{ height: 9 + bar * 7 }}
-                />
-              ))}
-            </span>
+            {[0, 1, 2].map((bar) => (
+              <span
+                key={bar}
+                className={cn(
+                  "w-1.5 rounded-full",
+                  bar <= index ? "bg-primary" : "bg-foreground/20"
+                )}
+                style={{ height: 9 + bar * 7 }}
+              />
+            ))}
           </span>
           <span className="min-w-0 flex-1">
             <strong className="block text-base">
@@ -242,31 +236,30 @@ export function ExperiencePicker() {
   )
 }
 
-/** Stand-in art until the generated goal pictures land. One RAUTA per goal,
- *  posed differently, so a deck of six cards is told apart by looking rather
- *  than by reading — which is the whole reason the goal is picked from
- *  pictures. Swapping in the real thing is swapping the body of `GoalArt`. */
+/** Goal artwork is deliberately separate from RAUTA: the card communicates
+ *  the training direction at a glance, while the mascot remains the companion
+ *  that guides the flow. All six assets share the same transparent visual
+ *  treatment and live with the rest of the app's public artwork. */
 const GOAL_ART: Record<SupportedTrainingGoal, string> = {
-  hypertrophy: "scale-[1.2] -rotate-6 translate-y-2",
-  strength: "scale-[1.28] rotate-5 translate-y-1",
-  strength_hypertrophy: "scale-[1.22] -rotate-2 translate-y-2",
-  general_fitness: "scale-[1.06] rotate-6 -translate-y-1",
-  fat_loss_support: "scale-[1.12] -rotate-5 translate-x-2",
-  muscular_endurance: "scale-[1.18] rotate-2 translate-y-2",
+  hypertrophy: "/assets/goals/hypertrophy.webp",
+  strength: "/assets/goals/strength.webp",
+  strength_hypertrophy: "/assets/goals/strength-hypertrophy.webp",
+  general_fitness: "/assets/goals/general-fitness.webp",
+  fat_loss_support: "/assets/goals/fat-loss-support.webp",
+  muscular_endurance: "/assets/goals/muscular-endurance.webp",
 }
 
 function GoalArt({ goal }: { goal: SupportedTrainingGoal }) {
   return (
     <span className="absolute inset-0 bg-muted">
       <span className="absolute inset-0 bg-[radial-gradient(circle_at_68%_78%,color-mix(in_oklch,var(--primary)_34%,transparent),transparent_58%)]" />
-      <span
-        className={cn(
-          "absolute right-1 -bottom-6 size-[78%] transition-transform duration-300",
-          GOAL_ART[goal]
-        )}
-      >
-        <RautaStill />
-      </span>
+      <img
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full object-contain p-1.5 transition-transform duration-300"
+        draggable={false}
+        src={GOAL_ART[goal]}
+      />
     </span>
   )
 }
@@ -392,7 +385,12 @@ export function HealthPicker() {
  * experience as one row that states the answer it already has. The question
  * itself is a dialog rather than a panel that unfolds: the step is meant to
  * fit the screen, and pushing everything under it down the page to ask an
- * optional question is what a dialog exists to avoid. */
+ * optional question is what a dialog exists to avoid.
+ *
+ * It deliberately is not a card. Under three cards that are the question on
+ * this screen, a fourth box reads as a fourth thing to pick — so the row drops
+ * to a line of type with the answer set against a rule, which is a footnote to
+ * the choice above it rather than one more option in it. */
 export function HealthDisclosure() {
   const health = useTrainingProfile((state) => state.profile.health)
   const limited = health.status === "unsupported"
@@ -404,12 +402,7 @@ export function HealthDisclosure() {
       <button
         aria-expanded={open}
         aria-haspopup="dialog"
-        className={cn(
-          "interactive-spring flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left",
-          limited
-            ? "border-primary/50 bg-[color-mix(in_oklch,var(--card),var(--primary)_10%)]"
-            : "border-border bg-card active:bg-muted/80"
-        )}
+        className="interactive-spring flex w-full items-center gap-3 px-1 py-1 text-left"
         data-haptics="off"
         onClick={() => {
           triggerHaptic("light")
@@ -417,13 +410,26 @@ export function HealthDisclosure() {
         }}
         type="button"
       >
-        <span className="min-w-0 flex-1 text-base font-bold">Health</span>
-        <span className="max-w-[55%] truncate text-sm font-medium text-muted-foreground">
+        <span className="shrink-0 text-sm font-semibold text-muted-foreground">
+          Health
+        </span>
+        <span aria-hidden="true" className="h-px min-w-4 flex-1 bg-border" />
+        <span
+          className={cn(
+            "max-w-[60%] truncate text-sm font-semibold",
+            limited ? "text-primary" : "text-foreground"
+          )}
+        >
           {limited
             ? countLabel(health.reasons.length, "limitation")
             : "Nothing to train around"}
         </span>
-        <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+        <ChevronRight
+          className={cn(
+            "size-4 shrink-0",
+            limited ? "text-primary" : "text-muted-foreground"
+          )}
+        />
       </button>
 
       <AppModal label="Health" onClose={close} open={open}>
