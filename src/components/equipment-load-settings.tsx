@@ -59,11 +59,11 @@ export function EquipmentLoadSettings() {
   const label = titleCase(equipment)
 
   return (
-    <>
+    <div className="flex min-h-full flex-col">
       {/* The same deck the goal is picked from: one thing at a time, at the
           size a picture of it is worth showing. */}
       <CoverflowCarousel
-        cardWidth="clamp(150px, 44vw, 210px)"
+        cardWidth="clamp(140px, 40vw, 190px)"
         className="-mx-(--app-content-inset)"
         label="Equipment"
         onChange={setSelected}
@@ -85,21 +85,11 @@ export function EquipmentLoadSettings() {
         value={equipment}
       />
 
-      <RotaryKnob
-        ariaLabel={`${label} load increment`}
-        className="mx-auto"
-        format={formatKg}
-        max={20}
-        min={0.25}
-        onChange={(incrementKg) => setIncrement(equipment, incrementKg)}
-        // The dial has a page to itself now, so it takes the room the
-        // equipment grid used to leave it.
-        size={240}
-        step={0.25}
-        unit="kg step"
-        value={value}
-      />
-      <div className="mt-2 flex min-h-10 items-center justify-center">
+      {/* What the dial is currently saying, said in words, above it: the
+          wheel owns the bottom of the page, so the note that qualifies it
+          goes on the last line before the wheel starts rather than under it
+          where the page has already run out. */}
+      <div className="mt-auto flex min-h-8 items-center justify-center pt-2">
         {saved !== undefined ? (
           <button
             className="interactive-spring rounded-full px-4 py-2 text-xs font-bold text-primary"
@@ -117,6 +107,21 @@ export function EquipmentLoadSettings() {
           </span>
         )}
       </div>
-    </>
+
+      {/* The wheel is the bottom of the screen and runs off both sides of
+          it, which is the whole reason everything above it fits. */}
+      <RotaryKnob
+        ariaLabel={`${label} load increment`}
+        className="-mx-(--app-content-inset) mt-1 w-auto"
+        format={formatKg}
+        max={20}
+        min={0.25}
+        onChange={(incrementKg) => setIncrement(equipment, incrementKg)}
+        size={520}
+        step={0.25}
+        unit="kg step"
+        value={value}
+      />
+    </div>
   )
 }

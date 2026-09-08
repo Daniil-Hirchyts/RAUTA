@@ -1,11 +1,30 @@
 @import "tailwindcss";
 @import "./corner-shape.css";
+@import "./content-glow.css";
+@import "./glass.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/doto/rond.css";
 @import "@fontsource-variable/geist";
 
 @custom-variant dark (&:is(.dark *));
+
+@font-face {
+  font-family: "Matrix Sans Print";
+  src: url("/fonts/matrix-sans-print/MatrixSansPrint-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+/* Instrument-style numeric readouts; keep labels in the regular UI font. */
+@utility font-readout {
+  font-family: "Matrix Sans Print", sans-serif;
+  font-synthesis: none;
+  /* This font's zero alternate is the open, unslashed form. */
+  font-feature-settings: "zero" 1;
+  font-variant-numeric: tabular-nums;
+}
 
 @theme inline {
   --font-dot: "Doto Variable", sans-serif;
@@ -15,6 +34,9 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-gold: var(--gold);
+  --color-lime: var(--lime);
+  --color-success: var(--success);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -86,15 +108,23 @@
     var(--app-controls-height) + 1rem + var(--app-controls-gap) -
       var(--app-surface-gutter)
   );
-  --background: oklch(0.175 0 0);
-  --foreground: oklch(0.96 0 0);
-  --card: oklch(0.225 0 0);
+  /* Warm supporting hues; orange remains the action and selection color. */
+  --obsidian: #100d0b;
+  --oxblood: #501d16;
+  --rust: #983723;
+  --ember: #f34d32;
+  --gold: #d9ad6c;
+  --lime: #d6e65b;
+  --success: #c6e7bc;
+  --background: #171311;
+  --foreground: #f6f0e5;
+  --card: #261e1a;
   /* Equipment renders use this near-black studio canvas. The same value on
      the media and label areas removes the false edge between them. */
   --equipment-card: rgb(30 30 30);
-  --card-foreground: oklch(0.96 0 0);
-  --popover: oklch(0.19 0 0);
-  --popover-foreground: oklch(0.96 0 0);
+  --card-foreground: var(--foreground);
+  --popover: #211915;
+  --popover-foreground: var(--foreground);
   --primary: oklch(0.715 0.245 42.5);
   /* Two lighter steps of the accent. Derived so retinting --primary carries
      the whole ramp instead of leaving hard-coded hexes behind. */
@@ -115,15 +145,15 @@
     color-mix(in oklch, var(--primary-gradient-end), white 12%) 100%
   );
   --primary-foreground: oklch(0.12 0 0);
-  --secondary: oklch(0.255 0 0);
-  --secondary-foreground: oklch(0.9 0 0);
-  --muted: oklch(0.245 0 0);
-  --muted-foreground: oklch(0.65 0 0);
+  --secondary: #302620;
+  --secondary-foreground: #e9dfd2;
+  --muted: #2b231e;
+  --muted-foreground: #b1a396;
   --accent: oklch(0.715 0.245 42.5);
   --accent-foreground: oklch(0.12 0 0);
-  --destructive: oklch(0.715 0.245 42.5);
-  --border: oklch(1 0 0 / 0.16);
-  --input: oklch(1 0 0 / 0.13);
+  --destructive: #ff7966;
+  --border: rgb(217 173 108 / 0.2);
+  --input: rgb(217 173 108 / 0.17);
   --ring: oklch(0.715 0.245 42.5);
   --radius: 0.875rem;
   --duration-fast: 250ms;
@@ -358,7 +388,18 @@
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--app-surface-radius);
-  background: var(--background);
+  background:
+    radial-gradient(
+      ellipse at 78% 112%,
+      color-mix(in oklch, var(--primary) 10%, transparent),
+      transparent 48%
+    ),
+    radial-gradient(
+      ellipse at -8% 18%,
+      color-mix(in oklch, var(--oxblood) 22%, transparent),
+      transparent 42%
+    ),
+    var(--background);
   transition: bottom 320ms var(--ease-smooth-out);
   transform: translateZ(0);
   backface-visibility: hidden;

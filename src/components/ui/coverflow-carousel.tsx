@@ -447,7 +447,10 @@ export function CoverflowCarousel<Id extends string>({
                     facing you says what it is without the caption. */}
                 <span
                   aria-hidden="true"
-                  className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/80 via-black/45 to-transparent"
+                  className={cn(
+                    "pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/80 via-black/45 to-transparent",
+                    checked && "glass-media-scrim"
+                  )}
                 />
                 <span className="absolute inset-x-4 bottom-3.5 text-[15px] leading-tight font-bold text-white">
                   {slide.title}

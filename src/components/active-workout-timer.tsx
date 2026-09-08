@@ -35,7 +35,7 @@ export function ActiveWorkoutTimer({
   const isPaused = session.runningSince === null
 
   return (
-    <div className="active-workout-timer pointer-events-auto flex items-center gap-2 rounded-full border border-primary/25 bg-background/85 py-3 pr-2.5 pl-4 shadow-lg shadow-black/40 backdrop-blur-xl min-[360px]:gap-2.5 min-[360px]:pr-3 min-[360px]:pl-5">
+    <div className="frosted-glass active-workout-timer pointer-events-auto flex items-center gap-2 rounded-full border py-3 pr-2.5 pl-4 min-[360px]:gap-2.5 min-[360px]:pr-3 min-[360px]:pl-5">
       <div className="min-w-0 flex-1">
         {/* Narrow phones give the dock about 290px. Everything in it is a
             fixed width, so on those the type steps down rather than the
@@ -45,7 +45,7 @@ export function ActiveWorkoutTimer({
         </p>
         <p
           aria-label={`Elapsed time ${formatDuration(elapsed)}`}
-          className="mt-0.5 text-[32px] leading-none font-black tracking-[-0.02em] tabular-nums"
+          className="mt-0.5 font-readout text-[32px] leading-none font-black tracking-[-0.02em] tabular-nums"
           role="timer"
         >
           {formatDuration(elapsed)}

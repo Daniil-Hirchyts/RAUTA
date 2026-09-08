@@ -17,7 +17,7 @@ export function ActiveWorkoutHero({
   return (
     <section
       aria-label="Current exercise"
-      className="mx-(--app-content-inset) overflow-hidden rounded-3xl border border-primary/30 bg-card shadow-lg shadow-black/20"
+      className="content-glow mx-(--app-content-inset) overflow-hidden rounded-3xl border border-primary/30 bg-card shadow-lg shadow-black/20"
     >
       <button
         aria-label={`Open ${exercise.name} demonstration`}

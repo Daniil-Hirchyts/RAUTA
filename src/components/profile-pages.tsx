@@ -44,6 +44,11 @@ type ProfileFlowStep = {
   caption?: string
   /** Rendered in the surface's bottom dock, over the scroller. */
   dock?: ReactNode
+  /** A control that belongs on the bottom edge, full width of the surface.
+   *  The dial is one: it is the crown of a wheel that carries on below the
+   *  screen, so it reads as cut off anywhere but the bottom, and centring it
+   *  leaves the screen empty under it. */
+  floor?: ReactNode
 }
 
 /**
@@ -123,7 +128,7 @@ function ProfileStepFlow({
         <div
           className={cn(
             "app-scroll-region flex min-h-0 flex-1 flex-col overflow-y-auto px-(--app-content-inset) pt-5",
-            step.dock ? "pb-28" : "pb-14"
+            step.dock ? "pb-28" : step.floor ? "pb-0" : "pb-14"
           )}
           ref={scrollRef}
           tabIndex={-1}
@@ -139,6 +144,11 @@ function ProfileStepFlow({
               </p>
             ) : null}
           </div>
+          {step.floor ? (
+            <div className="-mx-(--app-content-inset) shrink-0">
+              {step.floor}
+            </div>
+          ) : null}
         </div>
 
         {step.dock ? (
@@ -181,12 +191,8 @@ function ProfileStepFlow({
  *  page to itself. */
 const ABOUT_STEP: ProfileFlowStep = {
   title: "About you",
-  content: (
-    <div className="flex flex-col gap-4">
-      <ProfileNameField />
-      <AgeKnob label={null} />
-    </div>
-  ),
+  content: <ProfileNameField />,
+  floor: <AgeKnob label={null} />,
 }
 /** Health rides along with experience: both are statements about the body
  *  that is going to train, neither is answered often, and for most people the
@@ -203,7 +209,8 @@ const EXPERIENCE_STEP: ProfileFlowStep = {
 const GOAL_STEP: ProfileFlowStep = { title: "Goal", content: <GoalPicker /> }
 const DURATION_STEP: ProfileFlowStep = {
   title: "Session length",
-  content: <SessionDurationKnob label={null} />,
+  content: null,
+  floor: <SessionDurationKnob label={null} />,
 }
 const GYM_STEP: ProfileFlowStep = {
   title: "Your gym",
@@ -401,12 +408,13 @@ export function EquipmentLoadPage({ onBack }: { onBack: () => void }) {
         />
         <section
           aria-label="Load steps"
-          className="app-scroll-region flex min-h-0 flex-1 flex-col overflow-y-auto px-(--app-content-inset) pt-5 pb-14"
+          className="app-scroll-region flex min-h-0 flex-1 flex-col overflow-y-auto px-(--app-content-inset) pt-4 pb-0"
           tabIndex={-1}
         >
-          {/* Centred the way the one-question steps are: the deck and the dial
-              are the whole page, and they read better in the middle of it. */}
-          <div className="m-auto w-full">
+          {/* The deck reads from the top and the dial sits on the bottom
+              edge, so the page is the two of them with the room between
+              rather than a stack that runs past the end of the screen. */}
+          <div className="flex w-full flex-1 flex-col">
             <EquipmentLoadSettings />
           </div>
         </section>

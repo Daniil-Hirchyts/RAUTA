@@ -250,6 +250,54 @@ describe("throwing RAUTA", () => {
   })
 })
 
+describe("the magnet", () => {
+  it("brings the character back to its place after it is thrown", () => {
+    vi.useFakeTimers()
+    try {
+      const events: RautaGestureEvent[] = []
+      render(<Harness onGesture={(event) => events.push(event)} />)
+      const bot = screen.getByTestId("rauta")
+      stubBox(bot)
+
+      fireEvent.pointerDown(bot, { pointerId: 1, clientX: 300, clientY: 550 })
+      fireEvent.pointerMove(bot, { pointerId: 1, clientX: 180, clientY: 700 })
+      fireEvent.pointerUp(bot, { pointerId: 1 })
+      expect(placement.x).not.toBe(0)
+
+      act(() => {
+        vi.advanceTimersByTime(1200)
+      })
+      expect(events.some((event) => event.type === "return")).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("lets go of the character the moment it is picked up again", () => {
+    vi.useFakeTimers()
+    try {
+      const events: RautaGestureEvent[] = []
+      render(<Harness onGesture={(event) => events.push(event)} />)
+      const bot = screen.getByTestId("rauta")
+      stubBox(bot)
+
+      fireEvent.pointerDown(bot, { pointerId: 1, clientX: 300, clientY: 550 })
+      fireEvent.pointerMove(bot, { pointerId: 1, clientX: 180, clientY: 700 })
+      fireEvent.pointerUp(bot, { pointerId: 1 })
+      // Caught again before the pull home was due.
+      fireEvent.pointerDown(bot, { pointerId: 2, clientX: 180, clientY: 700 })
+
+      act(() => {
+        vi.advanceTimersByTime(1200)
+      })
+      expect(events.some((event) => event.type === "return")).toBe(false)
+      expect(placement.x).not.toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
 describe("device orientation", () => {
   it("asks for motion access only when something asks it to", async () => {
     const request = vi.fn().mockResolvedValue("granted")

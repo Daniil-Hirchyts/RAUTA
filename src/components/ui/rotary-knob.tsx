@@ -13,45 +13,56 @@ import { cn, snapToRange } from "@/lib/utils"
 /**
  * A dial for a number that would otherwise need a keyboard.
  *
- * Only the crown of the wheel is on screen: a shallow band of notches with a
- * fixed marker at the top, so the value under the marker is the value you
- * have. Turning it is the whole point — a phone keyboard covers half the
- * screen to collect two digits, and every number this app asks for (an age,
- * how long a session should run, a load step) is one you nudge rather than
- * type. The notches follow the finger, so the gesture is a push on a wheel
- * rather than a value to aim at, and the ends of what it will accept are lit
- * notches on the band — with the rest of the scale greyed out past them, when
- * the caller gives it one. Hardware keyboards and assistive technology drive
- * the same value through ARIA slider semantics.
+ * Only the crown of the wheel is on screen: the rim of a wheel that carries
+ * on below the screen, notches cut into its outer edge, and a fixed marker at
+ * the top — so the notch under the marker is the value you have. Turning it is
+ * the whole point — a phone keyboard covers half the screen to collect two
+ * digits, and every number this app asks for (an age, how long a session
+ * should run, a load step) is one you nudge rather than type. The notches
+ * follow the finger, so the gesture is a push on a wheel rather than a value
+ * to aim at, and where the scale runs past what the dial will accept those
+ * notches are drawn faint, when the caller paints one that wide. Hardware
+ * keyboards and assistive technology drive the same value through ARIA
+ * slider semantics.
+ *
+ * Nothing is drawn but the notches: no rim, no face, no numbers along the
+ * band — a wheel painted under them is a shape to cut off at the edge of the
+ * screen, and the notches alone already say which way it is turning.
+ *
+ * The number is read above the band and the two nudge buttons sit in the
+ * hollow under it, which is the arrangement that fits: the wheel is the
+ * bottom of the screen, the answer is the line above it, and nothing is
+ * stacked underneath asking for room a phone does not have.
  */
 
 /** The drawing is laid out in these units and scaled to whatever width the
  *  caller asks for; everything below is in them. */
 const VIEWBOX_W = 240
-const VIEWBOX_H = 178
+const VIEWBOX_H = 84
 
 /** The wheel is mostly below the box. A radius this much wider than the box
  *  is what leaves an arc rather than a circle; the two go together, since the
- *  radius is what decides how much of the wheel reaches the box's edges. */
+ *  radius is what decides how much of the wheel reaches the box's edges. The
+ *  rim is high in the box and the face fills the rest, so the notches have the
+ *  room they need and the buttons have somewhere to sit. */
 const ARC_RADIUS = 162
-const ARC_TOP = 44
+/** Where the band sits in the box. What is left underneath is the hollow the
+ *  two nudge buttons live in. */
+const ARC_TOP = 28
 const CENTER_X = VIEWBOX_W / 2
 const CENTER_Y = ARC_TOP + ARC_RADIUS
 const EDGE_DEGREES = 48
 
-/** Where the readout sits in the hollow under the arc. */
-const READOUT_TOP = 114
-
 /** The marker stands proud of the band so it reads as pointing at it. */
 const MARKER_RISE = 7
 
+/** No numbers anywhere on the band — the value has already been said, in
+ *  full, on the line above it. Every fifth notch is drawn longer all the
+ *  same: a band of identical marks slides without appearing to move, and the
+ *  long ones are what the eye counts as the wheel turns. */
+const TICK = 9
+const MAJOR_TICK = 16
 const MAJOR_EVERY = 5
-const MINOR_TICK = 8
-const MAJOR_TICK = 15
-/** The notches the value stops at, drawn long and lit so the end of what the
- *  dial will accept is something you see coming rather than a dial that stops
- *  answering. */
-const END_TICK = 21
 
 /** How far apart the notches sit, kept between these so a short range does
  *  not bunch into a smear and a long one still turns at a readable pace. */
@@ -77,6 +88,25 @@ function polar(degrees: number, radius: number) {
 function angleDelta(from: number, to: number) {
   return ((((to - from) % 360) + 540) % 360) - 180
 }
+
+/** Where the hollow starts, in per cent of the box's height: everything below
+ *  the band is the two nudge areas, everything above it — which is the band
+ *  itself, right across the dial — is the turn. */
+const STEP_AREA_TOP = 52
+
+const STEP_BUTTON =
+  "pointer-events-auto flex flex-1 items-center justify-center font-light text-foreground/70 transition-colors duration-150 active:text-primary disabled:opacity-25"
+
+/** How far down the box the marker's light is centred, and so how far it may
+ *  reach: an ellipse that tall ends exactly at the top edge of the box, at
+ *  the radius where the wash has already faded to nothing. Any taller and the
+ *  viewBox cuts it, which draws a straight line of light across the top. */
+const GLOW_CENTER_Y = ARC_TOP - 4
+
+/** The marker crosses the notches and stops just past the band, so it reads
+ *  as resting on the wheel rather than floating over it. */
+const MARKER_TOP = ARC_TOP - MAJOR_TICK - MARKER_RISE
+const MARKER_BOTTOM = ARC_TOP + 4
 
 export function RotaryKnob({
   ariaLabel,
@@ -256,16 +286,10 @@ export function RotaryKnob({
   }
 
   const ticks: {
-    blocked: boolean
-    end: boolean
     key: number
-    label: string | null
-    labelX: number
-    labelY: number
     major: boolean
     opacity: number
     tint: number
-    upright: string
     x1: number
     x2: number
     y1: number
@@ -278,42 +302,30 @@ export function RotaryKnob({
   ) {
     const offset = (index - notch) * tickDegrees
     if (Math.abs(offset) > EDGE_DEGREES) continue
-    const major = index % MAJOR_EVERY === 0
-    const end = index === lowNotch || index === highNotch
+    // Past the ends the wheel still turns under the finger, so the notches it
+    // will not stop on are drawn faint rather than left out.
     const blocked = index < lowNotch || index > highNotch
     // Absolute angles inside a rotated group, so the whole strip is one
     // transform away from where it was and can be animated as a piece.
     const angle = index * tickDegrees
-    const length = end ? END_TICK : major ? MAJOR_TICK : MINOR_TICK
-    const outer = polar(angle, ARC_RADIUS)
-    const inner = polar(angle, ARC_RADIUS - length)
-    const seat = polar(angle, ARC_RADIUS - MAJOR_TICK - 12)
+    const major = index % MAJOR_EVERY === 0
+    // Cut into the outside of the rim, so the hollow below stays clear for
+    // the buttons and the number has the space above.
+    const inner = polar(angle, ARC_RADIUS)
+    const outer = polar(angle, ARC_RADIUS + (major ? MAJOR_TICK : TICK))
     const reach = Math.abs(offset) / EDGE_DEGREES
     ticks.push({
-      blocked,
-      end,
       key: index,
-      // Only the numbers that stay near the band get written: the ones out
-      // at the ends sprawl away from it and read as litter.
-      label:
-        major && !isCompact && Math.abs(offset) < EDGE_DEGREES * 0.72
-          ? format(scaleFrom + index * step)
-          : null,
-      labelX: seat.x,
-      labelY: seat.y,
       major,
       // Full strength until the band is nearly at the edge of the box, then
       // gone, so it reads as curving away rather than being cut short.
       opacity:
-        (major ? 0.95 : 0.55) *
+        (major ? 0.85 : 0.45) *
         (blocked ? 0.3 : 1) *
         Math.min(1, Math.max(0, (1 - reach) / 0.3)),
       // The notches warm up as they come under the marker, so the value you
       // have is lit and the ones you are heading for are not.
       tint: blocked ? 0 : Math.max(0, 1 - reach * 1.8),
-      // Undoes the wheel's turn about the label's own seat, so the numbers
-      // stay upright while the band beneath them rotates.
-      upright: `rotate(${notch * tickDegrees} ${seat.x} ${seat.y})`,
       x1: inner.x,
       x2: outer.x,
       y1: inner.y,
@@ -325,7 +337,7 @@ export function RotaryKnob({
     <div
       className={cn(
         "flex flex-col items-center",
-        isCompact ? "gap-2" : "gap-4",
+        isCompact ? "gap-1" : "gap-2",
         className
       )}
     >
@@ -334,215 +346,216 @@ export function RotaryKnob({
           {label}
         </p>
       ) : null}
-      <div
-        aria-disabled={disabled || undefined}
-        aria-label={ariaLabel}
-        aria-valuemax={max}
-        aria-valuemin={min}
-        aria-valuenow={current}
-        aria-valuetext={unit ? `${format(current)} ${unit}` : format(current)}
+      {/* The answer reads above the wheel, where the marker points back at
+          it, rather than in a hollow the buttons then have to sit beneath. */}
+      <span
         className={cn(
-          "relative w-full touch-none outline-none select-none",
+          "pointer-events-none flex flex-col items-center",
           disabled && "opacity-50"
         )}
-        data-dragging={dragging ? "true" : undefined}
-        data-slot="rotary-knob"
-        // The dial reads a drag of its own; the shell's edge-swipe navigation
-        // and the direct-touch haptic overlay both stay out of it.
-        data-swipe-ignore
-        onBlur={() => setFocused(false)}
-        // A ring drawn round a band this wide reads as a box someone put on
-        // the screen; the marker's own light comes up instead.
-        onFocus={(event) => {
-          try {
-            setFocused(event.currentTarget.matches(":focus-visible"))
-          } catch {
-            setFocused(true)
-          }
-        }}
-        onKeyDown={onKeyDown}
-        onLostPointerCapture={endGesture}
-        onPointerCancel={endGesture}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endGesture}
-        role="slider"
-        // Wide as the space allows, up to what the caller asked for: the
-        // band is read across, and the geometry scales off the box it lands
-        // in rather than a fixed width.
-        style={{ aspectRatio: `${VIEWBOX_W} / ${VIEWBOX_H}`, maxWidth: size }}
-        tabIndex={disabled ? -1 : 0}
       >
-        <svg
-          aria-hidden="true"
-          className="absolute inset-0 h-full w-full"
-          viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
+        <span
+          className={cn(
+            "font-readout font-black tracking-[-0.03em] tabular-nums",
+            isCompact ? "text-3xl" : "text-[3.25rem]",
+            // Last, and on purpose: a Tailwind size class carries a line
+            // height of its own, so a leading set before it is dropped and
+            // the readout keeps half a line of air it does not have.
+            "leading-none"
+          )}
         >
-          <defs>
-            <linearGradient
-              gradientUnits="userSpaceOnUse"
-              id={`${paintId}-marker`}
-              x1="0"
-              x2="0"
-              y1={ARC_TOP - MARKER_RISE}
-              y2={ARC_TOP + MAJOR_TICK + 2}
-            >
-              <stop offset="0%" stopColor="var(--primary-gradient-start)" />
-              <stop offset="100%" stopColor="var(--primary-gradient-end)" />
-            </linearGradient>
-            <radialGradient id={`${paintId}-glow`}>
-              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.34" />
-              <stop
-                offset="55%"
-                stopColor="var(--primary)"
-                stopOpacity="0.12"
-              />
-              <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
-            </radialGradient>
-          </defs>
-          {/* The marker's own light, cast on the band it sits over. */}
-          <ellipse
-            className="transition-all duration-300"
-            cx={CENTER_X}
-            cy={ARC_TOP + 6}
-            fill={`url(#${paintId}-glow)`}
-            opacity={focused || dragging ? 1 : 0.8}
-            rx={focused || dragging ? 62 : 46}
-            ry={focused || dragging ? 42 : 32}
-          />
-          <g
-            style={{
-              transform: `rotate(${-notch * tickDegrees}deg)`,
-              transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
-              transition: dragging
-                ? "none"
-                : "transform 260ms cubic-bezier(0.2, 0.9, 0.3, 1)",
-            }}
+          <AnimatedNumber format={format} still={dragging} value={current} />
+        </span>
+        {unit ? (
+          <span
+            className={cn(
+              "font-bold text-muted-foreground uppercase",
+              isCompact
+                ? "mt-1 text-[10px] tracking-[0.14em]"
+                : "mt-1.5 text-xs tracking-[0.18em]"
+            )}
           >
-            {ticks.map((tick) => (
-              <line
-                key={tick.key}
-                opacity={tick.opacity}
-                stroke="var(--muted-foreground)"
-                strokeLinecap="round"
-                strokeWidth={tick.major ? 1.7 : 1}
-                x1={tick.x1}
-                x2={tick.x2}
-                y1={tick.y1}
-                y2={tick.y2}
-              />
-            ))}
-            {ticks
-              .filter((tick) => tick.tint > 0.02 || (tick.end && !tick.blocked))
-              .map((tick) => (
+            {unit}
+          </span>
+        ) : null}
+      </span>
+      <div className="relative w-full" style={{ maxWidth: size }}>
+        <div
+          aria-disabled={disabled || undefined}
+          aria-label={ariaLabel}
+          aria-valuemax={max}
+          aria-valuemin={min}
+          aria-valuenow={current}
+          aria-valuetext={unit ? `${format(current)} ${unit}` : format(current)}
+          className={cn(
+            "relative w-full touch-none outline-none select-none",
+            disabled && "opacity-50"
+          )}
+          data-dragging={dragging ? "true" : undefined}
+          data-slot="rotary-knob"
+          // The dial reads a drag of its own; the shell's edge-swipe navigation
+          // and the direct-touch haptic overlay both stay out of it.
+          data-swipe-ignore
+          onBlur={() => setFocused(false)}
+          // A ring drawn round a band this wide reads as a box someone put on
+          // the screen; the marker's own light comes up instead.
+          onFocus={(event) => {
+            try {
+              setFocused(event.currentTarget.matches(":focus-visible"))
+            } catch {
+              setFocused(true)
+            }
+          }}
+          onKeyDown={onKeyDown}
+          onLostPointerCapture={endGesture}
+          onPointerCancel={endGesture}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endGesture}
+          role="slider"
+          // Wide as the space allows, up to what the caller asked for: the
+          // band is read across, and the geometry scales off the box it lands
+          // in rather than a fixed width.
+          style={{ aspectRatio: `${VIEWBOX_W} / ${VIEWBOX_H}` }}
+          tabIndex={disabled ? -1 : 0}
+        >
+          <svg
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full"
+            viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
+          >
+            <defs>
+              <linearGradient
+                gradientUnits="userSpaceOnUse"
+                id={`${paintId}-marker`}
+                x1="0"
+                x2="0"
+                y1={MARKER_TOP}
+                y2={MARKER_BOTTOM}
+              >
+                <stop offset="0%" stopColor="var(--primary-gradient-start)" />
+                <stop offset="100%" stopColor="var(--primary-gradient-end)" />
+              </linearGradient>
+              <radialGradient id={`${paintId}-glow`}>
+                <stop
+                  offset="0%"
+                  stopColor="var(--primary)"
+                  stopOpacity="0.34"
+                />
+                <stop
+                  offset="55%"
+                  stopColor="var(--primary)"
+                  stopOpacity="0.12"
+                />
+                <stop
+                  offset="100%"
+                  stopColor="var(--primary)"
+                  stopOpacity="0"
+                />
+              </radialGradient>
+            </defs>
+            {/* The marker's own light, cast on the band it sits over. It
+                grows sideways when the dial is being turned; how far it
+                reaches upward is fixed, for the reason above. */}
+            <ellipse
+              className="transition-all duration-300"
+              cx={CENTER_X}
+              cy={GLOW_CENTER_Y}
+              fill={`url(#${paintId}-glow)`}
+              opacity={focused || dragging ? 1 : 0.8}
+              rx={focused || dragging ? 68 : 48}
+              ry={GLOW_CENTER_Y}
+            />
+            <g
+              style={{
+                transform: `rotate(${-notch * tickDegrees}deg)`,
+                transformOrigin: `${CENTER_X}px ${CENTER_Y}px`,
+                transition: dragging
+                  ? "none"
+                  : "transform 260ms cubic-bezier(0.2, 0.9, 0.3, 1)",
+              }}
+            >
+              {ticks.map((tick) => (
                 <line
                   key={tick.key}
-                  opacity={tick.end ? Math.max(0.75, tick.tint) : tick.tint}
-                  stroke="var(--primary)"
+                  opacity={tick.opacity}
+                  stroke="var(--muted-foreground)"
                   strokeLinecap="round"
-                  strokeWidth={tick.end ? 2 : tick.major ? 1.7 : 1}
+                  strokeWidth={tick.major ? 1.6 : 1}
                   x1={tick.x1}
                   x2={tick.x2}
                   y1={tick.y1}
                   y2={tick.y2}
                 />
               ))}
-            {ticks
-              .filter((tick) => tick.label !== null)
-              .map((tick) => (
-                <text
-                  fill={
-                    tick.end || tick.key === notch
-                      ? "var(--primary)"
-                      : "var(--muted-foreground)"
-                  }
-                  fontSize={8}
-                  fontWeight={700}
-                  key={tick.key}
-                  letterSpacing={0.3}
-                  opacity={tick.opacity * 0.9}
-                  textAnchor="middle"
-                  transform={tick.upright}
-                  x={tick.labelX}
-                  y={tick.labelY + 3}
-                >
-                  {tick.label}
-                </text>
-              ))}
-          </g>
-          <line
-            opacity={0.3}
-            stroke={`url(#${paintId}-marker)`}
-            strokeLinecap="round"
-            strokeWidth={8}
-            x1={CENTER_X}
-            x2={CENTER_X}
-            y1={ARC_TOP - MARKER_RISE}
-            y2={ARC_TOP + MAJOR_TICK + 2}
-          />
-          <line
-            stroke={`url(#${paintId}-marker)`}
-            strokeLinecap="round"
-            strokeWidth={2.6}
-            x1={CENTER_X}
-            x2={CENTER_X}
-            y1={ARC_TOP - MARKER_RISE}
-            y2={ARC_TOP + MAJOR_TICK + 2}
-          />
-        </svg>
-        <span
-          className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center justify-center"
-          style={{ top: `${(READOUT_TOP / VIEWBOX_H) * 100}%` }}
+              {ticks
+                .filter((tick) => tick.tint > 0.02)
+                .map((tick) => (
+                  <line
+                    key={tick.key}
+                    opacity={tick.tint}
+                    stroke="var(--primary)"
+                    strokeLinecap="round"
+                    strokeWidth={tick.major ? 1.6 : 1}
+                    x1={tick.x1}
+                    x2={tick.x2}
+                    y1={tick.y1}
+                    y2={tick.y2}
+                  />
+                ))}
+            </g>
+            <line
+              opacity={0.3}
+              stroke={`url(#${paintId}-marker)`}
+              strokeLinecap="round"
+              strokeWidth={8}
+              x1={CENTER_X}
+              x2={CENTER_X}
+              y1={MARKER_TOP}
+              y2={MARKER_BOTTOM}
+            />
+            <line
+              stroke={`url(#${paintId}-marker)`}
+              strokeLinecap="round"
+              strokeWidth={2.6}
+              x1={CENTER_X}
+              x2={CENTER_X}
+              y1={MARKER_TOP}
+              y2={MARKER_BOTTOM}
+            />
+          </svg>
+        </div>
+        {/* The hollow under the band is the two nudge areas: one each side,
+            half the dial wide, with its mark in the middle of it — so a step
+            is a press anywhere on that side rather than an aim at a glyph.
+            They start below the notches, which leaves the whole band, right
+            across the dial, to the turn. They sit outside the slider, so a
+            press is never read as the start of one. */}
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 flex"
+          style={{ height: `${100 - STEP_AREA_TOP}%` }}
         >
-          <span
-            className={cn(
-              "font-heading leading-none font-black tracking-[-0.03em] tabular-nums",
-              isCompact ? "text-2xl" : "text-[3.25rem]"
-            )}
+          <button
+            type="button"
+            data-haptics="off"
+            aria-label={`Decrease ${ariaLabel.toLowerCase()}`}
+            disabled={disabled || current <= min}
+            onClick={() => commit(current - step)}
+            className={cn(STEP_BUTTON, isCompact ? "text-lg" : "text-2xl")}
           >
-            <AnimatedNumber format={format} still={dragging} value={current} />
-          </span>
-          {unit ? (
-            <span
-              className={cn(
-                "font-bold text-muted-foreground uppercase",
-                isCompact
-                  ? "mt-0.5 text-[10px] tracking-[0.14em]"
-                  : "mt-1.5 text-xs tracking-[0.18em]"
-              )}
-            >
-              {unit}
-            </span>
-          ) : null}
-        </span>
-      </div>
-      <div className={cn("flex", isCompact ? "gap-2" : "gap-3")}>
-        <button
-          type="button"
-          data-haptics="off"
-          aria-label={`Decrease ${ariaLabel.toLowerCase()}`}
-          disabled={disabled || current <= min}
-          onClick={() => commit(current - step)}
-          className={cn(
-            "interactive-spring grid place-items-center rounded-full border border-border bg-card shadow-sm shadow-black/10 active:bg-card/90 disabled:opacity-35",
-            isCompact ? "size-9 text-base" : "size-12 text-xl font-bold"
-          )}
-        >
-          −
-        </button>
-        <button
-          type="button"
-          data-haptics="off"
-          aria-label={`Increase ${ariaLabel.toLowerCase()}`}
-          disabled={disabled || current >= max}
-          onClick={() => commit(current + step)}
-          className={cn(
-            "interactive-spring grid place-items-center rounded-full border border-border bg-card shadow-sm shadow-black/10 active:bg-card/90 disabled:opacity-35",
-            isCompact ? "size-9 text-base" : "size-12 text-xl font-bold"
-          )}
-        >
-          +
-        </button>
+            −
+          </button>
+          <button
+            type="button"
+            data-haptics="off"
+            aria-label={`Increase ${ariaLabel.toLowerCase()}`}
+            disabled={disabled || current >= max}
+            onClick={() => commit(current + step)}
+            className={cn(STEP_BUTTON, isCompact ? "text-lg" : "text-2xl")}
+          >
+            +
+          </button>
+        </div>
       </div>
     </div>
   )

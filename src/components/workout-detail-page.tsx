@@ -267,11 +267,11 @@ export function WorkoutDetailPage({
           {isPast ? (
             <section
               aria-label="Workout stats"
-              className="mx-(--app-content-inset) grid grid-cols-3 gap-1.5 rounded-3xl border border-border bg-card/70 p-1.5"
+              className="content-glow content-glow--subtle mx-(--app-content-inset) grid grid-cols-3 gap-1.5 rounded-3xl border border-border bg-card/70 p-1.5"
             >
               <div className="rounded-2xl bg-muted/45 p-3 text-center">
                 <Clock3 className="mx-auto size-4 text-primary" />
-                <p className="mt-1.5 text-xl font-black tracking-tight tabular-nums">
+                <p className="mt-1.5 font-readout text-xl font-black tracking-tight tabular-nums">
                   {completion ? formatDuration(completion.durationMs) : "—"}
                 </p>
                 <p className="text-xs font-semibold text-muted-foreground">
@@ -279,8 +279,8 @@ export function WorkoutDetailPage({
                 </p>
               </div>
               <div className="rounded-2xl bg-muted/45 p-3 text-center">
-                <Activity className="mx-auto size-4 text-primary" />
-                <p className="mt-1.5 text-xl font-black tracking-tight tabular-nums">
+                <Activity className="mx-auto size-4 text-gold" />
+                <p className="mt-1.5 font-readout text-xl font-black tracking-tight tabular-nums">
                   {completion ? completion.activeCalories : "—"}
                 </p>
                 <p className="text-xs font-semibold text-muted-foreground">
@@ -288,8 +288,8 @@ export function WorkoutDetailPage({
                 </p>
               </div>
               <div className="rounded-2xl bg-muted/45 p-3 text-center">
-                <CheckCircle2 className="mx-auto size-4 text-primary" />
-                <p className="mt-1.5 text-xl font-black tracking-tight tabular-nums">
+                <CheckCircle2 className="mx-auto size-4 text-success" />
+                <p className="mt-1.5 font-readout text-xl font-black tracking-tight tabular-nums">
                   {completion
                     ? `${completion.completedExerciseIds.length}/${workout.exerciseIds.length}`
                     : "—"}
@@ -303,11 +303,11 @@ export function WorkoutDetailPage({
           {plannedSession && !session && !isPast ? (
             <section
               aria-label="Planned session"
-              className="mx-(--app-content-inset) grid grid-cols-3 gap-1.5 rounded-3xl border border-border bg-card/70 p-1.5"
+              className="content-glow content-glow--subtle mx-(--app-content-inset) grid grid-cols-3 gap-1.5 rounded-3xl border border-border bg-card/70 p-1.5"
             >
               <div className="rounded-2xl bg-muted/45 p-3 text-center">
                 <ListChecks className="mx-auto size-4 text-primary" />
-                <p className="mt-1.5 text-xl font-black tracking-tight tabular-nums">
+                <p className="mt-1.5 font-readout text-xl font-black tracking-tight tabular-nums">
                   {plannedSession.prescription.length}
                 </p>
                 <p className="text-xs font-semibold text-muted-foreground">
@@ -316,7 +316,7 @@ export function WorkoutDetailPage({
               </div>
               <div className="rounded-2xl bg-muted/45 p-3 text-center">
                 <Layers className="mx-auto size-4 text-primary" />
-                <p className="mt-1.5 text-xl font-black tracking-tight tabular-nums">
+                <p className="mt-1.5 font-readout text-xl font-black tracking-tight tabular-nums">
                   {plannedSession.workingSets}
                 </p>
                 <p className="text-xs font-semibold text-muted-foreground">
@@ -325,7 +325,7 @@ export function WorkoutDetailPage({
               </div>
               <div className="rounded-2xl bg-muted/45 p-3 text-center">
                 <Clock3 className="mx-auto size-4 text-primary" />
-                <p className="mt-1.5 text-xl font-black tracking-tight tabular-nums">
+                <p className="mt-1.5 font-readout text-xl font-black tracking-tight tabular-nums">
                   {plannedSession.minutes}
                 </p>
                 <p className="text-xs font-semibold text-muted-foreground">

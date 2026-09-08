@@ -53,7 +53,7 @@ export function WorkoutCountdown({
     <div
       aria-label="Starting workout"
       aria-live="assertive"
-      className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-8 bg-background/92 backdrop-blur-xl"
+      className="frosted-overlay absolute inset-0 z-50 flex flex-col items-center justify-center gap-8"
       role="dialog"
     >
       <p className="text-xs font-bold tracking-[0.16em] text-primary uppercase">
@@ -96,7 +96,7 @@ export function WorkoutCountdown({
           />
         </svg>
         <span
-          className="t-countdown-digit text-[5.5rem] leading-none font-black tabular-nums"
+          className="t-countdown-digit font-readout text-[5.5rem] leading-none font-black tabular-nums"
           key={remaining}
         >
           {Math.max(remaining, 1)}

@@ -23,6 +23,7 @@ import {
 } from "@/hooks/use-rauta-motion"
 import { triggerHaptic } from "@/lib/haptics"
 import type { RautaMood, RautaReaction, RautaSource } from "@/lib/rauta"
+import { placeRautaSpeech } from "@/lib/rauta-speech-placement"
 
 import { RautaSpeech } from "./rauta-speech"
 
@@ -55,6 +56,43 @@ export type RautaProps = {
   /** Room to keep clear at each screen edge so the character cannot come to
    *  rest on top of a control the person needs. */
   inset?: { top?: number; right?: number; bottom?: number; left?: number }
+}
+
+/** Where the character sits inside the shell, and the area its bubble may
+ *  use. Both are in frame coordinates, which is what the portal positions in. */
+type RautaLayer = {
+  host: HTMLElement
+  left: number
+  top: number
+  stage: { left: number; top: number; width: number; height: number }
+}
+
+/** How far the anchor's scrolling ancestors have travelled inside the shell. */
+function scrollOffset(node: HTMLElement, frame: HTMLElement) {
+  let left = 0
+  let top = 0
+  for (
+    let parent = node.parentElement;
+    parent && parent !== frame.parentElement;
+    parent = parent.parentElement
+  ) {
+    left += parent.scrollLeft
+    top += parent.scrollTop
+  }
+  return { left, top }
+}
+
+function sameLayer(a: RautaLayer | null, b: RautaLayer) {
+  return (
+    a !== null &&
+    a.host === b.host &&
+    a.left === b.left &&
+    a.top === b.top &&
+    a.stage.left === b.stage.left &&
+    a.stage.top === b.stage.top &&
+    a.stage.width === b.stage.width &&
+    a.stage.height === b.stage.height
+  )
 }
 
 function ReadyRauta({
@@ -148,40 +186,71 @@ export function Rauta({
   }, [spoken])
   const nonce = useRef(0)
   const anchor = useRef<HTMLDivElement | null>(null)
-  const [layer, setLayer] = useState<{
-    host: HTMLElement
-    left: number
-    top: number
-  } | null>(null)
+  const [layer, setLayer] = useState<RautaLayer | null>(null)
+  /** Where the page was scrolled when the slot was first measured. */
+  const settled = useRef<{ left: number; top: number } | null>(null)
   useLayoutEffect(() => {
     const node = anchor.current
     const host = node?.closest<HTMLElement>(".app-shell-frame")
     if (!node || !host || !active) return
+    settled.current = null
     const update = () => {
       const box = node.getBoundingClientRect()
       const frame = host.getBoundingClientRect()
-      const left = box.left - frame.left
-      const top = box.top - frame.top
-      setLayer((previous) =>
-        previous?.host === host &&
-        previous.left === left &&
-        previous.top === top
-          ? previous
-          : { host, left, top }
-      )
+      const scrolled = scrollOffset(node, host)
+      settled.current ??= scrolled
+      // Scrolling the page moves the slot the character came from, and the
+      // character does not go with it — it lives in the shell, and stays where
+      // it was last put. Cancelling the scroll out of the measurement leaves
+      // only real layout changes moving it.
+      const left =
+        box.left - frame.left + scrolled.left - settled.current.left
+      const top = box.top - frame.top + scrolled.top - settled.current.top
+      const surface = (
+        host.querySelector(".app-surface") ?? host
+      ).getBoundingClientRect()
+      // The bubble gets the visible surface, minus the page's own title: it may
+      // pass in front of the content it is talking about, never in front of the
+      // heading that says where you are.
+      const header = node
+        .closest(".app-screen")
+        ?.querySelector(".app-shell-header")
+        ?.getBoundingClientRect()
+      const stageTop =
+        Math.max(surface.top, header?.bottom ?? surface.top) - frame.top
+      const next: RautaLayer = {
+        host,
+        left,
+        top,
+        stage: {
+          left: surface.left - frame.left,
+          top: stageTop,
+          width: surface.width,
+          height: surface.bottom - frame.top - stageTop,
+        },
+      }
+      setLayer((previous) => (sameLayer(previous, next) ? previous : next))
     }
     update()
+    // A page that is still sliding in measures its slot mid-flight, so the
+    // reading is taken again once it has landed. Re-measuring is idempotent —
+    // scrolling is cancelled out of it — so a stale slot heals itself rather
+    // than stranding the character somewhere it was never meant to rest.
+    const painted = requestAnimationFrame(update)
+    const landed = window.setTimeout(update, 420)
     const observer = new ResizeObserver(update)
     observer.observe(host)
     const surface = host.querySelector(".app-surface")
     if (surface) observer.observe(surface)
     observer.observe(node)
-    window.addEventListener("scroll", update, true)
     window.addEventListener("resize", update)
+    window.addEventListener("scroll", update, true)
     return () => {
+      cancelAnimationFrame(painted)
+      window.clearTimeout(landed)
       observer.disconnect()
-      window.removeEventListener("scroll", update, true)
       window.removeEventListener("resize", update)
+      window.removeEventListener("scroll", update, true)
     }
   }, [active, size])
   const markRuntimeReady = useCallback(() => setRuntimeReady(true), [])
@@ -198,7 +267,8 @@ export function Rauta({
         setSpeechVisible(false)
       }
       if (event.type === "drag-end")
-        say(event.speed > 900 ? "Here we go!" : "This spot works.")
+        say(event.speed > 900 ? "Here we go!" : "I'll drift back.")
+      if (event.type === "return") triggerHaptic("selection")
       if (event.type === "rotate") say("A new perspective!")
       if (event.type === "collision")
         say(
@@ -235,26 +305,75 @@ export function Rauta({
   // Motion values keep the bubble in sync with both dragging and page layout.
   const originX = useMotionValue(0)
   const originY = useMotionValue(0)
-  const shellWidth = useMotionValue(390)
+  const stageLeft = useMotionValue(0)
+  const stageTop = useMotionValue(0)
+  const stageWidth = useMotionValue(390)
+  const stageHeight = useMotionValue(700)
+  const speechWidth = useMotionValue(0)
+  const speechHeight = useMotionValue(0)
   useLayoutEffect(() => {
     originX.set(layer?.left ?? 0)
     originY.set(layer?.top ?? 0)
-    shellWidth.set(layer?.host.clientWidth ?? 390)
-  }, [layer, originX, originY, shellWidth])
-  const speechX = useTransform(() => {
-    const left = originX.get() + x.get()
-    if (left >= 234) return -234
-    if (left + size + 234 <= shellWidth.get()) return size + 10
-    return Math.max(
-      10 - left,
-      Math.min(size / 2 - 112, shellWidth.get() - 234 - left)
-    )
-  })
-  const speechY = useTransform(() => {
-    const left = originX.get() + x.get()
-    if (left >= 234 || left + size + 234 <= shellWidth.get()) return 0
-    return originY.get() + y.get() < 170 ? size + 8 : -112
-  })
+    stageLeft.set(layer?.stage.left ?? 0)
+    stageTop.set(layer?.stage.top ?? 0)
+    stageWidth.set(layer?.stage.width ?? layer?.host.clientWidth ?? 390)
+    stageHeight.set(layer?.stage.height ?? layer?.host.clientHeight ?? 700)
+  }, [layer, originX, originY, stageHeight, stageLeft, stageTop, stageWidth])
+
+  // The bubble is measured rather than assumed: how wide a sentence comes out,
+  // and how tall it wraps, is what decides which side of the character it can
+  // go on. An unmeasured bubble would be placed as if it took no room at all
+  // and would hang off the edge of the screen, so the measurement is taken
+  // from the element itself the moment it appears — including when the
+  // character moves into the shell's portal and takes the bubble with it.
+  const bubble = useRef<HTMLDivElement | null>(null)
+  const watching = useRef<ResizeObserver | null>(null)
+  const read = useCallback(() => {
+    const node = bubble.current
+    if (!node) return
+    // Offsets, not the client rect, so the entrance animation scaling the
+    // bubble cannot make it measure smaller than it will be.
+    speechWidth.set(node.offsetWidth)
+    speechHeight.set(node.offsetHeight)
+  }, [speechHeight, speechWidth])
+  const measureSpeech = useCallback(
+    (node: HTMLDivElement | null) => {
+      bubble.current = node
+      watching.current?.disconnect()
+      watching.current = null
+      if (!node) return
+      read()
+      if (typeof ResizeObserver === "undefined") return
+      watching.current = new ResizeObserver(read)
+      watching.current.observe(node)
+    },
+    [read]
+  )
+  // Text can change without the box being replaced — a longer line wraps to a
+  // taller bubble — and not every browser reports that through an observer.
+  useLayoutEffect(read)
+  useEffect(() => () => watching.current?.disconnect(), [])
+
+  const spot = useTransform(() =>
+    placeRautaSpeech({
+      character: {
+        left: originX.get() + x.get(),
+        top: originY.get() + y.get(),
+        width: size,
+        height: size,
+      },
+      bubble: { width: speechWidth.get(), height: speechHeight.get() },
+      frame: {
+        left: stageLeft.get(),
+        top: stageTop.get(),
+        width: stageWidth.get(),
+        height: stageHeight.get(),
+      },
+      inset,
+    })
+  )
+  const speechX = useTransform(spot, (place) => place.x)
+  const speechY = useTransform(spot, (place) => place.y)
 
   const activate = () => {
     say(speech ?? "I'm here. Drag me, give me a twist, or let's train.")
@@ -335,8 +454,18 @@ export function Rauta({
       </motion.div>
       {active ? (
         <motion.div
-          className="pointer-events-none absolute top-0 left-0 w-56"
-          style={{ x: speechX, y: speechY }}
+          ref={measureSpeech}
+          className="pointer-events-none absolute top-0 left-0 w-max"
+          style={{
+            x: speechX,
+            y: speechY,
+            // Wide enough for a sentence, never wider than the screen it has
+            // to stay inside.
+            maxWidth: Math.max(
+              176,
+              Math.min(264, (layer?.stage.width ?? 320) - 32)
+            ),
+          }}
         >
           <RautaSpeech visible={speechVisible && !pressed}>
             <p

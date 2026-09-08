@@ -163,7 +163,7 @@ export function ExerciseCard({
             ? `Remove ${exercise.name} from favorites`
             : `Add ${exercise.name} to favorites`
         }
-        className="interactive-spring hit-target absolute top-5 left-5 z-10 grid size-8 place-items-center rounded-full border border-border bg-background text-primary active:bg-card/90"
+        className="frosted-glass frosted-glass--compact interactive-spring hit-target absolute top-5 left-5 z-10 grid size-8 place-items-center rounded-full border text-primary active:brightness-125"
         iconClassName="size-4"
         liked={isFavorite}
         onClick={(event) => {

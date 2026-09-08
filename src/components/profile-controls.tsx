@@ -195,7 +195,7 @@ export function ExperiencePicker() {
           className={cn(
             "interactive-spring flex w-full items-center gap-4 rounded-3xl border p-4 text-left transition-colors",
             experience === level
-              ? "border-primary/60 bg-primary/10"
+              ? "content-glow content-glow--subtle border-primary/60 bg-primary/10"
               : "border-border bg-card"
           )}
           onClick={() => {

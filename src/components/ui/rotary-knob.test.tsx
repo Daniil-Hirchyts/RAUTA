@@ -7,11 +7,11 @@ import { RotaryKnob } from "@/components/ui/rotary-knob"
 import { snapToRange } from "@/lib/utils"
 
 const WIDTH = 240
-const HEIGHT = 178
+const HEIGHT = 88
 /** The wheel the drawing is a crown of: its centre sits below the box. These
  *  mirror the control's own geometry, which is what a drag is measured in. */
 const ARC_RADIUS = 162
-const ARC_CENTER = { x: WIDTH / 2, y: 206 }
+const ARC_CENTER = { x: WIDTH / 2, y: 194 }
 
 function Dial({
   initial = 30,
@@ -164,6 +164,22 @@ describe("RotaryKnob", () => {
 
   it("paints a wider scale than it will accept, and stops at the range", () => {
     const onChange = vi.fn()
+    const notches = () => dial().querySelectorAll("g line").length
+
+    // Nothing is written on the band, so what says the wider scale is painted
+    // is that there are more notches on it than the dial will stop at.
+    const plain = render(
+      <RotaryKnob
+        ariaLabel="Age"
+        max={75}
+        min={18}
+        onChange={() => {}}
+        value={20}
+      />
+    )
+    const within = notches()
+    plain.unmount()
+
     render(
       <RotaryKnob
         ariaLabel="Age"
@@ -177,8 +193,8 @@ describe("RotaryKnob", () => {
     )
     const knob = dial()
 
-    // Years the app will not train are still on the band, greyed out.
-    expect(knob).toHaveTextContent("10")
+    // Years the app will not train are still on the band, drawn faint.
+    expect(notches()).toBeGreaterThan(within)
     expect(knob).toHaveAttribute("aria-valuemin", "18")
 
     fireEvent.pointerDown(knob, { pointerId: 1, buttons: 1, ...at(0) })
@@ -190,7 +206,9 @@ describe("RotaryKnob", () => {
   it("pops the digits on a step, and holds them still through a drag", () => {
     render(<Dial initial={50} />)
     const knob = dial()
-    const digits = () => knob.querySelector(".t-digit-group")
+    // The readout is above the wheel rather than inside it, so it is looked
+    // for on the control as a whole.
+    const digits = () => document.querySelector(".t-digit-group")
 
     // Arriving is not changing: the first value is drawn at rest.
     expect(digits()).not.toHaveClass("is-animating")

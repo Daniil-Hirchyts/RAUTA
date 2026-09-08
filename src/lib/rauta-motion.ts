@@ -238,3 +238,19 @@ export function orientationInfluence(
 }
 
 export const NO_ORIENTATION: OrientationInfluence = { x: 0, y: 0, lean: 0 }
+
+/** Let go this close to where it belongs and the character is simply pulled
+ *  back: nobody means to park it a centimetre from its own slot. */
+export const HOME_MAGNET_RADIUS = 96
+
+/**
+ * How long the character is left where it was put before the pull home starts.
+ *
+ * Far away it stays put long enough to be seen there — the throw is the point,
+ * and snatching it back immediately would make the screen feel like it was
+ * fighting the gesture. Close to home there is nothing to look at, so the
+ * magnet takes it almost at once.
+ */
+export function homeReturnDelay(distance: number) {
+  return distance <= HOME_MAGNET_RADIUS ? 180 : 900
+}

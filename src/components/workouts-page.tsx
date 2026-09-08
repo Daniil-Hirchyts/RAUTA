@@ -24,7 +24,7 @@ import { ConfirmModal } from "@/components/confirm-modal"
 import { SwipeableRow } from "@/components/swipeable-row"
 import { Button } from "@/components/ui/button"
 import { WorkoutCompanion } from "@/components/workout-companion"
-import { WorkoutHeatmap } from "@/components/workout-heatmap"
+import { WorkoutStreak } from "@/components/workout-streak"
 import { useElapsedMs } from "@/hooks/use-elapsed-ms"
 import { formatDuration, sessionProgress } from "@/lib/active-workout"
 import { isObsoleteProjection } from "@/lib/training-adaptation"
@@ -117,8 +117,8 @@ function PastStats({ workout }: { workout: Workout }) {
         <Clock3 className="size-3.5" />
         {formatDuration(completion.durationMs)}
       </span>
-      <span>{completion.activeCalories} kcal</span>
-      <span className="flex items-center gap-1">
+      <span className="text-gold">{completion.activeCalories} kcal</span>
+      <span className="flex items-center gap-1 text-success">
         <CheckCircle2 className="size-3.5" />
         {completion.completedExerciseIds.length}/{workout.exerciseIds.length}
       </span>
@@ -183,7 +183,7 @@ function WorkoutRow({
       <button
         className={`interactive-spring mx-(--app-content-inset) flex w-[calc(100%_-_2_*_var(--app-content-inset))] items-center gap-3 rounded-3xl border p-3.5 text-left ${
           isRunning
-            ? "border-primary/55 bg-[color-mix(in_oklch,var(--card),var(--primary)_7%)] active:border-primary active:bg-[color-mix(in_oklch,var(--card),var(--primary)_12%)]"
+            ? "content-glow content-glow--subtle border-primary/55 bg-[color-mix(in_oklch,var(--card),var(--primary)_7%)] active:border-primary active:bg-[color-mix(in_oklch,var(--card),var(--primary)_12%)]"
             : "border-border bg-card active:bg-muted/80"
         }`}
         data-haptics="off"
@@ -207,8 +207,8 @@ function WorkoutRow({
                 className="size-1.5 animate-pulse rounded-full bg-primary"
               />
               {session.runningSince === null ? "Paused" : "In progress"} ·{" "}
-              {formatDuration(elapsed)} · {sessionProgress(session).completed}
-              /{sessionProgress(session).total}
+              {formatDuration(elapsed)} · {sessionProgress(session).completed}/
+              {sessionProgress(session).total}
             </p>
           ) : isPast ? (
             <PastStats workout={workout} />
@@ -294,8 +294,8 @@ function PlannedSessionRow({
         </p>
         <p className="mt-0.5 text-[13px] font-semibold text-muted-foreground tabular-nums">
           {session.prescription.length} exercise
-          {session.prescription.length === 1 ? "" : "s"} ·{" "}
-          {session.workingSets} sets · {session.minutes} min
+          {session.prescription.length === 1 ? "" : "s"} · {session.workingSets}{" "}
+          sets · {session.minutes} min
         </p>
       </div>
       <BodyPreview
@@ -449,10 +449,10 @@ export function WorkoutsPage({
               </section>
             ) : null}
 
-            {/* The year of training is the page's fixture, not a reward for
-              having finished something: an empty grid is what a first
-              workout is measured against. */}
-            <WorkoutHeatmap onSelectWorkout={onSelect} workouts={completed} />
+            {/* The week is the page's fixture, not a reward for having
+              finished something: an unlit strip is what a first workout is
+              measured against. */}
+            <WorkoutStreak onSelectWorkout={onSelect} workouts={completed} />
 
             {past.length > 0 ? (
               <section aria-labelledby="past-workouts-heading">

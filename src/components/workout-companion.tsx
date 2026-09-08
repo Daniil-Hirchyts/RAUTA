@@ -122,7 +122,7 @@ export function WorkoutCompanion({
   }
   return (
     <>
-      <div className="mx-(--app-content-inset) flex items-center gap-1.5">
+      <div className="content-glow mx-(--app-content-inset) flex items-center gap-1.5 rounded-3xl bg-card/60 px-2 py-1">
         <Rauta
           mood={onResume ? "focused" : plan.line ? "proud" : "calm"}
           size={108}

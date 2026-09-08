@@ -255,7 +255,7 @@ export function BodyMap({
       {showFlipButton ? (
         <button
           aria-label={`Show ${side === "front" ? "back" : "front"}`}
-          className="interactive-spring pointer-events-auto absolute right-3.5 bottom-3.5 z-20 grid size-11 place-items-center rounded-full border border-border bg-card/90 text-primary shadow-sm backdrop-blur-md active:bg-card/95 sm:right-4 sm:bottom-4"
+          className="frosted-glass frosted-glass--compact interactive-spring pointer-events-auto absolute right-3.5 bottom-3.5 z-20 grid size-11 place-items-center rounded-full border text-primary active:brightness-125 sm:right-4 sm:bottom-4"
           onClick={flipSide}
           type="button"
         >

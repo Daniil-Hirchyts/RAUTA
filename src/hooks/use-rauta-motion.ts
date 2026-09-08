@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react"
 import {
+  animate,
   useMotionValue,
   useReducedMotion,
   type MotionValue,
@@ -11,6 +12,7 @@ import {
   bounceStrength,
   clampToBounds,
   clampVelocity,
+  homeReturnDelay,
   normalizeAngle,
   orientationInfluence,
   rautaBounds,
@@ -44,6 +46,7 @@ export type RautaGestureEvent =
   | { type: "throw"; speed: number }
   | { type: "collision"; strength: "soft" | "hard"; edges: string[] }
   | { type: "rotate"; degrees: number }
+  | { type: "return" }
   | { type: "tap" }
   | { type: "gesture-end" }
 
@@ -91,6 +94,13 @@ const REST_SPEED = 40
 const MAX_FLIGHT_MS = 1400
 /** A press that never really moved is a tap, not a drag. */
 const TAP_SLOP = 7
+/** The pull home: firm enough to read as a magnet, soft enough to watch. */
+const HOME_SPRING = {
+  type: "spring",
+  stiffness: 180,
+  damping: 21,
+  mass: 1.1,
+} as const
 
 export function useRautaMotion(options: RautaMotionOptions = {}) {
   const { inset, body, onGesture, disabled = false } = options
@@ -117,6 +127,9 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
   } | null>(null)
   const samples = useRef<Sample[]>([])
   const frame = useRef<number | null>(null)
+  const homecoming = useRef<{ timer: number | null; stop: () => void } | null>(
+    null
+  )
   const tilt = useRef<OrientationInfluence>(NO_ORIENTATION)
   const suppressClick = useRef(false)
   const notify = useRef(onGesture)
@@ -174,6 +187,58 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
     frame.current = null
   }, [])
 
+  /** Any new touch outranks the magnet: whatever the character was doing on
+   *  its way home stops the moment a finger arrives. */
+  const cancelHome = useCallback(() => {
+    const pending = homecoming.current
+    if (!pending) return
+    if (pending.timer !== null) window.clearTimeout(pending.timer)
+    pending.stop()
+    homecoming.current = null
+  }, [])
+
+  /**
+   * The magnet.
+   *
+   * The character's place in the layout is the one it belongs in, so wherever
+   * it is put down it comes back — after a pause long enough to see where it
+   * landed, and almost immediately when it was barely moved at all. It returns
+   * to the nearest point inside the current bounds rather than to a slot that
+   * may since have been scrolled or resized out of reach.
+   */
+  const pullHome = useCallback(() => {
+    cancelHome()
+    const target = clampToBounds({ x: 0, y: 0 }, bounds.current)
+    const distance = Math.hypot(x.get() - target.x, y.get() - target.y)
+    if (distance < 1) return
+    const timer = window.setTimeout(() => {
+      if (homecoming.current) homecoming.current.timer = null
+      notify.current?.({ type: "return" })
+      if (reduced) {
+        x.set(target.x)
+        y.set(target.y)
+        homecoming.current = null
+        return
+      }
+      const journey = [
+        animate(x, target.x, HOME_SPRING),
+        animate(y, target.y, HOME_SPRING),
+      ]
+      homecoming.current = {
+        timer: null,
+        stop: () => journey.forEach((leg) => leg.stop()),
+      }
+    }, homeReturnDelay(distance))
+    homecoming.current = { timer, stop: () => {} }
+  }, [cancelHome, reduced, x, y])
+
+  /** Read through a ref so the flight loop, which outlives the render that
+   *  started it, always calls the current magnet. */
+  const home = useRef(pullHome)
+  useEffect(() => {
+    home.current = pullHome
+  }, [pullHome])
+
   /** One loop for the whole throw: integrate, collide, damp, stop. */
   const fling = useCallback(
     (velocity: Point) => {
@@ -212,6 +277,8 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
           x.set(settled.x)
           y.set(settled.y)
           frame.current = null
+          // The throw is over; the magnet takes it from here.
+          home.current()
           return
         }
         frame.current = requestAnimationFrame(step)
@@ -254,6 +321,7 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
           /* Tracked through the pointer id instead. */
         }
         stopFlight()
+        cancelHome()
         scale.set(1)
         measure()
 
@@ -366,8 +434,11 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
         const clamped = clampVelocity(velocity)
         const speed = Math.hypot(clamped.x, clamped.y)
         notify.current?.({ type: "drag-end", speed })
-        // Reduced motion keeps the character exactly where it was let go.
-        if (reduced || speed < REST_SPEED) return
+        // Reduced motion skips the flight, not the way back.
+        if (reduced || speed < REST_SPEED) {
+          pullHome()
+          return
+        }
         notify.current?.({ type: "throw", speed })
         fling(clamped)
       },
@@ -387,12 +458,15 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
         drag.current = null
         twist.current = null
         scale.set(1)
+        pullHome()
       },
     }
   }, [
+    cancelHome,
     disabled,
     fling,
     measure,
+    pullHome,
     reduced,
     releaseTwist,
     rotate,
@@ -462,13 +536,15 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
       )
     shell?.addEventListener("transitionend", remeasure)
     window.addEventListener("resize", remeasure)
-    window.addEventListener("scroll", remeasure, true)
     window.visualViewport?.addEventListener("resize", remeasure)
+    // Scrolling is deliberately not listened for. The character sits in the
+    // shell rather than in the page, so a scroll neither moves it nor changes
+    // the surface it is bounded by — and re-measuring on every scroll frame
+    // only ever cost work.
     return () => {
       observer?.disconnect()
       shell?.removeEventListener("transitionend", remeasure)
       window.removeEventListener("resize", remeasure)
-      window.removeEventListener("scroll", remeasure, true)
       window.visualViewport?.removeEventListener("resize", remeasure)
     }
   }, [measure, x, y])
@@ -476,14 +552,21 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
   useEffect(() => {
     if (disabled || reduced) {
       stopFlight()
+      cancelHome()
       pointers.current.clear()
       drag.current = null
       twist.current = null
       scale.set(1)
     }
-  }, [disabled, reduced, stopFlight, scale])
+  }, [cancelHome, disabled, reduced, stopFlight, scale])
 
-  useEffect(() => stopFlight, [stopFlight])
+  useEffect(
+    () => () => {
+      stopFlight()
+      cancelHome()
+    },
+    [cancelHome, stopFlight]
+  )
 
   return { ref, x, y, rotate, scale, handlers, measure } satisfies {
     ref: React.RefObject<HTMLDivElement | null>
