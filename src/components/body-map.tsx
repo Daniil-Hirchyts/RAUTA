@@ -31,7 +31,10 @@ type BodyMapProps = {
   side?: Side
 }
 
-type Side = "front" | "back"
+/** Which way the figure is facing. Exported for the screens that keep the
+ *  side themselves, so their own controls can turn it. */
+export type BodySide = "front" | "back"
+type Side = BodySide
 
 const SWIPE_THRESHOLD = 45
 

@@ -3,7 +3,7 @@ import { ChevronRight, X } from "lucide-react"
 
 import { AnimatedCheck } from "@/components/animated-check"
 import { AppModal } from "@/components/app-modal"
-import { BodyMap } from "@/components/body-map"
+import { BodyMap, type BodySide } from "@/components/body-map"
 import { EquipmentGrid } from "@/components/equipment-grid"
 import { EquipmentPresets } from "@/components/equipment-presets"
 import { RautaStill } from "@/components/rauta"
@@ -319,7 +319,7 @@ function HealthOptions() {
         checked={health.status === "healthy"}
         onClick={setHealthy}
         role="radio"
-        title="Ready to train"
+        title="Nothing to train around"
       />
       {HEALTH_LIMITATIONS.map((limitation) => (
         <HealthOption
@@ -421,7 +421,7 @@ export function HealthDisclosure() {
         <span className="max-w-[55%] truncate text-sm font-medium text-muted-foreground">
           {limited
             ? countLabel(health.reasons.length, "limitation")
-            : "Ready to train"}
+            : "Nothing to train around"}
         </span>
         <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
       </button>
@@ -451,7 +451,17 @@ export function HealthDisclosure() {
  *  muscle again walks it through the scale and back off. How much of the week
  *  a muscle is asking for is said in how strongly it is painted, so nothing has
  *  to sit under the figure and push it around. */
-export function MusclePriorityPicker({ className }: { className?: string }) {
+export function MusclePriorityPicker({
+  className,
+  onSideChange,
+  side,
+}: {
+  className?: string
+  /** The figure is turned from the command band, where the rest of this
+   *  screen's actions already are — nothing floats over the map. */
+  onSideChange?: (side: BodySide) => void
+  side?: BodySide
+}) {
   const priorities = useTrainingProfile(
     (state) => state.profile.priorityMuscles
   )
@@ -495,8 +505,11 @@ export function MusclePriorityPicker({ className }: { className?: string }) {
         <div className="relative z-10 h-full">
           <BodyMap
             muscleWeights={muscleWeights}
+            onSideChange={onSideChange}
             onToggle={cycleMuscle}
             selectedMuscles={selectedMuscles}
+            showFlipButton={false}
+            side={side}
           />
         </div>
       </div>
@@ -505,26 +518,53 @@ export function MusclePriorityPicker({ className }: { className?: string }) {
   )
 }
 
-/** What the shades on the figure mean. Static, one line, and the only place
- *  the level names appear — there is nothing here to press by mistake. */
+/** The resting fill of a muscle nobody has asked for, taken from
+ *  `.muscle-region`: the palest end of the scale is the figure's own grey, not
+ *  a washed-out orange. */
+const RESTING_FILL = "#37373b"
+
+/** The same mix the figure paints itself with, so the bar below it is a
+ *  sample of the map rather than a picture of one. */
+function priorityPaint(weight: number) {
+  return `color-mix(in oklab, var(--primary) ${weight * 100}%, ${RESTING_FILL})`
+}
+
+/** What the shades on the figure mean, drawn as the scale itself: one bar
+ *  running from the grey every muscle rests at, through the two levels a tap
+ *  can ask for. It reads the way a key reads — from nothing to most — even
+ *  though a tap walks it the other way, and it is graded rather than blocked
+ *  out because the eye compares a muscle against the whole range, not against
+ *  a swatch. There is nothing here to press by mistake. */
 function PriorityLegend() {
+  const stops = [
+    // A muscle nobody has asked for is not painted at all, so this end of the
+    // scale is the resting fill itself rather than the palest paint.
+    { label: PRIORITY_LEVEL_LABELS.normal, weight: 0 },
+    ...[...SELECTABLE_PRIORITY_LEVELS].reverse().map((level) => ({
+      label: PRIORITY_LEVEL_LABELS[level],
+      weight: PRIORITY_PAINT_WEIGHTS[level],
+    })),
+  ]
+
   return (
-    <p
-      aria-hidden="true"
-      className="flex shrink-0 items-center justify-center gap-4 pb-1 text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase"
-    >
-      {SELECTABLE_PRIORITY_LEVELS.map((level) => (
-        <span className="flex items-center gap-1.5" key={level}>
-          <span
-            className="size-2.5 rounded-full"
-            style={{
-              background: `color-mix(in oklab, var(--primary) ${PRIORITY_PAINT_WEIGHTS[level] * 100}%, #37373b)`,
-            }}
-          />
-          {PRIORITY_LEVEL_LABELS[level]}
-        </span>
-      ))}
-    </p>
+    <div aria-hidden="true" className="mx-auto w-full max-w-64 shrink-0 pb-1">
+      <div
+        className="h-2.5 rounded-full shadow-[inset_0_0_0_1px_color-mix(in_oklab,white_10%,transparent)]"
+        style={{
+          background: `linear-gradient(90deg, ${stops
+            .map(
+              (stop, index) =>
+                `${priorityPaint(stop.weight)} ${((index / (stops.length - 1)) * 100).toFixed(1)}%`
+            )
+            .join(", ")})`,
+        }}
+      />
+      <p className="mt-1.5 flex justify-between text-[10px] font-bold tracking-[0.16em] text-muted-foreground uppercase">
+        {stops.map((stop) => (
+          <span key={stop.label}>{stop.label}</span>
+        ))}
+      </p>
+    </div>
   )
 }
 

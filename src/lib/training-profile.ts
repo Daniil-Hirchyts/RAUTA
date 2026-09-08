@@ -95,9 +95,18 @@ export const SUPPORTED_GOALS = (
 
 export const EXPERIENCE_LEVELS = Object.keys(EXPERIENCE_CHOICES) as Experience[]
 
-export const HEALTH_LIMITATIONS = Object.keys(
+const ALL_HEALTH_LIMITATIONS = Object.keys(
   HEALTH_LIMITATION_LABELS
 ) as HealthLimitation[]
+
+/** What the picker asks about. `other` stays in the vocabulary — a profile
+ *  that already carries it still reads, and still stops the planner — but it
+ *  is not offered: "something else" is the box people tick instead of the one
+ *  that fits, and neither the planner nor anyone reading it back can act on
+ *  a limitation nobody has named. */
+export const HEALTH_LIMITATIONS = ALL_HEALTH_LIMITATIONS.filter(
+  (limitation) => limitation !== "other"
+)
 
 /** Ordered by how much weekly volume each level asks for, so the chips read
  *  left to right the way the engine weights them. */
@@ -109,21 +118,23 @@ export const PRIORITY_LEVELS = (
     DEFAULT_POLICY.priorityMultipliers[right]
 )
 
-/** `normal` is what an unlisted muscle already gets, so the picker only ever
- *  offers the levels that actually change something. */
-export const SELECTABLE_PRIORITY_LEVELS = PRIORITY_LEVELS.filter(
-  (level) => level !== "normal"
-)
-
-/** A prioritised muscle is worth singling out, so the first tap asks for more
- *  of it; tapping the same muscle again walks the rest of the scale and then
- *  hands it back to the engine's normal weighting. */
+/** Singling a muscle out is a statement, so the first tap makes it the most
+ *  the engine will spend on one: the tap you were going to make anyway lands
+ *  on what you meant. The second steps down to more than usual, and the third
+ *  hands the muscle back to the engine's own weighting. Asking for *less* of a
+ *  muscle is not on the map — that is a different intent, and it cannot be
+ *  told apart from focus in a figure painted in one colour. */
 const PRIORITY_CYCLE: (MusclePriorityLevel | null)[] = [
-  "high",
   "specialization",
-  "low",
+  "high",
   null,
 ]
+
+/** The levels the map can hold, strongest first: the order a tap walks them,
+ *  and the order the palette grades them. */
+export const SELECTABLE_PRIORITY_LEVELS = PRIORITY_CYCLE.filter(
+  (level): level is MusclePriorityLevel => level !== null
+)
 
 export function nextPriorityLevel(current: MusclePriorityLevel | null) {
   const index = PRIORITY_CYCLE.indexOf(current)
@@ -136,15 +147,22 @@ const MIN_PAINT = 0.42
 
 /** How strongly each level paints on the body map, spread across the engine's
  *  own multipliers so the map darkens in the same order the planner weights.
- *  The colour is the control's only readout, so it has to carry the level. */
+ *  The colour is the control's only readout, so it has to carry the level —
+ *  and the scale is stretched over the levels the map can actually hold, which
+ *  is what puts the whole range between the two shades a tap chooses between.
+ *  Anything a profile carries from further down the scale paints at the palest
+ *  end rather than falling off it. */
 export const PRIORITY_PAINT_WEIGHTS = Object.fromEntries(
   PRIORITY_LEVELS.map((level) => {
-    const multipliers = PRIORITY_LEVELS.map(
+    const multipliers = SELECTABLE_PRIORITY_LEVELS.map(
       (item) => DEFAULT_POLICY.priorityMultipliers[item]
     )
     const lowest = Math.min(...multipliers)
     const spread = Math.max(...multipliers) - lowest || 1
-    const share = (DEFAULT_POLICY.priorityMultipliers[level] - lowest) / spread
+    const share = Math.min(
+      1,
+      Math.max(0, (DEFAULT_POLICY.priorityMultipliers[level] - lowest) / spread)
+    )
     return [level, Number((MIN_PAINT + (1 - MIN_PAINT) * share).toFixed(3))]
   })
 ) as Record<MusclePriorityLevel, number>
@@ -167,7 +185,9 @@ export const SESSION_DURATION_SCALE = { min: 0, max: 140 } as const
 
 const GOAL_SET = new Set<string>(SUPPORTED_GOALS)
 const EXPERIENCE_SET = new Set<string>(EXPERIENCE_LEVELS)
-const LIMITATION_SET = new Set<string>(HEALTH_LIMITATIONS)
+// Everything the engine knows, not just what the picker offers: a limitation
+// saved before it stopped being asked about must survive being read back.
+const LIMITATION_SET = new Set<string>(ALL_HEALTH_LIMITATIONS)
 const PRIORITY_SET = new Set<string>(PRIORITY_LEVELS)
 
 export function isSupportedGoal(

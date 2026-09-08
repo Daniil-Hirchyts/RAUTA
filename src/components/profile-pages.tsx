@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react"
-import { ChevronLeft, Plus, X } from "lucide-react"
+import { ChevronLeft, FlipHorizontal2, Plus, Weight, X } from "lucide-react"
 
 import { AppControlMorph } from "@/components/app-morph"
 import {
@@ -10,6 +10,7 @@ import {
   AppShellHeader,
   AppSurface,
 } from "@/components/app-shell"
+import { type BodySide } from "@/components/body-map"
 import { EquipmentPresetEditor } from "@/components/equipment-presets"
 import { EquipmentLoadSettings } from "@/components/equipment-load-settings"
 import { FlowProgress } from "@/components/flow-progress"
@@ -29,6 +30,7 @@ import {
 import { ProfileCompanion } from "@/components/profile-companion"
 import { Button } from "@/components/ui/button"
 import { triggerHaptic } from "@/lib/haptics"
+import { loadConfigurableEquipment } from "@/lib/resistance"
 import { countLabel } from "@/lib/text"
 import { cn } from "@/lib/utils"
 import { useFilters } from "@/store/use-filters"
@@ -255,10 +257,17 @@ export function HealthEligibilityPage({ onBack }: { onBack: () => void }) {
 /** The equipment you have, on its own page because a grid of pictures is not
  *  something to stuff into a settings list. Everything on it is live: there is
  *  nothing to save, only somewhere to go back to. */
-export function ProfileEquipmentPage({ onBack }: { onBack: () => void }) {
+export function ProfileEquipmentPage({
+  onBack,
+  onOpenLoadSteps,
+}: {
+  onBack: () => void
+  onOpenLoadSteps: () => void
+}) {
   const [presetEditorOpen, setPresetEditorOpen] = useState(false)
   const gymEquipment = useFilters((state) => state.gymEquipment)
   const setGymEquipment = useFilters((state) => state.setGymEquipment)
+  const loadEquipment = loadConfigurableEquipment(gymEquipment)
 
   return (
     <AppScreen bottomControls>
@@ -282,7 +291,6 @@ export function ProfileEquipmentPage({ onBack }: { onBack: () => void }) {
           tabIndex={-1}
         >
           <ProfileEquipmentPicker />
-          <EquipmentLoadSettings />
         </section>
         {presetEditorOpen ? null : (
           <div className="app-surface-bottom-dock equipment-presets-dock">
@@ -323,6 +331,21 @@ export function ProfileEquipmentPage({ onBack }: { onBack: () => void }) {
                 <X />
               </AppControlButton>
             </MorphingActionSlot>
+            {/* Describing a stack is a different job from saying which ones
+                you have, so it is a page of its own — reached from the band
+                that already holds this page's actions. */}
+            <AppControlMorph className="mr-2.5" role="load-steps">
+              <AppControlButton
+                aria-label="Set load steps"
+                disabled={loadEquipment.length === 0}
+                onClick={() => {
+                  triggerHaptic("light")
+                  onOpenLoadSteps()
+                }}
+              >
+                <Weight />
+              </AppControlButton>
+            </AppControlMorph>
             <AppControlMorph className="mr-2.5" role="preset">
               <AppControlButton
                 aria-expanded={presetEditorOpen}
@@ -350,9 +373,61 @@ export function ProfileEquipmentPage({ onBack }: { onBack: () => void }) {
   )
 }
 
+/** Load steps, on a page of their own.
+ *
+ * The equipment page is a grid of pictures to tap, answered in seconds;
+ * describing what one machine's stack actually offers is a different question
+ * asked of one thing at a time, and it was sitting underneath a grid nobody
+ * scrolls past. Here it gets the deck the goal is picked from, and the dial
+ * gets the room it wants. */
+export function EquipmentLoadPage({ onBack }: { onBack: () => void }) {
+  return (
+    <AppScreen bottomControls>
+      <AppSurface>
+        <AppShellHeader
+          left={
+            <AppHeaderButton aria-label="Back" onClick={onBack}>
+              <ChevronLeft />
+            </AppHeaderButton>
+          }
+          subtitle="The next weight your equipment actually offers"
+          title="Load steps"
+        />
+        <section
+          aria-label="Load steps"
+          className="app-scroll-region flex min-h-0 flex-1 flex-col overflow-y-auto px-(--app-content-inset) pt-5 pb-14"
+          tabIndex={-1}
+        >
+          {/* Centred the way the one-question steps are: the deck and the dial
+              are the whole page, and they read better in the middle of it. */}
+          <div className="m-auto w-full">
+            <EquipmentLoadSettings />
+          </div>
+        </section>
+      </AppSurface>
+
+      <AppControls transitionKey="load-steps">
+        <AppControlMorph className="app-command-fill" role="primary">
+          <Button
+            aria-label="Done with load steps"
+            className="w-full"
+            onClick={onBack}
+            size="cta"
+          >
+            Done
+          </Button>
+        </AppControlMorph>
+      </AppControls>
+    </AppScreen>
+  )
+}
+
 /** The same body map as the exercise picker, asking a different question: not
  *  what to train today, but what a generated week should keep coming back to. */
 export function MusclePrioritiesPage({ onBack }: { onBack: () => void }) {
+  // The page holds which way the figure is facing, because the button that
+  // turns it lives down in the command band with the page's other actions.
+  const [side, setSide] = useState<BodySide>("front")
   const priorities = useTrainingProfile(
     (state) => state.profile.priorityMuscles
   )
@@ -380,7 +455,7 @@ export function MusclePrioritiesPage({ onBack }: { onBack: () => void }) {
           aria-label="Priority muscles"
           className="flex min-h-0 flex-1 flex-col px-[clamp(0.75rem,4vw,1rem)] pt-[calc(4.25rem+env(safe-area-inset-top)+0.75rem)] pb-[clamp(0.75rem,2vh,1.25rem)]"
         >
-          <MusclePriorityPicker />
+          <MusclePriorityPicker onSideChange={setSide} side={side} />
         </section>
       </AppSurface>
 
@@ -397,6 +472,19 @@ export function MusclePrioritiesPage({ onBack }: { onBack: () => void }) {
               <X />
             </AppControlButton>
           </MorphingActionSlot>
+          {/* Turning the figure is an action like the other two, so it sits
+              with them rather than floating over the map it turns. */}
+          <AppControlMorph className="mr-2.5" role="flip">
+            <AppControlButton
+              aria-label={`Show ${side === "front" ? "back" : "front"}`}
+              onClick={() => {
+                triggerHaptic("selection")
+                setSide(side === "front" ? "back" : "front")
+              }}
+            >
+              <FlipHorizontal2 />
+            </AppControlButton>
+          </AppControlMorph>
           <AppControlMorph className="app-command-fill" role="primary">
             <Button
               aria-label="Done choosing priority muscles"

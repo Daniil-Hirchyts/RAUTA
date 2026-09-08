@@ -48,6 +48,7 @@ import {
   MusclePrioritiesPage,
   OnboardingPage,
   ProfileBasicsPage,
+  EquipmentLoadPage,
   ProfileEquipmentPage,
   TrainingPreferencesPage,
 } from "@/components/profile-pages"
@@ -549,7 +550,16 @@ export function App() {
             } else if (page.type === "profile-health") {
               content = <HealthEligibilityPage onBack={popPage} />
             } else if (page.type === "profile-equipment") {
-              content = <ProfileEquipmentPage onBack={popPage} />
+              content = (
+                <ProfileEquipmentPage
+                  onBack={popPage}
+                  onOpenLoadSteps={() =>
+                    pushPage({ type: "profile-load-steps" })
+                  }
+                />
+              )
+            } else if (page.type === "profile-load-steps") {
+              content = <EquipmentLoadPage onBack={popPage} />
             } else if (page.type === "profile-priorities") {
               content = <MusclePrioritiesPage onBack={popPage} />
             } else if (page.type === "workout-detail") {

@@ -1,4 +1,4 @@
-import { EXERCISES_BY_ID } from "@/lib/exercises"
+import { EQUIPMENT_OPTIONS, EXERCISES_BY_ID } from "@/lib/exercises"
 import { titleCase } from "@/lib/text"
 import { resolveExerciseMetadata, roundLoad } from "@/training"
 import type { ExerciseMetadata, LoadGrid } from "@/training"
@@ -93,6 +93,15 @@ const ADDED_LOAD_STATION = "added load"
 const ASSISTANCE_STATION = "assistance"
 
 const DEFAULT_LOAD = { basis: "total", incrementKg: 2.5 } as const
+
+/** The equipment a load step can be described for: what someone has, that
+ *  carries a weight worth describing. A mat has no next weight up. */
+export function loadConfigurableEquipment(gymEquipment: string[]) {
+  return EQUIPMENT_OPTIONS.filter(
+    (equipment) =>
+      gymEquipment.includes(equipment) && equipmentLoadSpec(equipment)
+  )
+}
 
 export function equipmentLoadSpec(equipment: string) {
   const spec = EQUIPMENT_LOAD[equipment]

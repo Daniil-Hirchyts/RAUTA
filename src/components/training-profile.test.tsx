@@ -65,7 +65,7 @@ describe("first-run profile setup", () => {
     // Health is the optional half of this screen: the row states the answer
     // almost everybody gives, and the question is a dialog behind it.
     const healthRow = screen.getByRole("button", { name: /^Health/ })
-    expect(healthRow).toHaveTextContent("Ready to train")
+    expect(healthRow).toHaveTextContent("Nothing to train around")
     await user.click(healthRow)
     const healthDialog = await screen.findByRole("dialog", { name: "Health" })
     await user.click(
@@ -364,7 +364,7 @@ describe("training profile in Settings", () => {
       within(dialog).getByRole("checkbox", { name: /Injury/ })
     ).toHaveAttribute("aria-checked", "true")
     expect(
-      within(dialog).getByRole("radio", { name: /Ready to train/ })
+      within(dialog).getByRole("radio", { name: /Nothing to train around/ })
     ).toHaveAttribute("aria-checked", "false")
   })
 
@@ -383,13 +383,8 @@ describe("training profile in Settings", () => {
         "--muscle-weight"
       )
 
-    // The map is the whole control: tapping again walks the scale and back off.
-    await user.click(chest())
-    expect(profile().priorityMuscles).toEqual([
-      { muscleId: "chest", level: "high" },
-    ])
-    const more = paint()
-
+    // The map is the whole control: the first tap lands on the strongest the
+    // engine will spend on one muscle, and tapping walks it back off.
     await user.click(chest())
     expect(profile().priorityMuscles).toEqual([
       { muscleId: "chest", level: "specialization" },
@@ -398,12 +393,12 @@ describe("training profile in Settings", () => {
 
     await user.click(chest())
     expect(profile().priorityMuscles).toEqual([
-      { muscleId: "chest", level: "low" },
+      { muscleId: "chest", level: "high" },
     ])
-    const less = paint()
+    const more = paint()
 
-    // A stronger level paints more strongly, which is the only readout there is.
-    expect(Number(less)).toBeLessThan(Number(more))
+    // A stronger level paints more strongly, which is the only readout there
+    // is, and the strongest fills the whole scale.
     expect(Number(more)).toBeLessThan(Number(focus))
     expect(Number(focus)).toBe(1)
 
@@ -412,6 +407,25 @@ describe("training profile in Settings", () => {
 
     // Nothing sits under the figure pushing it around.
     expect(screen.queryByRole("button", { name: "Chest: Focus" })).toBeNull()
+  })
+
+  it("turns the figure from the command band", async () => {
+    const user = userEvent.setup()
+    openSettings()
+
+    await user.click(screen.getByRole("button", { name: /^Priority muscles/ }))
+    expect(screen.getByRole("button", { name: /Front Chest/ })).toBeVisible()
+
+    await user.click(screen.getByRole("button", { name: "Show back" }))
+    expect(screen.queryByRole("button", { name: /Front Chest/ })).toBeNull()
+    await user.click(screen.getByRole("button", { name: /Back Traps/ }))
+    expect(profile().priorityMuscles).toEqual([
+      { muscleId: "trapezius", level: "specialization" },
+    ])
+
+    // And back: one button, saying which way it turns.
+    await user.click(screen.getByRole("button", { name: "Show front" }))
+    expect(screen.getByRole("button", { name: /Front Chest/ })).toBeVisible()
   })
 
   it("configures gym equipment through the same grid and presets", async () => {
@@ -436,9 +450,14 @@ describe("training profile in Settings", () => {
     await user.click(screen.getByRole("checkbox", { name: "Dumbbell" }))
     expect(useFilters.getState().gymEquipment).toContain("dumbbell")
 
-    // Load steps stay on this same equipment screen and use the rotary control
-    // rather than introducing a numeric input or another planning wizard.
-    await user.click(screen.getByRole("button", { name: "Dumbbell" }))
+    // Load steps are a page of their own, reached from this screen's own
+    // command band, and answered with the rotary control rather than with a
+    // numeric input or another planning wizard.
+    await user.click(screen.getByRole("button", { name: "Set load steps" }))
+    expect(
+      screen.getByRole("heading", { name: "Load steps" })
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole("radio", { name: /Dumbbell/ }))
     expect(
       screen.getByRole("slider", { name: "Dumbbell load increment" })
     ).toHaveAttribute("aria-valuenow", "2")
@@ -446,6 +465,9 @@ describe("training profile in Settings", () => {
       screen.getByRole("button", { name: "Increase dumbbell load increment" })
     )
     expect(useFilters.getState().equipmentLoadIncrements.dumbbell).toBe(2.25)
+    await user.click(
+      screen.getByRole("button", { name: "Done with load steps" })
+    )
 
     // Saving from here fills the same preset list the picker uses.
     await user.click(

@@ -5,6 +5,7 @@ export type ProfilePage =
   | { type: "profile-training" }
   | { type: "profile-health" }
   | { type: "profile-equipment" }
+  | { type: "profile-load-steps" }
   | { type: "profile-priorities" }
 
 export type AppPage =
@@ -59,6 +60,7 @@ export function isValidAppPage(page: AppPage) {
     case "profile-training":
     case "profile-health":
     case "profile-equipment":
+    case "profile-load-steps":
     case "profile-priorities":
     case "muscles":
     case "equipment":

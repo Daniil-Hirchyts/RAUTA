@@ -153,20 +153,22 @@ describe("training profile store", () => {
   })
 
   it("advances a muscle a level per tap, even two taps in one frame", () => {
+    // The first tap lands on the strongest level rather than easing into it.
     state().cycleMusclePriority("chest")
     expect(state().profile.priorityMuscles).toEqual([
-      { muscleId: "chest", level: "high" },
+      { muscleId: "chest", level: "specialization" },
     ])
 
-    // Both calls read what is stored rather than what a render last saw.
+    // Both calls read what is stored rather than what a render last saw, so
+    // the second steps down and the third hands the muscle back.
     state().cycleMusclePriority("chest")
-    state().cycleMusclePriority("chest")
-    expect(state().profile.priorityMuscles).toEqual([
-      { muscleId: "chest", level: "low" },
-    ])
-
     state().cycleMusclePriority("chest")
     expect(state().profile.priorityMuscles).toEqual([])
+
+    state().cycleMusclePriority("chest")
+    expect(state().profile.priorityMuscles).toEqual([
+      { muscleId: "chest", level: "specialization" },
+    ])
   })
 
   it("clamps knob values to the range the engine supports", () => {
