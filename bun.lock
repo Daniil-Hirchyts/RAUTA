@@ -18,6 +18,7 @@
         "@capacitor/status-bar": "^8.0.3",
         "@dnd-kit/react": "^0.5.0",
         "@flomentumsolutions/capacitor-health-extended": "^0.8.3",
+        "@fontsource-variable/doto": "^5.3.0",
         "@fontsource-variable/geist": "^5.3.0",
         "@rive-app/react-canvas": "4.34.1",
         "@tailwindcss/vite": "^4",
@@ -268,6 +269,8 @@
     "@floating-ui/utils": ["@floating-ui/utils@0.2.12", "", {}, "sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww=="],
 
     "@flomentumsolutions/capacitor-health-extended": ["@flomentumsolutions/capacitor-health-extended@0.8.3", "", { "peerDependencies": { "@capacitor/core": ">=8.0.0" } }, "sha512-gA/DtCvWreSDCykX7ZvFQHJlHTc+dH9yJO69T1dQ+qlU9XaKQ0wEXhDJg6XHaxc78RbtnKjT/4Kvz0QChZM6pw=="],
+
+    "@fontsource-variable/doto": ["@fontsource-variable/doto@5.3.0", "", {}, "sha512-mzvYblQT8AD0tOdBvni6+5E25LMKXKDVqbUutGafV78rIIq1w9s4G1IBpDcHJp+u2+dzsO3zCSm75mBQLguJjw=="],
 
     "@fontsource-variable/geist": ["@fontsource-variable/geist@5.3.0", "", {}, "sha512-j0m+vLQuG5XAYoHtGCVu0spvlGreR3EzpECUVzkFmI1mTVnAO38l/NEPDCFgZ177JxzYJCLSmTQibIiYPilGrA=="],
 

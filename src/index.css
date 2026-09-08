@@ -2,11 +2,13 @@
 @import "./corner-shape.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@fontsource-variable/doto/rond.css";
 @import "@fontsource-variable/geist";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --font-dot: "Doto Variable", sans-serif;
   --font-heading: "Plus Jakarta Sans", var(--font-sans);
   --font-sans: "Geist Variable", sans-serif;
   --color-ring: var(--ring);
