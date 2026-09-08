@@ -1,5 +1,4 @@
 import { Rauta, type RautaMood } from "@/components/rauta"
-import { RautaSpeech } from "@/components/rauta-speech"
 import {
   sessionProgress,
   type ActiveWorkoutSession,
@@ -108,15 +107,8 @@ export function WorkoutSessionCompanion({
         mood={mood}
         reactionKey={`${sets}:${completed}`}
         size={72}
+        speech={text}
       />
-      <RautaSpeech className="min-w-0 flex-1">
-        <p
-          aria-live="polite"
-          className="text-[13px] leading-snug font-semibold"
-        >
-          {text}
-        </p>
-      </RautaSpeech>
     </div>
   )
 }

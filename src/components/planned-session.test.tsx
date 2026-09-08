@@ -322,11 +322,11 @@ describe("planned sessions in the existing workout UI", () => {
         useActiveWorkout.getState().toggleComplete(id)
     })
     expect(
-      screen.getByText(/Finishing now saves this as partial/)
-    ).toBeInTheDocument()
-    expect(
       screen.queryByText(/Every exercise done|Whole session done/)
     ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Finish workout" }))
+    expect(screen.getByRole("dialog")).toHaveTextContent(/partial session/i)
   })
 
   it("asks the plain question once the whole prescription is performed", async () => {

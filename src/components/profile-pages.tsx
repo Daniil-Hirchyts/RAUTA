@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react"
+import { useRef, useState, type ReactNode } from "react"
 import { ChevronLeft, FlipHorizontal2, Plus, Weight, X } from "lucide-react"
 
 import { AppControlMorph } from "@/components/app-morph"
@@ -74,6 +74,7 @@ function ProfileStepFlow({
   onSkip?: () => void
   steps: ProfileFlowStep[]
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
   const [index, setIndex] = useState(0)
   const step = steps[Math.min(index, steps.length - 1)]
   const last = index >= steps.length - 1
@@ -88,6 +89,7 @@ function ProfileStepFlow({
     <AppScreen bottomControls>
       <AppSurface>
         <AppShellHeader
+          key={`header:${step.title}`}
           above={
             steps.length > 1 ? (
               <FlowProgress stage={index + 1} steps={steps.length} />
@@ -110,6 +112,7 @@ function ProfileStepFlow({
               </AppHeaderButton>
             ) : null
           }
+          scrollRef={scrollRef}
           title={step.title}
         />
 
@@ -122,9 +125,12 @@ function ProfileStepFlow({
             "app-scroll-region flex min-h-0 flex-1 flex-col overflow-y-auto px-(--app-content-inset) pt-5",
             step.dock ? "pb-28" : "pb-14"
           )}
+          ref={scrollRef}
+          tabIndex={-1}
+          aria-label={step.title}
           key={step.title}
         >
-          <div className="m-auto w-full">
+          <div className="profile-step-content my-auto w-full shrink-0">
             <ProfileCompanion step={step.title} />
             {step.content}
             {step.caption ? (

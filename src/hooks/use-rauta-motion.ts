@@ -48,6 +48,10 @@ export type RautaGestureEvent =
   | { type: "gesture-end" }
 
 export type RautaMotionOptions = {
+  /** Visible silhouette within the artboard; transparent animation padding
+   * must not become an invisible wall. Coordinates are fractions of the box. */
+  body?: { left: number; top: number; width: number; height: number }
+
   /** Room to leave at each screen edge — safe areas, bottom navigation, and
    *  any controls this screen needs to keep tappable. */
   inset?: { top?: number; right?: number; bottom?: number; left?: number }
@@ -64,16 +68,14 @@ type Sample = { x: number; y: number; at: number }
 function frameBox(node: HTMLElement) {
   const frame = node.closest(".app-shell-frame")
   if (frame) {
-    const box = frame.getBoundingClientRect()
-    const controls =
-      frame.getAttribute("data-commands") === "hidden"
-        ? null
-        : frame.querySelector(".app-controls-host")?.getBoundingClientRect()
+    // Follow the visible rounded surface, including its opening animation.
+    const surface = frame.querySelector(".app-surface") ?? frame
+    const box = surface.getBoundingClientRect()
     return {
-      left: box.left + 8,
-      top: box.top + 8,
-      width: box.width - 16,
-      height: Math.min(box.bottom, controls?.top ?? box.bottom) - box.top - 16,
+      left: box.left,
+      top: box.top,
+      width: box.width,
+      height: box.height,
     }
   }
   return {
@@ -91,7 +93,7 @@ const MAX_FLIGHT_MS = 1400
 const TAP_SLOP = 7
 
 export function useRautaMotion(options: RautaMotionOptions = {}) {
-  const { inset, onGesture, disabled = false } = options
+  const { inset, body, onGesture, disabled = false } = options
   const reduced = useReducedMotion()
 
   const ref = useRef<HTMLDivElement | null>(null)
@@ -131,14 +133,28 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
     // be with no offset applied.
     const width = node.offsetWidth || rect.width
     const height = node.offsetHeight || rect.height
-    // A conservative envelope fits every intentional twist and press scale.
-    const envelope = Math.hypot(width, height) * 1.06
+    // Use the current rotation, rather than an invisible diagonal-sized square.
+    const radians = (rotate.get() * Math.PI) / 180
+    const c = Math.abs(Math.cos(radians))
+    const s = Math.abs(Math.sin(radians))
+    const bodyWidth = width * (body?.width ?? 1)
+    const bodyHeight = height * (body?.height ?? 1)
+    const dx = width * ((body?.left ?? 0) + (body?.width ?? 1) / 2 - 0.5)
+    const dy = height * ((body?.top ?? 0) + (body?.height ?? 1) / 2 - 0.5)
+    const centerX =
+      (dx * Math.cos(radians) - dy * Math.sin(radians)) * scale.get()
+    const centerY =
+      (dx * Math.sin(radians) + dy * Math.cos(radians)) * scale.get()
+    const envelopeWidth = (bodyWidth * c + bodyHeight * s) * scale.get()
+    const envelopeHeight = (bodyHeight * c + bodyWidth * s) * scale.get()
     bounds.current = rautaBounds({
       rect: {
-        left: rect.left + rect.width / 2 - x.get() - envelope / 2,
-        top: rect.top + rect.height / 2 - y.get() - envelope / 2,
-        width: envelope,
-        height: envelope,
+        left:
+          rect.left + rect.width / 2 - x.get() + centerX - envelopeWidth / 2,
+        top:
+          rect.top + rect.height / 2 - y.get() + centerY - envelopeHeight / 2,
+        width: envelopeWidth,
+        height: envelopeHeight,
       },
       // The app's own frame is the screen on a phone and a centred column on
       // anything wider, so the character is free inside the layout rather than
@@ -146,7 +162,12 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
       viewport: frameBox(node),
       inset,
     })
-  }, [inset, x, y])
+    // The source anchor can move while its page scrolls or the shell opens.
+    // Keep the portal inside the newly measured surface in the same frame.
+    const fitted = clampToBounds({ x: x.get(), y: y.get() }, bounds.current)
+    x.set(fitted.x)
+    y.set(fitted.y)
+  }, [body, inset, rotate, scale, x, y])
 
   const stopFlight = useCallback(() => {
     if (frame.current !== null) cancelAnimationFrame(frame.current)
@@ -208,7 +229,11 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
     twist.current = null
     const settled = settleRotation(rotate.get())
     rotate.set(settled)
-  }, [rotate])
+    measure()
+    const fitted = clampToBounds({ x: x.get(), y: y.get() }, bounds.current)
+    x.set(fitted.x)
+    y.set(fitted.y)
+  }, [measure, rotate, x, y])
 
   const handlers = useMemo(() => {
     if (disabled) return {}
@@ -229,8 +254,8 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
           /* Tracked through the pointer id instead. */
         }
         stopFlight()
+        scale.set(1)
         measure()
-        scale.set(1.06)
 
         if (pointers.current.size === 2) {
           // Two fingers means a twist, and a twist is not a drag: whichever
@@ -275,6 +300,13 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
             notify.current?.({ type: "rotate", degrees: delta })
           }
           rotate.set(normalizeAngle(twist.current.from + delta))
+          measure()
+          const fitted = clampToBounds(
+            { x: x.get(), y: y.get() },
+            bounds.current
+          )
+          x.set(fitted.x)
+          y.set(fitted.y)
           return
         }
 
@@ -423,13 +455,18 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
       typeof ResizeObserver === "undefined"
         ? null
         : new ResizeObserver(remeasure)
+    const shell = ref.current?.closest(".app-shell-frame")
     if (ref.current)
-      observer?.observe(ref.current.closest(".app-shell-frame") ?? ref.current)
+      observer?.observe(
+        shell?.querySelector(".app-surface") ?? shell ?? ref.current
+      )
+    shell?.addEventListener("transitionend", remeasure)
     window.addEventListener("resize", remeasure)
     window.addEventListener("scroll", remeasure, true)
     window.visualViewport?.addEventListener("resize", remeasure)
     return () => {
       observer?.disconnect()
+      shell?.removeEventListener("transitionend", remeasure)
       window.removeEventListener("resize", remeasure)
       window.removeEventListener("scroll", remeasure, true)
       window.visualViewport?.removeEventListener("resize", remeasure)

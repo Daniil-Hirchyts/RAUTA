@@ -1,4 +1,4 @@
-import { motion } from "motion/react"
+import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import type { ReactNode } from "react"
 
 import { cn } from "@/lib/utils"
@@ -6,28 +6,40 @@ import { cn } from "@/lib/utils"
 export function RautaSpeech({
   children,
   className,
+  visible = true,
 }: {
   children: ReactNode
   className?: string
+  visible?: boolean
 }) {
+  const reduced = useReducedMotion()
   return (
-    <motion.div
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      className={cn(
-        "relative rounded-[1.35rem] border border-border/80 bg-card px-4 py-3 shadow-[0_12px_28px_rgba(0,0,0,0.18)]",
-        className
-      )}
-      initial={{ opacity: 0, scale: 0.96, y: 5 }}
-      transition={{ type: "spring", stiffness: 420, damping: 32 }}
-    >
-      <span
-        aria-hidden="true"
-        className="absolute top-7 -left-1.5 size-3 rotate-45 border-b border-l border-border/80 bg-card"
-      />
-      <span className="mb-1 block text-[10px] font-black tracking-[0.18em] text-primary uppercase">
-        RAUTA
-      </span>
-      {children}
-    </motion.div>
+    <AnimatePresence>
+      {visible ? (
+        <motion.div
+          key="speech"
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: reduced ? 1 : 0.98, y: reduced ? 0 : 3 }}
+          className={cn(
+            "relative rounded-2xl border border-primary/20 bg-card/95 px-4 py-3 shadow-lg shadow-black/20 backdrop-blur-md",
+            className
+          )}
+          initial={{
+            opacity: 0,
+            scale: reduced ? 1 : 0.98,
+            y: reduced ? 0 : 5,
+          }}
+          transition={{ duration: reduced ? 0 : 0.18 }}
+        >
+          <span
+            aria-hidden="true"
+            className="mb-1.5 flex items-center gap-1.5 text-[9px] font-bold tracking-[0.16em] text-primary"
+          >
+            <span className="size-1 rounded-full bg-primary" /> RAUTA
+          </span>
+          {children}
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
   )
 }

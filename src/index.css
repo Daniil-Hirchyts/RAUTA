@@ -1754,3 +1754,11 @@ li:has(.interactive-spring:active),
     animation: none !important;
   }
 }
+
+/* A profile step is another page-sized question in the stationary shell. */
+.profile-step-content {
+  animation: app-page-enter var(--page-enter-dur) var(--ease-smooth-out) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-step-content { animation: none; }
+}

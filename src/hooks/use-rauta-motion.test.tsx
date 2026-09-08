@@ -111,6 +111,30 @@ afterEach(() => {
 })
 
 describe("dragging RAUTA", () => {
+  it("reaches the visible shell edge without reserving an invisible diagonal", () => {
+    render(
+      <div className="app-shell-frame">
+        <div className="app-surface" />
+        <Harness />
+      </div>
+    )
+    const surface = document.querySelector(".app-surface")!
+    surface.getBoundingClientRect = () =>
+      ({
+        left: 4,
+        top: 4,
+        right: 386,
+        bottom: 740,
+        width: 382,
+        height: 736,
+      }) as DOMRect
+    const bot = screen.getByTestId("rauta")
+    stubBox(bot)
+    fireEvent.pointerDown(bot, { pointerId: 1, clientX: 300, clientY: 550 })
+    fireEvent.pointerMove(bot, { pointerId: 1, clientX: 9000, clientY: 550 })
+    expect(250 + placement.x + SIZE).toBeCloseTo(386)
+  })
+
   it("moves the character and never turns it", () => {
     render(<Harness />)
     const bot = screen.getByTestId("rauta")

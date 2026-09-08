@@ -1,7 +1,6 @@
 import { useMemo, useRef, useState } from "react"
 import { ArrowRight, CalendarRange, SlidersHorizontal, X } from "lucide-react"
 import { Rauta } from "./rauta"
-import { RautaSpeech } from "./rauta-speech"
 import { AppModal } from "./app-modal"
 import { Button } from "./ui/button"
 import { MatrixLoader } from "./ui/matrix-loader"
@@ -63,11 +62,7 @@ export function WorkoutCompanion({
   const trainingData = useTrainingRecords((state) => state.data)
   const workouts = useWorkouts((state) => state.workouts)
   const now = new Date().toISOString()
-  const eligibility = remainingWeekEligibility(
-    trainingData,
-    now,
-    workouts
-  )
+  const eligibility = remainingWeekEligibility(trainingData, now, workouts)
   const nextEligibility = nextWeekEligibility(trainingData, now, workouts)
   const canAdjust = !onResume && eligibility.status === "eligible"
   const canPlanNext = !onResume && nextEligibility.status === "eligible"
@@ -131,6 +126,11 @@ export function WorkoutCompanion({
         <Rauta
           mood={onResume ? "focused" : plan.line ? "proud" : "calm"}
           size={108}
+          speech={
+            outcome?.message ??
+            (canAdjust ? offer : canPlanNext ? nextOffer : plan.line) ??
+            "Ready when you are. Tap me to plan your training."
+          }
           label="Open RAUTA actions"
           onActivate={() => setOpen(true)}
         />
@@ -140,7 +140,7 @@ export function WorkoutCompanion({
           onClick={() => setOpen(true)}
           aria-label="Train with RAUTA"
         >
-          <RautaSpeech>
+          <div className="py-3">
             <strong className="block text-[15px] leading-snug tracking-tight">
               {onResume
                 ? "Your workout is waiting. Want to continue?"
@@ -160,7 +160,7 @@ export function WorkoutCompanion({
                 className="size-3.5 text-primary"
               />
             </span>
-          </RautaSpeech>
+          </div>
         </button>
       </div>
       <AppModal open={open} onClose={close} label="RAUTA actions">
@@ -188,9 +188,9 @@ export function WorkoutCompanion({
                   ? nextOffer
                   : plan.nextWeekReady
                     ? plan.line
-                : plan.hasPlan && eligibility.status === "blocked"
-                  ? eligibility.message
-                  : "Let me plan the week, choose your own exercises, or tune your training preferences.")}
+                    : plan.hasPlan && eligibility.status === "blocked"
+                      ? eligibility.message
+                      : "Let me plan the week, choose your own exercises, or tune your training preferences.")}
           </p>
           <div className="space-y-2">
             {canAdjust || working ? (

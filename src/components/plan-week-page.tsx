@@ -9,8 +9,7 @@ import {
   AppShellHeader,
   AppSurface,
 } from "@/components/app-shell"
-import { RautaStill } from "@/components/rauta"
-import { RautaSpeech } from "@/components/rauta-speech"
+import { Rauta } from "@/components/rauta"
 import { Button } from "@/components/ui/button"
 import { MatrixLoader } from "@/components/ui/matrix-loader"
 import { triggerHaptic } from "@/lib/haptics"
@@ -57,9 +56,10 @@ export function PlanWeekPage({
   const continuing = Boolean(sourceProgramId)
   const [days, setDays] = useState<number[]>([...DEFAULT_TRAINING_DAYS])
   const [working, setWorking] = useState(false)
-  const [block, setBlock] = useState<
-    Pick<PlanBlock, "message" | "page" | "issues"> | null
-  >(null)
+  const [block, setBlock] = useState<Pick<
+    PlanBlock,
+    "message" | "page" | "issues"
+  > | null>(null)
 
   const toggle = (offset: number) => {
     triggerHaptic("selection")
@@ -117,10 +117,15 @@ export function PlanWeekPage({
 
         <div className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-(--app-content-inset) pt-5 pb-6">
           <div className="flex items-center gap-1.5">
-            <span aria-hidden="true" className="size-[92px] shrink-0">
-              <RautaStill />
-            </span>
-            <RautaSpeech>
+            <Rauta
+              size={92}
+              speech={
+                continuing
+                  ? "I'll use your logged sets to plan the next week."
+                  : "Pick your days. I'll use your saved preferences for the rest."
+              }
+            />
+            <div className="min-w-0 flex-1 py-3">
               <strong className="block text-[15px] leading-snug tracking-tight">
                 {continuing
                   ? "This week is done. Let’s plan the next one."
@@ -131,7 +136,7 @@ export function PlanWeekPage({
                 {profile.preferredSessionDurationMinutes} min ·{" "}
                 {experienceLabel(profile.trainingExperience)}
               </span>
-            </RautaSpeech>
+            </div>
           </div>
 
           {/* Seven across on a phone; four across on the narrowest screens,
@@ -201,8 +206,10 @@ export function PlanWeekPage({
                 rounded
                 variant="orbit"
               />
+            ) : continuing ? (
+              "Plan next week"
             ) : (
-              continuing ? "Plan next week" : "Create plan"
+              "Create plan"
             )}
           </Button>
         </AppControlMorph>
