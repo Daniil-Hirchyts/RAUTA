@@ -215,6 +215,14 @@ export function loadContextFor(
   }
 }
 
+/** The lightest load this station has: where a dial that has nothing to go on
+ *  starts once somebody asks it for a number. */
+export function firstLoad(grid: LoadGrid) {
+  if ("availableLoadsKg" in grid)
+    return Math.min(...grid.availableLoadsKg.filter(Number.isFinite))
+  return Math.max(0, grid.minimumKg ?? 0)
+}
+
 /** One step up or down the loads the station actually offers. */
 export function stepLoad(kg: number, direction: 1 | -1, grid: LoadGrid) {
   const target =
@@ -283,31 +291,56 @@ export function sideOptions(exercise: ExerciseSummary): SetSide[] {
   return laterality === "unilateral" ? ["both", "left", "right"] : ["both"]
 }
 
+/** Whether a station this app minted belongs to a piece of equipment. Ids from
+ *  a backup, or written by hand, name themselves and are shown as written. */
+function isDerivedStationId(stationId: string, defaultStationId: string) {
+  const suffix = stationId.startsWith(`${defaultStationId}#`)
+    ? stationId.slice(defaultStationId.length + 1)
+    : stationId.startsWith(`${defaultStationId}-`)
+      ? stationId.slice(defaultStationId.length + 1)
+      : null
+  return suffix !== null && suffix.length > 0
+}
+
 /**
  * What to call a station on screen.
  *
- * Stations this app creates are numbered off the equipment they belong to, so
- * the name stays put when an earlier one is deleted. Anything else — a station
- * from a backup, or one named by hand — is shown as it was written.
+ * A number, not an identity. Kilograms are compared by `stationId`, which is
+ * minted once and never reused; what a person reads is simply which of their
+ * stations this is, counted in the order they described them. So deleting the
+ * second of three renumbers what they see and changes nothing about what
+ * compares to what.
  */
-export function stationLabel(stationId: string, defaultStationId: string) {
-  const suffix = stationId.startsWith(`${defaultStationId}-`)
-    ? stationId.slice(defaultStationId.length + 1)
-    : null
-  return suffix && /^\d+$/.test(suffix)
-    ? `${titleCase(defaultStationId)} ${suffix}`
-    : titleCase(stationId)
+export function stationLabel(
+  stationId: string,
+  defaultStationId: string,
+  /** Position among the exercise's stations, the default being the first. */
+  ordinal?: number
+) {
+  if (stationId === defaultStationId) return titleCase(defaultStationId)
+  if (!isDerivedStationId(stationId, defaultStationId))
+    return titleCase(stationId)
+  return ordinal === undefined
+    ? // A station nothing describes any more: sets logged at it are still its
+      // own, and must never read as one of the stations that still exist.
+      `Earlier ${defaultStationId}`
+    : `${titleCase(defaultStationId)} ${ordinal}`
 }
 
-/** The next free numbered station name for this equipment. */
-export function nextStationId(
-  defaultStationId: string,
-  taken: readonly string[]
-) {
-  const used = new Set(taken)
-  let number = 2
-  while (used.has(`${defaultStationId}-${number}`)) number += 1
-  return `${defaultStationId}-${number}`
+/**
+ * A station identity that will never be handed out twice.
+ *
+ * The number in a station's name is a label, and labels are reused the moment
+ * one is deleted. Its identity cannot be: kilograms logged at a machine that no
+ * longer exists must never turn out to be comparable with a different machine
+ * described later, so what history is keyed by is minted once here and kept
+ * apart from anything a person sees.
+ */
+export function newStationId(defaultStationId: string) {
+  const unique =
+    globalThis.crypto?.randomUUID?.().replace(/-/g, "").slice(0, 12) ??
+    `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+  return `${defaultStationId}#${unique}`
 }
 
 /**
@@ -352,11 +385,84 @@ export function stationChoicesFor(
     else
       choices.push({
         id: configuration.id,
-        label: stationLabel(configuration.stationId, fallback.stationId),
+        // Counted from where it sits in the list, so the names read 1, 2, 3
+        // however many have come and gone.
+        label: stationLabel(
+          configuration.stationId,
+          fallback.stationId,
+          choices.length + 1
+        ),
         context,
       })
   }
   return choices
+}
+
+/**
+ * Where a set that has already been logged was measured.
+ *
+ * The observation itself names the station and the basis — that is the record —
+ * and only the steps it moves in have to be looked up. A station nobody
+ * describes any more still steps: it falls back to the equipment's own grid so
+ * an old set can be read and corrected, rather than becoming uneditable
+ * because its machine was deleted from the settings.
+ */
+export function recordedLoadContext(
+  exercise: ExerciseSummary,
+  resistance: PersistedResistance,
+  settings: Pick<PersistedTrainingSettings, "loadConfigurations">,
+  equipmentIncrementKg?: number
+): LoadContext {
+  const fallback = loadContextFor(
+    exercise,
+    resistance.type,
+    undefined,
+    equipmentIncrementKg
+  )
+  if (!("kg" in resistance)) return fallback
+  const configuration = settings.loadConfigurations.find(
+    (item) =>
+      item.exerciseId === exercise.id &&
+      configurationMode(item) === resistance.type &&
+      item.stationId === resistance.stationId &&
+      item.basis === resistance.basis
+  )
+  return {
+    stationId: resistance.stationId,
+    basis: resistance.basis,
+    grid: configuration ? structuredClone(configuration.grid) : fallback.grid,
+  }
+}
+
+/** Whether two measurements can be compared: the same machine, held the same
+ *  way. Kilograms mean nothing across this line. */
+export function sameLoadContext(
+  left: Pick<LoadContext, "stationId" | "basis">,
+  right: Pick<LoadContext, "stationId" | "basis">
+) {
+  return left.stationId === right.stationId && left.basis === right.basis
+}
+
+/**
+ * The load to open the editor on, or null when there is nothing honest to
+ * offer.
+ *
+ * A kilogram is only carried over when it was measured at the same station, in
+ * the same basis, as the set about to be logged, and when it is a load this
+ * station actually offers. Anything else — another machine, another
+ * measurement, a grid that has changed — leaves the dial unset rather than
+ * putting up a number nobody lifted.
+ */
+export function carryOverLoad(
+  resistance: PersistedResistance | undefined,
+  mode: ResistanceMode,
+  context: LoadContext
+): number | null {
+  if (!resistance || resistance.type !== mode || !("kg" in resistance))
+    return null
+  if (!sameLoadContext(resistance, context)) return null
+  const rounded = roundLoad(resistance.kg, context.grid)
+  return rounded ?? null
 }
 
 /**

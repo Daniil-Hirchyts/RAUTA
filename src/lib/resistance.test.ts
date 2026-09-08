@@ -3,14 +3,17 @@ import { describe, expect, it } from "vitest"
 import { EXERCISES_BY_ID } from "@/lib/exercises"
 import {
   activeConfigurationFor,
+  carryOverLoad,
+  recordedLoadContext,
   formatResistance,
   isMeasuredInKg,
   loadContextFor,
   makeResistance,
-  nextStationId,
+  newStationId,
   resistanceModes,
   resolveLoadContext,
   sideOptions,
+  stationLabel,
   stationChoicesFor,
   stepLoad,
 } from "@/lib/resistance"
@@ -244,11 +247,18 @@ describe("resistance semantics", () => {
     ).toHaveLength(1)
   })
 
-  it("numbers a new station off the equipment and skips the ones taken", () => {
-    expect(nextStationId("cable", [])).toBe("cable-2")
-    expect(nextStationId("cable", ["cable", "cable-2", "cable-3"])).toBe(
-      "cable-4"
-    )
+  it("never hands out a station identity twice", () => {
+    const first = newStationId("cable")
+    const second = newStationId("cable")
+    expect(first).not.toBe(second)
+    expect(first.startsWith("cable#")).toBe(true)
+    // The identity is not the name: a station deleted and one added later are
+    // different machines, however they are labelled on screen.
+    expect(stationLabel(first, "cable", 2)).toBe("Cable 2")
+    expect(stationLabel(second, "cable", 2)).toBe("Cable 2")
+    expect(stationLabel(first, "cable")).toBe("Earlier cable")
+    expect(stationLabel("Bench A", "cable")).toBe("Bench A")
+    expect(stationLabel("cable", "cable")).toBe("Cable")
   })
 
   it("carries the saved equipment step into the default station", () => {
@@ -259,5 +269,79 @@ describe("resistance semantics", () => {
       1.25
     )
     expect(ladder(80, 2, context.grid)).toEqual([80, 81.25, 82.5])
+  })
+
+  it("carries a load over only where it means the same thing", () => {
+    const context = loadContextFor(BARBELL_BENCH, "external_load")
+    const here = {
+      type: "external_load" as const,
+      kg: 80,
+      basis: "total" as const,
+      stationId: context.stationId,
+    }
+    expect(carryOverLoad(here, "external_load", context)).toBe(80)
+    // Another station, another basis, another measurement, or nothing at all:
+    // the dial opens unset rather than on a number from somewhere else.
+    expect(
+      carryOverLoad(
+        { ...here, stationId: "barbell#other" },
+        "external_load",
+        context
+      )
+    ).toBeNull()
+    expect(
+      carryOverLoad(
+        { ...here, basis: "per_implement" },
+        "external_load",
+        context
+      )
+    ).toBeNull()
+    expect(carryOverLoad(here, "assistance", context)).toBeNull()
+    expect(
+      carryOverLoad({ type: "bodyweight" }, "external_load", context)
+    ).toBeNull()
+    expect(carryOverLoad(undefined, "external_load", context)).toBeNull()
+    // A load the station cannot make is snapped to one it can.
+    expect(
+      carryOverLoad({ ...here, kg: 81 }, "external_load", {
+        ...context,
+        grid: { availableLoadsKg: [70, 80, 90] },
+      })
+    ).toBe(80)
+    expect(
+      carryOverLoad(here, "external_load", {
+        ...context,
+        grid: { incrementKg: 2.5, minimumKg: 100 },
+      })
+    ).toBeNull()
+  })
+
+  it("reads a recorded set against its own station, described or not", () => {
+    const resistance = {
+      type: "external_load" as const,
+      kg: 60,
+      basis: "total" as const,
+      stationId: "barbell#gone",
+    }
+    // Nothing describes that bar any more: the set still reads, and steps in
+    // the equipment's own increments rather than becoming uneditable.
+    const orphan = recordedLoadContext(BARBELL_BENCH, resistance, {
+      loadConfigurations: [],
+    })
+    expect(orphan).toMatchObject({ stationId: "barbell#gone", basis: "total" })
+    expect(ladder(60, 1, orphan.grid)).toEqual([60, 62.5])
+
+    const described = recordedLoadContext(BARBELL_BENCH, resistance, {
+      loadConfigurations: [
+        {
+          id: "config-a",
+          exerciseId: BARBELL_BENCH.id,
+          stationId: "barbell#gone",
+          basis: "total",
+          grid: { availableLoadsKg: [40, 60, 80] },
+        },
+      ],
+    })
+    expect(ladder(60, 1, described.grid)).toEqual([60, 80])
   })
 })

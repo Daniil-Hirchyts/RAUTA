@@ -73,20 +73,20 @@ function SortableExerciseRow({
               : `Mark ${exercise.name} as done`
           }
           aria-pressed={status === "completed"}
-          className="interactive-spring grid w-12 shrink-0 place-items-center border-r border-border bg-card active:bg-muted/80"
+          className="interactive-spring grid w-9 shrink-0 place-items-center border-r border-border bg-card active:bg-muted/80 min-[360px]:w-12"
           onClick={() => onToggleComplete(exercise.id)}
           type="button"
         >
           <AnimatedCheck checked={status === "completed"} className="size-7" />
         </button>
       ) : (
-        <div className="grid w-12 shrink-0 place-items-center border-r border-border bg-card text-lg font-black text-primary tabular-nums">
+        <div className="grid w-9 shrink-0 place-items-center border-r border-border bg-card text-base font-black text-primary tabular-nums min-[360px]:w-12 min-[360px]:text-lg">
           {String(index + 1).padStart(2, "0")}
         </div>
       )}
       <button
         aria-label={`Open ${exercise.name} demonstration`}
-        className="interactive-spring isolate aspect-square h-32 shrink-0 bg-card"
+        className="interactive-spring isolate aspect-square h-24 shrink-0 bg-card min-[360px]:h-32"
         disabled={!onOpen}
         onClick={() => onOpen?.(exercise)}
         type="button"
@@ -102,7 +102,10 @@ function SortableExerciseRow({
           style={{ filter: EXERCISE_ANIMATION_FILTER_LIGHT }}
         />
       </button>
-      <div className="flex min-w-0 flex-1 flex-col justify-center px-3 py-2">
+      {/* The picture and the two rails are fixed widths; on a 320px phone they
+          would leave the name too little to break a word in, so they give some
+          of it back below the width where that starts to bite. */}
+      <div className="flex min-w-0 flex-1 flex-col justify-center px-2.5 py-2 min-[360px]:px-3">
         <button
           aria-label={`View ${exercise.name} details`}
           className="min-w-0 text-left"
@@ -121,7 +124,7 @@ function SortableExerciseRow({
       {reorderable ? (
         <button
           aria-label={`Reorder ${exercise.name}`}
-          className="interactive-spring grid w-12 shrink-0 touch-none place-items-center text-primary"
+          className="interactive-spring grid w-9 shrink-0 touch-none place-items-center text-primary min-[360px]:w-12"
           data-base-ui-swipe-ignore=""
           data-haptics="off"
           ref={handleRef as Ref<HTMLButtonElement>}

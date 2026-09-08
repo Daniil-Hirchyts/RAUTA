@@ -1,18 +1,24 @@
 import { useState } from "react"
-import { Plus, Settings2, Trash2 } from "lucide-react"
+import { Plus, Settings2, Trash2, X } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import { RotaryKnob } from "@/components/ui/rotary-knob"
 import { triggerHaptic } from "@/lib/haptics"
 import {
-  activeConfigurationFor,
+  firstLoad,
   formatKg,
-  nextStationId,
+  newStationId,
+  sameLoadContext,
   stationChoicesFor,
+  stationLabel,
   type LoadContext,
   type MeasuredMode,
+  type StationChoice,
 } from "@/lib/resistance"
 import { cn } from "@/lib/utils"
 import { useTrainingRecords } from "@/store/use-training-records"
+import type { LoadGrid } from "@/training"
+import type { PersistedLoadGrid } from "@/training-persistence/schema"
 import type { ExerciseSummary } from "@/types"
 
 /** Steps a rack, stack or plate set plausibly moves in. Wider than that is not
@@ -21,12 +27,32 @@ const STEP_RANGE = { min: 0.25, max: 20, step: 0.25 }
 /** Where a stack starts. Zero is the bar or the bare handle. */
 const START_RANGE = { min: 0, max: 60, step: 0.5 }
 
-/** The two numbers a station has. Anything else about a machine is not
- *  something the app can measure a set against. */
+/** What a station can be described by. Two numbers cover a rack that steps
+ *  evenly; a list covers the ones that do not. */
 const FACETS = [
   { key: "step" as const, chip: "Step", label: "Set the load step" },
   { key: "start" as const, chip: "Lightest", label: "Set the lightest load" },
+  {
+    key: "list" as const,
+    chip: "List",
+    label: "List the loads this station has",
+  },
 ]
+
+/** One load on the dial that adds them. Machine stacks and dumbbell racks both
+ *  live inside this, and half-kilo plates are the finest thing most gyms have. */
+const LOAD_RANGE = { min: 0, max: 300, step: 0.5 }
+
+/** The engine takes at most this many, and a rack nobody could count is not a
+ *  rack anybody will describe. */
+const MAX_LADDER_LOADS = 60
+
+/** Sorted, without repeats: two of the same dumbbell is one available load. */
+function tidyLadder(loads: readonly number[]) {
+  return [...new Set(loads.map((load) => Math.round(load * 100) / 100))].sort(
+    (left, right) => left - right
+  )
+}
 
 function gridSummary(context: LoadContext) {
   const { grid } = context
@@ -58,10 +84,17 @@ function gridSummary(context: LoadContext) {
  * machine physically offers.
  */
 export function StationPicker({
+  context,
   equipmentIncrementKg,
   exercise,
   mode,
+  onSelect,
+  pinSelection = true,
 }: {
+  /** The measurement the set on screen is being taken in. The picker follows
+   *  the editor rather than the store, so a set already logged keeps the
+   *  station it was performed at while another is selected for the next one. */
+  context: LoadContext
   /** The load step saved for this equipment, which the default station uses
    *  until a station of its own says otherwise. */
   equipmentIncrementKg?: number
@@ -69,6 +102,10 @@ export function StationPicker({
   /** The measurement being logged. Load and assistance are separate stations
    *  even on one machine, and never stand in for each other. */
   mode: MeasuredMode
+  onSelect: (context: LoadContext) => void
+  /** Whether choosing a station also makes it the exercise's station for the
+   *  sets that come after. False while correcting one already performed. */
+  pinSelection?: boolean
 }) {
   const settings = useTrainingRecords((state) => state.data.settings)
   const saveLoadConfiguration = useTrainingRecords(
@@ -81,37 +118,77 @@ export function StationPicker({
     (state) => state.selectLoadConfiguration
   )
   const [editing, setEditing] = useState(false)
-  const [facet, setFacet] = useState<"step" | "start">("step")
+  const [facet, setFacet] = useState<"step" | "start" | "list">("step")
+  /** The list being written, held apart from what is saved so backing out of
+   *  it leaves the station exactly as it was. */
+  const [ladder, setLadder] = useState<number[] | null>(null)
+  const [ladderValue, setLadderValue] = useState(20)
 
-  const choices = stationChoicesFor(
+  const saved = stationChoicesFor(
     exercise,
     mode,
     settings,
     equipmentIncrementKg
   )
-  // One resolution rule, the same one the engine and the editor use: what the
-  // picker highlights is what the next set will actually be measured against.
-  const activeId =
-    activeConfigurationFor(exercise.id, mode, settings)?.id ?? null
-  const active = choices.find((choice) => choice.id === activeId) ?? choices[0]
-  const defaultStationId = choices[0].context.stationId
-  const editable = !("availableLoadsKg" in active.context.grid)
+  const defaultStationId = saved[0].context.stationId
+  // A set can name a station nothing describes any more — one deleted after it
+  // was logged. It stays on screen as its own chip so the set can be read and
+  // corrected, and so it can never be mistaken for a station that still exists.
+  const choices: StationChoice[] = saved.some((choice) =>
+    sameLoadContext(choice.context, context)
+  )
+    ? saved
+    : [
+        ...saved,
+        {
+          id: null,
+          label: stationLabel(context.stationId, defaultStationId),
+          context,
+        },
+      ]
+  const active =
+    choices.find((choice) => sameLoadContext(choice.context, context)) ??
+    choices[0]
   const grid = active.context.grid
+  const isLadder = "availableLoadsKg" in grid
+  // A station described by a list stays described by one until somebody says
+  // otherwise: an imported ladder is never quietly rounded into even steps.
+  const facetInUse = isLadder && facet !== "list" ? "convert" : facet
+  const draft = ladder ?? (isLadder ? [...grid.availableLoadsKg] : [])
 
-  const write = (patch: { incrementKg?: number; minimumKg?: number }) => {
-    if ("availableLoadsKg" in grid) return
+  /** Describes the selected station. The grid is what the machine offers; the
+   *  kilograms already logged against it are untouched by saying so. */
+  const write = (patch: PersistedLoadGrid) => {
     const id = saveLoadConfiguration({
       ...(active.id ? { id: active.id } : {}),
       exerciseId: exercise.id,
       stationId: active.context.stationId,
       mode,
       basis: active.context.basis,
-      grid: {
-        incrementKg: patch.incrementKg ?? grid.incrementKg,
-        minimumKg: patch.minimumKg ?? grid.minimumKg ?? 0,
-      },
+      grid: patch,
     })
-    if (!active.id) selectLoadConfiguration(exercise.id, id)
+    if (!active.id && pinSelection) selectLoadConfiguration(exercise.id, id)
+    onSelect({ ...active.context, grid: structuredClone(patch) as LoadGrid })
+  }
+
+  const stepPatch = (patch: {
+    incrementKg?: number
+    minimumKg?: number
+  }): PersistedLoadGrid => ({
+    incrementKg:
+      patch.incrementKg ?? ("incrementKg" in grid ? grid.incrementKg : 2.5),
+    minimumKg:
+      patch.minimumKg ?? ("minimumKg" in grid ? (grid.minimumKg ?? 0) : 0),
+  })
+
+  const choose = (choice: StationChoice) => {
+    triggerHaptic("selection")
+    if (sameLoadContext(choice.context, active.context))
+      return setEditing((open) => !open)
+    if (pinSelection)
+      selectLoadConfiguration(exercise.id, choice.id ?? pin(choice))
+    onSelect(choice.context)
+    setEditing(false)
   }
 
   /**
@@ -133,26 +210,28 @@ export function StationPicker({
 
   const add = () => {
     triggerHaptic("selection")
-    const stationId = nextStationId(
-      defaultStationId,
-      settings.loadConfigurations
-        .filter((item) => item.exerciseId === exercise.id)
-        .map((item) => item.stationId)
-    )
+    // A fresh identity every time, never one a deleted station used to hold:
+    // sets logged at a machine that is gone must not turn out to be comparable
+    // with the next machine described.
+    const stationId = newStationId(defaultStationId)
+    const seed = choices[0].context.grid
+    const grid: PersistedLoadGrid =
+      "availableLoadsKg" in seed
+        ? { availableLoadsKg: [...seed.availableLoadsKg] }
+        : { incrementKg: seed.incrementKg, minimumKg: seed.minimumKg ?? 0 }
     const id = saveLoadConfiguration({
       exerciseId: exercise.id,
       stationId,
       mode,
       basis: choices[0].context.basis,
-      grid:
-        "availableLoadsKg" in choices[0].context.grid
-          ? { incrementKg: 2.5, minimumKg: 0 }
-          : {
-              incrementKg: choices[0].context.grid.incrementKg,
-              minimumKg: choices[0].context.grid.minimumKg ?? 0,
-            },
+      grid,
     })
-    selectLoadConfiguration(exercise.id, id)
+    if (pinSelection) selectLoadConfiguration(exercise.id, id)
+    onSelect({
+      stationId,
+      basis: choices[0].context.basis,
+      grid: structuredClone(grid) as LoadGrid,
+    })
     setEditing(true)
   }
 
@@ -177,12 +256,7 @@ export function StationPicker({
                 className="preset-chip hit-target relative shrink-0 px-3.5 text-sm"
                 data-haptics="off"
                 key={choice.id ?? "default"}
-                onClick={() => {
-                  triggerHaptic("selection")
-                  if (selected) return setEditing((open) => !open)
-                  selectLoadConfiguration(exercise.id, choice.id ?? pin(choice))
-                  setEditing(false)
-                }}
+                onClick={() => choose(choice)}
                 type="button"
               >
                 {choice.label}
@@ -221,28 +295,133 @@ export function StationPicker({
           <p className="text-center text-[11px] font-semibold text-muted-foreground">
             {active.label} · {gridSummary(active.context)}
           </p>
-          {editable ? (
+          {/* One dial at a time: a phone has room for a knob you can actually
+              turn, not for three of them side by side. */}
+          <div className="mt-2 flex items-center justify-center gap-1.5">
+            {FACETS.map((item) => (
+              <button
+                aria-label={item.label}
+                aria-pressed={facet === item.key}
+                className="preset-chip hit-target shrink-0 px-3.5 text-sm"
+                data-haptics="off"
+                key={item.key}
+                onClick={() => {
+                  triggerHaptic("selection")
+                  setFacet(item.key)
+                  if (item.key !== "list") setLadder(null)
+                }}
+                type="button"
+              >
+                {item.chip}
+              </button>
+            ))}
+          </div>
+          {facetInUse === "list" ? (
             <>
-              {/* One dial, two facts: a phone has room for a knob you can
-                  actually turn, not for two of them side by side. */}
-              <div className="mt-2 flex items-center justify-center gap-1.5">
-                {FACETS.map((item) => (
+              <div
+                className="-mx-1 mt-2 flex flex-wrap justify-center gap-1.5"
+                data-swipe-ignore
+              >
+                {tidyLadder(draft).map((load) => (
                   <button
-                    aria-label={item.label}
-                    aria-pressed={facet === item.key}
-                    className="preset-chip hit-target shrink-0 px-3.5 text-sm"
+                    aria-label={`Remove ${formatKg(load)} kg from ${active.label}`}
+                    className="preset-chip hit-target shrink-0 gap-1 px-3 text-sm"
                     data-haptics="off"
-                    key={item.key}
+                    key={load}
                     onClick={() => {
                       triggerHaptic("selection")
-                      setFacet(item.key)
+                      setLadder(draft.filter((item) => item !== load))
                     }}
                     type="button"
                   >
-                    {item.chip}
+                    {formatKg(load)}
+                    <X className="size-3.5 opacity-70" />
                   </button>
                 ))}
+                {draft.length === 0 ? (
+                  <p className="py-2 text-[11px] text-muted-foreground">
+                    Add every load this station actually has.
+                  </p>
+                ) : null}
               </div>
+              <RotaryKnob
+                ariaLabel={`${active.label} load to add`}
+                className="mx-auto mt-2"
+                format={formatKg}
+                max={LOAD_RANGE.max}
+                min={LOAD_RANGE.min}
+                onChange={setLadderValue}
+                size={240}
+                step={LOAD_RANGE.step}
+                unit="kg"
+                value={ladderValue}
+              />
+              <div className="mt-2 flex items-center gap-2">
+                <Button
+                  className="h-10 flex-1 rounded-2xl"
+                  disabled={
+                    draft.includes(ladderValue) ||
+                    draft.length >= MAX_LADDER_LOADS
+                  }
+                  onClick={() => {
+                    triggerHaptic("selection")
+                    setLadder(tidyLadder([...draft, ladderValue]))
+                  }}
+                  variant="secondary"
+                >
+                  <Plus className="size-4" />
+                  Add {formatKg(ladderValue)} kg
+                </Button>
+                <Button
+                  className="h-10 flex-1 rounded-2xl"
+                  disabled={draft.length === 0}
+                  onClick={() => {
+                    triggerHaptic("success")
+                    write({ availableLoadsKg: tidyLadder(draft) })
+                    setLadder(null)
+                  }}
+                >
+                  Save loads
+                </Button>
+              </div>
+              {ladder ? (
+                <button
+                  aria-label={`Discard changes to ${active.label} loads`}
+                  className="interactive-spring mt-1 h-9 w-full rounded-2xl text-xs font-bold text-muted-foreground"
+                  onClick={() => {
+                    triggerHaptic("selection")
+                    setLadder(null)
+                  }}
+                  type="button"
+                >
+                  Cancel
+                </button>
+              ) : null}
+            </>
+          ) : facetInUse === "convert" ? (
+            // Turning a list into even steps throws away what it says, so it
+            // is a thing to press rather than something a dial does behind it.
+            <div className="mt-2 space-y-2 text-center">
+              <p className="text-[11px] text-muted-foreground">
+                This station is described by the loads it has.
+              </p>
+              <Button
+                className="h-10 w-full rounded-2xl"
+                onClick={() => {
+                  triggerHaptic("warning")
+                  write({
+                    incrementKg: 2.5,
+                    minimumKg: isLadder ? firstLoad(grid) : 0,
+                  })
+                  setFacet("step")
+                }}
+                variant="secondary"
+              >
+                Use even steps instead
+              </Button>
+            </div>
+          ) : (
+            <>
               <RotaryKnob
                 ariaLabel={`${active.label} ${facet === "step" ? "load step" : "lightest load"}`}
                 className="mx-auto mt-2"
@@ -251,12 +430,14 @@ export function StationPicker({
                 min={facet === "step" ? STEP_RANGE.min : START_RANGE.min}
                 onChange={(value) =>
                   write(
-                    facet === "step"
-                      ? { incrementKg: value }
-                      : { minimumKg: value }
+                    stepPatch(
+                      facet === "step"
+                        ? { incrementKg: value }
+                        : { minimumKg: value }
+                    )
                   )
                 }
-                size={152}
+                size={240}
                 step={facet === "step" ? STEP_RANGE.step : START_RANGE.step}
                 unit={facet === "step" ? "kg step" : "kg lightest"}
                 value={
@@ -270,12 +451,6 @@ export function StationPicker({
                 }
               />
             </>
-          ) : (
-            // An imported ladder states loads this app cannot re-derive. It is
-            // shown and used as it is, never rewritten into even steps.
-            <p className="mt-2 text-center text-[11px] text-muted-foreground">
-              Fixed loads from a backup. Remove the station to use even steps.
-            </p>
           )}
           {active.id ? (
             <button

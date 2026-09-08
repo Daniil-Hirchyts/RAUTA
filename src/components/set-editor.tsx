@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Stepper } from "@/components/ui/stepper"
 import { triggerHaptic } from "@/lib/haptics"
 import {
+  firstLoad,
   formatKg,
   isMeasuredInKg,
   resistanceModeLabel,
@@ -19,11 +20,29 @@ import type { ExerciseSummary } from "@/types"
  *  evidence: nothing leaves this shape until the set is confirmed. */
 export type SetEditorValue = {
   mode: ResistanceMode
-  kg: number
+  /**
+   * The load, or null while there is none to state.
+   *
+   * Null is not zero. Zero is a real reading — an empty bar, a machine with no
+   * assistance dialled in — while null says the load has not been established
+   * yet, which is what happens when nothing comparable has been logged at this
+   * station. The set cannot be recorded until it becomes a number.
+   */
+  kg: number | null
   reps: number
   /** Reps left in reserve, or null when the person did not judge it. */
   rir: number | null
   side: SetSide
+  /**
+   * Where this set is measured: its station, its basis, and the loads that
+   * station offers.
+   *
+   * Carried on the value rather than read from the current selection, because
+   * the two are not the same thing. Correcting the reps of a set logged last
+   * week must leave it on the machine it was performed on, whatever machine is
+   * selected for the next set.
+   */
+  context: LoadContext
 }
 
 const RIR_CHOICES = [null, 0, 1, 2, 3, 4] as const
@@ -93,7 +112,6 @@ function ChipRow({
  * a prescription cannot quietly become a record.
  */
 export function SetEditor({
-  context,
   exercise,
   modes,
   onCancel,
@@ -103,7 +121,6 @@ export function SetEditor({
   submitLabel,
   value,
 }: {
-  context: LoadContext
   exercise: ExerciseSummary
   modes: ResistanceMode[]
   onCancel?: () => void
@@ -117,18 +134,29 @@ export function SetEditor({
 }) {
   const sides = sideOptions(exercise)
   const measured = isMeasuredInKg(value.mode)
+  const { context } = value
+  // Nothing to record until the load is a number. The button says so rather
+  // than accepting a set with a load nobody stated.
+  const unestablished = measured && value.kg === null
 
   return (
     <div className="space-y-2">
       {measured ? (
         <Stepper
-          canDecrement={value.kg > 0}
-          display={formatKg(value.kg)}
+          canDecrement={value.kg !== null && value.kg > 0}
+          display={value.kg === null ? "—" : formatKg(value.kg)}
           label={value.mode === "assistance" ? "Assistance" : "Load"}
           onStep={(direction) =>
             onChange((current) => ({
               ...current,
-              kg: stepLoad(current.kg, direction, context.grid),
+              // From unset, stepping up establishes the lightest load this
+              // station has; stepping down states nothing at all.
+              kg:
+                current.kg === null
+                  ? direction === 1
+                    ? firstLoad(current.context.grid)
+                    : null
+                  : stepLoad(current.kg, direction, current.context.grid),
             }))
           }
           unit={
@@ -226,13 +254,16 @@ export function SetEditor({
         ) : null}
         <Button
           className="h-11 flex-[2] rounded-2xl"
+          disabled={unestablished}
           onClick={() => {
             triggerHaptic("success")
             onSubmit()
           }}
         >
           <Check className="size-5" />
-          {submitLabel}
+          {unestablished
+            ? `Dial in the ${value.mode === "assistance" ? "assistance" : "load"}`
+            : submitLabel}
         </Button>
       </div>
     </div>

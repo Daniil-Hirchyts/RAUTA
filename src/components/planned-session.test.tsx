@@ -46,6 +46,24 @@ function renderPlannedDetail(session: PlannedSessionView) {
   return workout
 }
 
+/**
+ * Confirms the first prescribed set of the first exercise.
+ *
+ * The prescription names reps and effort but, until something has been logged
+ * at this station, no load — so the person states the one they used. That is
+ * the point: a set is recorded from what was performed, never from what was
+ * planned.
+ */
+async function logFirstPlannedSet(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getAllByRole("button", { name: /^Log set 1 of / })[0])
+  const load = screen.queryByRole("group", { name: "Load" })
+  if (load)
+    await user.click(
+      within(load).getByRole("button", { name: "Increase load" })
+    )
+  await user.click(screen.getByRole("button", { name: "Save set 1" }))
+}
+
 async function startNow(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: "Start workout" }))
   await user.click(screen.getByRole("button", { name: "Start now" }))
@@ -147,10 +165,7 @@ describe("planned sessions in the existing workout UI", () => {
 
     const exercise = draft.exercises[0]
     const first = exercise.sets[0]
-    await user.click(
-      screen.getAllByRole("button", { name: /^Log set 1 of / })[0]
-    )
-    await user.click(screen.getByRole("button", { name: "Save set 1" }))
+    await logFirstPlannedSet(user)
 
     const recorded = records().data.activeWorkout!.exercises.find(
       (item) => item.id === exercise.id
@@ -228,10 +243,7 @@ describe("planned sessions in the existing workout UI", () => {
       screen.getAllByRole("button", { name: "Find alternative" }).length
     ).toBeGreaterThan(0)
 
-    await user.click(
-      screen.getAllByRole("button", { name: /^Log set 1 of / })[0]
-    )
-    await user.click(screen.getByRole("button", { name: "Save set 1" }))
+    await logFirstPlannedSet(user)
     await user.click(
       screen.getAllByRole("button", { name: "Find alternative" })[0]
     )
@@ -253,10 +265,7 @@ describe("planned sessions in the existing workout UI", () => {
     const performed = draft.exercises[0]
     const untouched = draft.exercises[1]
 
-    await user.click(
-      screen.getAllByRole("button", { name: /^Log set 1 of / })[0]
-    )
-    await user.click(screen.getByRole("button", { name: "Save set 1" }))
+    await logFirstPlannedSet(user)
 
     useActiveWorkout.getState().cancel()
 
@@ -277,10 +286,7 @@ describe("planned sessions in the existing workout UI", () => {
     renderPlannedDetail(sessions[0])
 
     await startNow(user)
-    await user.click(
-      screen.getAllByRole("button", { name: /^Log set 1 of / })[0]
-    )
-    await user.click(screen.getByRole("button", { name: "Save set 1" }))
+    await logFirstPlannedSet(user)
     await user.click(screen.getByRole("button", { name: "Finish workout" }))
 
     // The same confirmation, telling the truth about what it is about to write.
@@ -405,5 +411,50 @@ describe("planned sessions in the existing workout UI", () => {
     expect(useActiveWorkout.getState().start(workout)).toBe(false)
     expect(useActiveWorkout.getState().session).toBeNull()
     expect(records().data.activeWorkout).toBeNull()
+  })
+
+  it("shows a prescribed load without letting it become a set at another station", async () => {
+    const user = userEvent.setup()
+    const sessions = week()
+    const workout = renderPlannedDetail(sessions[0])
+    await startNow(user)
+
+    // The plan prescribes against the station the engine planned for. Put a
+    // load on that prescription, then move to a machine it was not measured at.
+    const draft = records().data.activeWorkout!
+    const exercise = draft.exercises[0]
+    const planned = exercise.sets.find((set) => set.setType === "working")!
+    act(() => {
+      const data = structuredClone(records().data)
+      const target = data
+        .activeWorkout!.exercises.find((item) => item.id === exercise.id)!
+        .sets.find((item) => item.id === planned.id)!
+      target.target = {
+        ...target.target!,
+        resistance: {
+          type: "external_load",
+          kg: 40,
+          basis: "total",
+          stationId: "dumbbell",
+        },
+      }
+      useTrainingRecords.setState({ data })
+    })
+
+    await user.click(
+      screen.getAllByRole("button", { name: /^Log set \d of / })[0]
+    )
+    await user.click(
+      screen.getByRole("button", {
+        name: "Add another station for this exercise",
+      })
+    )
+
+    // The prescription stays on the card; the dial does not inherit its load.
+    const load = screen.getByRole("group", { name: "Load" })
+    expect(within(load).getByText("—")).toBeInTheDocument()
+    const [submit] = screen.getAllByRole("button", { name: /Dial in the load/ })
+    expect(submit).toHaveAttribute("aria-disabled", "true")
+    expect(workout).toBeTruthy()
   })
 })

@@ -35,9 +35,12 @@ export function ActiveWorkoutTimer({
   const isPaused = session.runningSince === null
 
   return (
-    <div className="active-workout-timer pointer-events-auto flex items-center gap-2.5 rounded-full border border-primary/25 bg-background/85 py-3 pl-5 pr-3 shadow-lg shadow-black/40 backdrop-blur-xl">
+    <div className="active-workout-timer pointer-events-auto flex items-center gap-2 rounded-full border border-primary/25 bg-background/85 py-3 pr-2.5 pl-4 shadow-lg shadow-black/40 backdrop-blur-xl min-[360px]:gap-2.5 min-[360px]:pr-3 min-[360px]:pl-5">
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-bold tracking-[0.16em] text-primary uppercase">
+        {/* Narrow phones give the dock about 290px. Everything in it is a
+            fixed width, so on those the type steps down rather than the
+            status wrapping over the clock. */}
+        <p className="truncate text-[11px] font-bold tracking-[0.1em] text-primary uppercase min-[360px]:text-[13px] min-[360px]:tracking-[0.16em]">
           {isPaused ? "Paused" : "In progress"}
         </p>
         <p
@@ -49,9 +52,16 @@ export function ActiveWorkoutTimer({
         </p>
       </div>
 
-      <div className="flex flex-col items-end gap-1.5">
-        <p className="text-[15px] font-semibold text-muted-foreground tabular-nums">
-          {completed} of {total} done
+      <div className="flex shrink-0 flex-col items-end gap-1.5">
+        <p className="text-[13px] font-semibold whitespace-nowrap text-muted-foreground tabular-nums min-[360px]:text-[15px]">
+          {/* The narrow phone keeps the count and gives the room back to the
+              status beside it, which is the half that reads as a sentence. */}
+          <span className="min-[360px]:hidden">
+            {completed}/{total}
+          </span>
+          <span className="hidden min-[360px]:inline">
+            {completed} of {total} done
+          </span>
         </p>
         <ol
           aria-hidden="true"
@@ -75,7 +85,7 @@ export function ActiveWorkoutTimer({
       <div className="flex items-center gap-1.5">
         <Button
           aria-label={isPaused ? "Resume workout" : "Pause workout"}
-          className="size-11 shrink-0 rounded-full"
+          className="size-10 shrink-0 rounded-full min-[360px]:size-11"
           onClick={() => {
             triggerHaptic("medium")
             if (isPaused) onResume()
@@ -84,12 +94,16 @@ export function ActiveWorkoutTimer({
           size="icon"
           variant="secondary"
         >
-          {isPaused ? <Play className="size-5" /> : <Pause className="size-5" />}
+          {isPaused ? (
+            <Play className="size-5" />
+          ) : (
+            <Pause className="size-5" />
+          )}
         </Button>
 
         <Button
           aria-label={exercise ? `Skip ${exercise.name}` : "Next exercise"}
-          className="size-11 shrink-0 rounded-full"
+          className="size-10 shrink-0 rounded-full min-[360px]:size-11"
           disabled={!onNext}
           onClick={() => {
             triggerHaptic("light")

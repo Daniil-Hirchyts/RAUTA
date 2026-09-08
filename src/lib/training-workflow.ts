@@ -4,6 +4,7 @@ import {
   loadContextFor,
   resistanceModes,
   resolveLoadContext,
+  type ResistanceMode,
 } from "@/lib/resistance"
 import { buildTrainingEngineInputs } from "@/lib/training-engine-adapter"
 import { useFilters } from "@/store/use-filters"
@@ -290,13 +291,20 @@ export function nextPerformance(
    *  name every input it depends on; the live store otherwise. */
   data: PersistedTrainingStateLatest = useTrainingRecords.getState().data,
   increments: Record<string, number> = useFilters.getState()
-    .equipmentLoadIncrements
+    .equipmentLoadIncrements,
+  /** The measurement being logged, when the editor is open on one. A set
+   *  logged as assistance must not be answered with a recommendation about
+   *  load, and the wording on screen has to match the dial under it. */
+  loggedMode?: ResistanceMode
 ) {
   const indexed = trainingIndex().byId.get(exercise.exerciseId)
   const catalogueExercise = EXERCISES_BY_ID.get(exercise.exerciseId)
   if (!indexed || !catalogueExercise) return null
   const target = exercise.sets.find((s) => s.setType === "working")?.target
-  const mode = target?.resistance.type ?? resistanceModes(catalogueExercise)[0]
+  const mode =
+    loggedMode ??
+    target?.resistance.type ??
+    resistanceModes(catalogueExercise)[0]
   // Legacy workouts are read live: they carry no sets, so they can move a
   // recommendation's staleness but never its load.
   const history = toTrainingHistory(data, useWorkouts.getState().workouts)

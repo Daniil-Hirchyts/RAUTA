@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest"
 
+import { createGymLibBackup, importGymLibData } from "@/lib/app-backup"
+import { newStationId } from "@/lib/resistance"
 import { formatPrescription } from "@/lib/training-plan"
 import {
   engineLoadPreferences,
   generateAndSavePlan,
+  nextPerformance,
   planningEquipment,
 } from "@/lib/training-workflow"
 import { useFilters } from "@/store/use-filters"
@@ -212,5 +215,184 @@ describe("load context reaching the engine", () => {
         restSeconds: 120,
       })
     ).toBe("3 × 8–12 · RIR 2 · 80 kg · 120s rest")
+  })
+
+  it("never lets a deleted station's load become another machine's history", async () => {
+    // A rack described, trained on twice, then taken out of the settings.
+    const retired = newStationId("barbell")
+    const retiredId = store().saveLoadConfiguration({
+      exerciseId: BARBELL_BENCH,
+      stationId: retired,
+      basis: "total",
+      grid: { incrementKg: 2.5 },
+    })
+    store().selectLoadConfiguration(BARBELL_BENCH, retiredId)
+    logSessions({
+      type: "external_load",
+      kg: 80,
+      stationId: retired,
+      basis: "total",
+    })
+    const probe = {
+      id: "probe",
+      exerciseId: BARBELL_BENCH,
+      sets: [
+        { id: "probe-set", setType: "working" as const, side: "both" as const },
+      ],
+    }
+    expect(nextPerformance(probe, "2026-09-06T12:00:00.000Z")).toMatchObject({
+      action: "increase_load",
+      resistance: { kg: 82.5 },
+    })
+
+    store().removeLoadConfiguration(retiredId)
+    const replacement = newStationId("barbell")
+    expect(replacement).not.toBe(retired)
+    const replacementId = store().saveLoadConfiguration({
+      exerciseId: BARBELL_BENCH,
+      stationId: replacement,
+      basis: "total",
+      grid: { incrementKg: 2.5 },
+    })
+    store().selectLoadConfiguration(BARBELL_BENCH, replacementId)
+
+    // The new machine has no history of its own, and the old machine's 80 kg
+    // is not offered for it.
+    const afterSwap = nextPerformance(probe, "2026-09-06T12:00:00.000Z")
+    expect(afterSwap).toMatchObject({
+      action: "calibrate",
+      resistance: { type: "unknown" },
+    })
+    expect(afterSwap?.reasons).toContain("context_changed")
+    // The sets themselves still name the machine they were performed at.
+    expect(
+      store().data.sessions.flatMap((session) =>
+        session.exercises.flatMap((exercise) =>
+          exercise.sets.map((set) =>
+            "stationId" in set.resistance ? set.resistance.stationId : null
+          )
+        )
+      )
+    ).toEqual([retired, retired, retired, retired, retired, retired])
+
+    // And it survives a reload and a round trip through a manual backup.
+    const backup = createGymLibBackup(undefined, true, true)
+    await useTrainingRecords.persist.rehydrate()
+    importGymLibData(backup)
+    expect(nextPerformance(probe, "2026-09-06T12:00:00.000Z")).toMatchObject({
+      action: "calibrate",
+      reasons: ["context_changed"],
+    })
+    expect(
+      store().data.settings.loadConfigurations.map((item) => item.stationId)
+    ).toEqual([replacement])
+  }, 30000)
+
+  it("plans on the same rack the set editor logs against", () => {
+    const id = store().saveLoadConfiguration({
+      exerciseId: BARBELL_BENCH,
+      stationId: "barbell",
+      basis: "total",
+      grid: { availableLoadsKg: [40, 60, 80, 100] },
+    })
+    store().selectLoadConfiguration(BARBELL_BENCH, id)
+    logSessions({
+      type: "external_load",
+      kg: 80,
+      stationId: "barbell",
+      basis: "total",
+    })
+
+    expect(engineLoadPreferences().loadGrids?.[BARBELL_BENCH]).toEqual({
+      availableLoadsKg: [40, 60, 80, 100],
+    })
+    // The prescription sits on a rung of that rack, and the engine says why it
+    // is not simply the next one: 80 to 100 is a jump no plate makes.
+    const bench = plannedBench()
+    expect([40, 60, 80, 100]).toContain(
+      "kg" in bench!.workingSets[0].resistance
+        ? bench!.workingSets[0].resistance.kg
+        : null
+    )
+    expect(bench?.progression.reasons).toContain("coarse_load_grid")
+
+    // Redescribing the rack changes what comes next, never what was performed.
+    const before = JSON.stringify(store().data.sessions)
+    store().saveLoadConfiguration({
+      id,
+      exerciseId: BARBELL_BENCH,
+      stationId: "barbell",
+      basis: "total",
+      grid: { availableLoadsKg: [45, 65, 85] },
+    })
+    expect(JSON.stringify(store().data.sessions)).toBe(before)
+  }, 30000)
+
+  it("answers about the measurement being logged, not another one", () => {
+    // Two sessions of assisted pull-ups, logged as assistance.
+    const ASSISTED = "0017"
+    for (const day of [1, 4]) {
+      store().startFreeWorkout([ASSISTED], `2026-09-0${day}T10:00:00.000Z`)
+      const exercise = store().data.activeWorkout!.exercises[0]
+      for (let set = 0; set < 3; set += 1) {
+        const setDraftId = store().addUnplannedSet({
+          exerciseEntryId: exercise.id,
+          setType: "working",
+          side: "both",
+        })
+        store().recordSet({
+          exerciseEntryId: exercise.id,
+          setDraftId,
+          observation: {
+            reps: 12,
+            rir: 2,
+            resistance: {
+              type: "assistance",
+              kg: 20,
+              stationId: "assistance",
+              basis: "total",
+            },
+            completed: true,
+            timestamp: `2026-09-0${day}T10:1${set}:00.000Z`,
+          },
+        })
+      }
+      store().completeWorkout("completed", `2026-09-0${day}T10:30:00.000Z`)
+    }
+    const probe = {
+      id: "probe",
+      exerciseId: ASSISTED,
+      sets: [
+        { id: "probe-set", setType: "working" as const, side: "both" as const },
+      ],
+    }
+
+    // Asked about assistance — the measurement it was trained in — the engine
+    // answers in assistance, from the sets that were really logged.
+    const asAssistance = nextPerformance(
+      probe,
+      "2026-09-06T12:00:00.000Z",
+      undefined,
+      undefined,
+      "assistance"
+    )
+    expect(asAssistance?.resistance).toMatchObject({
+      type: "assistance",
+      kg: 20,
+      stationId: "assistance",
+    })
+    expect(asAssistance?.reasons).not.toContain("context_changed")
+    // Asked about weight hung off a belt, it says it has nothing: 20 kg of
+    // help is not 20 kg of load, and the editor's wording must not disagree
+    // with the dial under it.
+    const asLoad = nextPerformance(
+      probe,
+      "2026-09-06T12:00:00.000Z",
+      undefined,
+      undefined,
+      "external_load"
+    )
+    expect(asLoad?.resistance).toEqual({ type: "unknown" })
+    expect(asLoad?.action).toBe("calibrate")
   })
 })
