@@ -723,9 +723,20 @@ describe("App", () => {
     expect(
       screen.getByRole("heading", { name: "My workouts" })
     ).toBeInTheDocument()
+    // Scoped for the same reason as above: the detail page this came back
+    // from is still dissolving, and it is an inert copy of a workouts page.
+    // The card stamps the day rather than spelling the date out, so the whole
+    // date is what the card calls itself.
+    const workoutsPage = document.querySelector<HTMLElement>(
+      '.app-page-layer[data-active="true"]'
+    )!
     const dateLabel = formatDateShort(today)
-    expect(screen.getByText(dateLabel)).toBeInTheDocument()
-    expect(screen.getByText("2 exercises")).toBeInTheDocument()
+    expect(
+      within(workoutsPage).getByRole("button", {
+        name: `${dateLabel} workout, 2 exercises`,
+      })
+    ).toBeInTheDocument()
+    expect(within(workoutsPage).getByText(/2 exercises/)).toBeInTheDocument()
   })
 
   it("displays equipment and exercise counts under the page title instead of in buttons", async () => {

@@ -142,6 +142,9 @@ export type PersistedProgramSnapshot = {
 
 export type PersistedProgramRecord = {
   id: string
+  /** One-session prescriptions use the same engine snapshot without becoming
+   *  the user's active multi-session plan. Missing means `plan` for v1 data. */
+  kind?: "plan" | "workout"
   lifecycle: "active" | "completed" | "archived"
   createdAt: string
   snapshot: PersistedProgramSnapshot

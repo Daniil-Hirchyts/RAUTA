@@ -71,10 +71,9 @@ describe("next-week UI", () => {
     ).not.toBeInTheDocument()
   })
 
-  it("reuses PlanWeekPage as continuation and sends only selected days", async () => {
+  it("reuses PlanWeekPage as a dated continuation", async () => {
     const user = userEvent.setup()
     const onCreated = vi.fn()
-    const adapt = vi.spyOn(engine, "adaptTrainingProgram")
     render(
       <PlanWeekPage
         onBack={() => {}}
@@ -85,26 +84,21 @@ describe("next-week UI", () => {
     )
 
     expect(
-      screen.getByRole("heading", { name: "Plan next week" })
+      screen.getByRole("heading", { name: "Extend training plan" })
     ).toBeInTheDocument()
     expect(
-      screen.getByText("This week is done. Let’s plan the next one.")
+      screen.getByText("Choose every date you want to add.")
     ).toBeInTheDocument()
     for (const asked of [/goal/i, /how old/i, /equipment/i, /experience/i])
       expect(screen.queryByRole("radiogroup", { name: asked })).toBeNull()
 
-    await user.click(
-      screen.getByRole("checkbox", { name: "Wednesday" })
-    )
-    await user.click(screen.getByRole("checkbox", { name: "Saturday" }))
-    await user.click(screen.getByRole("button", { name: "Plan next week" }))
+    await user.click(screen.getByRole("button", { name: "Extend plan" }))
 
     await waitFor(() => expect(onCreated).toHaveBeenCalledOnce())
-    expect(adapt.mock.calls[0][0].mode).toBe("next_week")
-    expect(adapt.mock.calls[0][0].request.schedule.days).toEqual([0, 4, 5])
+    expect(activeProgramRecord()?.snapshot.weeks[0].sessions).toHaveLength(3)
     expect(activeProgramRecord()?.revision).toMatchObject({
       sourceProgramId: sessions[0].programId,
-      reason: "next_week",
+      reason: "manual_regeneration",
     })
   })
 
@@ -132,7 +126,7 @@ describe("next-week UI", () => {
   it("shows a controlled RAUTA refusal without replacing the source plan", async () => {
     const user = userEvent.setup()
     const onCreated = vi.fn()
-    vi.spyOn(engine, "adaptTrainingProgram").mockReturnValue({
+    vi.spyOn(engine, "generateTrainingProgram").mockReturnValue({
       status: "infeasible",
       issues: [{ code: "VOLUME_LIMIT" }],
       suggestions: [],
@@ -146,9 +140,9 @@ describe("next-week UI", () => {
       />
     )
 
-    await user.click(screen.getByRole("button", { name: "Plan next week" }))
+    await user.click(screen.getByRole("button", { name: "Extend plan" }))
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "I couldn't build next week from these settings."
+      /volume/i
     )
     expect(onCreated).not.toHaveBeenCalled()
     expect(records().data.programs).toHaveLength(1)

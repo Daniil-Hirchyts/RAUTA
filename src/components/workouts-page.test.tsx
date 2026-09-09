@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it } from "vitest"
 
 import { WorkoutsPage } from "@/components/workouts-page"
@@ -78,7 +79,7 @@ describe("WorkoutsPage", () => {
     expect(screen.queryByText(/In progress/)).not.toBeInTheDocument()
   })
 
-  it("separates past workouts and shows their completion stats", () => {
+  it("separates past workouts and shows their completion stats", async () => {
     const pastId = useWorkouts.getState().createWorkout({
       name: "Past session",
       date: "2026-08-31",
@@ -100,8 +101,16 @@ describe("WorkoutsPage", () => {
 
     renderPage()
 
-    expect(screen.getByRole("heading", { name: "Next workouts" })).toBeVisible()
-    expect(screen.getByRole("heading", { name: "Past workouts" })).toBeVisible()
+    // Tabs are present
+    expect(screen.getByRole("tab", { name: /Next/ })).toBeVisible()
+    expect(screen.getByRole("tab", { name: /Past/ })).toBeVisible()
+
+    // The "Next" tab is active by default, showing the upcoming workout
+    expect(screen.getByRole("tab", { name: /Next/ })).toHaveAttribute("aria-selected", "true")
+
+    // Switch to "Past" to see completed workout stats
+    await userEvent.click(screen.getByRole("tab", { name: /Past/ }))
+
     expect(screen.getByText("15:00")).toBeVisible()
     expect(screen.getByText("118 kcal")).toBeVisible()
     expect(

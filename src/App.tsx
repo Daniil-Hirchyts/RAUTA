@@ -16,6 +16,7 @@ import {
   Plus,
   Search,
   SearchX,
+  Sparkles,
   X,
 } from "lucide-react"
 
@@ -76,13 +77,32 @@ import {
   EXERCISES,
   EXERCISES_BY_ID,
   filterExercises,
-  supportingFromIndex,
 } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
+import {
+  createEngineWorkout,
+  ensureEngineWorkout,
+} from "@/lib/engine-workout"
 import { syncICloudNow } from "@/lib/icloud-sync"
 import { isNative } from "@/lib/native"
 import { substituteRunningPlannedExercise } from "@/lib/planned-substitution"
-import { replacementIds } from "@/lib/training-workflow"
+import {
+  replacementIds,
+  buildTrainingRequest,
+  trainingIndex,
+} from "@/lib/training-workflow"
+import {
+  buildTrainingEngineInputs,
+  toEngineEquipment,
+} from "@/lib/training-engine-adapter"
+import { rankExerciseCandidates } from "@/training/planning/rank"
+import { useTrainingRecords } from "@/store/use-training-records"
+import {
+  refreshFutureWorkoutPrescriptions,
+  deleteScheduledWorkout,
+  substituteScheduledPlannedExercise,
+  updateScheduledWorkoutExercises,
+} from "@/lib/training-edits"
 import { cn } from "@/lib/utils"
 import {
   appNavigationReducer,
@@ -325,10 +345,48 @@ export function App() {
   const [bodySide, setBodySide] = useState<"front" | "back">("front")
   const equipmentScrollRef = useRef<HTMLElement>(null)
 
-  const exercises = useMemo(
-    () => filterExercises(EXERCISES, selectedMuscles, selectedEquipment),
-    [selectedEquipment, selectedMuscles]
+  const trainingProfile = useTrainingProfile((state) => state.profile)
+  const trainingData = useTrainingRecords((state) => state.data)
+  const equipmentLoadIncrements = useFilters(
+    (state) => state.equipmentLoadIncrements
   )
+  const exercises = useMemo(() => {
+    // The adapter reads these values through getState(); name the subscribed
+    // snapshots here so React refreshes ranking when they change.
+    void equipmentLoadIncrements
+    void trainingData
+    void trainingProfile
+    void workouts
+    const request = buildTrainingRequest(
+      buildTrainingEngineInputs({
+        availableEquipment: toEngineEquipment(selectedEquipment),
+        preferredExerciseIds: favoriteIds,
+      }),
+      new Date().toISOString()
+    )
+    const ranked = rankExerciseCandidates(request, {
+      index: trainingIndex(),
+      focus: selectedMuscles,
+      selectedExerciseIds: selectedIds,
+    })
+    const scores = new Map(
+      ranked.map((item, index) => [item.exerciseId, index])
+    )
+    return filterExercises(EXERCISES, selectedMuscles, selectedEquipment).sort(
+      (a, b) =>
+        (selectedIds.includes(a.id) ? -1 : (scores.get(a.id) ?? Infinity)) -
+        (selectedIds.includes(b.id) ? -1 : (scores.get(b.id) ?? Infinity))
+    )
+  }, [
+    selectedEquipment,
+    selectedMuscles,
+    equipmentLoadIncrements,
+    trainingData,
+    trainingProfile,
+    workouts,
+    favoriteIds,
+    selectedIds,
+  ])
 
   const visibleExercises = useMemo(() => {
     const shortlist = favoritesOnly
@@ -377,10 +435,6 @@ export function App() {
   }, [activePage.type, exercisesScrollRef])
 
   const pagedExercises = visibleExercises.slice(0, visibleCount)
-  const supportingIndex = useMemo(
-    () => supportingFromIndex(visibleExercises, selectedMuscles),
-    [selectedMuscles, visibleExercises]
-  )
 
   const persistedPages = pages
   const appSession = useMemo(
@@ -414,6 +468,7 @@ export function App() {
     (preferredWorkoutId?: string) => {
       triggerHaptic("medium")
       resetFilters()
+      useFilters.getState().setEquipment(useFilters.getState().gymEquipment)
       setSearch("")
       setSearchOpen(false)
       setPresetEditorOpen(false)
@@ -505,12 +560,11 @@ export function App() {
                     triggerHaptic("medium")
                     pushPage({ type: "plan-week", sourceProgramId })
                   }}
-                  onDelete={(workoutId) =>
-                    useWorkouts.getState().deleteWorkout(workoutId)
-                  }
-                  onSelect={(workout) =>
+                  onDelete={deleteScheduledWorkout}
+                  onSelect={(workout) => {
+                    ensureEngineWorkout(workout.id)
                     pushPage({ type: "workout-detail", workoutId: workout.id })
-                  }
+                  }}
                   onSettings={() => pushPage({ type: "settings" })}
                 />
               )
@@ -568,11 +622,14 @@ export function App() {
                   onAddExercise={() => startExerciseFlow(page.workoutId)}
                   onBack={popPage}
                   onDelete={() => {
-                    useWorkouts.getState().deleteWorkout(page.workoutId)
+                    deleteScheduledWorkout(page.workoutId)
                     resetPages([{ type: "workouts" }])
                   }}
                   onDiscard={() => useActiveWorkout.getState().cancel()}
-                  onFinish={() => useActiveWorkout.getState().finish()}
+                  onFinish={() => {
+                    useActiveWorkout.getState().finish()
+                    refreshFutureWorkoutPrescriptions()
+                  }}
                   onCopied={(workoutId) =>
                     replacePage({ type: "workout-detail", workoutId })
                   }
@@ -730,13 +787,6 @@ export function App() {
                             >
                               {pagedExercises.map((exercise, exerciseIndex) => (
                                 <Fragment key={exercise.id}>
-                                  {exerciseIndex === supportingIndex ? (
-                                    <h2 className="col-span-2 flex items-center gap-3 pt-3 pb-0.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                                      <span className="h-px flex-1 bg-border" />
-                                      Also works these muscles
-                                      <span className="h-px flex-1 bg-border" />
-                                    </h2>
-                                  ) : null}
                                   <ExerciseCard
                                     exercise={exercise}
                                     index={exerciseIndex}
@@ -915,6 +965,33 @@ export function App() {
                           </MorphingActionSlot>
                         ) : null}
                         {stage === 3 ? (
+                          <MorphingActionSlot
+                            visible={!selectMode && !preferredWorkoutId}
+                          >
+                            <AppControlButton
+                              aria-label="Build workout with RAUTA"
+                              className="mr-2.5"
+                              onClick={() => {
+                                try {
+                                  const workoutId = createEngineWorkout({
+                                    date: new Date().toISOString().slice(0, 10),
+                                    focusMuscles: selectedMuscles,
+                                  })
+                                  triggerHaptic("success")
+                                  resetPages([
+                                    { type: "workouts" },
+                                    { type: "workout-detail", workoutId },
+                                  ])
+                                } catch {
+                                  triggerHaptic("warning")
+                                }
+                              }}
+                            >
+                              <Sparkles />
+                            </AppControlButton>
+                          </MorphingActionSlot>
+                        ) : null}
+                        {stage === 3 ? (
                           <AppControlMorph className="mr-2.5" role="search">
                             <AppControlButton
                               aria-expanded={searchOpen}
@@ -1012,11 +1089,10 @@ export function App() {
                       .getState()
                       .workouts.find((item) => item.id === workoutId)
                     if (!workout) return
-                    useWorkouts.getState().updateWorkout(workoutId, {
-                      exerciseIds: [
-                        ...new Set([...workout.exerciseIds, ...selectedIds]),
-                      ],
-                    })
+                    updateScheduledWorkoutExercises(workoutId, [
+                      ...new Set([...workout.exerciseIds, ...selectedIds]),
+                    ])
+                    ensureEngineWorkout(workoutId)
                     triggerHaptic("success")
                     cancelSelectMode()
                     resetPages([
@@ -1065,20 +1141,22 @@ export function App() {
               content =
                 workout && exercise ? (
                   <ExerciseAlternativesPage
-                    alternativeExerciseIds={
-                      workout.planned ? replacementIds(exercise.id) : undefined
-                    }
+                    alternativeExerciseIds={replacementIds(
+                      exercise.id,
+                      workout.id
+                    )}
                     excludedExerciseIds={workout.exerciseIds}
                     exercise={exercise}
                     onBack={popPage}
                     onSwap={(replacement) => {
                       if (workout.planned) {
                         try {
-                          substituteRunningPlannedExercise(
-                            workout.id,
-                            exercise.id,
-                            replacement.id
-                          )
+                          const substitute =
+                            useActiveWorkout.getState().session?.workoutId ===
+                            workout.id
+                              ? substituteRunningPlannedExercise
+                              : substituteScheduledPlannedExercise
+                          substitute(workout.id, exercise.id, replacement.id)
                         } catch (error) {
                           const message =
                             error instanceof Error

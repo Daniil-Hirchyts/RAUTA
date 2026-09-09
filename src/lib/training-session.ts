@@ -1,4 +1,5 @@
 import { useTrainingRecords } from "@/store/use-training-records"
+import { buildEngineWorkoutProgram } from "@/lib/engine-workout"
 import type { PlannedWorkoutReference } from "@/store/use-workouts"
 import { toEngineProgramSnapshot } from "@/training-persistence/program"
 import type {
@@ -145,8 +146,32 @@ export function syncTrainingDraftExercises(exerciseIds: readonly string[]) {
   if (!draft) return
   for (const exerciseId of exerciseIds) {
     if (draft.exercises.some((item) => item.exerciseId === exerciseId)) continue
-    useTrainingRecords.getState().addExercise(exerciseId)
+    const prescribed = buildEngineWorkoutProgram({
+      date: new Date().toISOString().slice(0, 10),
+      exerciseIds: [exerciseId],
+    }).weeks[0].sessions[0].exercises[0]
+    useTrainingRecords.getState().addExercise(
+      exerciseId,
+      prescribed.workingSets.map((set) => ({
+        reps: { ...set.targetReps },
+        rir: set.targetRir,
+        resistance: structuredClone(set.resistance),
+      }))
+    )
   }
+  const current = useTrainingRecords.getState().data.activeWorkout
+  if (!current) return
+  const requested = exerciseIds.flatMap((exerciseId) => {
+    const entry = current.exercises.find((item) => item.exerciseId === exerciseId)
+    return entry ? [entry.id] : []
+  })
+  const retainedHistory = current.exercises
+    .filter((entry) => !exerciseIds.includes(entry.exerciseId))
+    .map((entry) => entry.id)
+  useTrainingRecords.getState().reorderExercises([
+    ...requested,
+    ...retainedHistory,
+  ])
 }
 
 /** The planned session a draft is performing, read back out of the immutable

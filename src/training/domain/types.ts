@@ -142,6 +142,8 @@ export type PlanningPreferences = {
 export type TrainingSchedule = {
   weekStart: string
   days: number[]
+  /** Explicit slots when rescheduling puts multiple sessions on one day. */
+  sessionDays?: number[]
   durationWeeks: number
 }
 export type ResistanceValue =
@@ -196,9 +198,7 @@ export type EffectiveSetRole = {
   provenance: "rule" | "curated"
 }
 export type AutomaticProgramming =
-  | "allowed"
-  | "specialized_only"
-  | "manual_only"
+  "allowed" | "specialized_only" | "manual_only"
 export type ExerciseMetadata = {
   exerciseId: string
   exerciseType:
@@ -262,10 +262,7 @@ export type ExerciseIndex = {
   byEquipment: ReadonlyMap<string, IndexedExercise[]>
   byMovementPattern: ReadonlyMap<MovementPattern, IndexedExercise[]>
   byFamily: ReadonlyMap<string, IndexedExercise[]>
-  byAutomaticProgramming: ReadonlyMap<
-    AutomaticProgramming,
-    IndexedExercise[]
-  >
+  byAutomaticProgramming: ReadonlyMap<AutomaticProgramming, IndexedExercise[]>
   byTracking: ReadonlyMap<ExerciseMetadata["tracking"], IndexedExercise[]>
   byMechanics: ReadonlyMap<ExerciseMetadata["mechanics"], IndexedExercise[]>
   byExerciseType: ReadonlyMap<
@@ -283,10 +280,7 @@ export type PlannedSet = {
   targetRir: number
   resistance: ResistanceValue
   loadAcquisition:
-    | "calibrate_by_rir"
-    | "history"
-    | "bodyweight"
-    | "band_resistance"
+    "calibrate_by_rir" | "history" | "bodyweight" | "band_resistance"
   side: "both"
   groupId?: string
 }

@@ -119,9 +119,8 @@
   --background: #171311;
   --foreground: #f6f0e5;
   --card: #261e1a;
-  /* Equipment renders use this near-black studio canvas. The same value on
-     the media and label areas removes the false edge between them. */
-  --equipment-card: rgb(30 30 30);
+  /* Equipment cards match the app's warm card surface. */
+  --equipment-card: var(--card);
   --card-foreground: var(--foreground);
   --popover: #211915;
   --popover-foreground: var(--foreground);
@@ -219,7 +218,11 @@
 
 .equipment-card-media {
   background:
-    radial-gradient(circle at 50% 42%, rgb(47 47 47 / 0.78), transparent 59%),
+    radial-gradient(
+      circle at 50% 42%,
+      color-mix(in oklch, var(--card), var(--foreground) 7%),
+      transparent 59%
+    ),
     var(--equipment-card);
 }
 
@@ -874,6 +877,214 @@ html[data-native="ios"] .app-drag-grain {
   pointer-events: none;
 }
 
+/* RAUTA keeps the floor of the workouts page rather than riding the list: the
+   week, the plan and the history all scroll behind this band and fade out
+   underneath it, so the character is in the same place on every visit. */
+.workouts-companion-dock {
+  position: absolute;
+  z-index: 20;
+  inset: auto 0 0;
+  /* The character overhangs the top of its bar, so the fade has to start
+     further up here than it does over a plain dock — far enough that the list
+     has faded out before it reaches the top of RAUTA's head. */
+  padding: 3.5rem var(--app-content-inset) var(--app-content-inset);
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in oklch, var(--background) 62%, transparent) 42%,
+    var(--background) 100%
+  );
+  pointer-events: none;
+}
+
+/* ── Sliding pill tabs ──────────────────────────────────────────────────
+   A bar of buttons with a pill that glides behind the active one.
+   Width + translateX are written inline by JS; the transition tweens.
+
+   Styled as a raised plate consistent with the app's warm obsidian
+   surface language: gradient background, inset hairline, gold border,
+   and the active pill carries the primary accent gradient with a glow. */
+
+.t-tabs {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--card), var(--foreground) 4%) 0%,
+      var(--card) 60%,
+      color-mix(in oklch, var(--card), black 10%) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, var(--foreground) 7%, transparent),
+    0 4px 12px -4px rgb(0 0 0 / 0.5);
+}
+
+.t-tab {
+  position: relative;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  flex: 1;
+  height: 38px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  border-radius: calc(var(--radius-lg) - 4px);
+  z-index: 1;
+  transition:
+    color var(--duration-fast) var(--ease-smooth-out),
+    opacity var(--duration-fast) var(--ease-smooth-out);
+}
+
+.t-tab:not([aria-selected="true"]):hover {
+  color: var(--foreground);
+}
+
+.t-tab[aria-selected="true"] {
+  color: var(--primary-foreground);
+}
+
+.t-tabs-pill {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  height: 38px;
+  width: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  background: var(--primary-gradient);
+  transform: translateX(0);
+  transition:
+    transform var(--duration-fast) var(--ease-smooth-out),
+    width var(--duration-fast) var(--ease-smooth-out);
+  will-change: transform, width;
+  z-index: 0;
+  pointer-events: none;
+  box-shadow:
+    0 2px 8px color-mix(in oklch, var(--primary) 40%, transparent),
+    inset 0 1px 0 color-mix(in oklch, white 18%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-tabs-pill,
+  .t-tab {
+    transition: none !important;
+  }
+}
+
+/* The list cards on the workouts page: a raised plate rather than a flat
+   rectangle. The hairline along the top edge is what does that — it reads as
+   the light catching an edge — and the gradient keeps the foot of the plate
+   in shadow so consecutive cards separate without a heavier border.
+
+   `data-state` says what the card is, and every state is a re-tint of the
+   same plate: history recedes, a plan warms towards the accent, and the
+   session being performed is the only one lit. */
+.workout-card {
+  position: relative;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--card), var(--foreground) 5%) 0%,
+      var(--card) 58%,
+      color-mix(in oklch, var(--card), black 14%) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, var(--foreground) 9%, transparent),
+    0 8px 18px -12px rgb(0 0 0 / 0.7);
+}
+
+.workout-card[data-state="plan"] {
+  border-color: color-mix(in oklch, var(--primary) 20%, var(--border));
+  background:
+    radial-gradient(
+      ellipse at 0% 50%,
+      color-mix(in oklch, var(--primary) 9%, transparent),
+      transparent 58%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--card), var(--foreground) 5%) 0%,
+      var(--card) 58%,
+      color-mix(in oklch, var(--card), black 14%) 100%
+    );
+}
+
+.workout-card[data-state="today"] {
+  border-color: color-mix(in oklch, var(--primary) 42%, var(--border));
+  background:
+    radial-gradient(
+      ellipse at 0% 50%,
+      color-mix(in oklch, var(--primary) 18%, transparent),
+      transparent 62%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--card), var(--foreground) 6%) 0%,
+      color-mix(in oklch, var(--card), var(--primary) 5%) 100%
+    );
+}
+
+.workout-card[data-state="live"] {
+  border-color: color-mix(in oklch, var(--primary) 58%, transparent);
+  background:
+    radial-gradient(
+      ellipse at 0% 50%,
+      color-mix(in oklch, var(--primary) 22%, transparent),
+      transparent 66%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--card), var(--foreground) 6%) 0%,
+      color-mix(in oklch, var(--card), var(--primary) 8%) 100%
+    );
+}
+
+/* Nothing was logged against it and the day has passed. Drawn as an outline
+   with no plate at all, so an unfinished day cannot be mistaken at a glance
+   for a session that happened. */
+.workout-card[data-state="unfinished"] {
+  border-style: dashed;
+  border-color: color-mix(in oklch, var(--border) 75%, transparent);
+  background: color-mix(in oklch, var(--card) 40%, transparent);
+  box-shadow: none;
+}
+
+.workout-card:active {
+  background-image:
+    linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--card), var(--foreground) 9%) 0%,
+      color-mix(in oklch, var(--card), var(--foreground) 3%) 100%
+    );
+}
+
+/* How much of a workout was actually completed, under its numbers. The track
+   is always drawn: a bar that only appears once it is full would make a
+   part-finished session look like the broken state. */
+.workout-progress {
+  overflow: hidden;
+  height: 3px;
+  border-radius: 9999px;
+  background: color-mix(in oklch, var(--foreground) 10%, transparent);
+}
+
+.workout-progress > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary-gradient);
+}
+
 /* A scroll viewport ends before the shell's lower curve. The subtle fade makes
    partially visible rows read as continuing content instead of looking as if
    the rounded mask accidentally sliced them. Bottom padding lets the final
@@ -1089,20 +1300,20 @@ html[data-native="ios"] .app-scroll-content {
 }
 
 .body-silhouette path {
-  fill: #2a2a2d;
-  stroke: #141416;
+  fill: #2d241f;
+  stroke: #100d0b;
   stroke-width: 3;
 }
 
 .muscle-region {
-  color: #37373b;
+  color: #3d322b;
   outline: none;
   filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.45));
 }
 
 .muscle-region path {
   fill: currentColor;
-  stroke: #141416;
+  stroke: #100d0b;
   stroke-width: 3;
   transition:
     color 160ms ease,
@@ -1111,7 +1322,7 @@ html[data-native="ios"] .app-scroll-content {
 }
 
 .muscle-region:focus-visible {
-  color: #55555c;
+  color: #5c4c42;
 }
 
 .muscle-region:focus-visible path {
@@ -1126,7 +1337,7 @@ html[data-native="ios"] .app-scroll-content {
   color: color-mix(
     in oklab,
     var(--primary) calc(var(--muscle-weight, 1) * 100%),
-    #37373b
+    #3d322b
   );
 }
 

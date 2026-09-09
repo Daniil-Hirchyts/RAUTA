@@ -42,7 +42,9 @@ export function generateSplitCandidates(input: OptimizationInput) {
     .map((t) => t.muscleId)
   const lower = all.filter((m) => !UPPER.includes(m))
   const upper = all.filter((m) => UPPER.includes(m))
-  const days = [...input.request.schedule.days].sort((a, b) => a - b)
+  const days = [
+    ...(input.request.schedule.sessionDays ?? input.request.schedule.days),
+  ].sort((a, b) => a - b)
   const structures = [
     { name: "full_body", groups: [all] },
     ...(days.length >= 2
@@ -64,7 +66,7 @@ export function generateSplitCandidates(input: OptimizationInput) {
   return structures.map(({ name, groups }) => ({
     name,
     sessions: days.map((day, i): PlannedSession => ({
-      id: `week-0/day-${day}`,
+      id: `week-0/day-${day}${input.request.schedule.sessionDays ? `/slot-${i}` : ""}`,
       scheduledAt: addDays(input.request.schedule.weekStart, day),
       focus: groups[i % groups.length],
       exercises: [],
@@ -122,8 +124,7 @@ export function hardConstructionChecks(
   const maximumWorkingSets =
     input.adaptation?.remainingWorkingSetBudget ??
     input.request.preferences.maxWeeklyWorkingSets
-  if (sets > (maximumWorkingSets ?? Infinity))
-    return false
+  if (sets > (maximumWorkingSets ?? Infinity)) return false
   const volume = weekVolume(week, input)
   const muscleVolumeBounds =
     input.adaptation?.remainingMuscleVolumeBounds ??

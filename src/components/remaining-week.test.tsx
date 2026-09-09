@@ -66,9 +66,13 @@ describe("RAUTA remaining-week actions", () => {
       expect(
         screen.getByRole("button", { name: "Train with RAUTA" })
       ).toHaveTextContent("I adjusted 2 remaining sessions")
-      const plan = screen.getByRole("region", { name: /Training plan/i })
-      expect(within(plan).getAllByRole("button")).toHaveLength(2)
-      await user.click(within(plan).getAllByRole("button")[0])
+      const plan = screen.getByRole("region", { name: /Next workouts/i })
+      expect(
+        within(plan).getAllByRole("button", { name: /workout,.*exercises/ })
+      ).toHaveLength(2)
+      await user.click(
+        within(plan).getAllByRole("button", { name: /workout,.*exercises/ })[0]
+      )
       expect(opened.mock.calls[0][0].planned.programId).toBe(
         activeProgramRecord()!.id
       )

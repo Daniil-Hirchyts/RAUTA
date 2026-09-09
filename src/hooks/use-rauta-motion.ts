@@ -175,11 +175,14 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
       viewport: frameBox(node),
       inset,
     })
-    // The source anchor can move while its page scrolls or the shell opens.
-    // Keep the portal inside the newly measured surface in the same frame.
-    const fitted = clampToBounds({ x: x.get(), y: y.get() }, bounds.current)
-    x.set(fitted.x)
-    y.set(fitted.y)
+    // Only what the person put somewhere is pulled back into the surface. At
+    // rest the character belongs to its slot, and a slot scrolled out of the
+    // surface is the page leaving — not the character escaping.
+    if (Math.hypot(x.get(), y.get()) > 0.5) {
+      const fitted = clampToBounds({ x: x.get(), y: y.get() }, bounds.current)
+      x.set(fitted.x)
+      y.set(fitted.y)
+    }
   }, [body, inset, rotate, scale, x, y])
 
   const stopFlight = useCallback(() => {
@@ -518,36 +521,30 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
 
   useEffect(() => {
     if (typeof window === "undefined") return
-    const remeasure = () => {
-      measure()
-      const next = clampToBounds({ x: x.get(), y: y.get() }, bounds.current)
-      x.set(next.x)
-      y.set(next.y)
-    }
-    remeasure()
+    // Measuring is the whole job: it puts back whatever a layout change left
+    // outside the surface, and leaves a character resting in its slot alone.
+    measure()
     const observer =
-      typeof ResizeObserver === "undefined"
-        ? null
-        : new ResizeObserver(remeasure)
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure)
     const shell = ref.current?.closest(".app-shell-frame")
     if (ref.current)
       observer?.observe(
         shell?.querySelector(".app-surface") ?? shell ?? ref.current
       )
-    shell?.addEventListener("transitionend", remeasure)
-    window.addEventListener("resize", remeasure)
-    window.visualViewport?.addEventListener("resize", remeasure)
-    // Scrolling is deliberately not listened for. The character sits in the
-    // shell rather than in the page, so a scroll neither moves it nor changes
-    // the surface it is bounded by — and re-measuring on every scroll frame
-    // only ever cost work.
+    shell?.addEventListener("transitionend", measure)
+    window.addEventListener("resize", measure)
+    window.visualViewport?.addEventListener("resize", measure)
+    // Scrolling is deliberately not listened for. The character travels with
+    // the page, and its slot is followed outside this hook; re-measuring here
+    // would clamp it back into the surface on every scroll frame, fighting the
+    // scroll it is supposed to be riding.
     return () => {
       observer?.disconnect()
-      shell?.removeEventListener("transitionend", remeasure)
-      window.removeEventListener("resize", remeasure)
-      window.visualViewport?.removeEventListener("resize", remeasure)
+      shell?.removeEventListener("transitionend", measure)
+      window.removeEventListener("resize", measure)
+      window.visualViewport?.removeEventListener("resize", measure)
     }
-  }, [measure, x, y])
+  }, [measure])
 
   useEffect(() => {
     if (disabled || reduced) {

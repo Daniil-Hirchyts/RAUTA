@@ -185,7 +185,7 @@ describe("first-run profile setup", () => {
     expect(useTrainingProfile.getState().onboarding.completed).toBe(false)
   })
 
-  it("leaves the exercise picker exactly as it was", async () => {
+  it("prefills workout equipment from the profile and allows session-specific changes", async () => {
     const user = userEvent.setup()
     useTrainingProfile.setState(completedOnboardingState())
     useFilters.getState().setGymEquipment(["barbell"])
@@ -196,10 +196,12 @@ describe("first-run profile setup", () => {
     await user.click(screen.getByRole("button", { name: /Front Chest/ }))
     await user.click(screen.getByRole("button", { name: /choose equipment/i }))
 
-    // The gym profile is not a filter: the picker still starts from nothing.
-    expect(useFilters.getState().selectedEquipment).toEqual([])
+    expect(useFilters.getState().selectedEquipment).toEqual(["barbell"])
     await user.click(screen.getByRole("checkbox", { name: "Dumbbell" }))
-    expect(useFilters.getState().selectedEquipment).toEqual(["dumbbell"])
+    expect(useFilters.getState().selectedEquipment).toEqual([
+      "barbell",
+      "dumbbell",
+    ])
     expect(useFilters.getState().gymEquipment).toEqual(["barbell"])
     await user.click(screen.getByRole("button", { name: /show exercises/i }))
     expect(

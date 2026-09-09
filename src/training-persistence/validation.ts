@@ -220,6 +220,7 @@ function validateProgramRecord(
   const snapshot = isRecord(value.snapshot) ? value.snapshot : undefined
   let valid =
     nonEmptyString(value.id) &&
+    (value.kind === undefined || ["plan", "workout"].includes(String(value.kind))) &&
     ["active", "completed", "archived"].includes(String(value.lifecycle)) &&
     isValidIsoTimestamp(value.createdAt) &&
     snapshot !== undefined &&

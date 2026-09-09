@@ -38,14 +38,14 @@ export function ProfileCompanion({ step }: { step: string }) {
   }
   const current = guidance[step] ?? guidance.Goal
   const reactionKey = `${profile.name}:${profile.age}:${profile.trainingExperience}:${profile.goal}:${profile.preferredSessionDurationMinutes}:${profile.health.status}`
+  // No box of its own: the character is pinned to the foot of the screen, and
+  // the step's own content closes up over the space it used to sit in.
   return (
-    <div className="mb-4 flex min-h-24 items-center justify-center px-1">
-      <Rauta
-        mood={current.mood}
-        size={94}
-        speech={current.text}
-        reactionKey={reactionKey}
-      />
-    </div>
+    <Rauta
+      mood={current.mood}
+      size={94}
+      speech={current.text}
+      reactionKey={reactionKey}
+    />
   )
 }

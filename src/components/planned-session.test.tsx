@@ -88,7 +88,7 @@ describe("planned sessions in the existing workout UI", () => {
     })
   })
 
-  it("lists the plan above next workouts and opens a session through the existing detail page", async () => {
+  it("lists program sessions with other workouts and opens the shared detail page", async () => {
     const user = userEvent.setup()
     const sessions = week()
     const opened: Workout[] = []
@@ -102,17 +102,15 @@ describe("planned sessions in the existing workout UI", () => {
       />
     )
 
-    const plan = screen.getByRole("region", { name: /training plan/i })
-    expect(within(plan).getAllByRole("button")).toHaveLength(sessions.length)
+    const plan = screen.getByRole("region", { name: /next workouts/i })
+    const cards = within(plan).getAllByRole("button", {
+      name: /workout,.*exercises/,
+    })
+    expect(cards).toHaveLength(sessions.length)
     expect(
-      within(plan).getAllByText(new RegExp(`· ${sessions[0].title}$`))
-    ).toHaveLength(sessions.length)
-    // A planned session is not repeated under Next workouts.
-    expect(
-      screen.queryByRole("region", { name: /next workouts/i })
+      screen.queryByRole("region", { name: /training plan/i })
     ).not.toBeInTheDocument()
-
-    await user.click(within(plan).getAllByRole("button")[0])
+    await user.click(cards[0])
     expect(opened).toHaveLength(1)
     expect(opened[0].planned).toEqual({
       programId: sessions[0].programId,
@@ -137,13 +135,12 @@ describe("planned sessions in the existing workout UI", () => {
     expect(screen.getByLabelText("Planned session")).toHaveTextContent(
       String(sessions[0].workingSets)
     )
-    // The plan owns the day and the exercise list; this page does not edit them.
     expect(
-      screen.queryByRole("button", { name: /Change date/ })
-    ).not.toBeInTheDocument()
+      screen.getByRole("button", { name: /Change date/ })
+    ).toBeInTheDocument()
     expect(
-      screen.queryByRole("button", { name: "Delete workout" })
-    ).not.toBeInTheDocument()
+      screen.getByRole("button", { name: "Delete workout" })
+    ).toBeInTheDocument()
   })
 
   it("starts a planned structured draft and logs an actual set against the planned one", async () => {
@@ -222,7 +219,7 @@ describe("planned sessions in the existing workout UI", () => {
     expect(JSON.stringify(records().data.programs[0])).toBe(originalProgram)
   })
 
-  it("offers planned alternatives only during the live session and locks a recorded exercise", async () => {
+  it("offers planned alternatives before and during the session and locks a recorded exercise", async () => {
     const user = userEvent.setup()
     const sessions = week()
     const workout = plannedWorkoutFor(sessions[0])!
@@ -236,8 +233,8 @@ describe("planned sessions in the existing workout UI", () => {
     )
 
     expect(
-      screen.queryByRole("button", { name: "Find alternative" })
-    ).not.toBeInTheDocument()
+      screen.getAllByRole("button", { name: "Find alternative" }).length
+    ).toBeGreaterThan(0)
     await startNow(user)
     expect(
       screen.getAllByRole("button", { name: "Find alternative" }).length
@@ -406,8 +403,8 @@ describe("planned sessions in the existing workout UI", () => {
       screen.getByRole("button", { name: "Plan unavailable" })
     ).toHaveAttribute("aria-disabled", "true")
     expect(
-      screen.queryByRole("button", { name: "Delete workout" })
-    ).not.toBeInTheDocument()
+      screen.getByRole("button", { name: "Delete workout" })
+    ).toBeInTheDocument()
     expect(useActiveWorkout.getState().start(workout)).toBe(false)
     expect(useActiveWorkout.getState().session).toBeNull()
     expect(records().data.activeWorkout).toBeNull()

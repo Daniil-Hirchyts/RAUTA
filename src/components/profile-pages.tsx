@@ -152,7 +152,10 @@ function ProfileStepFlow({
         </div>
 
         {step.dock ? (
-          <div className="app-surface-bottom-dock equipment-presets-dock">
+          <div
+            className="app-surface-bottom-dock equipment-presets-dock"
+            data-rauta-floor
+          >
             {step.dock}
           </div>
         ) : null}
@@ -306,7 +309,10 @@ export function ProfileEquipmentPage({
           <ProfileEquipmentPicker />
         </section>
         {presetEditorOpen ? null : (
-          <div className="app-surface-bottom-dock equipment-presets-dock">
+          <div
+            className="app-surface-bottom-dock equipment-presets-dock"
+            data-rauta-floor
+          >
             <ProfileEquipmentPresets className="px-(--app-content-inset)" />
           </div>
         )}

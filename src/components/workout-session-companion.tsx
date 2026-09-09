@@ -100,15 +100,15 @@ export function WorkoutSessionCompanion({
   // before structured logging keeps working without a companion.
   if (!draft) return null
 
+  // No box of its own: the character stands at the foot of the screen and
+  // comments on the session from there, whatever the page is scrolled to.
   return (
-    <div className="mx-(--app-content-inset) flex items-center gap-1.5">
-      <Rauta
-        label="RAUTA is following this workout"
-        mood={mood}
-        reactionKey={`${sets}:${completed}`}
-        size={72}
-        speech={text}
-      />
-    </div>
+    <Rauta
+      label="RAUTA is following this workout"
+      mood={mood}
+      reactionKey={`${sets}:${completed}`}
+      size={72}
+      speech={text}
+    />
   )
 }

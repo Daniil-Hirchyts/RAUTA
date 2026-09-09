@@ -50,3 +50,11 @@ export function formatMonthShort(iso: string) {
   if (!date) return iso
   return date.toLocaleDateString(undefined, { month: "short" })
 }
+
+/** The day of the month on its own, for a date stamp that shows the weekday
+ *  above it and the month below. */
+export function formatDayOfMonth(iso: string) {
+  const date = parseISODate(iso)
+  if (!date) return iso
+  return date.toLocaleDateString(undefined, { day: "numeric" })
+}

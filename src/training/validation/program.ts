@@ -104,8 +104,8 @@ export function validateTrainingProgram(
   )
     return { valid: false, issues: [{ code: "INVALID_PROGRAM" }], warnings }
   const program = value as TrainingProgram
-  const authoritativePolicy = request.policy ??
-    (program.adaptation ? undefined : DEFAULT_POLICY)
+  const authoritativePolicy =
+    request.policy ?? (program.adaptation ? undefined : DEFAULT_POLICY)
   if (
     !validIso(program.generatedAt) ||
     program.generatedAt !== request.now ||
@@ -146,7 +146,9 @@ export function validateTrainingProgram(
       const adaptedWeek = program.weeks[0]
       const sourceWeek =
         program.adaptation.mode === "remaining_week"
-          ? sourceProgram.weeks.find((week) => week.start === adaptedWeek?.start)
+          ? sourceProgram.weeks.find(
+              (week) => week.start === adaptedWeek?.start
+            )
           : sourceProgram.weeks.at(-1)
       if (!adaptedWeek || !sourceWeek) {
         fail("program.adaptation.lineage")
@@ -189,9 +191,14 @@ export function validateTrainingProgram(
             for (const completedSet of completedExercise.sets) {
               if (!completedSet.plannedSetId) continue
               const plannedSets = plannedExercise
-                ? [...plannedExercise.workingSets, ...plannedExercise.warmupSets]
+                ? [
+                    ...plannedExercise.workingSets,
+                    ...plannedExercise.warmupSets,
+                  ]
                 : []
-              if (!plannedSets.some((set) => set.id === completedSet.plannedSetId))
+              if (
+                !plannedSets.some((set) => set.id === completedSet.plannedSetId)
+              )
                 fail("program.adaptation.completedLineage")
             }
           }
@@ -240,8 +247,9 @@ export function validateTrainingProgram(
   }
   const expectedPhase = program.adaptation
     ? request.readiness?.perceivedReadiness === "low" &&
-      Object.values(semanticState.exercises).filter((e) => e.trend === "declining")
-        .length >= 2
+      Object.values(semanticState.exercises).filter(
+        (e) => e.trend === "declining"
+      ).length >= 2
       ? "reduced_volume"
       : "base"
     : "base"
@@ -269,10 +277,11 @@ export function validateTrainingProgram(
       !validIso(w.start) ||
       Date.parse(w.start) !==
         Date.parse(request.schedule.weekStart) + wi * 7 * DAY_MS ||
-      w.sessions.length !== request.schedule.days.length
+      w.sessions.length !==
+        (request.schedule.sessionDays ?? request.schedule.days).length
     )
       fail(`weeks.${wi}.schedule`)
-    const dates = new Set<string>()
+    const dates = new Map<string, number>()
     for (const [si, session] of w.sessions.entries()) {
       const path = `weeks.${wi}.sessions.${si}`
       const sessionIssueStart = issues.length
@@ -295,13 +304,18 @@ export function validateTrainingProgram(
       unique(session.id, path + ".id")
       if (
         !validIso(session.scheduledAt) ||
-        dates.has(session.scheduledAt) ||
+        (dates.get(session.scheduledAt) ?? 0) >=
+          (request.schedule.sessionDays?.filter(
+            (day) =>
+              day ===
+              (Date.parse(session.scheduledAt) - Date.parse(w.start)) / DAY_MS
+          ).length ?? 1) ||
         !request.schedule.days.includes(
           (Date.parse(session.scheduledAt) - Date.parse(w.start)) / DAY_MS
         )
       )
         fail(path + ".scheduledAt")
-      dates.add(session.scheduledAt)
+      dates.set(session.scheduledAt, (dates.get(session.scheduledAt) ?? 0) + 1)
       const exercises = new Set<string>()
       for (const [ei, e] of session.exercises.entries()) {
         if (
@@ -447,14 +461,20 @@ export function validateTrainingProgram(
   }
   if (!issues.length && !program.adaptation) {
     const initial = analyzeTrainingState(request, index, [], program.policy)
-    const expectedTargets = deriveProgramTargets(request, initial, program.policy)
+    const expectedTargets = deriveProgramTargets(
+      request,
+      initial,
+      program.policy
+    )
     for (const [wi, week] of program.weeks.entries()) {
       if (week.targets.length !== expectedTargets.length) {
         fail(`weeks.${wi}.targets`)
         continue
       }
       for (const expected of expectedTargets) {
-        const actual = week.targets.find((t) => t.muscleId === expected.muscleId)
+        const actual = week.targets.find(
+          (t) => t.muscleId === expected.muscleId
+        )
         if (
           !actual ||
           actual.minimum !== expected.minimum ||

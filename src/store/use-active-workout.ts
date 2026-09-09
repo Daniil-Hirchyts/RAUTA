@@ -20,7 +20,7 @@ import {
   recoverWorkoutTransition,
   settleWorkoutTransition,
 } from "@/lib/workout-transition"
-import { isPastWorkout } from "@/lib/workout-stats"
+import { toISODate } from "@/lib/date"
 import { isRecord, validString, validUniqueStrings } from "@/store/persistence"
 import { useWorkouts, type Workout } from "@/store/use-workouts"
 
@@ -117,17 +117,19 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
       session: null,
       lastOutcome: null,
       start: (workout) => {
-        if (isPastWorkout(workout)) return false
+        if (workout.completion) return false
+        if (get().session?.workoutId === workout.id) return true
         const exerciseIds = workout.exerciseIds.filter((id) =>
           EXERCISES_BY_ID.has(id)
         )
         if (exerciseIds.length === 0) return false
 
         const now = Date.now()
+        const date = toISODate(new Date(now))
         // Write down the start before any of it happens, so a relaunch between
         // the draft landing and the shell appearing can put back the session
         // the person was already looking at rather than losing it.
-        recordStartIntent({ ...workout, exerciseIds }, now)
+        recordStartIntent({ ...workout, date, exerciseIds }, now)
         // Open the structured record before exposing a running session. A
         // planned workout whose program/session can no longer be resolved must
         // not silently become a free workout or leave a shell session behind.
@@ -147,7 +149,7 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
           session: {
             workoutId: workout.id,
             workoutName: workout.name,
-            workoutDate: workout.date,
+            workoutDate: date,
             exerciseIds,
             completedIds: [],
             currentExerciseId: exerciseIds[0],
@@ -156,6 +158,10 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
             startedAt: now,
           },
         })
+        if (
+          useWorkouts.getState().workouts.some((item) => item.id === workout.id)
+        )
+          useWorkouts.getState().updateWorkout(workout.id, { date })
         settleWorkoutTransition()
         return true
       },

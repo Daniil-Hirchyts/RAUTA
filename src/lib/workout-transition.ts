@@ -1,3 +1,4 @@
+import { toISODate } from "@/lib/date"
 import type { ActiveWorkoutSession } from "@/lib/active-workout"
 import {
   activePlannedCoverage,
@@ -69,7 +70,7 @@ export function recordStartIntent(workout: Workout, startedAtMs: number) {
     ...(workout.planned ? { planned: { ...workout.planned } } : {}),
     shell: {
       workoutName: workout.name,
-      workoutDate: workout.date,
+      workoutDate: toISODate(new Date(startedAtMs)),
       exerciseIds: [...workout.exerciseIds],
       startedAtMs,
     },
@@ -247,6 +248,8 @@ export function recoverWorkoutTransition(
 
   // The caller must persist the shell before clearing the intent. Let storage
   // failures propagate: a failed write must never look like a successful finish.
+  if (intent?.kind === "start" && intent.shell && (recovery.reason === "start-resumed" || recovery.reason === "start-settled") && workout && !workout.completion && workout.date !== intent.shell.workoutDate)
+    useWorkouts.getState().updateWorkout(workout.id, { date: intent.shell.workoutDate })
   applyLegacy(recovery)
   applyDraft(recovery)
 

@@ -73,12 +73,12 @@
 
   /* Two increasingly strong, overlapping blur layers ease scrolling content
      into the dock. Only these short bands are filtered, never the page. */
-  .app-surface-bottom-dock:is(.active-workout-dock, .equipment-presets-dock) {
+  .app-surface-bottom-dock:is(.active-workout-dock, .equipment-presets-dock, .workouts-companion-dock) {
     background: transparent;
   }
 
-  .app-surface-bottom-dock:is(.active-workout-dock, .equipment-presets-dock)::before,
-  .app-surface-bottom-dock:is(.active-workout-dock, .equipment-presets-dock)::after {
+  .app-surface-bottom-dock:is(.active-workout-dock, .equipment-presets-dock, .workouts-companion-dock)::before,
+  .app-surface-bottom-dock:is(.active-workout-dock, .equipment-presets-dock, .workouts-companion-dock)::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -90,7 +90,7 @@
     backdrop-filter: blur(4px);
   }
 
-  .app-surface-bottom-dock:is(.active-workout-dock, .equipment-presets-dock)::after {
+  .app-surface-bottom-dock:is(.active-workout-dock, .equipment-presets-dock, .workouts-companion-dock)::after {
     background:
       radial-gradient(
         ellipse at 82% 124%,
@@ -118,12 +118,12 @@
     backdrop-filter: none;
   }
 
-  .app-surface-bottom-dock:is(.active-workout-dock, .equipment-presets-dock) {
+  .app-surface-bottom-dock:is(.active-workout-dock, .equipment-presets-dock, .workouts-companion-dock) {
     background: var(--background);
   }
 
-  .app-surface-bottom-dock:is(.active-workout-dock, .equipment-presets-dock)::before,
-  .app-surface-bottom-dock:is(.active-workout-dock, .equipment-presets-dock)::after {
+  .app-surface-bottom-dock:is(.active-workout-dock, .equipment-presets-dock, .workouts-companion-dock)::before,
+  .app-surface-bottom-dock:is(.active-workout-dock, .equipment-presets-dock, .workouts-companion-dock)::after {
     display: none;
   }
 }

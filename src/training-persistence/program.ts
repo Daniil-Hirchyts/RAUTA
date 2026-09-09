@@ -60,7 +60,9 @@ function restoreProgression(
     confidence: progression.confidence,
     reasons: [...progression.reasons] as ProgressionRecommendation["reasons"],
     suggestedStrategies: progression.suggestedStrategies
-      ? ([...progression.suggestedStrategies] as ProgressionRecommendation["suggestedStrategies"])
+      ? ([
+          ...progression.suggestedStrategies,
+        ] as ProgressionRecommendation["suggestedStrategies"])
       : undefined,
   }
 }
@@ -219,6 +221,7 @@ export function toEngineProgramSnapshot(
 export function createPersistedProgramRecord(
   program: TrainingProgram,
   options: {
+    kind?: PersistedProgramRecord["kind"]
     lifecycle?: PersistedProgramRecord["lifecycle"]
     manualSourceProgramId?: string
     manualRevisionAt?: string
@@ -244,10 +247,14 @@ export function createPersistedProgramRecord(
           sourceProgramId: options.manualSourceProgramId,
           reason: "manual_regeneration" as const,
           asOf: options.manualRevisionAt ?? program.generatedAt,
+          ...(options.replacedSessionIds
+            ? { replacedSessionIds: [...options.replacedSessionIds] }
+            : {}),
         }
       : undefined
   return {
     id: program.id,
+    ...(options.kind ? { kind: options.kind } : {}),
     lifecycle: options.lifecycle ?? "active",
     createdAt: program.generatedAt,
     snapshot,
@@ -266,7 +273,7 @@ export function isSupersededPlannedSession(
     const revision = program.revision
     if (
       revision?.sourceProgramId !== programId ||
-      revision.reason !== "remaining_week"
+      !["remaining_week", "manual_regeneration"].includes(revision.reason)
     )
       return false
     if (revision.replacedSessionIds)
@@ -296,11 +303,12 @@ export function isStartablePlannedSession(
 ): boolean {
   const program = data.programs.find((item) => item.id === programId)
   return Boolean(
-    data.activeProgramId === programId &&
-      program?.lifecycle === "active" &&
-      program.snapshot.weeks.some((week) =>
-        week.sessions.some((session) => session.id === sessionId)
-      ) &&
-      !isSupersededPlannedSession(data, programId, sessionId)
+    program &&
+    (program.kind === "workout" ||
+      (data.activeProgramId === programId && program.lifecycle === "active")) &&
+    program.snapshot.weeks.some((week) =>
+      week.sessions.some((session) => session.id === sessionId)
+    ) &&
+    !isSupersededPlannedSession(data, programId, sessionId)
   )
 }

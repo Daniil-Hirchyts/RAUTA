@@ -1,7 +1,4 @@
-import { useState } from "react"
-
 import { formatDateShort, formatWeekdayShort } from "@/lib/date"
-import { triggerHaptic } from "@/lib/haptics"
 import { buildStreak, type StreakDay } from "@/lib/streak"
 import { countLabel } from "@/lib/text"
 import { cn } from "@/lib/utils"
@@ -49,12 +46,6 @@ function Flame({ className, lit }: { className?: string; lit: boolean }) {
   )
 }
 
-/** What a day holds, in the caption's words. */
-function dayDetail(day: StreakDay) {
-  if (day.workouts === 0) return day.isFuture ? "Still ahead" : "Rest day"
-  return countLabel(day.exercises, "exercise")
-}
-
 function dayLabel(day: StreakDay) {
   if (day.isFuture) return `${formatDateShort(day.date)}: still ahead`
   if (day.workouts === 0) return `${formatDateShort(day.date)}: rest day`
@@ -65,31 +56,16 @@ function dayLabel(day: StreakDay) {
  * The training week as a row of flames, one per day, lit by the days that were
  * trained — and under it, the run those days add up to. Today's flame is the
  * tall one, so the strip is read from the day being lived in outwards.
- *
- * Tapping a lit day opens what was logged on it; the caption underneath names
- * whatever day is being pointed at, which is the phone-sized stand-in for a
- * hover tooltip.
  */
 export function WorkoutStreak({
-  onSelectWorkout,
+  onSelectWorkout: _onSelectWorkout,
   workouts,
 }: {
+  /** @deprecated Streak panel is display-only and no longer clickable */
   onSelectWorkout?: (workout: Workout) => void
   workouts: Workout[]
 }) {
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const { currentStreak, longestStreak, week, weekWorkouts } =
-    buildStreak(workouts)
-
-  const selectDay = (date: string) => {
-    triggerHaptic("selection")
-    setSelectedDate((current) => (current === date ? null : date))
-  }
-
-  const selected = week.find((day) => day.date === selectedDate) ?? null
-  const selectedWorkout = selected
-    ? workouts.find((workout) => workout.date === selected.date)
-    : undefined
+  const { currentStreak, week } = buildStreak(workouts)
 
   return (
     <section
@@ -113,101 +89,53 @@ export function WorkoutStreak({
         </defs>
       </svg>
 
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-[11px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-          This week
-        </p>
-        <p className="text-[11px] font-medium text-muted-foreground tabular-nums">
-          {longestStreak > 0
-            ? `best ${countLabel(longestStreak, "day")}`
-            : countLabel(weekWorkouts, "workout")}
+      <div className="flex flex-col items-center justify-center text-center">
+        <p className="text-[32px] leading-none font-black tracking-[-0.02em]">
+          <span className="font-readout">{currentStreak}</span>
+          <span className="ml-1.5 text-sm font-semibold text-muted-foreground">
+            day streak
+          </span>
         </p>
       </div>
 
-      <ul className="mt-4 grid grid-cols-7 gap-1">
+      <ul className="mt-5 grid grid-cols-7 gap-1">
         {week.map((day) => {
           const lit = day.workouts > 0
-          const isSelected = day.date === selectedDate
           return (
-            <li className="min-w-0" key={day.date}>
-              <button
-                aria-label={dayLabel(day)}
-                aria-pressed={isSelected}
-                className="flex w-full flex-col items-center gap-1.5"
-                onClick={() => selectDay(day.date)}
-                type="button"
-              >
-                <span className="flex h-11 items-end justify-center">
-                  <Flame
-                    className={cn(
-                      "transition-[height,width,filter] duration-300 ease-spring",
-                      day.isToday ? "h-11 w-[2.2rem]" : "h-9 w-7",
-                      lit &&
-                        "[filter:drop-shadow(0_2px_7px_color-mix(in_oklch,var(--primary),transparent_58%))]",
-                      day.isFuture && "opacity-60"
-                    )}
-                    lit={lit}
-                  />
-                </span>
-                <span
+            <li
+              aria-label={dayLabel(day)}
+              className="flex min-w-0 flex-col items-center gap-1.5"
+              key={day.date}
+            >
+              <span className="flex h-13 min-[380px]:h-14 items-end justify-center">
+                <Flame
                   className={cn(
-                    "rounded-full px-1.5 py-0.5 text-[10px] leading-4 font-semibold transition-colors",
+                    "max-w-full transition-[height,width,filter] duration-300 ease-spring",
                     day.isToday
-                      ? "bg-primary text-primary-foreground"
-                      : isSelected
-                        ? "bg-white/12 text-foreground"
-                        : "text-muted-foreground"
+                      ? "h-13 w-10 min-[380px]:h-14 min-[380px]:w-[2.8rem]"
+                      : "h-10 w-8 min-[380px]:h-11 min-[380px]:w-[2.2rem]",
+                    lit &&
+                      "[filter:drop-shadow(0_3px_10px_color-mix(in_oklch,var(--primary),transparent_50%))]",
+                    day.isFuture && "opacity-60"
                   )}
-                >
-                  {formatWeekdayShort(day.date)}
-                </span>
-              </button>
+                  lit={lit}
+                />
+              </span>
+              <span
+                className={cn(
+                  "rounded-full px-1.5 py-0.5 text-[10px] leading-4 font-semibold transition-colors",
+                  day.isToday
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground"
+                )}
+              >
+                {formatWeekdayShort(day.date)}
+              </span>
             </li>
           )
         })}
       </ul>
-
-      <output
-        aria-live="polite"
-        className="mt-4 flex min-h-9 flex-col items-center justify-center text-center"
-      >
-        {selected ? (
-          <button
-            // The two lines are separate elements with no whitespace between
-            // them, so the name they would compute runs together: spell it.
-            aria-label={`${formatDateShort(selected.date)}, ${dayDetail(selected)}`}
-            className="flex flex-col items-center"
-            disabled={!selectedWorkout || !onSelectWorkout}
-            onClick={() =>
-              selectedWorkout && onSelectWorkout?.(selectedWorkout)
-            }
-            type="button"
-          >
-            <span className="text-[17px] leading-tight font-bold tracking-[-0.01em]">
-              {formatDateShort(selected.date)}
-            </span>
-            <span className="text-[13px] font-medium text-muted-foreground">
-              {dayDetail(selected)}
-            </span>
-          </button>
-        ) : (
-          <>
-            <p className="text-[30px] leading-none font-black tracking-[-0.02em]">
-              <span className="font-readout">{currentStreak}</span>
-              <span className="ml-1.5 text-sm font-semibold text-muted-foreground">
-                day streak
-              </span>
-            </p>
-            <p className="mt-1.5 text-[13px] font-medium text-muted-foreground">
-              {currentStreak === 0
-                ? "Train today to start one"
-                : week.some((day) => day.isToday && day.workouts > 0)
-                  ? "Kept alive today"
-                  : "Train today to keep it"}
-            </p>
-          </>
-        )}
-      </output>
     </section>
   )
 }
+

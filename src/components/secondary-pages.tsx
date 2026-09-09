@@ -18,6 +18,11 @@ import { WorkoutDatePicker } from "@/components/workout-date-picker"
 import { formatDateLong, formatDateShort, toISODate } from "@/lib/date"
 import { EXERCISES_BY_ID, findExerciseAlternatives } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
+import { createEngineWorkout } from "@/lib/engine-workout"
+import {
+  rescheduleWorkout,
+  updateScheduledWorkoutExercises,
+} from "@/lib/training-edits"
 import { titleCase } from "@/lib/text"
 import {
   EXERCISE_ANIMATION_FILTER,
@@ -25,7 +30,6 @@ import {
   exerciseAnimation,
   exerciseMorphId,
 } from "@/lib/visuals"
-import { isPastWorkout } from "@/lib/workout-stats"
 import { useFavorites } from "@/store/use-favorites"
 import { useFilters } from "@/store/use-filters"
 import { useWorkouts, type Workout } from "@/store/use-workouts"
@@ -131,7 +135,7 @@ export function WorkoutDestinationPage({
   const sorted = useMemo(
     () =>
       [...workouts]
-        .filter((workout) => !isPastWorkout(workout))
+        .filter((workout) => !workout.completion)
         .sort((left, right) => {
           if (left.id === preferredWorkoutId) return -1
           if (right.id === preferredWorkoutId) return 1
@@ -221,8 +225,6 @@ export function WorkoutFormPage({
   onSaved: (workoutId: string) => void
   workout?: Workout | null
 }) {
-  const createWorkout = useWorkouts((state) => state.createWorkout)
-  const updateWorkout = useWorkouts((state) => state.updateWorkout)
   const [date, setDate] = useState(workout?.date ?? todayISO)
   const [exerciseIds, setExerciseIds] = useState(
     workout?.exerciseIds ?? initialExerciseIds ?? []
@@ -235,9 +237,14 @@ export function WorkoutFormPage({
     event.preventDefault()
     if (!canSave) return
     setSubmitting(true)
-    const id = workout
-      ? (updateWorkout(workout.id, { date, exerciseIds }), workout.id)
-      : createWorkout({ name: "", date, exerciseIds })
+    let id: string
+    if (workout) {
+      if (workout.date !== date) rescheduleWorkout(workout.id, date)
+      updateScheduledWorkoutExercises(workout.id, exerciseIds)
+      id = workout.id
+    } else {
+      id = createEngineWorkout({ date, exerciseIds })
+    }
     triggerHaptic("success")
     onSaved(id)
   }

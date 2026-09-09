@@ -136,12 +136,18 @@ export function adaptTrainingProgram({
       issues: [{ code: "INVALID_INPUT", path: "adaptation.schedule" }],
       suggestions: ["review_input"],
     }
-  const futureDays = request.schedule.days.filter(
+  const futureDays = (
+    request.schedule.sessionDays ?? request.schedule.days
+  ).filter(
     (day) =>
       Date.parse(addDays(request.schedule.weekStart, day)) >
       Date.parse(request.now)
   )
-  if (futureDays.length !== request.schedule.days.length || !futureDays.length)
+  if (
+    futureDays.length !==
+      (request.schedule.sessionDays ?? request.schedule.days).length ||
+    !futureDays.length
+  )
     return {
       status: "invalid",
       issues: [{ code: "INVALID_INPUT", path: "adaptation.futureDays" }],
@@ -317,18 +323,27 @@ export function adaptTrainingProgram({
           muscleId as keyof ReturnType<typeof calculateSessionVolume>
         ].effective >= input.policy.meaningfulExposureSets
     ).length
-  const plannedSpecificExposures = (candidate: TrainingWeek, exerciseId: string) =>
+  const plannedSpecificExposures = (
+    candidate: TrainingWeek,
+    exerciseId: string
+  ) =>
     candidate.sessions.filter((s) =>
       s.exercises.some((e) => e.exerciseId === exerciseId)
     ).length
   for (let si = 0; si < week.sessions.length; si++) {
     const day = futureDays.slice().sort((a, b) => a - b)[si]
     const prior =
-      source.sessions.find(
+      source.sessions.filter(
         (s) =>
           (Date.parse(s.scheduledAt) - Date.parse(source.start)) / DAY_MS ===
           day
-      ) ?? source.sessions[si % source.sessions.length]
+      )[
+        futureDays
+          .slice()
+          .sort((a, b) => a - b)
+          .slice(0, si)
+          .filter((value) => value === day).length
+      ] ?? source.sessions[si % source.sessions.length]
     let session = {
       ...week.sessions[si],
       focus: [...prior.focus],
@@ -338,15 +353,19 @@ export function adaptTrainingProgram({
       let e = input.index.byId.get(old.exerciseId)
       if (
         !e ||
-        exclusionReasons(e, authoritativeRequest.preferences, input.policy).length
+        exclusionReasons(e, authoritativeRequest.preferences, input.policy)
+          .length
       ) {
         const preferred = input.index.byId.get(old.exerciseId)
         e = [...input.index.byId.values()]
           .filter(
             (e) =>
               !session.exercises.some((p) => p.exerciseId === e.exercise.id) &&
-              !exclusionReasons(e, authoritativeRequest.preferences, input.policy)
-                .length &&
+              !exclusionReasons(
+                e,
+                authoritativeRequest.preferences,
+                input.policy
+              ).length &&
               e.metadata.setRoles.some(
                 (r) =>
                   r.role === "direct" && old.targetMuscles.includes(r.muscleId)

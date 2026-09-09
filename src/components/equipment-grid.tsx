@@ -28,7 +28,7 @@ export function EquipmentGrid({
         return (
           <button
             aria-checked={checked}
-            className={`equipment-card interactive-spring group relative overflow-hidden rounded-(--app-card-radius) border bg-[var(--equipment-card)] text-left shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-300 ${
+            className={`equipment-card interactive-spring group relative overflow-hidden rounded-(--app-card-radius) border bg-card text-left shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-300 ${
               checked
                 ? "border-primary/75 shadow-[0_0_0_1px_color-mix(in_oklch,var(--primary)_30%,transparent)]"
                 : "border-border"

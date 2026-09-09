@@ -230,17 +230,28 @@ describe("actual performance to remaining-week adaptation", () => {
     ])
   })
 
-  it("keeps missed past sessions and early completed future sessions intact", () => {
+  it("keeps missed sessions available and early completed history intact", () => {
     logPlannedSession(sessions[1], "partial", { date: "2026-09-14" })
-    const past = structuredClone(plannedWorkoutFor(sessions[0]))
+    const past = structuredClone(plannedWorkoutFor(sessions[0]))!
     const early = structuredClone(plannedWorkoutFor(sessions[1]))
+    const original = JSON.stringify(records().data.programs[0].snapshot)
     const result = adjustRemainingWeek()
     expect(result.status).toBe("adjusted")
     expect(activePlannedSessions().map((session) => session.date)).toEqual([
+      "2026-09-14",
       "2026-09-18",
     ])
-    expect(plannedWorkoutFor(sessions[0])).toEqual(past)
+    const carried = plannedWorkoutFor(activePlannedSessions()[0])!
+    expect(carried.date).toBe(past.date)
+    expect(carried.exerciseIds).toEqual(past.exerciseIds)
     expect(plannedWorkoutFor(sessions[1])).toEqual(early)
+    expect(
+      JSON.stringify(
+        records().data.programs.find(
+          (program) => program.id === sessions[0].programId
+        )!.snapshot
+      )
+    ).toBe(original)
   })
 
   it.each(["gym-lib-workouts", TRAINING_STORAGE_KEY, "all"])(
@@ -327,7 +338,7 @@ describe("actual performance to remaining-week adaptation", () => {
     }
   )
 
-  it("passes free and legacy history without using either to enable adaptation", () => {
+  it("uses standalone performed sets to enable adaptation and also passes legacy history", () => {
     records().startFreeWorkout(["0025"], "2026-09-14T08:00:00.000Z")
     const exercise = records().data.activeWorkout!.exercises[0]
     records().addUnplannedSet({
@@ -362,15 +373,18 @@ describe("actual performance to remaining-week adaptation", () => {
       activeCalories: 100,
       healthSyncStatus: "not-requested",
     })
-    expect(remainingWeekEligibility()).toMatchObject({ reason: "empty" })
+    expect(remainingWeekEligibility()).toMatchObject({
+      status: "eligible",
+      observationIds: [freeId],
+    })
     const plannedId = logPlannedSession(sessions[0])
     const expected = records().getTrainingHistory()
     const adapt = vi.spyOn(engine, "adaptTrainingProgram")
     expect(adjustRemainingWeek().status).toBe("adjusted")
     expect(adapt.mock.calls[0][0].request.history).toEqual(expected)
-    expect(activeProgramRecord()?.revision?.incorporatedSessionIds).toEqual([
-      plannedId,
-    ])
+    expect(activeProgramRecord()?.revision?.incorporatedSessionIds).toEqual(
+      expect.arrayContaining([freeId, plannedId])
+    )
     expect(
       expected.sessions
         .find((session) => session.id === legacyId)

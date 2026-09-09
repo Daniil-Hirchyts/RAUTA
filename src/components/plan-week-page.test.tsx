@@ -43,7 +43,7 @@ describe("PlanWeekPage", () => {
     })
   })
 
-  it("asks for the training days and nothing the profile already knows", () => {
+  it("asks for calendar dates and nothing the profile already knows", () => {
     useTrainingProfile
       .getState()
       .updateProfile({
@@ -52,21 +52,18 @@ describe("PlanWeekPage", () => {
       })
     renderPage()
 
-    for (const day of ["Monday", "Wednesday", "Friday", "Sunday"])
-      expect(screen.getByRole("checkbox", { name: day })).toBeInTheDocument()
+    expect(screen.getByRole("grid")).toBeInTheDocument()
+    expect(screen.getByText("3 training dates selected.", { exact: false })).toBeInTheDocument()
     // What is already saved is shown back, never asked for again.
     expect(screen.getByText(/Build muscle · 45 min/)).toBeInTheDocument()
     for (const asked of [/goal/i, /how old/i, /equipment/i, /experience/i])
       expect(screen.queryByRole("radiogroup", { name: asked })).toBeNull()
   })
 
-  it("creates a week from the days that are picked", async () => {
+  it("creates a plan from the selected calendar dates", async () => {
     const user = userEvent.setup()
     const props = renderPage()
 
-    // Mon/Wed/Fri to start with; Wednesday off, Saturday on.
-    await user.click(screen.getByRole("checkbox", { name: "Wednesday" }))
-    await user.click(screen.getByRole("checkbox", { name: "Saturday" }))
     await user.click(screen.getByRole("button", { name: "Create plan" }))
 
     await waitFor(() => expect(props.onCreated).toHaveBeenCalledOnce())
@@ -74,24 +71,28 @@ describe("PlanWeekPage", () => {
     expect(records().data.activeProgramId).toBe(program.id)
     const sessions = program.snapshot.weeks[0].sessions
     expect(sessions).toHaveLength(3)
-    // Monday, Friday, Saturday of the planned week.
+    // The suggested Monday, Wednesday and Friday are exact stored dates.
     const start = Date.parse(program.snapshot.weeks[0].start)
     expect(
       sessions.map((session) =>
         Math.round((Date.parse(session.scheduledAt) - start) / 86_400_000)
       )
-    ).toEqual([0, 4, 5])
+    ).toEqual([0, 2, 4])
     expect(useWorkouts.getState().workouts).toHaveLength(3)
   })
 
-  it("cannot ask for a week with no days in it", async () => {
+  it("cannot ask for a plan with no dates in it", async () => {
     const user = userEvent.setup()
     renderPage()
 
-    for (const day of ["Monday", "Wednesday", "Friday"])
-      await user.click(screen.getByRole("checkbox", { name: day }))
+    while (document.querySelector<HTMLButtonElement>("td[aria-selected='true'] button"))
+      await user.click(
+        document.querySelector<HTMLButtonElement>(
+          "td[aria-selected='true'] button"
+        )!
+      )
 
-    expect(screen.getByText("Pick at least one day.")).toBeInTheDocument()
+    expect(screen.getByText("Pick at least one date.")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Create plan" })).toHaveAttribute(
       "aria-disabled",
       "true"

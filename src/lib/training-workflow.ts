@@ -70,11 +70,10 @@ export function remainingTrainingSlots(
   data: PersistedTrainingStateLatest = useTrainingRecords.getState().data,
   workouts: readonly Workout[] = useWorkouts.getState().workouts
 ) {
-  const week = source.snapshot.weeks.find(
-    (item) => Date.parse(now) < Date.parse(item.start) + 7 * 86400000
-  )
-  const sessions =
-    week?.sessions.filter(
+  const remaining = (
+    week: PersistedProgramRecord["snapshot"]["weeks"][number]
+  ) =>
+    week.sessions.filter(
       (session) =>
         Date.parse(session.scheduledAt) > Date.parse(now) &&
         !isSupersededPlannedSession(data, source.id, session.id) &&
@@ -87,7 +86,10 @@ export function remainingTrainingSlots(
             workout.planned?.programId === source.id &&
             workout.planned.sessionId === session.id
         )
-    ) ?? []
+    )
+  const week = source.snapshot.weeks.find((week) => remaining(week).length > 0)
+  const sessions = week ? remaining(week) : []
+
   return { week, sessions }
 }
 
@@ -174,6 +176,20 @@ export function buildTrainingRequest(
               ),
             ].sort((a, b) => a - b)
           : [...new Set(availableDays)].sort((a, b) => a - b),
+      ...(remaining?.sessions.length &&
+      new Set(remaining.sessions.map((s) => s.scheduledAt)).size !==
+        remaining.sessions.length
+        ? {
+            sessionDays: remaining.sessions
+              .map((s) =>
+                Math.floor(
+                  (Date.parse(s.scheduledAt) - Date.parse(sourceWeek!.start)) /
+                    86400000
+                )
+              )
+              .sort((a, b) => a - b),
+          }
+        : {}),
       durationWeeks: 1,
     },
     history: store.getTrainingHistory(),
@@ -238,49 +254,38 @@ export function generateAndSavePlan(
   return { result, request }
 }
 
-export function replacementIds(exerciseId: string): string[] {
-  const store = useTrainingRecords.getState()
-  const activeProgramId = store.data.activeWorkout?.plannedProgramId
-  const activeExercise = store.data.activeWorkout?.exercises.find(
-    (exercise) => exercise.exerciseId === exerciseId
+export function replacementIds(
+  exerciseId: string,
+  workoutId?: string
+): string[] {
+  const records = useTrainingRecords.getState()
+  const workout = useWorkouts
+    .getState()
+    .workouts.find((item) =>
+      workoutId
+        ? item.id === workoutId
+        : item.id === records.data.activeWorkout?.sourceWorkoutId
+    )
+  const activeExercise = records.data.activeWorkout?.exercises.find(
+    (item) => item.exerciseId === exerciseId
   )
-  const substitutionSourceId = activeExercise?.plannedExerciseId ?? exerciseId
-  const source = activeProgramId
-    ? store.data.programs.find((program) => program.id === activeProgramId)
+  const sourceExerciseId = activeExercise?.plannedExerciseId ?? exerciseId
+  const sourceProgram = workout?.planned
+    ? records.data.programs.find(
+        (item) => item.id === workout.planned?.programId
+      )
     : undefined
-  const availableEquipment = source
-    ? [
-        ...new Set([
-          "body weight",
-          ...source.snapshot.weeks.flatMap((week) =>
-            week.sessions.flatMap((session) =>
-              session.exercises.flatMap(
-                (planned) =>
-                  trainingIndex().byId.get(planned.exerciseId)?.metadata
-                    .requiredEquipment ?? []
-              )
-            )
-          ),
-        ]),
-      ]
-    : planningEquipment
   const request = buildTrainingRequest(
-    buildTrainingEngineInputs({
-      availableEquipment,
-      // A swap stays inside the plan it belongs to; the profile's current goal
-      // must not quietly re-rank alternatives for an older program.
-      ...(source ? { goal: source.snapshot.goal } : {}),
-    }),
-    new Date().toISOString(),
-    source
+    buildTrainingEngineInputs(
+      sourceProgram ? { goal: sourceProgram.snapshot.goal } : {}
+    ),
+    new Date().toISOString()
   )
   return [
-    ...(activeExercise?.plannedExerciseId &&
-    activeExercise.plannedExerciseId !== exerciseId
-      ? [activeExercise.plannedExerciseId]
-      : []),
-    ...findExerciseSubstitutions(substitutionSourceId, request, 100, {
+    ...(sourceExerciseId !== exerciseId ? [sourceExerciseId] : []),
+    ...findExerciseSubstitutions(sourceExerciseId, request, 100, {
       index: trainingIndex(),
+      selectedExerciseIds: workout?.exerciseIds,
     }).map((item) => item.exerciseId),
   ]
 }

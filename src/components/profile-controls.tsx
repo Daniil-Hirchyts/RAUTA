@@ -527,7 +527,7 @@ export function MusclePriorityPicker({
 /** The resting fill of a muscle nobody has asked for, taken from
  *  `.muscle-region`: the palest end of the scale is the figure's own grey, not
  *  a washed-out orange. */
-const RESTING_FILL = "#37373b"
+const RESTING_FILL = "#3d322b"
 
 /** The same mix the figure paints itself with, so the bar below it is a
  *  sample of the map rather than a picture of one. */

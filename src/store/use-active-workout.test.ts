@@ -50,9 +50,9 @@ describe("useActiveWorkout", () => {
     expect(state().session).toBeNull()
   })
 
-  it("refuses to start a workout whose date has already passed", () => {
-    state().start({ ...workout, date: "2026-08-31" })
-    expect(state().session).toBeNull()
+  it("starts an overdue workout on today’s date", () => {
+    expect(state().start({ ...workout, date: "2026-08-31" })).toBe(true)
+    expect(state().session?.workoutDate).toBe("2026-09-01")
   })
 
   it("refuses to restart a completed workout", () => {

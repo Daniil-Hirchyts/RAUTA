@@ -24,7 +24,8 @@ export type SpeechBox = {
 export type SpeechPlacementInput = {
   /** The character's box, in the coordinates the bubble is positioned in. */
   character: SpeechBox
-  /** The measured bubble. Zero until it has been rendered once. */
+  /** The measured bubble. Zero until it has been rendered once, which is
+   *  treated as "as large as it is allowed to be" rather than as nothing. */
   bubble: { width: number; height: number }
   /** The area the bubble may use: the visible surface, less its header. */
   frame: SpeechBox
@@ -45,6 +46,14 @@ export const SPEECH_GAP = 10
 
 /** Breathing room kept at every edge of the area the bubble may use. */
 const EDGE_MARGIN = 8
+
+/** How tall a bubble nobody has measured yet is taken to be — about two lines.
+ *  Assuming an unmeasured bubble takes no room at all would place it as a bare
+ *  point at the character's shoulder, and the real bubble would then hang off
+ *  the edge of the screen: exactly what this exists to prevent. Until it has
+ *  been measured it is treated as the largest it could be, which is always
+ *  somewhere it fits. */
+const ASSUMED_HEIGHT = 96
 
 /**
  * Above first.
@@ -71,6 +80,9 @@ export function placeRautaSpeech(input: SpeechPlacementInput): SpeechPlacement {
     bottom: frame.top + frame.height - (input.inset?.bottom ?? 0) - EDGE_MARGIN,
   }
 
+  const width = bubble.width > 0 ? bubble.width : safe.right - safe.left
+  const height = bubble.height > 0 ? bubble.height : ASSUMED_HEIGHT
+
   const room: Record<SpeechSide, number> = {
     top: character.top - gap - safe.top,
     bottom: safe.bottom - (character.top + character.height) - gap,
@@ -78,10 +90,10 @@ export function placeRautaSpeech(input: SpeechPlacementInput): SpeechPlacement {
     right: safe.right - (character.left + character.width) - gap,
   }
   const needed: Record<SpeechSide, number> = {
-    top: bubble.height,
-    bottom: bubble.height,
-    left: bubble.width,
-    right: bubble.width,
+    top: height,
+    bottom: height,
+    left: width,
+    right: width,
   }
 
   // The first side it fits on, and failing that the side it overflows least —
@@ -97,27 +109,27 @@ export function placeRautaSpeech(input: SpeechPlacementInput): SpeechPlacement {
   const vertical = side === "top" || side === "bottom"
   const left = vertical
     ? clamp(
-        character.left + character.width / 2 - bubble.width / 2,
+        character.left + character.width / 2 - width / 2,
         safe.left,
-        safe.right - bubble.width
+        safe.right - width
       )
     : side === "left"
-      ? character.left - gap - bubble.width
+      ? character.left - gap - width
       : character.left + character.width + gap
   const top = vertical
     ? side === "top"
-      ? character.top - gap - bubble.height
+      ? character.top - gap - height
       : character.top + character.height + gap
     : clamp(
-        character.top + character.height / 2 - bubble.height / 2,
+        character.top + character.height / 2 - height / 2,
         safe.top,
-        safe.bottom - bubble.height
+        safe.bottom - height
       )
 
   // Clamped on both axes whichever side won, so a bubble taller than the room
   // above the character is pushed down into view rather than off the top.
-  const x = clamp(left, safe.left, safe.right - bubble.width)
-  const y = clamp(top, safe.top, safe.bottom - bubble.height)
+  const x = clamp(left, safe.left, safe.right - width)
+  const y = clamp(top, safe.top, safe.bottom - height)
 
   return { x: x - character.left, y: y - character.top, side }
 }

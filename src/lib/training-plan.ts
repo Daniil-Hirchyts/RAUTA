@@ -1,6 +1,8 @@
 import { musclesForExerciseIds } from "@/lib/exercises"
 import { formatKg } from "@/lib/resistance"
+import { buildTrainingEngineInputs } from "@/lib/training-engine-adapter"
 import {
+  buildTrainingRequest,
   DEFAULT_TRAINING_DAYS,
   planTrainingWeek,
 } from "@/lib/training-workflow"
@@ -14,7 +16,8 @@ import type {
   PersistedProgramRecord,
   PersistedTrainingStateLatest,
 } from "@/training-persistence/schema"
-import { SPLIT_MUSCLE_GROUPS } from "@/training"
+import { generateTrainingProgram, SPLIT_MUSCLE_GROUPS } from "@/training"
+import { namespaceProgramIds } from "@/training/planning/generate"
 import type {
   PlannedSession,
   PlanningIssue,
@@ -359,6 +362,96 @@ export function createTrainingWeek(input: {
     programId: result.program.id,
     sessions,
     issues: result.issues,
+  }
+}
+
+/** Creates one plan from exact calendar dates. Dates may span several weeks;
+ * each week is solved by the engine, then stored as one immutable plan. */
+export function createTrainingPlanForDates(input: {
+  dates: readonly string[]
+  now?: string
+  sourceProgramId?: string
+}): TrainingWeekOutcome {
+  const now = input.now ?? new Date().toISOString()
+  const today = now.slice(0, 10)
+  const dates = [...new Set(input.dates)]
+    .filter(
+      (date) =>
+        /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+        new Date(`${date}T00:00:00.000Z`).toISOString().slice(0, 10) === date &&
+        date >= today
+    )
+    .sort()
+  if (!dates.length)
+    return {
+      status: "blocked",
+      reason: "days",
+      message: "Pick at least one training date.",
+      page: null,
+      issues: [],
+    }
+
+  const groups = new Map<string, string[]>()
+  for (const date of dates) {
+    const day = new Date(`${date}T00:00:00.000Z`)
+    day.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7))
+    const monday = day.toISOString()
+    groups.set(monday, [...(groups.get(monday) ?? []), date])
+  }
+  const programs: TrainingProgram[] = []
+  const issues: PlanningIssue[] = []
+  for (const [weekStart, weekDates] of groups) {
+    const request = buildTrainingRequest(
+      buildTrainingEngineInputs(),
+      now,
+      undefined,
+      weekDates.map((date) =>
+        Math.round(
+          (Date.parse(`${date}T00:00:00.000Z`) - Date.parse(weekStart)) /
+            86_400_000
+        )
+      )
+    )
+    request.schedule.weekStart = weekStart
+    const result = generateTrainingProgram(request)
+    if (!("program" in result)) return { status: "blocked", ...toPlanBlock(result) }
+    programs.push(result.program)
+    issues.push(...result.issues)
+  }
+
+  const program = structuredClone(programs[0])
+  program.id = `program-${crypto.randomUUID()}`
+  program.generatedAt = now
+  program.weeks = programs.map((item, index) => {
+    const week = structuredClone(item.weeks[0])
+    const oldWeekId = week.id
+    week.id = `week-${index}`
+    for (const [sessionIndex, session] of week.sessions.entries()) {
+      const oldSessionId = session.id
+      session.id = `${week.id}/session-${sessionIndex}`
+      for (const exercise of session.exercises)
+        for (const set of [...exercise.workingSets, ...exercise.warmupSets])
+          set.id = set.id.replace(oldSessionId, session.id).replace(oldWeekId, week.id)
+    }
+    return week
+  })
+  program.durationWeeks = program.weeks.length
+  namespaceProgramIds(program, program.id)
+  const source = input.sourceProgramId
+    ? useTrainingRecords.getState().data.programs.find(
+        (item) => item.id === input.sourceProgramId
+      )
+    : undefined
+  useTrainingRecords.getState().saveProgram(program, {
+    manualSourceProgramId: source?.id,
+  })
+  const sessions = sessionViews(program)
+  projectPlannedWorkouts(sessions)
+  return {
+    status: "created",
+    programId: program.id,
+    sessions,
+    issues,
   }
 }
 

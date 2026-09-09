@@ -180,7 +180,8 @@ describe("free workouts as structured training history", () => {
     const draft = records().data.activeWorkout!
     expect(draft.exercises.map((item) => item.exerciseId)).toEqual([BENCH, ROW])
     expect(draft.exercises[0].sets).toHaveLength(1)
-    expect(draft.exercises[1].sets).toEqual([])
+    expect(draft.exercises[1].sets).toHaveLength(3)
+    expect(draft.exercises[1].sets.every((set) => set.target)).toBe(true)
   })
 
   it("closes a draft left behind by an earlier session under its own session", () => {

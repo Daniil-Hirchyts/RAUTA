@@ -282,6 +282,21 @@ export function validateGenerationRequest(value: unknown): PlanningIssue[] {
       new Set(s.days).size === s.days.length,
     "schedule.days"
   )
+  check(
+    optional(
+      s.sessionDays,
+      (slots) =>
+        Array.isArray(slots) &&
+        slots.length >= 1 &&
+        slots.length <= 7 &&
+        Array.isArray(s.days) &&
+        slots.every(
+          (day) => integer(day, 0, 6) && (s.days as unknown[]).includes(day)
+        ) &&
+        (s.days as unknown[]).every((day) => slots.includes(day))
+    ),
+    "schedule.sessionDays"
+  )
   check(integer(s.durationWeeks, 1, 12), "schedule.durationWeeks")
   check(
     choices(h.coverage, ["complete", "unknown"]) &&

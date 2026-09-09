@@ -1,11 +1,7 @@
-import { useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import {
-  CalendarDays,
-  CheckCircle2,
   ChevronDown,
-  ChevronRight,
   ChevronUp,
-  Clock3,
   Copy,
   Settings,
   Trash2,
@@ -28,39 +24,144 @@ import { WorkoutStreak } from "@/components/workout-streak"
 import { useElapsedMs } from "@/hooks/use-elapsed-ms"
 import { formatDuration, sessionProgress } from "@/lib/active-workout"
 import { isObsoleteProjection } from "@/lib/training-adaptation"
-import { formatDateShort, formatWeekdayShort, toISODate } from "@/lib/date"
+import {
+  formatDateShort,
+  formatDayOfMonth,
+  formatMonthShort,
+  formatWeekdayShort,
+  toISODate,
+} from "@/lib/date"
+import { duplicateWorkoutWithEngine } from "@/lib/engine-workout"
 import { musclesForExerciseIds } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
+import { MUSCLE_LABELS } from "@/lib/muscles"
+import { countLabel } from "@/lib/text"
 import {
   activePlannedSessions,
   ensurePlannedWorkout,
   isPlannedSessionRecorded,
-  plannedSessionMuscles,
-  type PlannedSessionView,
 } from "@/lib/training-plan"
+import { cn } from "@/lib/utils"
 import { isCompletedWorkout, isPastWorkout } from "@/lib/workout-stats"
 import { useActiveWorkout } from "@/store/use-active-workout"
 import { useTrainingRecords } from "@/store/use-training-records"
 import { useWorkouts, type Workout } from "@/store/use-workouts"
+import type { MuscleId } from "@/types"
 
 type ActiveSession = ReturnType<typeof useActiveWorkout.getState>["session"]
 
-/** A workout row is tall and carries a body map; a screenful is roughly this
- *  many. Longer histories grow a page at a time from the button below. */
+/** A workout card carries a body map and a rail of figures; a screenful is
+ *  roughly this many. Longer histories grow a page at a time from the button
+ *  below. */
 const WORKOUT_PAGE_SIZE = 6
 
-function SectionHeading({ count, title }: { count: number; title: string }) {
+/** How many muscles a card names before it stops listing and starts counting.
+ *  The body map beside the line already carries the rest. */
+const NAMED_MUSCLES = 3
+
+/** The muscles a workout trains, in a card's words. */
+function muscleSummary(muscles: MuscleId[]) {
+  if (muscles.length === 0) return "No target muscles"
+  const named = muscles.slice(0, NAMED_MUSCLES).map((id) => MUSCLE_LABELS[id])
+  const rest = muscles.length - named.length
+  return rest > 0 ? `${named.join(" · ")} +${rest}` : named.join(" · ")
+}
+
+type TabDef = { label: string; count: number }
+
+/**
+ * Sliding-pill tab bar.
+ *
+ * The pill's position (translateX + width) is measured from the active
+ * button's layout, then written as inline styles so CSS transitions can
+ * tween between positions.  First paint and resize snap without animation.
+ */
+function SlidingTabs({
+  activeIndex,
+  onChange,
+  tabs,
+}: {
+  activeIndex: number
+  onChange: (index: number) => void
+  tabs: TabDef[]
+}) {
+  const barRef = useRef<HTMLDivElement>(null)
+  const pillRef = useRef<HTMLSpanElement>(null)
+
+  const syncPill = useCallback(
+    (animate: boolean) => {
+      const bar = barRef.current
+      const pill = pillRef.current
+      if (!bar || !pill) return
+      const btn = bar.querySelectorAll<HTMLButtonElement>('[role="tab"]')[
+        activeIndex
+      ]
+      if (!btn) return
+
+      if (!animate) {
+        pill.style.transition = "none"
+        // Force reflow so the "none" is flushed before we restore
+        void pill.offsetWidth
+      }
+      pill.style.transform = `translateX(${btn.offsetLeft}px)`
+      pill.style.width = `${btn.offsetWidth}px`
+      if (!animate) {
+        // Restore after one frame
+        requestAnimationFrame(() => {
+          pill.style.transition = ""
+        })
+      }
+    },
+    [activeIndex]
+  )
+
+  // Snap on first paint and whenever the active tab changes
+  useLayoutEffect(() => {
+    syncPill(true)
+  }, [syncPill])
+
+  // Snap (no animation) on first mount
+  useEffect(() => {
+    syncPill(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Snap (no animation) on resize
+  useEffect(() => {
+    const onResize = () => syncPill(false)
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [syncPill])
+
   return (
-    <div className="mx-(--app-content-inset) mb-2.5 flex items-center justify-between">
-      <h2 className="text-[13px] font-bold tracking-[0.15em] text-muted-foreground uppercase">
-        {title}
-      </h2>
-      <span className="text-[13px] font-semibold text-muted-foreground tabular-nums">
-        {count}
-      </span>
+    <div className="t-tabs" ref={barRef} role="tablist">
+      <span className="t-tabs-pill" ref={pillRef} aria-hidden="true" />
+      {tabs.map((tab, i) => (
+        <button
+          aria-selected={i === activeIndex}
+          className="t-tab"
+          key={tab.label}
+          onClick={() => onChange(i)}
+          role="tab"
+          type="button"
+        >
+          {tab.label}
+          <span
+            className={cn(
+              "ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums transition-colors",
+              i === activeIndex
+                ? "bg-black/15 text-primary-foreground"
+                : "bg-muted/60 text-muted-foreground"
+            )}
+          >
+            {tab.count}
+          </span>
+        </button>
+      ))}
     </div>
   )
 }
+
 
 function SectionFooter({
   onLess,
@@ -100,33 +201,143 @@ function SectionFooter({
   )
 }
 
-function PastStats({ workout }: { workout: Workout }) {
-  const completion = workout.completion
-  if (!completion) {
-    return (
-      <p className="mt-1 text-[15px] font-medium text-muted-foreground">
-        Not completed · {workout.exerciseIds.length} exercise
-        {workout.exerciseIds.length === 1 ? "" : "s"}
-      </p>
-    )
-  }
-
+/**
+ * The date a card is about, stamped rather than spelled out.
+ *
+ * Weekday over day-of-month is how a training week is actually read, and a
+ * column of stamps down the list lines the figures up the way the week strip
+ * at the top of the page does. History adds the month, because it outruns the
+ * current one; a plan never does. The stamp is decoration for a screen
+ * reader — the card's own label says the whole date.
+ */
+function DayStamp({
+  date,
+  tone,
+  withMonth = false,
+}: {
+  date: string
+  tone: "live" | "past" | "plan" | "today"
+  withMonth?: boolean
+}) {
   return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[15px] font-semibold text-muted-foreground tabular-nums">
-      <span className="flex items-center gap-1">
-        <Clock3 className="size-3.5" />
-        {formatDuration(completion.durationMs)}
+    <div
+      aria-hidden="true"
+      className={cn(
+        "flex w-[3.25rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-2xl border px-1 py-2",
+        tone === "live" &&
+          "border-primary/70 bg-primary-gradient text-primary-foreground",
+        tone === "today" && "border-primary/45 bg-primary/15 text-primary",
+        tone === "plan" && "border-border bg-muted/45 text-foreground",
+        tone === "past" &&
+          "border-transparent bg-muted/35 text-muted-foreground"
+      )}
+    >
+      <span className="text-[9px] leading-none font-bold tracking-[0.14em] uppercase opacity-75">
+        {formatWeekdayShort(date)}
       </span>
-      <span className="text-gold">{completion.activeCalories} kcal</span>
-      <span className="flex items-center gap-1 text-success">
-        <CheckCircle2 className="size-3.5" />
-        {completion.completedExerciseIds.length}/{workout.exerciseIds.length}
+      <span className="font-readout text-[21px] leading-none font-black">
+        {formatDayOfMonth(date)}
       </span>
+      {withMonth ? (
+        <span className="text-[9px] leading-none font-bold tracking-[0.14em] uppercase opacity-60">
+          {formatMonthShort(date)}
+        </span>
+      ) : null}
     </div>
   )
 }
 
-function WorkoutRow({
+/** One instrument on a finished workout's rail: the figure, then what it is. */
+function Stat({
+  caption,
+  children,
+  className,
+}: {
+  caption: string
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <div className="min-w-0">
+      <p
+        className={cn(
+          "truncate font-readout text-[15px] leading-none font-black tracking-tight tabular-nums",
+          className
+        )}
+      >
+        {children}
+      </p>
+      <p className="mt-1 truncate text-[9px] font-bold tracking-[0.1em] text-muted-foreground uppercase">
+        {caption}
+      </p>
+    </div>
+  )
+}
+
+/** How much of a workout was got through, as a bar. The track is always
+ *  drawn, so a part-finished session reads as partly done rather than broken. */
+function ProgressRail({
+  className,
+  completed,
+  total,
+}: {
+  className?: string
+  completed: number
+  total: number
+}) {
+  const share = total > 0 ? Math.min(1, Math.max(0, completed / total)) : 0
+  return (
+    <div aria-hidden="true" className={cn("workout-progress", className)}>
+      <i style={{ width: `${Math.round(share * 100)}%` }} />
+    </div>
+  )
+}
+
+/** What a finished day amounts to: the three figures every session leaves
+ *  behind, over the share of it that was actually got through. */
+function CompletedRecord({ workout }: { workout: Workout }) {
+  const completion = workout.completion!
+  const done = completion.completedExerciseIds.length
+
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-2">
+        <Stat caption="Duration">{formatDuration(completion.durationMs)}</Stat>
+        <Stat caption="Energy" className="text-gold">
+          {completion.activeCalories} kcal
+        </Stat>
+        <Stat caption="Completed" className="text-success">
+          {done}/{workout.exerciseIds.length}
+        </Stat>
+      </div>
+      <ProgressRail
+        className="mt-2.5"
+        completed={done}
+        total={workout.exerciseIds.length}
+      />
+    </>
+  )
+}
+
+/** What a card says about itself out loud, where the stamp and the figures
+ *  say it in shorthand. */
+function workoutLabel(workout: Workout, isRunning: boolean) {
+  const date = formatDateShort(workout.date)
+  const exercises = countLabel(workout.exerciseIds.length, "exercise")
+  if (isRunning) return `${date} workout, in progress`
+  const completion = workout.completion
+  if (completion) {
+    return `${date} workout, ${formatDuration(completion.durationMs)}, ${
+      completion.activeCalories
+    } kcal, ${completion.completedExerciseIds.length} of ${
+      workout.exerciseIds.length
+    } exercises completed`
+  }
+  if (isPastWorkout(workout)) return `${date} workout, overdue`
+  return `${date} workout, ${exercises}`
+}
+
+function WorkoutCard({
   elapsed,
   isOpen,
   isPast,
@@ -150,6 +361,8 @@ function WorkoutRow({
   workout: Workout
 }) {
   const targetMuscles = musclesForExerciseIds(workout.exerciseIds)
+  const completed = isPast && workout.completion !== null
+  const progress = isRunning && session ? sessionProgress(session) : null
 
   return (
     <SwipeableRow
@@ -181,12 +394,21 @@ function WorkoutRow({
       onOpenChange={onOpenChange}
     >
       <button
-        className={`interactive-spring mx-(--app-content-inset) flex w-[calc(100%_-_2_*_var(--app-content-inset))] items-center gap-3 rounded-3xl border p-3.5 text-left ${
-          isRunning
-            ? "content-glow content-glow--subtle border-primary/55 bg-[color-mix(in_oklch,var(--card),var(--primary)_7%)] active:border-primary active:bg-[color-mix(in_oklch,var(--card),var(--primary)_12%)]"
-            : "border-border bg-card active:bg-muted/80"
-        }`}
+        aria-label={workoutLabel(workout, isRunning)}
+        className={cn(
+          "workout-card interactive-spring mx-(--app-content-inset) flex w-[calc(100%_-_2_*_var(--app-content-inset))] items-center gap-3 rounded-3xl p-3 text-left",
+          isRunning && "content-glow content-glow--subtle"
+        )}
         data-haptics="off"
+        data-state={
+          isRunning
+            ? "live"
+            : completed
+              ? "past"
+              : isPast
+                ? "unfinished"
+                : "plan"
+        }
         onClick={() => {
           if (isOpen) {
             onOpenChange(false)
@@ -196,114 +418,54 @@ function WorkoutRow({
         }}
         type="button"
       >
+        <DayStamp
+          date={workout.date}
+          tone={isRunning ? "live" : isPast ? "past" : "plan"}
+          withMonth={isPast}
+        />
         <div className="min-w-0 flex-1">
-          <p className="text-xl font-bold tracking-[-0.01em]">
-            {formatDateShort(workout.date)}
-          </p>
-          {isRunning && session ? (
-            <p className="mt-0.5 flex items-center gap-1.5 text-[15px] font-semibold text-primary tabular-nums">
-              <span
-                aria-hidden="true"
-                className="size-1.5 animate-pulse rounded-full bg-primary"
+          {isRunning && progress ? (
+            <>
+              <p className="flex items-center gap-1.5 text-[13px] font-bold text-primary tabular-nums">
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 animate-pulse rounded-full bg-primary"
+                />
+                {session?.runningSince === null ? "Paused" : "In progress"} ·{" "}
+                {formatDuration(elapsed)} · {progress.completed}/
+                {progress.total}
+              </p>
+              <ProgressRail
+                className="mt-2.5"
+                completed={progress.completed}
+                total={progress.total}
               />
-              {session.runningSince === null ? "Paused" : "In progress"} ·{" "}
-              {formatDuration(elapsed)} · {sessionProgress(session).completed}/
-              {sessionProgress(session).total}
-            </p>
+            </>
+          ) : completed ? (
+            <CompletedRecord workout={workout} />
           ) : isPast ? (
-            <PastStats workout={workout} />
-          ) : (
-            <p className="mt-0.5 text-[15px] font-medium text-muted-foreground">
-              {workout.exerciseIds.length} exercise
-              {workout.exerciseIds.length === 1 ? "" : "s"}
+            <p className="text-[13px] font-semibold text-muted-foreground">
+              Not completed ·{" "}
+              {countLabel(workout.exerciseIds.length, "exercise")}
             </p>
+          ) : (
+            <>
+              <p className="text-[15px] font-bold tracking-[-0.01em]">
+                {workout.planned ? `${workout.name} · ` : ""}
+                {countLabel(workout.exerciseIds.length, "exercise")}
+              </p>
+              <p className="mt-1 truncate text-[11px] font-medium text-muted-foreground">
+                {muscleSummary(targetMuscles)}
+              </p>
+            </>
           )}
         </div>
         <BodyPreview
-          className="h-14 w-20 shrink-0"
+          className={cn("h-12 w-[4.25rem] shrink-0", isPast && "opacity-70")}
           selectedMuscles={targetMuscles}
         />
-        <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
       </button>
     </SwipeableRow>
-  )
-}
-
-/**
- * The active program's remaining sessions, above the workouts somebody built
- * themselves. Every value on a row is read back out of the immutable program
- * snapshot; the row's only job is to open the session in the same
- * workout-detail page every other workout opens in.
- */
-function TrainingPlanSection({
-  onOpen,
-}: {
-  onOpen: (workoutId: string) => void
-}) {
-  const trainingData = useTrainingRecords((state) => state.data)
-  const today = toISODate(new Date())
-
-  const upcoming = useMemo(
-    () =>
-      activePlannedSessions(trainingData).filter(
-        (session) =>
-          session.date >= today &&
-          !isPlannedSessionRecorded(session.sessionId, trainingData)
-      ),
-    [today, trainingData]
-  )
-
-  if (upcoming.length === 0) return null
-
-  return (
-    <section aria-labelledby="training-plan-heading">
-      <div id="training-plan-heading">
-        <SectionHeading count={upcoming.length} title="Training plan" />
-      </div>
-      <ul className="space-y-2">
-        {upcoming.map((session) => (
-          <li key={session.sessionId}>
-            <PlannedSessionRow onOpen={onOpen} session={session} />
-          </li>
-        ))}
-      </ul>
-    </section>
-  )
-}
-
-function PlannedSessionRow({
-  onOpen,
-  session,
-}: {
-  onOpen: (workoutId: string) => void
-  session: PlannedSessionView
-}) {
-  return (
-    <button
-      className="interactive-spring mx-(--app-content-inset) flex w-[calc(100%_-_2_*_var(--app-content-inset))] items-center gap-3 rounded-3xl border border-border bg-card p-3 text-left active:bg-muted/80"
-      data-haptics="off"
-      onClick={() => {
-        triggerHaptic("selection")
-        onOpen(ensurePlannedWorkout(session))
-      }}
-      type="button"
-    >
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[17px] font-bold tracking-[-0.01em]">
-          {formatWeekdayShort(session.date)} · {session.title}
-        </p>
-        <p className="mt-0.5 text-[13px] font-semibold text-muted-foreground tabular-nums">
-          {session.prescription.length} exercise
-          {session.prescription.length === 1 ? "" : "s"} · {session.workingSets}{" "}
-          sets · {session.minutes} min
-        </p>
-      </div>
-      <BodyPreview
-        className="h-11 w-16 shrink-0"
-        selectedMuscles={plannedSessionMuscles(session)}
-      />
-      <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
-    </button>
   )
 }
 
@@ -323,25 +485,45 @@ export function WorkoutsPage({
   const scrollRef = useRef<HTMLDivElement>(null)
   const workouts = useWorkouts((state) => state.workouts)
   const trainingData = useTrainingRecords((state) => state.data)
-  const duplicateWorkout = useWorkouts((state) => state.duplicateWorkout)
   const [openRowId, setOpenRowId] = useState<string | null>(null)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [upcomingLimit, setUpcomingLimit] = useState(WORKOUT_PAGE_SIZE)
   const [pastLimit, setPastLimit] = useState(WORKOUT_PAGE_SIZE)
+  const [activeTab, setActiveTab] = useState(0)
 
   const session = useActiveWorkout((state) => state.session)
   const elapsed = useElapsedMs(session)
   const { completed, past, upcoming } = useMemo(() => {
     const pastWorkouts: Workout[] = []
     const upcomingWorkouts: Workout[] = []
-    for (const workout of workouts) {
+    const missing = activePlannedSessions(trainingData)
+      .filter(
+        (view) =>
+          !isPlannedSessionRecorded(view.sessionId, trainingData) &&
+          !workouts.some(
+            (workout) => workout.planned?.sessionId === view.sessionId
+          )
+      )
+      .map((view) => ({
+        id: `planned-${view.sessionId}`,
+        name: view.title,
+        date: view.date,
+        exerciseIds: view.exerciseIds,
+        completion: null,
+        createdAt: "",
+        updatedAt: "",
+        planned: { programId: view.programId, sessionId: view.sessionId },
+      }))
+    for (const workout of [...workouts, ...missing]) {
       if (isObsoleteProjection(workout, trainingData)) continue
       const running = session?.workoutId === workout.id
-      if (!running && isPastWorkout(workout)) pastWorkouts.push(workout)
-      // A planned session that has not been performed yet is already on the
-      // page, in the plan section above; once it is history it belongs with
-      // every other past workout.
-      else if (!running && workout.planned) continue
+      if (
+        !running &&
+        (workout.completion ||
+          (workout.planned &&
+            isPlannedSessionRecorded(workout.planned.sessionId, trainingData)))
+      )
+        pastWorkouts.push(workout)
       else upcomingWorkouts.push(workout)
     }
     upcomingWorkouts.sort((left, right) => left.date.localeCompare(right.date))
@@ -353,26 +535,31 @@ export function WorkoutsPage({
     }
   }, [session?.workoutId, trainingData, workouts])
 
-  // The projection is created the moment a planned session is opened, so the
-  // workout the detail page is asked for always exists by the time it renders.
-  const openPlannedSession = (workoutId: string) => {
-    const workout = useWorkouts
-      .getState()
-      .workouts.find((item) => item.id === workoutId)
-    if (workout) onSelect(workout)
+  const openWorkout = (workout: Workout) => {
+    if (
+      workout.planned &&
+      !useWorkouts.getState().workouts.some((item) => item.id === workout.id)
+    ) {
+      const view = activePlannedSessions(trainingData).find(
+        (item) => item.sessionId === workout.planned?.sessionId
+      )
+      if (!view) return
+      const id = ensurePlannedWorkout(view)
+      onSelect(useWorkouts.getState().workouts.find((item) => item.id === id)!)
+    } else onSelect(workout)
   }
 
   const copyWorkout = (workout: Workout) => {
-    duplicateWorkout(workout.id)
+    duplicateWorkoutWithEngine(workout.id, toISODate(new Date()))
     triggerHaptic("success")
     setOpenRowId(null)
   }
 
-  const renderRows = (items: Workout[], arePast: boolean) => (
-    <ul className="space-y-3">
+  const renderCards = (items: Workout[], arePast: boolean) => (
+    <ul className="space-y-2.5">
       {items.map((workout) => (
         <li className="relative" key={workout.id}>
-          <WorkoutRow
+          <WorkoutCard
             elapsed={elapsed}
             isOpen={openRowId === workout.id}
             isPast={arePast}
@@ -386,7 +573,7 @@ export function WorkoutsPage({
               if (open) triggerHaptic("selection")
               setOpenRowId(open ? workout.id : null)
             }}
-            onSelect={() => onSelect(workout)}
+            onSelect={() => openWorkout(workout)}
             session={session}
             workout={workout}
           />
@@ -408,58 +595,49 @@ export function WorkoutsPage({
           title="My workouts"
         />
 
+        {/* The list ends well above the surface floor: RAUTA's dock stands
+            there, and the last card has to be able to clear it. */}
         <div
-          className="app-scroll-region flex min-h-0 flex-1 flex-col overflow-y-auto pt-5 pb-6"
+          className="app-scroll-region flex min-h-0 flex-1 flex-col overflow-y-auto pt-5 pb-36"
           ref={scrollRef}
           tabIndex={-1}
         >
-          <div className="space-y-7">
-            <WorkoutCompanion
-              onCreate={onCreate}
-              onCreatePlan={onCreatePlan}
-              onSettings={onSettings}
-              onResume={
-                session && workouts.some((w) => w.id === session.workoutId)
-                  ? () =>
-                      onSelect(
-                        workouts.find((w) => w.id === session.workoutId)!
-                      )
-                  : undefined
-              }
-            />
-            <TrainingPlanSection onOpen={openPlannedSession} />
+          <div>
+            <WorkoutStreak workouts={completed} />
 
-            {upcoming.length > 0 ? (
-              <section aria-labelledby="upcoming-workouts-heading">
-                <div id="upcoming-workouts-heading">
-                  <SectionHeading
-                    count={upcoming.length}
-                    title="Next workouts"
+            <div className="mx-(--app-content-inset) mt-5">
+              <SlidingTabs
+                activeIndex={activeTab}
+                onChange={setActiveTab}
+                tabs={[
+                  { label: "Next", count: upcoming.length },
+                  { label: "Past", count: past.length },
+                ]}
+              />
+            </div>
+
+            <div className="mt-4">
+            {activeTab === 0 ? (
+              upcoming.length > 0 ? (
+                <section aria-label="Next workouts">
+                  {renderCards(upcoming.slice(0, upcomingLimit), false)}
+                  <SectionFooter
+                    onLess={() => setUpcomingLimit(WORKOUT_PAGE_SIZE)}
+                    onMore={() =>
+                      setUpcomingLimit((limit) => limit + WORKOUT_PAGE_SIZE)
+                    }
+                    remaining={Math.max(0, upcoming.length - upcomingLimit)}
+                    showLess={upcomingLimit > WORKOUT_PAGE_SIZE}
                   />
-                </div>
-                {renderRows(upcoming.slice(0, upcomingLimit), false)}
-                <SectionFooter
-                  onLess={() => setUpcomingLimit(WORKOUT_PAGE_SIZE)}
-                  onMore={() =>
-                    setUpcomingLimit((limit) => limit + WORKOUT_PAGE_SIZE)
-                  }
-                  remaining={Math.max(0, upcoming.length - upcomingLimit)}
-                  showLess={upcomingLimit > WORKOUT_PAGE_SIZE}
-                />
-              </section>
-            ) : null}
-
-            {/* The week is the page's fixture, not a reward for having
-              finished something: an unlit strip is what a first workout is
-              measured against. */}
-            <WorkoutStreak onSelectWorkout={onSelect} workouts={completed} />
-
-            {past.length > 0 ? (
-              <section aria-labelledby="past-workouts-heading">
-                <div id="past-workouts-heading">
-                  <SectionHeading count={past.length} title="Past workouts" />
-                </div>
-                {renderRows(past.slice(0, pastLimit), true)}
+                </section>
+              ) : (
+                <p className="mx-(--app-content-inset) text-center text-[13px] text-muted-foreground">
+                  No upcoming workouts
+                </p>
+              )
+            ) : past.length > 0 ? (
+              <section aria-label="Past workouts">
+                {renderCards(past.slice(0, pastLimit), true)}
                 <SectionFooter
                   onLess={() => setPastLimit(WORKOUT_PAGE_SIZE)}
                   onMore={() =>
@@ -469,18 +647,30 @@ export function WorkoutsPage({
                   showLess={pastLimit > WORKOUT_PAGE_SIZE}
                 />
               </section>
-            ) : null}
-
-            {workouts.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 px-4 text-center">
-                <CalendarDays className="size-7 text-[color-mix(in_oklch,var(--muted-foreground),var(--background)_35%)]" />
-                <p className="max-w-[24rem] text-base text-muted-foreground">
-                  No workouts yet. Start a new one, pick the muscles you want to
-                  train, and it will fill with exercises you can do.
-                </p>
-              </div>
-            ) : null}
+            ) : (
+              <p className="mx-(--app-content-inset) text-center text-[13px] text-muted-foreground">
+                No past workouts yet
+              </p>
+            )}
+            </div>
           </div>
+        </div>
+
+        {/* RAUTA holds the floor of the page rather than the head of the
+            list: it is the one thing here that is always in the same place,
+            so it can be reached without scrolling back for it. */}
+        <div className="app-surface-bottom-dock workouts-companion-dock">
+          <WorkoutCompanion
+            onCreate={onCreate}
+            onCreatePlan={onCreatePlan}
+            onSettings={onSettings}
+            onResume={
+              session && workouts.some((w) => w.id === session.workoutId)
+                ? () =>
+                    onSelect(workouts.find((w) => w.id === session.workoutId)!)
+                : undefined
+            }
+          />
         </div>
       </AppSurface>
 

@@ -51,7 +51,11 @@ import {
 import { activePlannedCoverage } from "@/lib/training-session"
 import { cn } from "@/lib/utils"
 import { shareWorkout } from "@/lib/workout-sharing"
-import { isPastWorkout } from "@/lib/workout-stats"
+import { duplicateWorkoutWithEngine } from "@/lib/engine-workout"
+import {
+  rescheduleWorkout,
+  updateScheduledWorkoutExercises,
+} from "@/lib/training-edits"
 import { useActiveWorkout } from "@/store/use-active-workout"
 import { useTrainingRecords } from "@/store/use-training-records"
 import { isStartablePlannedSession } from "@/training-persistence/program"
@@ -111,7 +115,9 @@ export function WorkoutDetailPage({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [confirming, setConfirming] = useState<ConfirmationKind | null>(null)
-  const [confirmationIssue, setConfirmationIssue] = useState<string | null>(null)
+  const [confirmationIssue, setConfirmationIssue] = useState<string | null>(
+    null
+  )
   // At most one set editor is open at a time, and only where it was asked for.
   const [editingExerciseId, setEditingExerciseId] = useState<string | null>(
     null
@@ -141,7 +147,6 @@ export function WorkoutDetailPage({
     [trainingData]
   )
   const updateWorkout = useWorkouts((state) => state.updateWorkout)
-  const duplicateWorkout = useWorkouts((state) => state.duplicateWorkout)
 
   const runningSession = useActiveWorkout((state) => state.session)
   const startWorkout = useActiveWorkout((state) => state.start)
@@ -179,14 +184,23 @@ export function WorkoutDetailPage({
     isPlanned &&
     (!plannedSession ||
       !isStartablePlannedSession(trainingData, programId!, plannedSessionId!))
-  const isPast = !session && isPastWorkout(workout)
+  const isPast =
+    !session &&
+    (Boolean(workout.completion) ||
+      Boolean(
+        plannedSessionId &&
+        trainingData.sessions.some(
+          (item) => item.plannedSessionId === plannedSessionId
+        )
+      ))
   const completion = workout.completion
 
   // A running session mirrors the saved workout through the store, so an edit
   // made here — or from the find-an-exercise flow — reaches it either way.
   const setExerciseIds = (exerciseIds: string[], movedExerciseId?: string) => {
     if (movedExerciseId) syncExercises(exerciseIds, movedExerciseId)
-    updateWorkout(workout.id, { exerciseIds })
+    if (session) updateWorkout(workout.id, { exerciseIds })
+    else updateScheduledWorkoutExercises(workout.id, exerciseIds)
   }
 
   const exercise = session ? currentExercise(session) : null
@@ -239,16 +253,25 @@ export function WorkoutDetailPage({
           right={shareButton}
           scrollRef={scrollRef}
           title={
-            // A planned session sits on the day the program gave it; moving it
-            // would leave the plan and the workout describing different weeks.
-            isPast || isPlanned ? (
+            isPast || session ? (
               formatDateLong(workout.date)
             ) : (
               <WorkoutDatePicker
                 ariaLabel={`Change date, currently ${formatDateLong(workout.date)}`}
                 className="max-w-full truncate text-center"
                 date={workout.date}
-                onSelect={(date) => updateWorkout(workout.id, { date })}
+                onSelect={(date) => {
+                  try {
+                    rescheduleWorkout(workout.id, date)
+                    setActionIssue(null)
+                  } catch (error) {
+                    setActionIssue(
+                      error instanceof Error
+                        ? error.message
+                        : "Couldn’t move this workout. Please try again."
+                    )
+                  }
+                }}
               >
                 {formatDateLong(workout.date)}
               </WorkoutDatePicker>
@@ -363,7 +386,7 @@ export function WorkoutDetailPage({
               <SortableExerciseList
                 exerciseIds={workout.exerciseIds}
                 onFindAlternative={
-                  isPast || (isPlanned && !session)
+                  isPast || plannedUnavailable
                     ? undefined
                     : (candidate) => {
                         if (isPlanned) {
@@ -391,7 +414,7 @@ export function WorkoutDetailPage({
                   // A planned session's exercises are the plan's, not this
                   // page's: dropping one here would leave the projection
                   // describing a session the program never prescribed.
-                  isPast || isPlanned
+                  isPast
                     ? undefined
                     : (id) => {
                         triggerHaptic("warning")
@@ -402,7 +425,7 @@ export function WorkoutDetailPage({
                         )
                       }
                 }
-                onReorder={isPast || isPlanned ? undefined : setExerciseIds}
+                onReorder={isPast ? undefined : setExerciseIds}
                 renderBelow={(exerciseId) => (
                   <>
                     {plannedSession && !session ? (
@@ -439,7 +462,10 @@ export function WorkoutDetailPage({
         </div>
 
         {session ? (
-          <div className="app-surface-bottom-dock active-workout-dock">
+          <div
+            className="app-surface-bottom-dock active-workout-dock"
+            data-rauta-floor
+          >
             <ActiveWorkoutTimer
               exercise={exercise}
               onNext={
@@ -475,14 +501,9 @@ export function WorkoutDetailPage({
             >
               <X />
             </AppControlButton>
-            {isPlanned ? null : (
-              <AppControlButton
-                aria-label="Add exercise"
-                onClick={onAddExercise}
-              >
-                <Plus />
-              </AppControlButton>
-            )}
+            <AppControlButton aria-label="Add exercise" onClick={onAddExercise}>
+              <Plus />
+            </AppControlButton>
             <AppControlButton
               aria-label="Finish workout"
               onClick={() => {
@@ -527,8 +548,10 @@ export function WorkoutDetailPage({
                 size="cta"
                 className="w-full"
                 onClick={() => {
-                  const copiedId = duplicateWorkout(workout.id)
-                  if (!copiedId) return
+                  const copiedId = duplicateWorkoutWithEngine(
+                    workout.id,
+                    new Date().toISOString().slice(0, 10)
+                  )
                   triggerHaptic("success")
                   onCopied?.(copiedId)
                 }}
@@ -539,31 +562,22 @@ export function WorkoutDetailPage({
           </div>
         ) : (
           <div className="flex min-w-0 items-center">
-            {/* A planned session is the program's to withdraw, not this
-                page's: there is nothing here to delete or add to. */}
-            {isPlanned ? null : (
-              <>
-                <AppControlButton
-                  aria-label="Delete workout"
-                  className="mr-2.5"
-                  onClick={() => {
-                    triggerHaptic("warning")
-                    setConfirming("delete-workout")
-                  }}
-                  variant="destructive"
-                >
-                  <Trash2 />
-                </AppControlButton>
-                <MorphingActionSlot visible={workout.exerciseIds.length > 0}>
-                  <AppControlButton
-                    aria-label="Add exercise"
-                    onClick={onAddExercise}
-                  >
-                    <Plus />
-                  </AppControlButton>
-                </MorphingActionSlot>
-              </>
-            )}
+            <AppControlButton
+              aria-label="Delete workout"
+              className="mr-2.5"
+              onClick={() => {
+                triggerHaptic("warning")
+                setConfirming("delete-workout")
+              }}
+              variant="destructive"
+            >
+              <Trash2 />
+            </AppControlButton>
+            <MorphingActionSlot visible={workout.exerciseIds.length > 0}>
+              <AppControlButton aria-label="Add exercise" onClick={onAddExercise}>
+                <Plus />
+              </AppControlButton>
+            </MorphingActionSlot>
             <AppControlMorph className="app-command-fill" role="primary">
               <Button
                 className="w-full"
@@ -628,7 +642,8 @@ export function WorkoutDetailPage({
             else if (
               confirming === "finish-workout" ||
               confirming === "finish-workout-partial"
-            ) onFinish()
+            )
+              onFinish()
             setConfirming(null)
             setConfirmationIssue(null)
           } catch {

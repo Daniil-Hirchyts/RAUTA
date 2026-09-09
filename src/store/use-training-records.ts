@@ -53,6 +53,7 @@ export type TrainingRecordsState = {
     program: TrainingProgram,
     options?: {
       activate?: boolean
+      kind?: "plan" | "workout"
       manualSourceProgramId?: string
       manualRevisionAt?: string
       incorporatedSessionIds?: string[]
@@ -83,8 +84,15 @@ export type TrainingRecordsState = {
     side: PersistedActiveSetDraft["side"]
     observation?: PersistedSetObservation
   }) => string
-  substituteExercise: (exerciseEntryId: string, exerciseId: string) => void
-  addExercise: (exerciseId: string) => void
+  substituteExercise: (
+    exerciseEntryId: string,
+    exerciseId: string,
+    targets?: PersistedActiveSetDraft["target"][]
+  ) => void
+  addExercise: (
+    exerciseId: string,
+    targets?: PersistedActiveSetDraft["target"][]
+  ) => void
   moveExercise: (exerciseEntryId: string, direction: -1 | 1) => void
   reorderExercises: (exerciseEntryIds: string[]) => void
   updateSetDetails: (
@@ -189,6 +197,7 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
         persistenceIssues: [],
         saveProgram: (program, options = {}) => {
           const record = createPersistedProgramRecord(program, {
+            kind: options.kind,
             lifecycle: options.activate === false ? "archived" : "active",
             manualSourceProgramId: options.manualSourceProgramId,
             manualRevisionAt: options.manualRevisionAt,
@@ -350,7 +359,7 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
             )
             return { data: checked({ ...state.data, activeWorkout }) }
           }),
-        addExercise: (exerciseId) =>
+        addExercise: (exerciseId, targets = []) =>
           set((state) => {
             if (!state.data.activeWorkout) throw new Error("No active workout")
             if (!EXERCISES_BY_ID.has(exerciseId))
@@ -360,7 +369,12 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
               id: makeId("draft-exercise"),
               exerciseId,
               exerciseNameSnapshot: exerciseName(exerciseId),
-              sets: [],
+              sets: targets.map((target) => ({
+                id: makeId("draft-set"),
+                setType: "working" as const,
+                side: "both" as const,
+                target: structuredClone(target),
+              })),
             })
             return { data: checked({ ...state.data, activeWorkout }) }
           }),
@@ -460,7 +474,7 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
           set({ data: checked({ ...state.data, activeWorkout }) })
           return setDraftId
         },
-        substituteExercise: (exerciseEntryId, exerciseId) =>
+        substituteExercise: (exerciseEntryId, exerciseId, targets) =>
           set((state) => {
             if (!state.data.activeWorkout) throw new Error("No active workout")
             const activeWorkout = substituteDraftExercise(
@@ -471,6 +485,18 @@ export const useTrainingRecords = create<TrainingRecordsState>()(
                 exerciseNameSnapshot: exerciseName(exerciseId),
               }
             )
+            if (targets) {
+              const entry = activeWorkout.exercises.find(
+                (item) => item.id === exerciseEntryId
+              )!
+              if (targets.length !== entry.sets.length)
+                throw new Error(
+                  "Replacement targets do not match the planned sets"
+                )
+              entry.sets.forEach((set, index) => {
+                set.target = structuredClone(targets[index])
+              })
+            }
             return { data: checked({ ...state.data, activeWorkout }) }
           }),
         completeWorkout: (

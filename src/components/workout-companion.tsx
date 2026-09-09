@@ -58,6 +58,9 @@ export function WorkoutCompanion({
   const [working, setWorking] = useState(false)
   const busy = useRef(false)
   const [outcome, setOutcome] = useState<RemainingWeekOutcome | null>(null)
+  /** What RAUTA is saying right now, which the panel says for it. Null between
+   *  lines, when the panel goes back to describing the day itself. */
+  const [said, setSaid] = useState<string | null>(null)
   const profile = useTrainingProfile((state) => state.profile)
   const trainingData = useTrainingRecords((state) => state.data)
   const workouts = useWorkouts((state) => state.workouts)
@@ -122,10 +125,18 @@ export function WorkoutCompanion({
   }
   return (
     <>
-      <div className="content-glow mx-(--app-content-inset) flex items-center gap-1.5 rounded-3xl bg-card/60 px-2 py-1">
+      {/* The character stands in front of the bar rather than inside it: it is
+          pinned to the foot of the screen and takes no room in this row, so
+          the silhouette overhangs the bar into the list above. The left
+          padding is the room it stands in, and the corner is the shell's own
+          curve less the inset it sits in — concentric with the screen around
+          it. A plain radius rather than the page's softened corner, because
+          this panel is read as a piece of the shell rather than as a card on
+          it, and the shell's own surface is drawn the same way. */}
+      <div className="frosted-glass content-glow content-glow--subtle pointer-events-auto flex items-center gap-1 rounded-(--app-card-radius) border py-6 pr-4 pl-[6.75rem] corner-round">
         <Rauta
           mood={onResume ? "focused" : plan.line ? "proud" : "calm"}
-          size={108}
+          size={140}
           speech={
             outcome?.message ??
             (canAdjust ? offer : canPlanNext ? nextOffer : plan.line) ??
@@ -133,34 +144,45 @@ export function WorkoutCompanion({
           }
           label="Open RAUTA actions"
           onActivate={() => setOpen(true)}
+          // The panel is the character's mouth here: what it would say in a
+          // bubble is said in the line below instead, so a nudge, a throw and
+          // a plan all arrive in the one place the page already reads from.
+          onSay={setSaid}
         />
         <button
-          className="min-w-0 flex-1 py-2 text-left active:scale-[0.985]"
+          className="flex min-w-0 flex-1 items-center gap-2.5 text-left active:scale-[0.985]"
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Train with RAUTA"
         >
-          <div className="py-3">
-            <strong className="block text-[15px] leading-snug tracking-tight">
-              {onResume
-                ? "Your workout is waiting. Want to continue?"
-                : (outcome?.message ??
-                  (canAdjust ? offer : null) ??
-                  (canPlanNext ? nextOffer : null) ??
-                  plan.line ??
-                  (profile.name
-                    ? `Ready, ${profile.name}? I can shape today's session.`
-                    : "Tell me what we're training today."))}
+          <span className="min-w-0 flex-1">
+            <strong
+              aria-live="polite"
+              className="line-clamp-2 block text-[15px] leading-snug tracking-tight"
+            >
+              {outcome?.message ??
+                said ??
+                (onResume
+                  ? "Your workout is waiting. Want to continue?"
+                  : (outcome?.message ??
+                    (canAdjust ? offer : null) ??
+                    (canPlanNext ? nextOffer : null) ??
+                    plan.line ??
+                    (profile.name
+                      ? `Ready, ${profile.name}? I can shape today's session.`
+                      : "Tell me what we're training today.")))}
             </strong>
-            <span className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <span className="mt-1 block truncate text-[12px] text-muted-foreground">
               {GOAL_CHOICES[profile.goal].title} ·{" "}
               {profile.preferredSessionDurationMinutes} min
-              <ArrowRight
-                aria-hidden="true"
-                className="size-3.5 text-primary"
-              />
             </span>
-          </div>
+          </span>
+          <span
+            aria-hidden="true"
+            className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/15 text-primary"
+          >
+            <ArrowRight className="size-5" />
+          </span>
         </button>
       </div>
       <AppModal open={open} onClose={close} label="RAUTA actions">

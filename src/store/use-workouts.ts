@@ -50,7 +50,7 @@ export type WorkoutsState = {
   }) => string
   updateWorkout: (
     id: string,
-    patch: Partial<Pick<Workout, "name" | "date" | "exerciseIds">>
+    patch: Partial<Pick<Workout, "name" | "date" | "exerciseIds" | "planned">>
   ) => void
   deleteWorkout: (id: string) => void
   duplicateWorkout: (id: string) => string | null

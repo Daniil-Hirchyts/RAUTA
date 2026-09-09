@@ -12,13 +12,16 @@ import {
 import { useActiveWorkout } from "@/store/use-active-workout"
 import { useTrainingRecords } from "@/store/use-training-records"
 import { useWorkouts, type Workout } from "@/store/use-workouts"
-import { isSupersededPlannedSession } from "@/training-persistence/program"
+import {
+  isSupersededPlannedSession,
+  toEngineProgramSnapshot,
+} from "@/training-persistence/program"
 import type { PersistedTrainingStateLatest } from "@/training-persistence/schema"
 
 const MESSAGES = {
   source: "Your source plan is unavailable. I could not adjust this week.",
   future: "There are no future sessions left in this week to adjust.",
-  empty: "Log performed sets in a planned session before I adjust the week.",
+  empty: "Log performed sets in any workout before I adjust the week.",
   incorporated:
     "Your logged sessions have already been incorporated into the plan.",
   active: "Finish or end your current workout before adjusting the week.",
@@ -90,10 +93,7 @@ export function remainingWeekEligibility(
   )
   const observations = data.sessions.filter(
     (session) =>
-      session.plannedProgramId === source.id &&
-      week.sessions.some(
-        (planned) => planned.id === session.plannedSessionId
-      ) &&
+      Date.parse(session.completedAt) >= Date.parse(week.start) &&
       Date.parse(session.completedAt) <= Date.parse(now) &&
       (session.status === "completed" || session.status === "partial") &&
       session.exercises.some((exercise) =>
@@ -154,9 +154,7 @@ export function nextWeekEligibility(
     (session) =>
       session.scheduledAt.slice(0, 10) >= today &&
       !isSupersededPlannedSession(data, source.id, session.id) &&
-      !data.sessions.some(
-        (actual) => actual.plannedSessionId === session.id
-      ) &&
+      !data.sessions.some((actual) => actual.plannedSessionId === session.id) &&
       !workouts.some(
         (workout) =>
           workout.completion &&
@@ -257,7 +255,7 @@ export function adjustRemainingWeek(
   }
   if (!("program" in planned.result)) return blocked("engine")
   const program = planned.result.program
-  const sessions = sessionViews(program)
+  let sessions = sessionViews(program)
   // The engine must answer the source's exact remaining slots, never another week.
   if (
     sessions.length !== eligibility.sessions.length ||
@@ -277,6 +275,44 @@ export function adjustRemainingWeek(
   const previous = useWorkouts.getState().workouts
   const data = useTrainingRecords.getState().data
   const replacedSessionIds = eligibility.sessions.map((session) => session.id)
+  // Moving a session across weeks must not lose it when another week is
+  // adjusted. Carry every untouched, unrecorded slot into the active revision.
+  for (const week of toEngineProgramSnapshot(source.snapshot).weeks) {
+    const carried = week.sessions.filter(
+      (session) =>
+        !replacedSessionIds.includes(session.id) &&
+        !isSupersededPlannedSession(data, source.id, session.id) &&
+        !data.sessions.some(
+          (actual) => actual.plannedSessionId === session.id
+        ) &&
+        !previous.some(
+          (workout) =>
+            workout.planned?.sessionId === session.id && workout.completion
+        )
+    )
+    if (!carried.length) continue
+    let destination = program.weeks.find((item) => item.start === week.start)
+    if (!destination) {
+      destination = {
+        ...week,
+        id: `${program.id}/carried-week-${program.weeks.length}`,
+        sessions: [],
+      }
+      program.weeks.push(destination)
+    }
+    for (const session of carried) {
+      replacedSessionIds.push(session.id)
+      session.id = `${program.id}/carried/${session.id}`
+      for (const exercise of session.exercises)
+        for (const set of [...exercise.workingSets, ...exercise.warmupSets])
+          set.id = `${program.id}/carried/${set.id}`
+      destination.sessions.push(session)
+    }
+  }
+  program.weeks.sort((a, b) => a.start.localeCompare(b.start))
+  program.durationWeeks = program.weeks.length
+  sessions = sessionViews(program)
+
   const retained = previous.filter(
     (workout) =>
       !(
@@ -309,7 +345,7 @@ export function adjustRemainingWeek(
     status: "adjusted",
     programId: program.id,
     sessions,
-    message: `I adjusted ${sessions.length} remaining session${sessions.length === 1 ? "" : "s"} from what you logged.`,
+    message: `I adjusted ${eligibility.sessions.length} remaining session${eligibility.sessions.length === 1 ? "" : "s"} from what you logged.`,
   }
 }
 
@@ -374,9 +410,7 @@ export function createNextTrainingWeek(input: {
   )
   const expectedDates = planned.request.schedule.days
     .map((day) =>
-      new Date(
-        Date.parse(planned.request.schedule.weekStart) + day * 86400000
-      )
+      new Date(Date.parse(planned.request.schedule.weekStart) + day * 86400000)
         .toISOString()
         .slice(0, 10)
     )

@@ -11,17 +11,15 @@ import {
 } from "@/components/app-shell"
 import { Rauta } from "@/components/rauta"
 import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
 import { MatrixLoader } from "@/components/ui/matrix-loader"
+import { toISODate } from "@/lib/date"
 import { triggerHaptic } from "@/lib/haptics"
-import { createNextTrainingWeek } from "@/lib/training-adaptation"
 import {
-  createTrainingWeek,
-  DEFAULT_TRAINING_DAYS,
-  WEEK_DAYS,
+  createTrainingPlanForDates,
   type PlanBlock,
   type PlanBlockPage,
 } from "@/lib/training-plan"
-import { cn } from "@/lib/utils"
 import { useTrainingProfile } from "@/store/use-training-profile"
 import { experienceLabel, GOAL_CHOICES } from "@/lib/training-profile"
 
@@ -54,22 +52,21 @@ export function PlanWeekPage({
 }) {
   const profile = useTrainingProfile((state) => state.profile)
   const continuing = Boolean(sourceProgramId)
-  const [days, setDays] = useState<number[]>([...DEFAULT_TRAINING_DAYS])
+  const [dates, setDates] = useState<Date[]>(() => {
+    const monday = new Date()
+    monday.setHours(0, 0, 0, 0)
+    monday.setDate(monday.getDate() + ((8 - monday.getDay()) % 7 || 7))
+    return [0, 2, 4].map((offset) => {
+      const date = new Date(monday)
+      date.setDate(date.getDate() + offset)
+      return date
+    })
+  })
   const [working, setWorking] = useState(false)
   const [block, setBlock] = useState<Pick<
     PlanBlock,
     "message" | "page" | "issues"
   > | null>(null)
-
-  const toggle = (offset: number) => {
-    triggerHaptic("selection")
-    setBlock(null)
-    setDays((current) =>
-      current.includes(offset)
-        ? current.filter((day) => day !== offset)
-        : [...current, offset].sort((left, right) => left - right)
-    )
-  }
 
   const create = () => {
     if (working) return
@@ -79,9 +76,10 @@ export function PlanWeekPage({
     requestAnimationFrame(() => {
       let outcome
       try {
-        outcome = sourceProgramId
-          ? createNextTrainingWeek({ days, sourceProgramId })
-          : createTrainingWeek({ days })
+        outcome = createTrainingPlanForDates({
+          dates: dates.map(toISODate),
+          sourceProgramId,
+        })
       } catch (error) {
         setWorking(false)
         setBlock({
@@ -112,7 +110,7 @@ export function PlanWeekPage({
               <ChevronLeft />
             </AppHeaderButton>
           }
-          title={continuing ? "Plan next week" : "Create training week"}
+          title={continuing ? "Extend training plan" : "Create training plan"}
         />
 
         <div className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-(--app-content-inset) pt-5 pb-6">
@@ -121,15 +119,15 @@ export function PlanWeekPage({
               size={92}
               speech={
                 continuing
-                  ? "I'll use your logged sets to plan the next week."
-                  : "Pick your days. I'll use your saved preferences for the rest."
+                  ? "Pick future dates. I'll use your logged sets for them."
+                  : "Pick your dates. I'll use your saved preferences for the rest."
               }
             />
             <div className="min-w-0 flex-1 py-3">
               <strong className="block text-[15px] leading-snug tracking-tight">
                 {continuing
-                  ? "This week is done. Let’s plan the next one."
-                  : "Tell me which days you can train. I know the rest."}
+                  ? "Choose every date you want to add."
+                  : "Choose every date you want in this plan."}
               </strong>
               <span className="mt-1.5 block text-[11px] text-muted-foreground">
                 {GOAL_CHOICES[profile.goal].title} ·{" "}
@@ -139,48 +137,24 @@ export function PlanWeekPage({
             </div>
           </div>
 
-          {/* Seven across on a phone; four across on the narrowest screens,
-              where a seventh column would leave each day too small to hit. */}
-          <div
-            aria-label="Days you can train"
-            className="mt-6 grid grid-cols-4 gap-1.5 min-[360px]:grid-cols-7"
-            role="group"
-          >
-            {WEEK_DAYS.map((day) => {
-              const selected = days.includes(day.offset)
-              return (
-                <button
-                  aria-checked={selected}
-                  aria-label={day.long}
-                  className={cn(
-                    "interactive-spring flex h-16 min-w-0 flex-col items-center justify-center rounded-2xl border text-[13px] font-bold",
-                    selected
-                      ? "border-primary/55 bg-[color-mix(in_oklch,var(--card),var(--primary)_12%)] text-foreground"
-                      : "border-border bg-card text-muted-foreground active:bg-muted/80"
-                  )}
-                  data-haptics="off"
-                  key={day.offset}
-                  onClick={() => toggle(day.offset)}
-                  role="checkbox"
-                  type="button"
-                >
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      "mb-1.5 size-1.5 rounded-full",
-                      selected ? "bg-primary" : "bg-transparent"
-                    )}
-                  />
-                  {day.short}
-                </button>
-              )
-            })}
+          <div className="mt-6 overflow-hidden rounded-3xl border border-border bg-card p-1">
+            <Calendar
+              className="mx-auto w-full"
+              disabled={{ before: new Date(new Date().setHours(0, 0, 0, 0)) }}
+              mode="multiple"
+              onSelect={(selected) => {
+                triggerHaptic("selection")
+                setBlock(null)
+                setDates(selected ?? [])
+              }}
+              selected={dates}
+            />
           </div>
 
           <p className="mt-3 px-1 text-sm leading-relaxed text-muted-foreground">
-            {days.length === 0
-              ? "Pick at least one day."
-              : `${days.length} training day${days.length === 1 ? "" : "s"} next week. Everything else comes from your profile.`}
+            {dates.length === 0
+              ? "Pick at least one date."
+              : `${dates.length} training date${dates.length === 1 ? "" : "s"} selected. You can move to another month and keep adding dates.`}
           </p>
 
           {block ? (
@@ -196,18 +170,18 @@ export function PlanWeekPage({
         <AppControlMorph className="w-full" role="primary">
           <Button
             className="w-full shadow-xl shadow-black/25"
-            disabled={days.length === 0 || working}
+            disabled={dates.length === 0 || working}
             onClick={create}
             size="cta"
           >
             {working ? (
               <MatrixLoader
-                label={continuing ? "Planning next week" : "Building your week"}
+                label={continuing ? "Extending your plan" : "Building your plan"}
                 rounded
                 variant="orbit"
               />
             ) : continuing ? (
-              "Plan next week"
+              "Extend plan"
             ) : (
               "Create plan"
             )}

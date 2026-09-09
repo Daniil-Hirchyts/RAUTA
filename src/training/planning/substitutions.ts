@@ -3,6 +3,7 @@ import { createExerciseIndex, exclusionReasons } from "../data/exercises"
 import { DEFAULT_POLICY } from "../policy"
 import { compareIds } from "../numeric"
 import { exerciseSimilarity, weightedScore } from "../scoring/scores"
+import { rankExerciseCandidates } from "./rank"
 
 const SUBSTITUTION_SIMILARITY_WEIGHTS = {
   family: 0.2,
@@ -18,24 +19,50 @@ export function findExerciseSubstitutions(
   exerciseId: string,
   request: ProgramGenerationRequest,
   limit = 10,
-  context?: { index?: ExerciseIndex }
+  context?: { index?: ExerciseIndex; selectedExerciseIds?: readonly string[] }
 ) {
   const index =
     context?.index ?? createExerciseIndex(request.exercises, request.metadata)
   const source = index.byId.get(exerciseId)
   const policy = request.policy ?? DEFAULT_POLICY
   if (!source) return []
+  const planningScores = new Map(
+    rankExerciseCandidates(request, {
+      index,
+      focus: source.metadata.setRoles
+        .filter((r) => r.role === "direct")
+        .map((r) => r.muscleId),
+      selectedExerciseIds: context?.selectedExerciseIds?.filter(
+        (id) => id !== exerciseId
+      ),
+    }).map((item) => [item.exerciseId, item.score.total])
+  )
   return [...index.byId.values()]
     .filter(
       (e) =>
         e.exercise.id !== exerciseId &&
+        planningScores.has(e.exercise.id) &&
+        e.metadata.setRoles.some(
+          (role) =>
+            role.role === "direct" &&
+            source.metadata.setRoles.some(
+              (original) =>
+                original.role === "direct" &&
+                original.muscleId === role.muscleId
+            )
+        ) &&
         !exclusionReasons(e, request.preferences, policy).length
     )
     .map((e) => ({
       exerciseId: e.exercise.id,
       score: weightedScore(
         {
-          similarity: exerciseSimilarity(source, e, SUBSTITUTION_SIMILARITY_WEIGHTS),
+          planning: planningScores.get(e.exercise.id) ?? 0,
+          similarity: exerciseSimilarity(
+            source,
+            e,
+            SUBSTITUTION_SIMILARITY_WEIGHTS
+          ),
           tracking: Number(e.metadata.tracking === source.metadata.tracking),
           skill: Number(e.metadata.skill === source.metadata.skill),
           quality: e.metadata.classificationConfidence,
@@ -47,7 +74,14 @@ export function findExerciseSubstitutions(
               ? 0
               : 0.5,
         },
-        { similarity: 4, tracking: 1, skill: 0.5, quality: 1, preference: 0.5 }
+        {
+          similarity: 4,
+          planning: 3,
+          tracking: 1,
+          skill: 0.5,
+          quality: 1,
+          preference: 0.5,
+        }
       ),
     }))
     .sort(

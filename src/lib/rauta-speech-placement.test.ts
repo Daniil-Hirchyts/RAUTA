@@ -73,6 +73,21 @@ describe("placing what RAUTA says", () => {
     )
   })
 
+  it("keeps a bubble nobody has measured yet on the screen", () => {
+    // The first thing the character says is placed before the bubble it will
+    // be said in has ever been laid out. Treating that as a zero-sized box is
+    // what used to leave the first sentence hanging off the right edge.
+    const spot = placeRautaSpeech({
+      character: character(FRAME.left + FRAME.width - SIZE - 20, 300),
+      bubble: { width: 0, height: 0 },
+      frame: FRAME,
+    })
+    const left = FRAME.left + FRAME.width - SIZE - 20 + spot.x
+
+    expect(left).toBeGreaterThanOrEqual(FRAME.left)
+    expect(left + BUBBLE.width).toBeLessThanOrEqual(FRAME.left + FRAME.width)
+  })
+
   it("is still shown in full on a screen too small for it", () => {
     const tiny = { left: 0, top: 0, width: 200, height: 120 }
     const spot = placeRautaSpeech({
