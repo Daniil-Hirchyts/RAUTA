@@ -1,0 +1,950 @@
+[
+  {
+    "exerciseId": "0025",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "4d8b6c19",
+    "mediaFingerprint": "d4e5c0654ac30a6671f803501653e462817cbb7ba487eb58e30c431c71b34dc8",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["horizontal_push"],
+      "mechanics": "compound",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["barbell", "bench", "rack"],
+      "setRoles": [
+        { "muscleId": "chest", "role": "direct", "provenance": "curated" },
+        { "muscleId": "deltoids", "role": "indirect", "provenance": "curated" },
+        { "muscleId": "triceps", "role": "indirect", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "basic",
+      "setupSeconds": 60,
+      "automaticProgramming": "allowed",
+      "familyId": "horizontal_press",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0027",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "a7a07a44",
+    "mediaFingerprint": "f002d449d99c5ad03b0c282a93889c96f24cffa96e00abe5c8bc9204a013d68a",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["horizontal_pull"],
+      "mechanics": "compound",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["barbell"],
+      "setRoles": [
+        { "muscleId": "biceps", "role": "indirect", "provenance": "curated" },
+        { "muscleId": "deltoids", "role": "indirect", "provenance": "curated" },
+        { "muscleId": "upper-back", "role": "direct", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "complex",
+      "setupSeconds": 45,
+      "automaticProgramming": "allowed",
+      "familyId": "horizontal_pull",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0031",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "5667af98",
+    "mediaFingerprint": "685b7c11c83221036666763885dc408fafb2bf6247d66a77ffd7f642c2d797cb",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["elbow_flexion"],
+      "mechanics": "isolation",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["barbell"],
+      "setRoles": [
+        { "muscleId": "biceps", "role": "direct", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "basic",
+      "setupSeconds": 20,
+      "automaticProgramming": "allowed",
+      "familyId": "elbow_flexion",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0032",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "100ad058",
+    "mediaFingerprint": "55abc864e5423da384d596d5009a4d0690033ba9a032342d3fd5d0ca87c4f055",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["hinge"],
+      "mechanics": "compound",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["barbell"],
+      "setRoles": [
+        { "muscleId": "gluteal", "role": "direct", "provenance": "curated" },
+        { "muscleId": "hamstring", "role": "direct", "provenance": "curated" },
+        {
+          "muscleId": "lower-back",
+          "role": "indirect",
+          "provenance": "curated"
+        }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "complex",
+      "setupSeconds": 60,
+      "automaticProgramming": "allowed",
+      "familyId": "hinge",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0047",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "6c0e350d",
+    "mediaFingerprint": "aa6e123fe470f5a1f8f5f47efb7334c6d681aa5ea721918647c955e4dcad26b1",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["horizontal_push"],
+      "mechanics": "compound",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["barbell", "bench", "rack"],
+      "setRoles": [
+        { "muscleId": "chest", "role": "direct", "provenance": "curated" },
+        { "muscleId": "deltoids", "role": "indirect", "provenance": "curated" },
+        { "muscleId": "triceps", "role": "indirect", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "basic",
+      "setupSeconds": 60,
+      "automaticProgramming": "allowed",
+      "familyId": "horizontal_press",
+      "variantOf": "0025",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0085",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "5faaa7df",
+    "mediaFingerprint": "9735f60eacb0889726feb9bfd5c0cf02b61280e9a49f9f9d9808354f7ef08293",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["hinge"],
+      "mechanics": "compound",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["barbell"],
+      "setRoles": [
+        { "muscleId": "gluteal", "role": "direct", "provenance": "curated" },
+        { "muscleId": "hamstring", "role": "direct", "provenance": "curated" },
+        {
+          "muscleId": "lower-back",
+          "role": "indirect",
+          "provenance": "curated"
+        }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "complex",
+      "setupSeconds": 60,
+      "automaticProgramming": "allowed",
+      "familyId": "hinge",
+      "variantOf": "0032",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0151",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "04d7a34f",
+    "mediaFingerprint": "2489bee88f4c086a5dc09d30652726e2ece206d4a673e858500953fbd075b1a9",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["horizontal_push"],
+      "mechanics": "compound",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["bench", "cable"],
+      "setRoles": [
+        { "muscleId": "chest", "role": "direct", "provenance": "curated" },
+        { "muscleId": "deltoids", "role": "indirect", "provenance": "curated" },
+        { "muscleId": "triceps", "role": "indirect", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "basic",
+      "setupSeconds": 60,
+      "automaticProgramming": "allowed",
+      "familyId": "horizontal_press",
+      "variantOf": "0025",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0157",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "290323a7",
+    "mediaFingerprint": "8e30bc70f3a6eafcecd651eaf26842f7d1a3dd7da5c62487c17d36745e9204ea",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["hinge"],
+      "mechanics": "compound",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["cable"],
+      "setRoles": [
+        { "muscleId": "gluteal", "role": "direct", "provenance": "curated" },
+        { "muscleId": "hamstring", "role": "direct", "provenance": "curated" },
+        { "muscleId": "quadriceps", "role": "direct", "provenance": "curated" },
+        {
+          "muscleId": "lower-back",
+          "role": "indirect",
+          "provenance": "curated"
+        }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "basic",
+      "setupSeconds": 60,
+      "automaticProgramming": "allowed",
+      "familyId": "hinge",
+      "variantOf": "0032",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0178",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "519aca07",
+    "mediaFingerprint": "8bd0aefe1cbe1d9a619846ac42498f38460a86535c0f7b65a7027aaf47e77be7",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["shoulder_abduction"],
+      "mechanics": "isolation",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["cable"],
+      "setRoles": [
+        { "muscleId": "deltoids", "role": "direct", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "basic",
+      "setupSeconds": 30,
+      "automaticProgramming": "allowed",
+      "familyId": "shoulder_abduction",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0219",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "cfa3729e",
+    "mediaFingerprint": "7a8d0ff11613faf8f1da7059869d94ee352688a8e7876080c20ab4cc022973b3",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["vertical_push"],
+      "mechanics": "compound",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["cable"],
+      "setRoles": [
+        { "muscleId": "deltoids", "role": "direct", "provenance": "curated" },
+        { "muscleId": "triceps", "role": "indirect", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "basic",
+      "setupSeconds": 30,
+      "automaticProgramming": "allowed",
+      "familyId": "vertical_push",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0289",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "48e47d1b",
+    "mediaFingerprint": "86c10ae6f2405c26464c0069cb86656ed0e7ac9f9e02267938c31ea8c48a25f1",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["horizontal_push"],
+      "mechanics": "compound",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["bench", "dumbbell"],
+      "setRoles": [
+        { "muscleId": "chest", "role": "direct", "provenance": "curated" },
+        { "muscleId": "deltoids", "role": "indirect", "provenance": "curated" },
+        { "muscleId": "triceps", "role": "indirect", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "basic",
+      "setupSeconds": 30,
+      "automaticProgramming": "allowed",
+      "familyId": "horizontal_press",
+      "variantOf": "0025",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0293",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "a27ab2be",
+    "mediaFingerprint": "36ebab33a5eda4e1f99efdf3127665bbecf5aa3c0eb3eb6d4e0bffe558190c8c",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["horizontal_pull"],
+      "mechanics": "compound",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["dumbbell"],
+      "setRoles": [
+        { "muscleId": "biceps", "role": "indirect", "provenance": "curated" },
+        { "muscleId": "deltoids", "role": "indirect", "provenance": "curated" },
+        { "muscleId": "upper-back", "role": "direct", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "basic",
+      "setupSeconds": 20,
+      "automaticProgramming": "allowed",
+      "familyId": "horizontal_pull",
+      "variantOf": "0027",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0294",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "b96d877f",
+    "mediaFingerprint": "658240840542a900c1bf8ebb816250b4df37a74e76e08a35815184a751106f1d",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["elbow_flexion"],
+      "mechanics": "isolation",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["dumbbell"],
+      "setRoles": [
+        { "muscleId": "biceps", "role": "direct", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "basic",
+      "setupSeconds": 20,
+      "automaticProgramming": "allowed",
+      "familyId": "elbow_flexion",
+      "variantOf": "0031",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0308",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "cc7515e9",
+    "mediaFingerprint": "486ae8d1b9b1c19e926c39c695b247bb6169da2f2505ccc8d2e406aefe655666",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["horizontal_push"],
+      "mechanics": "isolation",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["bench", "dumbbell"],
+      "setRoles": [
+        { "muscleId": "chest", "role": "direct", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "basic",
+      "setupSeconds": 30,
+      "automaticProgramming": "allowed",
+      "familyId": "chest_fly",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0334",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "3523a611",
+    "mediaFingerprint": "20ff3246b74bae576d7b8b6a7d53f576cc60ff0a90d67c5e9c47a55df834fde6",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["shoulder_abduction"],
+      "mechanics": "isolation",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["dumbbell"],
+      "setRoles": [
+        { "muscleId": "deltoids", "role": "direct", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "basic",
+      "setupSeconds": 15,
+      "automaticProgramming": "allowed",
+      "familyId": "shoulder_abduction",
+      "variantOf": "0178",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0413",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "f7ba2725",
+    "mediaFingerprint": "829a469602223570c6cf5736fa16f1a4e9e96aaf2b4948bf0e7637468af10f40",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["squat"],
+      "mechanics": "compound",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["dumbbell"],
+      "setRoles": [
+        { "muscleId": "gluteal", "role": "direct", "provenance": "curated" },
+        { "muscleId": "quadriceps", "role": "direct", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "basic",
+      "setupSeconds": 20,
+      "automaticProgramming": "allowed",
+      "familyId": "squat",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0585",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "2c7b9c7b",
+    "mediaFingerprint": "fc953b33bd54a84b274e27f54f9f4794d9aea5e7b14a0735f704016f69e50237",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["knee_extension"],
+      "mechanics": "isolation",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["leverage machine"],
+      "setRoles": [
+        { "muscleId": "quadriceps", "role": "direct", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "basic",
+      "setupSeconds": 30,
+      "automaticProgramming": "allowed",
+      "familyId": "knee_extension",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0603",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "5a770970",
+    "mediaFingerprint": "0a87d95aa1941c7af2cc4208813e59816720b7c99f0485634bae174fc310d5e5",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["vertical_push", "squat"],
+      "mechanics": "compound",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["leverage machine"],
+      "setRoles": [
+        { "muscleId": "deltoids", "role": "direct", "provenance": "curated" },
+        { "muscleId": "quadriceps", "role": "direct", "provenance": "curated" },
+        { "muscleId": "triceps", "role": "indirect", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.85,
+      "skill": "complex",
+      "setupSeconds": 30,
+      "automaticProgramming": "specialized_only",
+      "familyId": "vertical_push",
+      "tags": [
+        "curated_common_family_review",
+        "hybrid_movement",
+        "media_differs_from_seated_machine_expectation"
+      ]
+    }
+  },
+  {
+    "exerciseId": "0607",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "eae54578",
+    "mediaFingerprint": "5dd53d4d13362a5e7f1da07d6872745cb54fb08210f5b4f2a60e1f3664ae0bf6",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["elbow_extension"],
+      "mechanics": "isolation",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["leverage machine"],
+      "setRoles": [
+        { "muscleId": "triceps", "role": "direct", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "basic",
+      "setupSeconds": 30,
+      "automaticProgramming": "allowed",
+      "familyId": "elbow_extension",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0748",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "4852b08d",
+    "mediaFingerprint": "cb83e5c3724afc8075ebcd971b29da8df14f31d408ba744f233173003464a413",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["horizontal_push"],
+      "mechanics": "compound",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["smith machine", "bench"],
+      "setRoles": [
+        { "muscleId": "chest", "role": "direct", "provenance": "curated" },
+        { "muscleId": "deltoids", "role": "indirect", "provenance": "curated" },
+        { "muscleId": "triceps", "role": "indirect", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "basic",
+      "setupSeconds": 45,
+      "automaticProgramming": "allowed",
+      "familyId": "horizontal_press",
+      "variantOf": "0025",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0760",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "12f99d21",
+    "mediaFingerprint": "77a6bad370917a5bec27c588735f3557d5837ac18dbf96e014fd67f21a965ff7",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["squat"],
+      "mechanics": "compound",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["smith machine"],
+      "setRoles": [
+        { "muscleId": "gluteal", "role": "direct", "provenance": "curated" },
+        { "muscleId": "quadriceps", "role": "direct", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.9,
+      "skill": "complex",
+      "setupSeconds": 45,
+      "automaticProgramming": "specialized_only",
+      "familyId": "squat",
+      "variantOf": "0770",
+      "tags": ["curated_common_family_review", "supine_smith_machine_variant"]
+    }
+  },
+  {
+    "exerciseId": "0770",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "f2897871",
+    "mediaFingerprint": "5e88aded3270605d00b0dae7e8db20b91f8137d858013e418b40b9e01c41eaa2",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["squat"],
+      "mechanics": "compound",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["smith machine"],
+      "setRoles": [
+        { "muscleId": "gluteal", "role": "direct", "provenance": "curated" },
+        { "muscleId": "quadriceps", "role": "direct", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "basic",
+      "setupSeconds": 45,
+      "automaticProgramming": "allowed",
+      "familyId": "squat",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "0861",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "2e002d05",
+    "mediaFingerprint": "d0f9cb494ccdfcfad1f3cc8cd2beca17d05c873095e2d179a9ff5b89e8ffe28b",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["horizontal_pull"],
+      "mechanics": "compound",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["cable"],
+      "setRoles": [
+        { "muscleId": "biceps", "role": "indirect", "provenance": "curated" },
+        { "muscleId": "deltoids", "role": "indirect", "provenance": "curated" },
+        { "muscleId": "upper-back", "role": "direct", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.95,
+      "skill": "basic",
+      "setupSeconds": 30,
+      "automaticProgramming": "allowed",
+      "familyId": "horizontal_pull",
+      "variantOf": "0027",
+      "tags": ["curated_common_family_review"]
+    }
+  },
+  {
+    "exerciseId": "2330",
+    "reviewedFrom": ["name", "instructions", "sampled_frames"],
+    "reviewedFields": [
+      "exerciseType",
+      "movementPatterns",
+      "mechanics",
+      "laterality",
+      "tracking",
+      "requiredEquipment",
+      "setRoles",
+      "classificationConfidence",
+      "skill",
+      "setupSeconds",
+      "automaticProgramming"
+    ],
+    "sourceExerciseFingerprint": "d0865d93",
+    "mediaFingerprint": "a127be324768c84229c5ee463186cd4533050977d14b82b6472ee8d7278199a4",
+    "reviewedFrameNumbers": [1, 2, 3, 5, 6, 7, 8, 10, 11, 12],
+    "metadata": {
+      "exerciseType": "resistance",
+      "movementPatterns": ["vertical_pull"],
+      "mechanics": "isolation",
+      "laterality": "bilateral",
+      "tracking": "external_load",
+      "requiredEquipment": ["cable"],
+      "setRoles": [
+        { "muscleId": "upper-back", "role": "direct", "provenance": "curated" }
+      ],
+      "classificationConfidence": 0.68,
+      "skill": "basic",
+      "setupSeconds": 45,
+      "automaticProgramming": "manual_only",
+      "familyId": "straight_arm_pulldown",
+      "tags": [
+        "curated_common_family_review",
+        "source_media_conflict",
+        "manual_review_required"
+      ]
+    }
+  }
+]

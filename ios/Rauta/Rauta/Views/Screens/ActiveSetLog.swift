@@ -1,0 +1,489 @@
+import SwiftUI
+
+struct ActiveSetLog: View {
+    @ObservedObject private var store = AppStore.shared
+    let exerciseId: String
+    var restSeconds: Double = 90
+
+    @State private var selectedSetId: String?
+    @State private var reps = 10.0
+    @State private var kilograms: Double? = 0
+    @State private var rir: Double?
+    @State private var mode: ResistanceMode = .externalLoad
+    @State private var side: SetSide = .both
+    @State private var stationContext: StationContext?
+    @State private var restUntil: Date?
+    @State private var issue: String?
+
+    private var exercise: ExerciseSummary? { ExerciseCatalogue.byId[exerciseId] }
+    private var draft: PersistedActiveExerciseDraft? {
+        TrainingSessionBridge.draftExercise(store.trainingRecords.data.activeWorkout, exerciseId)
+    }
+    private var selectedSet: PersistedActiveSetDraft? {
+        if let selectedSetId, let match = draft?.sets.first(where: { $0.id == selectedSetId }) {
+            return match
+        }
+        return draft?.sets.first { $0.observation?.completed != true }
+    }
+    private var context: StationContext? {
+        if let stationContext { return stationContext }
+        guard let exercise else { return nil }
+        return Resistance.resolveLoadContext(
+            for: exercise,
+            mode: mode,
+            settings: store.trainingRecords.data.settings,
+            equipmentIncrementKg: store.filters.equipmentLoadIncrements[exercise.equipment]
+        )
+    }
+
+    private var target: PersistedSetTarget? {
+        draft?.sets.first { $0.setType == .working && $0.target != nil }?.target
+            ?? draft?.sets.first { $0.target != nil }?.target
+    }
+
+    private var recommendation: ProgressionRecommendation? {
+        guard let draft else { return nil }
+        return TrainingWorkflow.nextPerformance(
+            draft,
+            data: store.trainingRecords.data,
+            increments: store.filters.equipmentLoadIncrements,
+            loggedMode: mode,
+            loggedContext: Resistance.isMeasuredInKg(mode) ? context : nil
+        )
+    }
+
+    private var progressionNote: ProgressionNote? {
+        guard let exercise,
+              Resistance.isMeasuredInKg(Resistance.modes(for: exercise).first ?? .unknown),
+              let recommendation
+        else { return nil }
+        return ProgressionNotes.note(recommendation, previousKg: previousComparableKg(recommendation))
+    }
+
+    var body: some View {
+        SurfaceCard(padding: 10, cornerRadius: Theme.Radius.xl3) {
+            VStack(spacing: 8) {
+                header
+                if let draft, !draft.sets.isEmpty { setRows(draft) }
+                editor
+                if let issue { InlineNotice(message: issue, isError: true) }
+            }
+        }
+        .onAppear(perform: loadCurrent)
+        .onChange(of: selectedSetId) { _, _ in loadCurrent() }
+        .task(id: restUntil) {
+            guard let restUntil else { return }
+            let duration = restUntil.timeIntervalSinceNow
+            if duration > 0 {
+                try? await Task.sleep(for: .seconds(duration))
+                guard !Task.isCancelled else { return }
+            }
+            Chimes.playRestAlarm()
+            Haptics.trigger(.heavy)
+            self.restUntil = nil
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 8) {
+            if let target {
+                Text(targetSummary(target))
+                    .font(Theme.sans(11, weight: .bold))
+                    .foregroundStyle(Theme.primary)
+                    .lineLimit(1)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Theme.primary.opacity(0.12), in: Capsule())
+            }
+            if let progressionNote {
+                Text(progressionText(progressionNote))
+                    .font(Theme.sans(11))
+                    .foregroundStyle(Theme.mutedForeground)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                Spacer(minLength: 0)
+            }
+            if let restUntil {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    let remaining = max(0, Int(restUntil.timeIntervalSince(context.date).rounded(.up)))
+                    Text(restClock(remaining))
+                        .font(Theme.sans(11, weight: .bold))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.foreground)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Theme.muted.opacity(0.6), in: Capsule())
+                }
+            }
+        }
+    }
+
+    private func setRows(_ draft: PersistedActiveExerciseDraft) -> some View {
+        VStack(spacing: 4) {
+            HStack {
+                Text("").frame(width: 22, alignment: .leading)
+                Text("Load").frame(maxWidth: .infinity, alignment: .leading)
+                Text("Reps").frame(width: 44, alignment: .trailing)
+                Text("RIR").frame(width: 44, alignment: .trailing)
+            }
+            .font(Theme.sans(9, weight: .bold))
+            .kerning(1.08)
+            .foregroundStyle(Theme.mutedForeground)
+            .padding(.horizontal, 8)
+            .padding(.bottom, 6)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(Theme.border.opacity(0.6)).frame(height: 1)
+            }
+
+            ForEach(Array(draft.sets.enumerated()), id: \.element.id) { index, set in
+                Button {
+                    selectedSetId = set.id
+                } label: {
+                    HStack {
+                        Text("\(index + 1)").frame(width: 22, alignment: .leading)
+                        Text(set.observation?.resistance.map(Resistance.format) ?? "—")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text(set.observation?.reps.map(Num.trimmed) ?? "—")
+                            .frame(width: 44, alignment: .trailing)
+                        Text(set.observation?.rir.map(Num.trimmed) ?? "—")
+                            .frame(width: 44, alignment: .trailing)
+                    }
+                    .font(Theme.sans(15, weight: .semibold))
+                    .foregroundStyle(set.observation?.completed == true ? Theme.foreground : Theme.mutedForeground)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 10)
+                    .background(
+                        (selectedSet?.id == set.id ? Theme.primary : Theme.muted).opacity(0.12),
+                        in: RoundedRectangle(cornerRadius: Theme.Radius.xl2)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var editor: some View {
+        VStack(spacing: 8) {
+            if let exercise {
+                if Resistance.isMeasuredInKg(mode) {
+                    AppStepper(
+                        label: mode == .assistance ? "Assistance" : "Load",
+                        display: kilograms.map(Resistance.formatKg) ?? "—",
+                        unit: context?.basis == .perImplement && mode == .externalLoad ? "kg each" : "kg",
+                        canDecrement: kilograms.map { $0 > 0 } ?? false
+                    ) { direction in
+                        stepLoad(direction)
+                    }
+                }
+
+                AppStepper(
+                    label: "Reps",
+                    display: Num.trimmed(reps),
+                    canDecrement: reps > 1
+                ) { direction in
+                    reps = min(100, max(1, reps + Double(direction)))
+                }
+
+                let modes = Resistance.modes(for: exercise)
+                if modes.count > 1 {
+                    chipRow(label: "How") {
+                        ForEach(modes, id: \.self) { candidate in
+                            SelectionChip(
+                                title: Resistance.modeLabel(candidate),
+                                selected: mode == candidate
+                            ) {
+                                changeMode(candidate)
+                            }
+                        }
+                    }
+                }
+
+                if Resistance.sideOptions(for: exercise).count > 1 {
+                    chipRow(label: "Side") {
+                        ForEach(Resistance.sideOptions(for: exercise), id: \.self) { option in
+                            SelectionChip(title: Wording.titleCase(option.rawValue), selected: side == option) {
+                                side = option
+                            }
+                        }
+                    }
+                }
+            }
+
+            HStack(spacing: 8) {
+                if selectedSet != nil, selectedSet?.plannedSetId == nil {
+                    AppButton(
+                        variant: .destructive,
+                        size: .icon,
+                        accessibilityLabel: "Delete this set",
+                        action: discard
+                    ) {
+                        Image(systemName: "trash")
+                    }
+                }
+                if selectedSet?.observation?.completed == true {
+                    AppButton("Cancel", variant: .ghost, expands: true) {
+                        closeEditor()
+                    }
+                    .frame(maxWidth: 100)
+                }
+                AppButton(
+                    resolvedSubmitLabel,
+                    isDisabled: Resistance.isMeasuredInKg(mode) && kilograms == nil,
+                    expands: true,
+                    action: save
+                )
+            }
+        }
+    }
+
+    private var submitLabel: String {
+        guard let draft else { return "Log set" }
+        if let selectedSet, let index = draft.sets.firstIndex(where: { $0.id == selectedSet.id }) {
+            return "Save set \(index + 1)"
+        }
+        return "Log set \(draft.sets.count + 1)"
+    }
+
+    private var resolvedSubmitLabel: String {
+        guard Resistance.isMeasuredInKg(mode), kilograms == nil else { return submitLabel }
+        return "Dial in the \(mode == .assistance ? "assistance" : "load")"
+    }
+
+    private func targetSummary(_ target: PersistedSetTarget) -> String {
+        let reps = target.reps.min == target.reps.max
+            ? Num.trimmed(target.reps.max)
+            : "\(Num.trimmed(target.reps.min))–\(Num.trimmed(target.reps.max))"
+        let load = Resistance.isMeasuredInKg(target.resistance.type)
+            ? " · \(Resistance.format(target.resistance))"
+            : ""
+        return "\(reps) reps · RIR \(Num.trimmed(target.rir))\(load)"
+    }
+
+    private func chipRow<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(spacing: 8) {
+            Text(label.uppercased())
+                .font(Theme.sans(10, weight: .black))
+                .kerning(1.4)
+                .foregroundStyle(Theme.mutedForeground)
+                .frame(width: 44, alignment: .leading)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) { content() }
+            }
+        }
+    }
+
+    private func loadCurrent() {
+        guard let exercise else { return }
+        let set = selectedSet
+        if let observation = set?.observation, observation.completed {
+            let resistance = observation.resistance ?? .unknown
+            mode = resistance.type
+            stationContext = Resistance.recordedLoadContext(
+                for: exercise,
+                resistance: resistance,
+                settings: store.trainingRecords.data.settings,
+                equipmentIncrementKg: store.filters.equipmentLoadIncrements[exercise.equipment]
+            )
+            kilograms = resistance.kg
+            reps = observation.reps ?? 10
+            rir = observation.rir
+            side = set?.side ?? .both
+            return
+        }
+
+        let defaults = defaultEditorValue(for: exercise)
+        mode = defaults.mode
+        stationContext = defaults.context
+        kilograms = set?.target.flatMap {
+            Resistance.carryOverLoad($0.resistance, defaults.mode, defaults.context)
+        } ?? defaults.kg
+        reps = set?.target?.reps.max ?? defaults.reps
+        rir = set?.target?.rir ?? defaults.rir
+        side = set?.side ?? defaults.side
+    }
+
+    private func stepLoad(_ direction: Int) {
+        guard let context else { return }
+        if let kilograms {
+            self.kilograms = Resistance.stepLoad(kilograms, direction, context.grid)
+        } else if direction > 0 {
+            kilograms = Resistance.firstLoad(context.grid)
+        }
+    }
+
+    private func save() {
+        guard let draft, let context else { return }
+        if Resistance.isMeasuredInKg(mode), kilograms == nil { return }
+        let observation = PersistedSetObservation(
+            reps: reps,
+            resistance: Resistance.makeResistance(mode, kilograms ?? 0, context),
+            rir: rir,
+            completed: true,
+            timestamp: ISOTime.now()
+        )
+        do {
+            if let set = selectedSet {
+                if set.side != side {
+                    try store.trainingRecords.updateSetDetails(
+                        exerciseEntryId: draft.id,
+                        setDraftId: set.id,
+                        setType: set.setType,
+                        side: side
+                    )
+                }
+                try store.trainingRecords.recordSet(
+                    exerciseEntryId: draft.id,
+                    setDraftId: set.id,
+                    observation: observation
+                )
+            } else {
+                _ = try store.trainingRecords.addUnplannedSet(
+                    exerciseEntryId: draft.id,
+                    setType: .working,
+                    side: side,
+                    observation: observation
+                )
+            }
+            closeEditor()
+            restUntil = Date().addingTimeInterval(restSeconds.rounded())
+            issue = nil
+            Haptics.trigger(.success)
+        } catch { capture(error) }
+    }
+
+    private func discard() {
+        guard let draft, let set = selectedSet else { return }
+        do {
+            try store.trainingRecords.discardLoggedSet(
+                exerciseEntryId: draft.id,
+                setDraftId: set.id
+            )
+            closeEditor()
+            issue = nil
+        } catch { capture(error) }
+    }
+
+    private struct EditorValue {
+        var mode: ResistanceMode
+        var context: StationContext
+        var kg: Double?
+        var reps: Double
+        var rir: Double?
+        var side: SetSide
+    }
+
+    private func defaultEditorValue(for exercise: ExerciseSummary) -> EditorValue {
+        let defaultMode = Resistance.modes(for: exercise).first ?? .externalLoad
+        let defaultContext = Resistance.resolveLoadContext(
+            for: exercise,
+            mode: defaultMode,
+            settings: store.trainingRecords.data.settings,
+            equipmentIncrementKg: store.filters.equipmentLoadIncrements[exercise.equipment]
+        )
+        let planned = draft?.sets.first { $0.target != nil }?.target
+        let previous = draft?.sets.reversed().first { $0.observation?.completed == true }?.observation
+        let engine = draft.flatMap {
+            TrainingWorkflow.nextPerformance(
+                $0,
+                data: store.trainingRecords.data,
+                increments: store.filters.equipmentLoadIncrements,
+                loggedMode: defaultMode,
+                loggedContext: Resistance.isMeasuredInKg(defaultMode) ? defaultContext : nil
+            )
+        }
+        let engineLoad: Double? = {
+            guard let engine,
+                  engine.resistance.type == defaultMode,
+                  Resistance.sameLoadContext(
+                    engine.resistance.stationId, engine.resistance.basis,
+                    defaultContext.stationId, defaultContext.basis
+                  )
+            else { return nil }
+            return engine.resistance.kg
+        }()
+
+        return EditorValue(
+            mode: defaultMode,
+            context: defaultContext,
+            kg: previous.flatMap { Resistance.carryOverLoad($0.resistance, defaultMode, defaultContext) }
+                ?? engineLoad
+                ?? (Resistance.isMeasuredInKg(defaultMode) ? 0 : nil),
+            reps: previous?.reps ?? engine?.targetReps.max ?? planned?.reps.max ?? 10,
+            rir: previous?.rir ?? planned?.rir,
+            side: .both
+        )
+    }
+
+    private func changeMode(_ nextMode: ResistanceMode) {
+        guard nextMode != mode, let exercise else { return }
+        let nextContext = Resistance.resolveLoadContext(
+            for: exercise,
+            mode: nextMode,
+            settings: store.trainingRecords.data.settings,
+            equipmentIncrementKg: store.filters.equipmentLoadIncrements[exercise.equipment]
+        )
+        mode = nextMode
+        stationContext = nextContext
+        kilograms = carriedLoad(mode: nextMode, context: nextContext)
+    }
+
+    private func carriedLoad(mode: ResistanceMode, context: StationContext) -> Double? {
+        if let draft {
+            for set in draft.sets.reversed() where set.observation?.completed == true {
+                if let load = Resistance.carryOverLoad(set.observation?.resistance, mode, context) {
+                    return load
+                }
+            }
+            if let next = TrainingWorkflow.nextPerformance(
+                draft,
+                data: store.trainingRecords.data,
+                increments: store.filters.equipmentLoadIncrements,
+                loggedMode: mode,
+                loggedContext: Resistance.isMeasuredInKg(mode) ? context : nil
+            ), next.action != .calibrate {
+                return Resistance.carryOverLoad(next.resistance, mode, context)
+            }
+        }
+        return nil
+    }
+
+    private func previousComparableKg(_ recommendation: ProgressionRecommendation) -> Double? {
+        guard let previous = lastPerformedSet(),
+              let previousKg = previous.resistance.kg,
+              previous.resistance.stationId == recommendation.resistance.stationId,
+              previous.resistance.basis == recommendation.resistance.basis
+        else { return nil }
+        return previousKg
+    }
+
+    private func lastPerformedSet() -> CompletedSet? {
+        for session in store.trainingRecords.data.sessions.reversed() {
+            for exercise in session.exercises.reversed() where exercise.exerciseId == exerciseId {
+                if let set = exercise.sets.last { return set }
+            }
+        }
+        return nil
+    }
+
+    private func progressionText(_ note: ProgressionNote) -> String {
+        guard let kg = note.kg else { return note.text }
+        let each = note.basis == .perImplement ? " each" : ""
+        return "\(Resistance.formatKg(kg)) kg\(each) · \(note.text)"
+    }
+
+    private func restClock(_ seconds: Int) -> String {
+        "\(seconds / 60):\(String(format: "%02d", seconds % 60))"
+    }
+
+    private func closeEditor() {
+        selectedSetId = nil
+        stationContext = nil
+        loadCurrent()
+    }
+
+    private func capture(_ error: Error) {
+        issue = (error as? TrainingPersistenceError)?.message ?? error.localizedDescription
+        Haptics.trigger(.warning)
+    }
+}

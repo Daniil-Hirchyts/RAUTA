@@ -1,0 +1,437 @@
+import SwiftUI
+import UniformTypeIdentifiers
+
+struct WorkoutDestinationScreen: View {
+    @ObservedObject private var store = AppStore.shared
+    let preferredWorkoutId: String?
+
+    private var workouts: [Workout] {
+        store.workouts.workouts
+            .filter { $0.completion == nil }
+            .sorted {
+                if $0.id == preferredWorkoutId { return true }
+                if $1.id == preferredWorkoutId { return false }
+                return $0.date > $1.date
+            }
+    }
+
+    var body: some View {
+        RautaScreen(
+            title: "Add \(Wording.countLabel(store.navigation.selectedIds.count, "exercise"))",
+            backLabel: "Back to exercises",
+            onBack: store.navigation.pop
+        ) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Start fresh or add them to a workout you already use.")
+                        .font(Theme.sans(14))
+                        .foregroundStyle(Theme.mutedForeground)
+
+                    NewWorkoutDestinationRow {
+                        store.navigation.push(.workoutForm(
+                            exerciseIds: store.navigation.selectedIds,
+                            workoutId: nil,
+                            engineFocusMuscles: nil
+                        ))
+                    }
+                    .padding(.top, 20)
+
+                    if !workouts.isEmpty {
+                        Text("EXISTING WORKOUTS")
+                            .font(Theme.sans(12, weight: .bold))
+                            .kerning(1.55)
+                            .foregroundStyle(Theme.mutedForeground)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 4)
+                            .padding(.top, 20)
+                            .padding(.bottom, 8)
+
+                        ForEach(workouts) { workout in
+                            ExistingWorkoutDestinationRow(
+                                workout: workout,
+                                current: workout.id == preferredWorkoutId,
+                                action: { add(to: workout) }
+                            )
+                            .padding(.bottom, 8)
+                        }
+                    }
+                }
+                .padding(.horizontal, Theme.Metrics.contentInset)
+                .padding(.top, 20)
+                .padding(.bottom, 24)
+            }
+        }
+    }
+
+    private func add(to workout: Workout) {
+        var seen = Set<String>()
+        let ids = (workout.exerciseIds + store.navigation.selectedIds)
+            .filter { seen.insert($0).inserted }
+        do {
+            if store.activeWorkout.session?.workoutId == workout.id {
+                store.workouts.updateWorkout(workout.id, .init(exerciseIds: ids))
+                store.activeWorkout.syncExercises(ids)
+            } else {
+                try TrainingEdits.updateScheduledWorkoutExercises(workout.id, ids)
+            }
+            store.navigation.selectMode = false
+            store.navigation.selectedIds = []
+            store.navigation.reset([.workouts, .workoutDetail(workoutId: workout.id)])
+            Haptics.trigger(.success)
+        } catch {
+            Haptics.trigger(.warning)
+        }
+    }
+}
+
+struct WorkoutFormScreen: View {
+    @ObservedObject private var store = AppStore.shared
+    let initialExerciseIds: [String]
+    let workoutId: String?
+    let focusMuscles: [MuscleId]?
+
+    @State private var date = Date()
+    @State private var exerciseIds: [String] = []
+    @State private var issue: String?
+    @State private var saving = false
+    @State private var openRowId: String?
+    @StateObject private var reorder = CardReorder()
+    @State private var showingDate = false
+
+    private var workout: Workout? { workoutId.flatMap(store.workouts.workout) }
+
+    var body: some View {
+        ZStack {
+            RautaScreen(
+                title: workout == nil ? (focusMuscles == nil ? "New workout" : "Proposed workout") : "Edit workout",
+                onBack: store.navigation.pop
+            ) {
+                VStack(spacing: 0) {
+                    WorkoutFormDatePicker(selection: $date) { showingDate = true }
+                        .padding(.horizontal, Theme.Metrics.contentInset)
+                        .padding(.top, 20)
+
+                    ScrollView {
+                        VStack(spacing: 12) {
+                            ForEach(Array(exerciseIds.enumerated()), id: \.element) { index, id in
+                                if let exercise = ExerciseCatalogue.byId[id] {
+                                    EditableExerciseRow(
+                                        exercise: exercise,
+                                        index: index,
+                                        reorder: reorder,
+                                        exerciseIds: exerciseIds,
+                                        isOpen: Binding(
+                                            get: { openRowId == id },
+                                            set: { openRowId = $0 ? id : nil }
+                                        ),
+                                        onReorder: { ids, _ in exerciseIds = ids },
+                                        remove: {
+                                            exerciseIds.removeAll { $0 == id }
+                                            if openRowId == id { openRowId = nil }
+                                        }
+                                    )
+                                    .modifier(CardReorderPlacement(reorder: reorder, id: id, spacing: 12))
+                                }
+                            }
+                            if let issue { InlineNotice(message: issue, isError: true) }
+                        }
+                        .padding(.horizontal, Theme.Metrics.contentInset)
+                        .padding(.top, 10)
+                        .padding(.bottom, 24)
+                    }
+                    .scrollDisabled(reorder.active != nil)
+                    .onDisappear { reorder.cancel() }
+                }
+            } controls: {
+                HStack(spacing: 10) {
+                    if focusMuscles != nil {
+                        AppControlButton(systemImage: "arrow.clockwise", label: "Regenerate workout", action: regenerate)
+                    }
+                    AppButton(
+                        saveButtonTitle,
+                        size: .cta,
+                        isDisabled: exerciseIds.isEmpty || saving,
+                        expands: true,
+                        action: save
+                    )
+                }
+            }
+
+            if showingDate {
+                WorkoutDateCalendarModal(
+                    date: CalendarDate.toISO(date),
+                    onClose: { showingDate = false },
+                    onSelect: { iso in
+                        if let selected = CalendarDate.parse(iso) { date = selected }
+                    }
+                )
+                .zIndex(9)
+            }
+        }
+        .onAppear(perform: load)
+    }
+
+    private func load() {
+        guard exerciseIds.isEmpty else { return }
+        if let workout {
+            date = CalendarDate.parse(workout.date) ?? Date()
+            exerciseIds = workout.exerciseIds
+        } else {
+            exerciseIds = initialExerciseIds
+        }
+    }
+
+    private var saveButtonTitle: String {
+        if workout != nil { return "Save workout" }
+        if focusMuscles != nil { return "Use workout" }
+        return "Create workout"
+    }
+
+    private func regenerate() {
+        guard let focusMuscles else { return }
+        do {
+            exerciseIds = try EngineWorkout.propose(
+                date: CalendarDate.toISO(date),
+                focusMuscles: focusMuscles,
+                previousExerciseIds: exerciseIds,
+                availableEquipment: store.filters.selectedEquipment
+            )
+            issue = nil
+            Haptics.trigger(.medium)
+        } catch { capture(error) }
+    }
+
+    private func save() {
+        guard !exerciseIds.isEmpty, !saving else { return }
+        saving = true
+        defer { saving = false }
+        do {
+            let id: String
+            if let workout {
+                if workout.date != CalendarDate.toISO(date) {
+                    try TrainingEdits.rescheduleWorkout(workout.id, date: CalendarDate.toISO(date))
+                }
+                try TrainingEdits.updateScheduledWorkoutExercises(workout.id, exerciseIds)
+                id = workout.id
+            } else {
+                id = try EngineWorkout.createWorkout(
+                    date: CalendarDate.toISO(date),
+                    exerciseIds: exerciseIds,
+                    focusMuscles: focusMuscles
+                )
+            }
+            store.navigation.selectMode = false
+            store.navigation.selectedIds = []
+            store.navigation.reset([.workouts, .workoutDetail(workoutId: id)])
+            Haptics.trigger(.success)
+        } catch { capture(error) }
+    }
+
+    private func capture(_ error: Error) {
+        issue = (error as? TrainingPersistenceError)?.message ?? error.localizedDescription
+        Haptics.trigger(.warning)
+    }
+}
+
+private struct NewWorkoutDestinationRow: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: "plus")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(Theme.primaryForeground)
+                    .frame(width: 44, height: 44)
+                    .background(Theme.primaryGradient, in: Circle())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("New workout")
+                        .font(Theme.sans(16, weight: .bold))
+                        .foregroundStyle(Theme.foreground)
+                    Text("Pick a date and review the order")
+                        .font(Theme.sans(14))
+                        .foregroundStyle(Theme.mutedForeground)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Theme.mutedForeground)
+            }
+            .padding(16)
+            .background(
+                Theme.mix(Theme.card, Theme.primary, 0.10),
+                in: RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
+                    .strokeBorder(Theme.primary.opacity(0.45), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct ExistingWorkoutDestinationRow: View {
+    let workout: Workout
+    let current: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(Theme.mutedForeground)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        Theme.muted,
+                        in: RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(CalendarDate.short(workout.date))
+                        .font(Theme.sans(16, weight: .bold))
+                        .foregroundStyle(Theme.foreground)
+                    Text(
+                        Wording.countLabel(workout.exerciseIds.count, "exercise")
+                            + (current ? " · Current" : "")
+                    )
+                    .font(Theme.sans(14))
+                    .foregroundStyle(Theme.mutedForeground)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Theme.mutedForeground)
+            }
+            .padding(14)
+            .background(
+                Theme.card,
+                in: RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
+                    .strokeBorder(current ? Theme.primary.opacity(0.5) : Theme.border, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct WorkoutFormDatePicker: View {
+    @Binding var selection: Date
+    let onOpen: () -> Void
+
+    var body: some View {
+        Button {
+            Haptics.trigger(.light)
+            onOpen()
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(Theme.mutedForeground)
+                Text(CalendarDate.long(CalendarDate.toISO(selection)))
+                    .font(Theme.sans(18, weight: .bold))
+                    .foregroundStyle(Theme.foreground)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+            .background(
+                Theme.input,
+                in: RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Workout date, \(CalendarDate.long(CalendarDate.toISO(selection)))")
+    }
+}
+
+private struct EditableExerciseRow: View {
+    let exercise: ExerciseSummary
+    let index: Int
+    @ObservedObject var reorder: CardReorder
+    let exerciseIds: [String]
+    private var isDragging: Bool { reorder.active == exercise.id }
+    @Binding var isOpen: Bool
+    let onReorder: ([String], String) -> Void
+    let remove: () -> Void
+
+    var body: some View {
+        SwipeableRow(isOpen: $isOpen, actionInset: 16, action: {
+            Button {
+                Haptics.trigger(.warning)
+                remove()
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(Theme.primary)
+                    .frame(width: 56, height: 56)
+                    .background(Theme.card, in: Circle())
+                    .overlay(Circle().strokeBorder(Theme.primary, lineWidth: 1))
+                    .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Remove \(exercise.name)")
+        }) {
+            HStack(spacing: 0) {
+                Text(String(format: "%02d", index + 1))
+                    .font(Theme.sans(16, weight: .bold))
+                    .kerning(0.65)
+                    .foregroundStyle(Theme.primary)
+                    .frame(width: 48)
+                    .frame(maxHeight: .infinity)
+                    .background(Theme.card)
+                    .overlay(alignment: .trailing) {
+                        Rectangle().fill(Theme.border).frame(width: 1)
+                    }
+
+                ExerciseMediaView(exerciseId: exercise.id)
+                    .frame(width: 128, height: 128)
+                    .background(Theme.mix(Theme.card, .black, 0.12))
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(exercise.name.capitalized)
+                        .font(Theme.sans(17, weight: .semibold))
+                        .foregroundStyle(Theme.foreground)
+                        .lineLimit(3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(Wording.titleCase(exercise.equipment))
+                        .font(Theme.sans(14, weight: .medium))
+                        .foregroundStyle(Theme.mutedForeground)
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+
+                CardReorderHandle(reorder: reorder, id: exercise.id,
+                    order: exerciseIds, name: exercise.name, height: 128, commit: onReorder)
+            }
+            .frame(height: 128)
+            .background(Theme.card)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl3, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.xl3, style: .continuous)
+                    .strokeBorder(
+                        isDragging ? Theme.primary.opacity(0.70) : Theme.border,
+                        lineWidth: 1
+                    )
+            )
+            .opacity(1)
+            .shadow(
+                color: .black.opacity(isDragging ? 0.30 : 0.10),
+                radius: isDragging ? 20 : 2,
+                y: isDragging ? 10 : 1
+            )
+            .overlay {
+                if isDragging { AppGrain().clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl3)) }
+            }
+        }
+    }
+
+}

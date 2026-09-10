@@ -1,0 +1,267 @@
+import Foundation
+import Combine
+
+struct EquipmentPreset: Codable, Hashable, Sendable, Identifiable {
+    var id: String
+    var name: String
+    var equipment: [String]
+}
+
+@MainActor
+final class FiltersStore: ObservableObject {
+    static let shared = FiltersStore()
+
+    static let storageKey = "gym-lib-filters"
+    static let version = 1
+
+    @Published private(set) var selectedMuscles: [MuscleId] = []
+    @Published private(set) var selectedEquipment: [String] = []
+    /// The equipment you actually have, as opposed to `selectedEquipment`, which
+    /// filters one browse and is cleared whenever a new one starts. Kept in this
+    /// store so there is one equipment vocabulary, one preset list, and one
+    /// place either selection is sanitised.
+    @Published private(set) var gymEquipment: [String] = []
+    @Published private(set) var equipmentPresets: [EquipmentPreset] = []
+    /// Physical load step offered by the user's actual equipment. The basis
+    /// (total vs each) remains catalogue-defined; this only describes the rack,
+    /// stack or plates the person has access to.
+    @Published private(set) var equipmentLoadIncrements: [String: Double] = [:]
+
+    let changed = PassthroughSubject<Void, Never>()
+
+    private static let equipmentSet = Set(ExerciseCatalogue.equipmentOptions)
+
+    private init() { load() }
+
+    static func validEquipment(_ value: String) -> Bool { equipmentSet.contains(value) }
+
+    struct PersistedFilters {
+        var selectedMuscles: [MuscleId]
+        var selectedEquipment: [String]
+        var gymEquipment: [String]
+        var equipmentPresets: [EquipmentPreset]
+        var equipmentLoadIncrements: [String: Double]
+    }
+
+    static func sanitize(_ value: JSONValue?) -> PersistedFilters {
+        let presets = (value?["equipmentPresets"]?.arrayValue ?? []).compactMap {
+            item -> EquipmentPreset? in
+            guard let object = item.objectValue else { return nil }
+            let id = object["id"]?.stringValue ?? ""
+            let name = (object["name"]?.stringValue ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let equipment = Sanitize.uniqueStrings(object["equipment"], isValid: validEquipment)
+            guard !id.isEmpty, !name.isEmpty, !equipment.isEmpty else { return nil }
+            return EquipmentPreset(id: id, name: name, equipment: equipment)
+        }
+
+        var increments: [String: Double] = [:]
+        for (equipment, entry) in value?["equipmentLoadIncrements"]?.objectValue ?? [:] {
+            guard validEquipment(equipment),
+                  let number = entry.numberValue, number.isFinite,
+                  number >= 0.25, number <= 50
+            else { continue }
+            increments[equipment] = (number * 100).rounded() / 100
+        }
+
+        let muscles = Sanitize.uniqueStrings(value?["selectedMuscles"]) {
+            MuscleId(rawValue: $0) != nil
+        }.compactMap(MuscleId.init(rawValue:))
+
+        return PersistedFilters(
+            selectedMuscles: muscles,
+            selectedEquipment: Sanitize.uniqueStrings(value?["selectedEquipment"], isValid: validEquipment),
+            gymEquipment: Sanitize.uniqueStrings(value?["gymEquipment"], isValid: validEquipment),
+            equipmentPresets: presets,
+            equipmentLoadIncrements: increments
+        )
+    }
+
+    private func load() {
+        guard let envelope = Storage.readEnvelope(Self.storageKey) else { return }
+        apply(Self.sanitize(envelope.state), persisting: false)
+    }
+
+    func apply(_ state: PersistedFilters, persisting: Bool = true) {
+        selectedMuscles = state.selectedMuscles
+        selectedEquipment = state.selectedEquipment
+        gymEquipment = state.gymEquipment
+        equipmentPresets = state.equipmentPresets
+        equipmentLoadIncrements = state.equipmentLoadIncrements
+        if persisting { persist() }
+        changed.send()
+    }
+
+    func persist() {
+        Storage.writeEnvelope(Self.storageKey, state: snapshotTree, version: Self.version)
+    }
+
+    var snapshotTree: JSONValue {
+        .object([
+            "selectedMuscles": .array(selectedMuscles.map { .string($0.rawValue) }),
+            "selectedEquipment": .array(selectedEquipment.map(JSONValue.string)),
+            "gymEquipment": .array(gymEquipment.map(JSONValue.string)),
+            "equipmentPresets": .array(equipmentPresets.map { $0.jsonTree }),
+            "equipmentLoadIncrements": .object(
+                equipmentLoadIncrements.mapValues { JSONValue.number($0) }
+            ),
+        ])
+    }
+
+    private func mutate(_ body: () -> Void) {
+        body()
+        persist()
+        changed.send()
+    }
+
+    // MARK: Mutations
+
+    func toggleMuscle(_ muscle: MuscleId) {
+        mutate { selectedMuscles = Sanitize.toggle(selectedMuscles, muscle) }
+    }
+
+    func toggleEquipment(_ equipment: String) {
+        guard Self.validEquipment(equipment) else { return }
+        mutate { selectedEquipment = Sanitize.toggle(selectedEquipment, equipment) }
+    }
+
+    func toggleGymEquipment(_ equipment: String) {
+        guard Self.validEquipment(equipment) else { return }
+        mutate { gymEquipment = Sanitize.toggle(gymEquipment, equipment) }
+    }
+
+    func setMuscles(_ muscles: [MuscleId]) {
+        mutate {
+            var seen = Set<MuscleId>()
+            selectedMuscles = muscles.filter { seen.insert($0).inserted }
+        }
+    }
+
+    func setEquipment(_ equipment: [String]) {
+        mutate {
+            var seen = Set<String>()
+            selectedEquipment = equipment.filter {
+                Self.validEquipment($0) && seen.insert($0).inserted
+            }
+        }
+    }
+
+    func setGymEquipment(_ equipment: [String]) {
+        mutate {
+            var seen = Set<String>()
+            gymEquipment = equipment.filter {
+                Self.validEquipment($0) && seen.insert($0).inserted
+            }
+        }
+    }
+
+    func setEquipmentLoadIncrement(_ equipment: String, _ incrementKg: Double) {
+        guard Self.validEquipment(equipment), incrementKg.isFinite,
+              incrementKg >= 0.25, incrementKg <= 50
+        else { return }
+        mutate { equipmentLoadIncrements[equipment] = (incrementKg * 100).rounded() / 100 }
+    }
+
+    func clearEquipmentLoadIncrement(_ equipment: String) {
+        guard equipmentLoadIncrements[equipment] != nil else { return }
+        mutate { equipmentLoadIncrements.removeValue(forKey: equipment) }
+    }
+
+    /// Saving takes an explicit selection so the same preset list can be filled
+    /// from the browse filter or from the equipment the profile holds, rather
+    /// than either surface growing a preset store of its own.
+    func saveEquipmentPreset(_ name: String, equipment: [String]? = nil) {
+        let normalizedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        var seen = Set<String>()
+        let selection = (equipment ?? selectedEquipment).filter {
+            Self.validEquipment($0) && seen.insert($0).inserted
+        }
+        guard !normalizedName.isEmpty, !selection.isEmpty else { return }
+
+        mutate {
+            if let index = equipmentPresets.firstIndex(where: {
+                $0.name.lowercased() == normalizedName.lowercased()
+            }) {
+                equipmentPresets[index].equipment = selection
+            } else {
+                let random = String(UUID().uuidString.prefix(6)).lowercased()
+                equipmentPresets.append(EquipmentPreset(
+                    id: "\(Int(Date().timeIntervalSince1970 * 1000))-\(random)",
+                    name: normalizedName,
+                    equipment: selection
+                ))
+            }
+        }
+    }
+
+    func applyEquipmentPreset(_ id: String) {
+        guard let preset = equipmentPresets.first(where: { $0.id == id }) else { return }
+        mutate { selectedEquipment = preset.equipment }
+    }
+
+    func deleteEquipmentPreset(_ id: String) {
+        mutate { equipmentPresets.removeAll { $0.id == id } }
+    }
+
+    func reset() {
+        mutate {
+            selectedMuscles = []
+            selectedEquipment = []
+        }
+    }
+
+    func clearAll() {
+        apply(PersistedFilters(
+            selectedMuscles: [],
+            selectedEquipment: [],
+            gymEquipment: [],
+            equipmentPresets: [],
+            equipmentLoadIncrements: [:]
+        ))
+    }
+}
+
+@MainActor
+final class FavoritesStore: ObservableObject {
+    static let shared = FavoritesStore()
+
+    static let storageKey = "gym-lib-favorites"
+    static let version = 1
+
+    @Published private(set) var favoriteIds: [String] = []
+    let changed = PassthroughSubject<Void, Never>()
+
+    private init() { load() }
+
+    static func sanitize(_ value: JSONValue?) -> [String] {
+        Sanitize.uniqueStrings(value?["favoriteIds"]) { ExerciseCatalogue.has($0) }
+    }
+
+    private func load() {
+        guard let envelope = Storage.readEnvelope(Self.storageKey) else { return }
+        favoriteIds = Self.sanitize(envelope.state)
+    }
+
+    func persist() {
+        Storage.writeEnvelope(
+            Self.storageKey,
+            state: .object(["favoriteIds": .array(favoriteIds.map(JSONValue.string))]),
+            version: Self.version
+        )
+    }
+
+    func toggleFavorite(_ exerciseId: String) {
+        guard ExerciseCatalogue.has(exerciseId) else { return }
+        favoriteIds = Sanitize.toggle(favoriteIds, exerciseId)
+        persist()
+        changed.send()
+    }
+
+    func isFavorite(_ exerciseId: String) -> Bool { favoriteIds.contains(exerciseId) }
+
+    func replaceAll(_ ids: [String]) {
+        favoriteIds = ids
+        persist()
+        changed.send()
+    }
+}
