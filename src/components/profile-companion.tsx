@@ -10,7 +10,7 @@ export function ProfileCompanion({ step }: { step: string }) {
       mood: profile.name ? "curious" : "listening",
       text: profile.name
         ? `Good to meet you, ${profile.name}. Age ${profile.age} — adjust the dial if needed.`
-        : "I'm RAUTA. Tell me your name, then turn the dial to your age.",
+        : "Tell me your name, then turn the dial to your age.",
     },
     Experience: {
       mood: "focused",
@@ -38,12 +38,13 @@ export function ProfileCompanion({ step }: { step: string }) {
   }
   const current = guidance[step] ?? guidance.Goal
   const reactionKey = `${profile.name}:${profile.age}:${profile.trainingExperience}:${profile.goal}:${profile.preferredSessionDurationMinutes}:${profile.health.status}`
-  // No box of its own: the character is pinned to the foot of the screen, and
-  // the step's own content closes up over the space it used to sit in.
+  // No box of its own, and out of the way of the control the step is about:
+  // the character stands in the top corner and speaks from under the title.
   return (
     <Rauta
       mood={current.mood}
-      size={94}
+      place="top"
+      size={72}
       speech={current.text}
       reactionKey={reactionKey}
     />

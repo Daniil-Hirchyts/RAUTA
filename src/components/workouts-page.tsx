@@ -1,11 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import {
-  ChevronDown,
-  ChevronUp,
-  Copy,
-  Settings,
-  Trash2,
-} from "lucide-react"
+import { useMemo, useRef, useState, type ReactNode } from "react"
+import { ChevronDown, ChevronUp, Copy, Settings, Trash2 } from "lucide-react"
 
 import { AppControlMorph } from "@/components/app-morph"
 import {
@@ -20,6 +14,7 @@ import { ConfirmModal } from "@/components/confirm-modal"
 import { SwipeableRow } from "@/components/swipeable-row"
 import { Button } from "@/components/ui/button"
 import { WorkoutCompanion } from "@/components/workout-companion"
+import { SlidingTabs } from "@/components/ui/sliding-tabs"
 import { WorkoutStreak } from "@/components/workout-streak"
 import { useElapsedMs } from "@/hooks/use-elapsed-ms"
 import { formatDuration, sessionProgress } from "@/lib/active-workout"
@@ -66,102 +61,6 @@ function muscleSummary(muscles: MuscleId[]) {
   const rest = muscles.length - named.length
   return rest > 0 ? `${named.join(" · ")} +${rest}` : named.join(" · ")
 }
-
-type TabDef = { label: string; count: number }
-
-/**
- * Sliding-pill tab bar.
- *
- * The pill's position (translateX + width) is measured from the active
- * button's layout, then written as inline styles so CSS transitions can
- * tween between positions.  First paint and resize snap without animation.
- */
-function SlidingTabs({
-  activeIndex,
-  onChange,
-  tabs,
-}: {
-  activeIndex: number
-  onChange: (index: number) => void
-  tabs: TabDef[]
-}) {
-  const barRef = useRef<HTMLDivElement>(null)
-  const pillRef = useRef<HTMLSpanElement>(null)
-
-  const syncPill = useCallback(
-    (animate: boolean) => {
-      const bar = barRef.current
-      const pill = pillRef.current
-      if (!bar || !pill) return
-      const btn = bar.querySelectorAll<HTMLButtonElement>('[role="tab"]')[
-        activeIndex
-      ]
-      if (!btn) return
-
-      if (!animate) {
-        pill.style.transition = "none"
-        // Force reflow so the "none" is flushed before we restore
-        void pill.offsetWidth
-      }
-      pill.style.transform = `translateX(${btn.offsetLeft}px)`
-      pill.style.width = `${btn.offsetWidth}px`
-      if (!animate) {
-        // Restore after one frame
-        requestAnimationFrame(() => {
-          pill.style.transition = ""
-        })
-      }
-    },
-    [activeIndex]
-  )
-
-  // Snap on first paint and whenever the active tab changes
-  useLayoutEffect(() => {
-    syncPill(true)
-  }, [syncPill])
-
-  // Snap (no animation) on first mount
-  useEffect(() => {
-    syncPill(false)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Snap (no animation) on resize
-  useEffect(() => {
-    const onResize = () => syncPill(false)
-    window.addEventListener("resize", onResize)
-    return () => window.removeEventListener("resize", onResize)
-  }, [syncPill])
-
-  return (
-    <div className="t-tabs" ref={barRef} role="tablist">
-      <span className="t-tabs-pill" ref={pillRef} aria-hidden="true" />
-      {tabs.map((tab, i) => (
-        <button
-          aria-selected={i === activeIndex}
-          className="t-tab"
-          key={tab.label}
-          onClick={() => onChange(i)}
-          role="tab"
-          type="button"
-        >
-          {tab.label}
-          <span
-            className={cn(
-              "ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums transition-colors",
-              i === activeIndex
-                ? "bg-black/15 text-primary-foreground"
-                : "bg-muted/60 text-muted-foreground"
-            )}
-          >
-            {tab.count}
-          </span>
-        </button>
-      ))}
-    </div>
-  )
-}
-
 
 function SectionFooter({
   onLess,
@@ -461,7 +360,10 @@ function WorkoutCard({
           )}
         </div>
         <BodyPreview
-          className={cn("h-12 w-[4.25rem] shrink-0", isPast && "opacity-70")}
+          className={cn(
+            "workout-muscle-map h-14 w-20 shrink-0",
+            isPast && "opacity-90"
+          )}
           selectedMuscles={targetMuscles}
         />
       </button>
@@ -493,6 +395,12 @@ export function WorkoutsPage({
 
   const session = useActiveWorkout((state) => state.session)
   const elapsed = useElapsedMs(session)
+  const resumableWorkout = session
+    ? workouts.find((workout) => workout.id === session.workoutId)
+    : undefined
+  const resumeWorkout = resumableWorkout
+    ? () => onSelect(resumableWorkout)
+    : undefined
   const { completed, past, upcoming } = useMemo(() => {
     const pastWorkouts: Workout[] = []
     const upcomingWorkouts: Workout[] = []
@@ -617,61 +525,55 @@ export function WorkoutsPage({
             </div>
 
             <div className="mt-4">
-            {activeTab === 0 ? (
-              upcoming.length > 0 ? (
-                <section aria-label="Next workouts">
-                  {renderCards(upcoming.slice(0, upcomingLimit), false)}
+              {activeTab === 0 ? (
+                upcoming.length > 0 ? (
+                  <section aria-label="Next workouts">
+                    {renderCards(upcoming.slice(0, upcomingLimit), false)}
+                    <SectionFooter
+                      onLess={() => setUpcomingLimit(WORKOUT_PAGE_SIZE)}
+                      onMore={() =>
+                        setUpcomingLimit((limit) => limit + WORKOUT_PAGE_SIZE)
+                      }
+                      remaining={Math.max(0, upcoming.length - upcomingLimit)}
+                      showLess={upcomingLimit > WORKOUT_PAGE_SIZE}
+                    />
+                  </section>
+                ) : (
+                  <p className="mx-(--app-content-inset) text-center text-[13px] text-muted-foreground">
+                    No upcoming workouts
+                  </p>
+                )
+              ) : past.length > 0 ? (
+                <section aria-label="Past workouts">
+                  {renderCards(past.slice(0, pastLimit), true)}
                   <SectionFooter
-                    onLess={() => setUpcomingLimit(WORKOUT_PAGE_SIZE)}
+                    onLess={() => setPastLimit(WORKOUT_PAGE_SIZE)}
                     onMore={() =>
-                      setUpcomingLimit((limit) => limit + WORKOUT_PAGE_SIZE)
+                      setPastLimit((limit) => limit + WORKOUT_PAGE_SIZE)
                     }
-                    remaining={Math.max(0, upcoming.length - upcomingLimit)}
-                    showLess={upcomingLimit > WORKOUT_PAGE_SIZE}
+                    remaining={Math.max(0, past.length - pastLimit)}
+                    showLess={pastLimit > WORKOUT_PAGE_SIZE}
                   />
                 </section>
               ) : (
                 <p className="mx-(--app-content-inset) text-center text-[13px] text-muted-foreground">
-                  No upcoming workouts
+                  No past workouts yet
                 </p>
-              )
-            ) : past.length > 0 ? (
-              <section aria-label="Past workouts">
-                {renderCards(past.slice(0, pastLimit), true)}
-                <SectionFooter
-                  onLess={() => setPastLimit(WORKOUT_PAGE_SIZE)}
-                  onMore={() =>
-                    setPastLimit((limit) => limit + WORKOUT_PAGE_SIZE)
-                  }
-                  remaining={Math.max(0, past.length - pastLimit)}
-                  showLess={pastLimit > WORKOUT_PAGE_SIZE}
-                />
-              </section>
-            ) : (
-              <p className="mx-(--app-content-inset) text-center text-[13px] text-muted-foreground">
-                No past workouts yet
-              </p>
-            )}
+              )}
             </div>
           </div>
         </div>
 
         {/* RAUTA holds the floor of the page rather than the head of the
             list: it is the one thing here that is always in the same place,
-            so it can be reached without scrolling back for it. */}
-        <div className="app-surface-bottom-dock workouts-companion-dock">
-          <WorkoutCompanion
-            onCreate={onCreate}
-            onCreatePlan={onCreatePlan}
-            onSettings={onSettings}
-            onResume={
-              session && workouts.some((w) => w.id === session.workoutId)
-                ? () =>
-                    onSelect(workouts.find((w) => w.id === session.workoutId)!)
-                : undefined
-            }
-          />
-        </div>
+            so it can be reached without scrolling back for it. It brings its
+            own panel and pins itself to the surface, so there is no dock to
+            put it in. */}
+        <WorkoutCompanion
+          onCreate={onCreate}
+          onCreatePlan={onCreatePlan}
+          onResume={resumeWorkout}
+        />
       </AppSurface>
 
       <ConfirmModal
@@ -684,14 +586,16 @@ export function WorkoutsPage({
         }}
       />
 
-      <AppControls transitionKey="workouts:add">
+      <AppControls
+        transitionKey={resumeWorkout ? "workouts:resume" : "workouts:add"}
+      >
         <AppControlMorph className="w-full" role="primary">
           <Button
             size="cta"
             className="w-full shadow-xl shadow-black/25"
-            onClick={onCreate}
+            onClick={resumeWorkout ?? onCreate}
           >
-            New workout
+            {resumeWorkout ? "Resume workout" : "New workout"}
           </Button>
         </AppControlMorph>
       </AppControls>

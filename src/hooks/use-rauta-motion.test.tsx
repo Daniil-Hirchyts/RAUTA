@@ -15,9 +15,9 @@ import { useWorkouts } from "@/store/use-workouts"
  * The character's movement controller, driven the way a thumb drives it.
  *
  * Frame-by-frame output is the artwork's business; what is tested here is the
- * contract a person can feel — a one-finger drag moves and does not turn, a
- * two-finger twist turns, nothing escapes the screen, and every listener the
- * controller opens is closed again.
+ * contract a person can feel — a drag moves it, nothing escapes the screen, it
+ * comes straight back to where it belongs, and every listener the controller
+ * opens is closed again.
  */
 
 const SIZE = 104
@@ -26,7 +26,7 @@ const VIEWPORT = { width: 390, height: 844 }
 /** Motion writes transforms on its own frame, which jsdom never runs, so the
  *  motion values themselves are what the tests read. */
 const live: {
-  current: Pick<ReturnType<typeof useRautaMotion>, "x" | "y" | "rotate"> | null
+  current: Pick<ReturnType<typeof useRautaMotion>, "x" | "y"> | null
 } = { current: null }
 
 const placement = {
@@ -35,9 +35,6 @@ const placement = {
   },
   get y() {
     return live.current?.y.get() ?? 0
-  },
-  get rotate() {
-    return live.current?.rotate.get() ?? 0
   },
 }
 
@@ -53,7 +50,7 @@ function Harness({
     disabled,
     inset: { bottom: 96 },
   })
-  const { ref, x, y, rotate, handlers } = motionState
+  const { ref, x, y, handlers } = motionState
   useEffect(() => {
     live.current = motionState
     return () => {
@@ -64,7 +61,7 @@ function Harness({
     <motion.div
       data-testid="rauta"
       ref={ref}
-      style={{ width: SIZE, height: SIZE, x, y, rotate }}
+      style={{ width: SIZE, height: SIZE, x, y }}
       {...handlers}
     />
   )
@@ -135,7 +132,7 @@ describe("dragging RAUTA", () => {
     expect(250 + placement.x + SIZE).toBeCloseTo(386)
   })
 
-  it("moves the character and never turns it", () => {
+  it("moves the character with the finger that is dragging it", () => {
     render(<Harness />)
     const bot = screen.getByTestId("rauta")
     stubBox(bot)
@@ -146,8 +143,6 @@ describe("dragging RAUTA", () => {
 
     expect(placement.x).not.toBe(0)
     expect(placement.y).not.toBe(0)
-    // One finger translates. Nothing about a sideways drag turns the character.
-    expect(placement.rotate).toBe(0)
   })
 
   it("reports a tap rather than a drag when the finger barely moved", () => {
@@ -185,41 +180,6 @@ describe("dragging RAUTA", () => {
     stubBox(bot)
     fireEvent.pointerDown(bot, { pointerId: 1, clientX: 300, clientY: 550 })
     fireEvent.pointerMove(bot, { pointerId: 1, clientX: 200, clientY: 650 })
-    expect(placement.x).toBe(0)
-    expect(placement.y).toBe(0)
-  })
-})
-
-describe("turning RAUTA", () => {
-  it("turns only for a deliberate two-finger twist", () => {
-    const events: RautaGestureEvent[] = []
-    render(<Harness onGesture={(event) => events.push(event)} />)
-    const bot = screen.getByTestId("rauta")
-    stubBox(bot)
-
-    // Two fingers down, level with each other.
-    fireEvent.pointerDown(bot, { pointerId: 1, clientX: 280, clientY: 550 })
-    fireEvent.pointerDown(bot, { pointerId: 2, clientX: 340, clientY: 550 })
-    // A tiny wobble is not a twist.
-    fireEvent.pointerMove(bot, { pointerId: 2, clientX: 340, clientY: 552 })
-    expect(events.some((event) => event.type === "rotate")).toBe(false)
-
-    // A real twist is.
-    fireEvent.pointerMove(bot, { pointerId: 2, clientX: 330, clientY: 600 })
-    expect(events.some((event) => event.type === "rotate")).toBe(true)
-    expect(placement.rotate).not.toBe(0)
-  })
-
-  it("does not slide while it is being twisted", () => {
-    render(<Harness />)
-    const bot = screen.getByTestId("rauta")
-    stubBox(bot)
-
-    fireEvent.pointerDown(bot, { pointerId: 1, clientX: 280, clientY: 550 })
-    fireEvent.pointerDown(bot, { pointerId: 2, clientX: 340, clientY: 550 })
-    fireEvent.pointerMove(bot, { pointerId: 2, clientX: 330, clientY: 620 })
-
-    // The second finger cancelled the drag, so no translation was applied.
     expect(placement.x).toBe(0)
     expect(placement.y).toBe(0)
   })

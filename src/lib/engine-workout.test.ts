@@ -4,6 +4,7 @@ import {
   createEngineWorkout,
   duplicateWorkoutWithEngine,
   ensureEngineWorkout,
+  proposeEngineWorkout,
 } from "@/lib/engine-workout"
 import { createTrainingPlanForDates } from "@/lib/training-plan"
 import { plannedSessionView } from "@/lib/training-plan"
@@ -79,6 +80,21 @@ describe("engine workouts", () => {
       date: "2026-09-10",
       planned: expect.any(Object),
     })
+  })
+
+  it("regenerates a different high-ranked proposal for the same muscles", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.25)
+    const first = proposeEngineWorkout({
+      date: "2026-09-10",
+      focusMuscles: ["chest"],
+    })
+    const second = proposeEngineWorkout({
+      date: "2026-09-10",
+      focusMuscles: ["chest"],
+      previousExerciseIds: first,
+    })
+    expect(second).not.toEqual(first)
+    expect(second.some((id) => !first.includes(id))).toBe(true)
   })
 
   it("creates one plan across explicitly selected weeks", () => {

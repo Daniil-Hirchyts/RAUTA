@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   EQUIPMENT_OPTIONS,
   EXERCISES,
+  equipmentForMuscles,
   findExerciseAlternatives,
   filterExercises,
   supportingFromIndex,
@@ -77,6 +78,53 @@ describe("exercise data", () => {
       "kettlebell",
     ])
     expect(new Set(EQUIPMENT_OPTIONS).size).toBe(EQUIPMENT_OPTIONS.length)
+  })
+})
+
+describe("equipmentForMuscles", () => {
+  it("returns all EQUIPMENT_OPTIONS when no muscles are passed", () => {
+    expect(equipmentForMuscles([])).toEqual(EQUIPMENT_OPTIONS)
+  })
+
+  it("returns only equipment used for selected muscles", () => {
+    const chestEquipment = equipmentForMuscles(["chest"])
+    expect(chestEquipment).toContain("barbell")
+    expect(chestEquipment).toContain("dumbbell")
+    expect(chestEquipment).toContain("body weight")
+
+    // Equipment with no chest exercises should NOT be present
+    expect(chestEquipment).not.toContain("rope")
+    expect(chestEquipment).not.toContain("hammer")
+    expect(chestEquipment).not.toContain("sled machine")
+    expect(chestEquipment).not.toContain("tire")
+    expect(chestEquipment).not.toContain("elliptical machine")
+  })
+
+  it("returns union of equipment when multiple muscles are selected", () => {
+    const tibialisEquipment = equipmentForMuscles(["tibialis"])
+    expect(tibialisEquipment).toEqual(["smith machine"])
+
+    const combinedEquipment = equipmentForMuscles(["tibialis", "trapezius"])
+    expect(combinedEquipment).toContain("smith machine")
+    expect(combinedEquipment).toContain("barbell")
+    expect(combinedEquipment).toContain("cable")
+  })
+
+  it("preserves relative order from EQUIPMENT_OPTIONS", () => {
+    const chestEquipment = equipmentForMuscles(["chest"])
+    const expected = EQUIPMENT_OPTIONS.filter((item) =>
+      chestEquipment.includes(item)
+    )
+    expect(chestEquipment).toEqual(expected)
+  })
+
+  it("filters accurately on custom fixtures", () => {
+    expect(equipmentForMuscles(["biceps"], fixture)).toEqual(["barbell"])
+    expect(equipmentForMuscles(["chest"], fixture)).toEqual([
+      "body weight",
+      "barbell",
+      "cable",
+    ])
   })
 })
 

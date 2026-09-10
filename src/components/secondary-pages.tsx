@@ -1,7 +1,14 @@
 import { useMemo, useState, type FormEvent } from "react"
-import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react"
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  RefreshCw,
+} from "lucide-react"
 
 import {
+  AppControlButton,
   AppControls,
   AppHeaderButton,
   AppScreen,
@@ -217,11 +224,13 @@ export function WorkoutDestinationPage({
 export function WorkoutFormPage({
   initialExerciseIds,
   onBack,
+  onRegenerate,
   onSaved,
   workout,
 }: {
   initialExerciseIds?: string[]
   onBack: () => void
+  onRegenerate?: (exerciseIds: readonly string[]) => string[]
   onSaved: (workoutId: string) => void
   workout?: Workout | null
 }) {
@@ -254,7 +263,7 @@ export function WorkoutFormPage({
       <AppSurface>
         <AppShellHeader
           left={<PageBack label="Back" onBack={onBack} />}
-          title={isEdit ? "Edit workout" : "New workout"}
+          title={isEdit ? "Edit workout" : onRegenerate ? "Proposed workout" : "New workout"}
         />
         <form
           className="app-scroll-region flex min-h-0 flex-1 flex-col overflow-y-auto px-(--app-content-inset) pt-5 pb-6"
@@ -285,16 +294,30 @@ export function WorkoutFormPage({
           </div>
         </form>
       </AppSurface>
-      <AppControls transitionKey={`workout-form:${canSave}`}>
-        <Button
-          className="w-full"
-          disabled={!canSave}
-          form="workout-form"
-          size="cta"
-          type="submit"
-        >
-          {isEdit ? "Save workout" : "Create workout"}
-        </Button>
+      <AppControls transitionKey={`workout-form:${canSave}:${Boolean(onRegenerate)}`}>
+        <div className="flex w-full items-center gap-2.5">
+          {onRegenerate ? (
+            <AppControlButton
+              aria-label="Regenerate proposed workout"
+              onClick={() => {
+                setExerciseIds(onRegenerate(exerciseIds))
+                triggerHaptic("medium")
+              }}
+              type="button"
+            >
+              <RefreshCw />
+            </AppControlButton>
+          ) : null}
+          <Button
+            className="min-w-0 flex-1"
+            disabled={!canSave}
+            form="workout-form"
+            size="cta"
+            type="submit"
+          >
+            {isEdit ? "Save workout" : onRegenerate ? "Use workout" : "Create workout"}
+          </Button>
+        </div>
       </AppControls>
     </AppScreen>
   )

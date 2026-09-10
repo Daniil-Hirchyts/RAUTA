@@ -140,6 +140,10 @@ const AMBIENT_REACTIONS: readonly RautaReaction[] = [
   "wink",
   "blinkDouble",
   "peek",
+  "acknowledge",
+  "relieved",
+  "laugh",
+  "turnaround",
   "spinLeft",
   "blink",
   "spinRight",
@@ -150,6 +154,8 @@ export type RautaActivity = {
   holder: RautaSource | null
   holdUntil: number
   lastInteraction?: RautaReaction
+  /** The previous idle beat, so random choice still never looks like a loop. */
+  lastAmbient?: RautaReaction
   /** When each source last played, for its own cooldown. */
   lastPlayedAt: Record<RautaSource, number>
   /** When ambient idle is next allowed to have a thought. */
@@ -195,7 +201,9 @@ export function requestRautaReaction(
     source === "interaction" &&
     (reaction === "recoil" || reaction === "wobble") &&
     (activity.lastInteraction === "surprise" ||
-      activity.lastInteraction === "peek")
+      activity.lastInteraction === "peek" ||
+      activity.lastInteraction === "spinLeft" ||
+      activity.lastInteraction === "spinRight")
   const cooling =
     !impactInterrupt &&
     now - activity.lastPlayedAt[source] < COOLDOWN_MS[source]
@@ -235,12 +243,12 @@ export function scheduleRautaIdle(
 
   const span = RAUTA_IDLE_RANGE_MS.max - RAUTA_IDLE_RANGE_MS.min
   const nextDueAt = now + RAUTA_IDLE_RANGE_MS.min + Math.floor(random() * span)
+  const available = AMBIENT_REACTIONS.filter(
+    (reaction) => reaction !== activity.lastAmbient
+  )
   const choice =
-    AMBIENT_REACTIONS[
-      Math.min(
-        AMBIENT_REACTIONS.length - 1,
-        Math.floor(random() * AMBIENT_REACTIONS.length)
-      )
+    available[
+      Math.min(available.length - 1, Math.floor(random() * available.length))
     ]
 
   const attempt = requestRautaReaction(
@@ -251,7 +259,7 @@ export function scheduleRautaIdle(
   // retried immediately: a blocked idle must not become a busy wait.
   return {
     activity: attempt.play
-      ? attempt.activity
+      ? { ...attempt.activity, lastAmbient: attempt.play }
       : { ...activity, ambientDueAt: nextDueAt },
     play: attempt.play,
   }

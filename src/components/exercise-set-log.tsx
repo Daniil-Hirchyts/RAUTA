@@ -1,12 +1,10 @@
 import { useMemo, useState } from "react"
-import { motion } from "motion/react"
-import { Plus } from "lucide-react"
 
+import { RestCountdown } from "@/components/rest-countdown"
 import { SetEditor, type SetEditorValue } from "@/components/set-editor"
-import { StationPicker } from "@/components/station-picker"
 import { EXERCISES_BY_ID } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
-import { EASE_SMOOTH_OUT } from "@/lib/motion"
+import { cueRauta } from "@/lib/rauta-cues"
 import { progressionNote } from "@/lib/progression-note"
 import {
   carryOverLoad,
@@ -26,7 +24,6 @@ import { nextPerformance } from "@/lib/training-workflow"
 import { cn } from "@/lib/utils"
 import { useFilters } from "@/store/use-filters"
 import { useTrainingRecords } from "@/store/use-training-records"
-import { roundLoad } from "@/training"
 import type {
   PersistedActiveSetDraft,
   PersistedCompletedSession,
@@ -36,12 +33,13 @@ import type {
 } from "@/training-persistence/schema"
 import type { ExerciseSummary } from "@/types"
 
-const EDITOR_TRANSITION = { duration: 0.24, ease: EASE_SMOOTH_OUT }
-
-/** The set the editor opens on when nothing has been performed yet. Reps are a
- *  starting point for the dial, not a claim about the set: nothing is recorded
- *  until it is confirmed. */
+/** The set the editor opens on when nothing has been performed and nothing was
+ *  prescribed. Reps are a starting point for the dial, not a claim about the
+ *  set: nothing is recorded until it is confirmed. */
 const BLANK_REPS = 10
+
+/** The rest to count down when nothing prescribed one. */
+const DEFAULT_REST_SECONDS = 90
 
 /**
  * The editor opened on a set that was already performed.
@@ -127,14 +125,12 @@ function Column({
  * other on screen either.
  */
 export function ExerciseSetLog({
-  editing,
   exerciseId,
-  onEditingChange,
+  restSeconds = DEFAULT_REST_SECONDS,
 }: {
-  /** True while this exercise's editor is the open one. */
-  editing: boolean
   exerciseId: string
-  onEditingChange: (editing: boolean) => void
+  /** What the week asks between sets of this exercise. */
+  restSeconds?: number
 }) {
   const exercise = EXERCISES_BY_ID.get(exerciseId)
   const data = useTrainingRecords((state) => state.data)
@@ -150,10 +146,13 @@ export function ExerciseSetLog({
 
   const entry = draftExercise(draft, exerciseId)
   const [editedSetId, setEditedSetId] = useState<string | null>(null)
+  /** The rest started by the last saved set. The id makes each one its own
+   *  countdown rather than a continuation of the one before. */
+  const [rest, setRest] = useState<{ id: number; seconds: number } | null>(null)
   const [pending, setPending] = useState<SetEditorValue | null>(null)
-  // While the editor is open the engine is asked about the measurement on
-  // screen, so what RAUTA says and what the dial collects are one statement.
-  const loggedMode = editing ? pending?.mode : undefined
+  // The engine is asked about the measurement on screen, so what RAUTA says
+  // and what the dial collects are one statement.
+  const loggedMode = pending?.mode
 
   const modes = useMemo<ResistanceMode[]>(
     () => (exercise ? resistanceModes(exercise) : ["external_load"]),
@@ -173,10 +172,10 @@ export function ExerciseSetLog({
             data,
             increments,
             loggedMode,
-            editing ? pending?.context : undefined
+            pending?.context
           )
         : null,
-    [data, entry, increments, loggedMode, editing, pending?.context]
+    [data, entry, increments, loggedMode, pending?.context]
   )
 
   // Where the next set will be measured: the station selected for this
@@ -208,52 +207,87 @@ export function ExerciseSetLog({
         basis: "total",
         grid: { incrementKg: 2.5 },
       } as const)
-    const blank: SetEditorValue = {
-      mode,
-      kg: null,
-      reps: BLANK_REPS,
-      rir: null,
-      side: "both",
-      context,
-    }
+    const planned = entry?.sets.find((set) => set.target)?.target
     const previous = entry?.sets
       .toReversed()
       .find((set) => set.observation?.completed)?.observation
-    if (previous)
-      return {
-        ...blank,
-        kg: carryOverLoad(previous.resistance, mode, context),
-        reps: previous.reps ?? BLANK_REPS,
-        rir: previous.rir ?? null,
-      }
     // The engine resolves the same station this editor is on, so a load it
     // names is already comparable; anything else it returns is calibration,
-    // and calibration is a blank dial rather than a guess.
-    if (
+    // which is not a load at all.
+    const engine =
       recommendation &&
       recommendation.resistance.type === mode &&
       "kg" in recommendation.resistance &&
       sameLoadContext(recommendation.resistance, context)
-    )
-      return {
-        ...blank,
-        kg: recommendation.resistance.kg,
-        reps: recommendation.targetReps.max,
-      }
-    // Historical loads are offered only through the engine. Falling back to
-    // history here would bypass its stale-history and calibration decisions.
-    return blank
+        ? recommendation
+        : null
+    return {
+      mode,
+      // A kilogram is only offered again when it was measured at this same
+      // station, in this same basis. Where nothing is known the dial opens at
+      // zero rather than empty: a set can be logged from the bar and stepped
+      // up, which is what finding a working load actually looks like.
+      kg:
+        (previous ? carryOverLoad(previous.resistance, mode, context) : null) ??
+        (engine && "kg" in engine.resistance ? engine.resistance.kg : null) ??
+        (isMeasuredInKg(mode) ? 0 : null),
+      // Reps and effort carry over freely — they describe the person, not the
+      // machine — and fall back to what the week asked for.
+      reps:
+        previous?.reps ??
+        engine?.targetReps.max ??
+        planned?.reps.max ??
+        BLANK_REPS,
+      rir: previous?.rir ?? planned?.rir ?? null,
+      side: "both",
+      context,
+    }
   }, [entry, modes, nextContext, recommendation])
+
+  /** What the editor shows for a set: the observation to correct, the
+   *  prescription to confirm, or a blank dial for a set nobody planned. */
+  const valueFor = (set: PersistedActiveSetDraft | null): SetEditorValue => {
+    if (!exercise) return defaults
+    if (set?.observation?.resistance)
+      return recordedValue(
+        exercise,
+        set.observation,
+        set.side,
+        settings,
+        equipmentIncrementKg
+      )
+    if (!set?.target) return defaults
+    // A prescribed set opens on its target so it can be confirmed or
+    // corrected; the target itself is never written as performed. Its load
+    // only carries over where the plan and this station are the same
+    // measurement — a target from another machine stays on the card as the
+    // prescription and never becomes an actual load here.
+    return {
+      ...defaults,
+      reps: set.target.reps.max,
+      rir: set.target.rir,
+      side: set.side,
+      // The prescription first, where it names a load measured the same way;
+      // otherwise whatever the sets already performed establish, which is what
+      // an unprescribed dial opens on too.
+      kg:
+        carryOverLoad(set.target.resistance, defaults.mode, defaults.context) ??
+        defaults.kg,
+    }
+  }
 
   if (!exercise || !entry) return null
 
-  const value = pending ?? defaults
-  // The button offers the next set after the ones already on the card,
-  // prescribed or performed; with an empty card it simply offers a set.
-  const addSetLabel = entry.sets.length
-    ? `Log set ${entry.sets.length + 1}`
-    : "Log a set"
-  const editedSet = entry.sets.find((set) => set.id === editedSetId) ?? null
+  /** The set being performed: the first one nobody has logged yet, or a new
+   *  one where the prescription is finished. Nothing selected means this one —
+   *  there is no button to add a set, because the next set is already the row
+   *  in front of you. */
+  const currentSet =
+    entry.sets.find((set) => !set.observation?.completed) ?? null
+  const editedSet =
+    (editedSetId ? entry.sets.find((set) => set.id === editedSetId) : null) ??
+    currentSet
+  const value = pending ?? valueFor(editedSet)
   const previous = lastPerformedSet(sessions, exerciseId)
   // A step is only quoted when it is a step from the same measurement: the
   // difference between two stations is not a progression.
@@ -266,69 +300,18 @@ export function ExerciseSetLog({
     previous.resistance.basis === recommendation.resistance.basis
       ? previous.resistance.kg
       : undefined
-  const note = recommendation
-    ? progressionNote(recommendation, previousKg)
-    : null
   // The working set is the prescription somebody is training towards; a warm-up
   // target is real but is not what this card is a summary of.
   const target =
     entry.sets.find((set) => set.setType === "working" && set.target)?.target ??
     entry.sets.find((set) => set.target)?.target
+  // What the engine makes of the load — and only for an exercise that carries
+  // one. There is nothing to say about the load of a set done in reps.
+  const note =
+    recommendation && isMeasuredInKg(modes[0])
+      ? progressionNote(recommendation, previousKg)
+      : null
 
-  const close = () => {
-    setPending(null)
-    setEditedSetId(null)
-    onEditingChange(false)
-  }
-
-  const openFor = (set: PersistedActiveSetDraft | null) => {
-    triggerHaptic("selection")
-    setEditedSetId(set?.id ?? null)
-    setPending(
-      set?.observation?.resistance
-        ? recordedValue(
-            exercise,
-            set.observation,
-            set.side,
-            settings,
-            equipmentIncrementKg
-          )
-        : set?.target
-          ? // A prescribed set opens on its target so it can be confirmed or
-            // corrected; the target itself is never written as performed. Its
-            // load only carries over where the plan and this station are the
-            // same measurement — a target from another machine stays on the
-            // card as the prescription and never becomes an actual load here.
-            {
-              ...defaults,
-              reps: set.target.reps.max,
-              rir: set.target.rir,
-              side: set.side,
-              // The prescription first, where it names a load measured the
-              // same way; otherwise whatever the sets already performed
-              // establish, which is what an unprescribed dial opens on too.
-              kg:
-                carryOverLoad(
-                  set.target.resistance,
-                  defaults.mode,
-                  defaults.context
-                ) ?? defaults.kg,
-            }
-          : null
-    )
-    onEditingChange(true)
-  }
-
-  /**
-   * Moving the set being edited to another station.
-   *
-   * For a set already logged this is a correction: the kilograms were real, so
-   * they stay, snapped to what the station it is being moved to actually
-   * offers. For a set not yet performed the load has to be established again —
-   * a number from one machine is not a number for another — so it falls back
-   * to whatever was really logged at the station now selected, and to nothing
-   * when that is nothing.
-   */
   /** The load really logged in this measurement at this station — this
    *  session first, then history — or nothing at all. */
   const carried = (mode: ResistanceMode, context: LoadContext) => {
@@ -350,33 +333,17 @@ export function ExerciseSetLog({
       : null
   }
 
-  const selectStation = (context: LoadContext) => {
-    setPending((current) => {
-      const from = current ?? defaults
-      if (sameLoadContext(from.context, context))
-        return {
-          ...from,
-          context,
-          kg:
-            editedSet?.observation?.completed || from.kg === null
-              ? from.kg
-              : carryOverLoad(
-                  makeResistance(from.mode, from.kg, from.context),
-                  from.mode,
-                  context
-                ),
-        }
-      if (editedSet?.observation?.completed)
-        return {
-          ...from,
-          context,
-          kg:
-            from.kg === null
-              ? null
-              : (roundLoad(from.kg, context.grid) ?? from.kg),
-        }
-      return { ...from, context, kg: carried(from.mode, context) }
-    })
+  /** There is nowhere to close to: leaving a correction goes back to the set
+   *  being performed rather than to an empty card. */
+  const close = () => {
+    setEditedSetId(null)
+    setPending(null)
+  }
+
+  const selectSet = (set: PersistedActiveSetDraft) => {
+    triggerHaptic("selection")
+    setEditedSetId(set.id)
+    setPending(null)
   }
 
   const submit = () => {
@@ -407,41 +374,54 @@ export function ExerciseSetLog({
         observation,
       })
     }
+    // The rest starts with the set that earned it.
+    setRest((current) => ({
+      id: (current?.id ?? 0) + 1,
+      seconds: Math.round(restSeconds),
+    }))
+    cueRauta("set-saved")
     close()
   }
 
   return (
     <div className="mx-(--app-content-inset) mt-1.5 rounded-3xl border border-border bg-card/60 p-2.5">
-      {target ? (
-        <p className="px-1 pb-2 text-[11px] font-semibold text-muted-foreground">
-          <span className="font-black tracking-[0.14em] text-primary uppercase">
-            Target
-          </span>{" "}
-          {targetSummary(target)}
-        </p>
-      ) : null}
-
-      {note ? (
-        <p className="px-1 pb-2 text-[11px] leading-snug font-semibold text-muted-foreground">
-          <span className="mr-1 font-black tracking-[0.14em] text-primary uppercase">
-            Rauta
-          </span>
-          {note.kg === null
-            ? null
-            : `${formatKg(note.kg)} kg${note.basis === "per_implement" ? " each" : ""} · `}
-          {note.text}
-        </p>
+      {/* What the week asked of this exercise, said once and quietly: a chip
+          rather than a heading, because the sets under it are the page. The
+          rest between them counts down on the same line. */}
+      {target || note || rest ? (
+        <div className="flex items-center gap-x-2 gap-y-1 px-1 pb-2.5">
+          {target ? (
+            <span className="shrink-0 rounded-full bg-primary/12 px-2.5 py-1 text-[11px] font-bold text-primary">
+              {targetSummary(target)}
+            </span>
+          ) : null}
+          {note ? (
+            <span className="min-w-0 flex-1 truncate text-[11px] leading-snug text-muted-foreground">
+              {note.kg === null
+                ? null
+                : `${formatKg(note.kg)} kg${note.basis === "per_implement" ? " each" : ""} · `}
+              {note.text}
+            </span>
+          ) : null}
+          {rest ? (
+            <RestCountdown
+              key={rest.id}
+              onDone={() => setRest(null)}
+              seconds={rest.seconds}
+            />
+          ) : null}
+        </div>
       ) : null}
 
       {entry.sets.length ? (
         <>
-          <div className="grid grid-cols-[1.5rem_1fr_2.75rem_2.75rem] gap-1.5 px-2 pb-1 text-[10px] font-black tracking-[0.14em] text-muted-foreground uppercase">
-            <Column>Set</Column>
+          <div className="grid grid-cols-[1.5rem_1fr_2.75rem_2.75rem] gap-1.5 border-b border-border/60 px-2 pb-1.5 text-[9px] font-bold tracking-[0.12em] text-muted-foreground/70 uppercase">
+            <Column>{""}</Column>
             <Column>Load</Column>
             <Column className="text-right">Reps</Column>
             <Column className="text-right">RIR</Column>
           </div>
-          <ol className="space-y-1">
+          <ol className="space-y-1 pt-1">
             {entry.sets.map((set, index) => {
               const observation = set.observation?.completed
                 ? set.observation
@@ -456,13 +436,13 @@ export function ExerciseSetLog({
                     }
                     className={cn(
                       "interactive-spring grid w-full grid-cols-[1.5rem_1fr_2.75rem_2.75rem] items-center gap-1.5 rounded-2xl px-2 py-2.5 text-left text-[15px] font-semibold",
-                      editedSetId === set.id
+                      editedSet?.id === set.id
                         ? "bg-primary/12 text-foreground"
                         : observation
                           ? "bg-muted/40"
                           : "bg-muted/20 text-muted-foreground"
                     )}
-                    onClick={() => openFor(set)}
+                    onClick={() => selectSet(set)}
                     type="button"
                   >
                     <Column className="text-primary">{index + 1}</Column>
@@ -485,81 +465,46 @@ export function ExerciseSetLog({
         </>
       ) : null}
 
-      {editing ? (
-        <motion.div
-          animate={{ height: "auto", opacity: 1 }}
-          className="overflow-hidden"
-          initial={{ height: 0, opacity: 0 }}
-          transition={EDITOR_TRANSITION}
-        >
-          <div className="pt-2">
-            {isMeasuredInKg(value.mode) ? (
-              <div className="pb-2">
-                <StationPicker
-                  key={`${value.mode}:${value.context.stationId}:${value.context.basis}`}
-                  context={value.context}
-                  equipmentIncrementKg={equipmentIncrementKg}
-                  exercise={exercise}
-                  mode={value.mode}
-                  onSelect={selectStation}
-                  // Choosing where the next set happens is a statement about
-                  // today. Correcting a set already logged is a statement
-                  // about that set alone, and must not repoint the exercise.
-                  pinSelection={!editedSet?.observation?.completed}
-                />
-              </div>
-            ) : null}
-            <SetEditor
-              exercise={exercise}
-              modes={modes}
-              onCancel={close}
-              onChange={(update) =>
-                setPending((previous) => {
-                  const from = previous ?? defaults
-                  const next = update(from)
-                  if (next.mode === from.mode) return next
-                  // Another measurement is another question: load and
-                  // assistance are not each other's numbers, so the station is
-                  // resolved again and the dial keeps only what was really
-                  // logged in the measurement now selected.
-                  const context = resolveLoadContext(
-                    exercise,
-                    next.mode,
-                    settings,
-                    equipmentIncrementKg
-                  )
-                  return { ...next, context, kg: carried(next.mode, context) }
-                })
-              }
-              onDiscard={
-                editedSet && !editedSet.plannedSetId
-                  ? () => {
-                      discardLoggedSet(entry.id, editedSet.id)
-                      close()
-                    }
-                  : undefined
-              }
-              onSubmit={submit}
-              submitLabel={
-                editedSet
-                  ? `Save set ${entry.sets.indexOf(editedSet) + 1}`
-                  : `Log set ${entry.sets.length + 1}`
-              }
-              value={value}
-            />
-          </div>
-        </motion.div>
-      ) : (
-        <button
-          aria-label={`${addSetLabel} of ${exercise.name}`}
-          className="interactive-spring mt-1.5 flex h-11 w-full items-center justify-center gap-1.5 rounded-2xl border border-border bg-card text-[15px] font-bold text-primary"
-          onClick={() => openFor(null)}
-          type="button"
-        >
-          <Plus className="size-4" />
-          {addSetLabel}
-        </button>
-      )}
+      <div className="pt-2">
+        <SetEditor
+          exercise={exercise}
+          modes={modes}
+          onCancel={editedSet?.observation?.completed ? close : undefined}
+          onChange={(update) =>
+            setPending((previous) => {
+              const from = previous ?? defaults
+              const next = update(from)
+              if (next.mode === from.mode) return next
+              // Another measurement is another question: load and
+              // assistance are not each other's numbers, so the station is
+              // resolved again and the dial keeps only what was really
+              // logged in the measurement now selected.
+              const context = resolveLoadContext(
+                exercise,
+                next.mode,
+                settings,
+                equipmentIncrementKg
+              )
+              return { ...next, context, kg: carried(next.mode, context) }
+            })
+          }
+          onDiscard={
+            editedSet && !editedSet.plannedSetId
+              ? () => {
+                  discardLoggedSet(entry.id, editedSet.id)
+                  close()
+                }
+              : undefined
+          }
+          onSubmit={submit}
+          submitLabel={
+            editedSet
+              ? `Save set ${entry.sets.indexOf(editedSet) + 1}`
+              : `Log set ${entry.sets.length + 1}`
+          }
+          value={value}
+        />
+      </div>
     </div>
   )
 }

@@ -1,5 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react"
+import type { ComponentProps, ReactNode } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { cueRauta } from "@/lib/rauta-cues"
 import { Rauta } from "./rauta"
 
 vi.mock("./rauta-runtime", () => ({
@@ -17,24 +19,25 @@ afterEach(() => vi.useRealTimers())
 /** A page inside the shell, with the character written into its scrolling
  *  content — which is not where it ends up standing. `floor` is a band the
  *  page keeps at its own foot: a timer, a row of presets. */
-function shell({ floor = 0 } = {}) {
-  const view = render(
+function shell({
+  floor = 0,
+  ...props
+}: { floor?: number } & ComponentProps<typeof Rauta> = {}) {
+  const page = (rauta: ReactNode) => (
     <div className="app-shell-frame">
       <div className="app-surface" />
       <div className="app-screen">
-        <div className="app-scroll-region">
-          <Rauta speech="Ready when you are." />
-        </div>
+        <div className="app-scroll-region">{rauta}</div>
         {floor ? <div data-rauta-floor /> : null}
       </div>
     </div>
   )
+  const view = render(page(<Rauta speech="Ready when you are." {...props} />))
   const frame = view.container.querySelector<HTMLElement>(".app-shell-frame")!
   const surface = view.container.querySelector<HTMLElement>(".app-surface")!
-  const scroller = view.container.querySelector<HTMLElement>(
-    ".app-scroll-region"
-  )!
-  const anchor = scroller.firstElementChild as HTMLElement
+  const scroller =
+    view.container.querySelector<HTMLElement>(".app-scroll-region")!
+  const anchor = scroller.querySelector<HTMLElement>("[data-rauta-slot]")!
   box(frame, { left: 0, top: 0, width: 390, height: 844 })
   box(surface, { left: 4, top: 4, width: 382, height: 742 })
   // jsdom lays nothing out, so the surface reports the inside of itself: the
@@ -58,7 +61,9 @@ function shell({ floor = 0 } = {}) {
       width: 104,
       height: 104,
     }) as DOMRect
-  return { anchor, scroller }
+  const show = (next: ComponentProps<typeof Rauta>) =>
+    view.rerender(page(<Rauta speech="Ready when you are." {...next} />))
+  return { anchor, scroller, show, view }
 }
 
 function box(
@@ -127,8 +132,9 @@ describe("RAUTA's place on the page", () => {
       await painted()
     })
 
-    // On top of the band rather than in front of it.
-    expect(offset().y).toBeCloseTo(742 - 140 - 104, 0)
+    // On top of the band rather than in front of it, and lifted clear of it
+    // by the few pixels the character floats above whatever it stands on.
+    expect(offset().y).toBeCloseTo(742 - 140 - 104 - 8, 0)
   })
 
   it("keeps that place while the page scrolls behind it", async () => {
@@ -149,59 +155,84 @@ describe("RAUTA's place on the page", () => {
   })
 })
 
-describe("RAUTA speech", () => {
-  it("dismisses guidance after reading time and repeats it on demand", async () => {
-    vi.useFakeTimers()
-    render(<Rauta speech="Pick the days you can train." />)
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(400)
-    })
-    expect(screen.getByRole("status")).toHaveTextContent("Pick the days")
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5500)
-    })
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(500)
-    })
-    expect(screen.queryByRole("status")).toBeNull()
-    fireEvent.click(screen.getByRole("button", { name: "Interact with RAUTA" }))
+describe("what RAUTA says", () => {
+  it("keeps the screen's line up, and follows it when the screen changes it", () => {
+    const { show } = shell()
+    expect(screen.getByRole("status")).toHaveTextContent("Ready when you are.")
+
+    show({ speech: "Pick the days you can train." })
     expect(screen.getByRole("status")).toHaveTextContent("Pick the days")
   })
 
-  it("hands its lines to a screen that speaks for it, and floats no bubble", async () => {
+  it("says its own remark over the top of it, then gives the line back", async () => {
     vi.useFakeTimers()
-    const lines: (string | null)[] = []
-    render(
-      <Rauta
-        speech="Pick the days you can train."
-        onSay={(line) => lines.push(line)}
-      />
-    )
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(400)
-    })
-
-    expect(lines.at(-1)).toBe("Pick the days you can train.")
-    // One voice: the panel is saying it, so nothing floats over the page.
-    expect(screen.queryByRole("status")).toBeNull()
+    const { anchor } = shell()
+    const bot = character()
+    // Carried across the screen and let go: worth a word, and only a word.
+    fireEvent.pointerDown(bot, { pointerId: 1, clientX: 40, clientY: 640 })
+    fireEvent.pointerMove(bot, { pointerId: 1, clientX: 180, clientY: 500 })
+    fireEvent.pointerUp(bot, { pointerId: 1 })
+    expect(screen.getByRole("status")).toHaveTextContent("Back to my post.")
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(5000)
+      await vi.advanceTimersByTimeAsync(3000)
     })
-    // And told when the line is over, so the panel can go back to its own.
-    expect(lines.at(-1)).toBeNull()
+    expect(screen.getByRole("status")).toHaveTextContent("Ready when you are.")
+    expect(anchor.className).toContain("hidden")
   })
 
-  it("answers a changed setting with new guidance", async () => {
+  it("answers meaningful workout actions without replacing the standing line", async () => {
     vi.useFakeTimers()
-    const view = render(<Rauta speech="Build muscle." />)
+    shell()
+
+    act(() => cueRauta("workout-paused"))
+    expect(screen.getByRole("status")).toHaveTextContent(/paused|hold|break/i)
+
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(6000)
+      await vi.advanceTimersByTimeAsync(3000)
     })
-    view.rerender(<Rauta speech="Get stronger." />)
+    expect(screen.getByRole("status")).toHaveTextContent("Ready when you are.")
+  })
+
+  it("treats a passing line as a remark rather than as the state of the screen", async () => {
+    vi.useFakeTimers()
+    const { show } = shell({
+      speech: "Log the first set when it's done.",
+      transient: true,
+    })
+    expect(screen.getByRole("status")).toHaveTextContent("Log the first set")
+
+    // It is said once and it is over — a screen being worked on gets its
+    // screen back rather than keeping a panel over the set being logged.
+    // (What is left behind here is the panel on its way out: the exit is an
+    // animation, and there are no frames to run it in.)
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(400)
+      await vi.advanceTimersByTimeAsync(3000)
     })
-    expect(screen.getByRole("status")).toHaveTextContent("Get stronger.")
+    show({ speech: "Two sets in. Keep the pace.", transient: true })
+    expect(screen.getByRole("status")).toHaveTextContent("Two sets in")
+  })
+
+  it("is not there at all when there is nothing to say", () => {
+    shell({ speech: undefined })
+
+    expect(screen.queryByRole("status")).toBeNull()
+  })
+
+  it("grows to hold what it offers, instead of opening a window over the page", () => {
+    const chosen = vi.fn()
+    shell({
+      actions: [{ label: "Choose exercises", onSelect: chosen }],
+      label: "Open RAUTA actions",
+    })
+    expect(
+      screen.queryByRole("button", { name: "Choose exercises" })
+    ).toBeNull()
+
+    fireEvent.click(screen.getByRole("button", { name: "RAUTA actions" }))
+    fireEvent.click(screen.getByRole("button", { name: "Choose exercises" }))
+    expect(chosen).toHaveBeenCalledOnce()
+    // No dialog: the panel it was already speaking from is where this happens.
+    expect(screen.queryByRole("dialog")).toBeNull()
   })
 })

@@ -57,14 +57,7 @@ function dayLabel(day: StreakDay) {
  * trained — and under it, the run those days add up to. Today's flame is the
  * tall one, so the strip is read from the day being lived in outwards.
  */
-export function WorkoutStreak({
-  onSelectWorkout: _onSelectWorkout,
-  workouts,
-}: {
-  /** @deprecated Streak panel is display-only and no longer clickable */
-  onSelectWorkout?: (workout: Workout) => void
-  workouts: Workout[]
-}) {
+export function WorkoutStreak({ workouts }: { workouts: Workout[] }) {
   const { currentStreak, week } = buildStreak(workouts)
 
   return (

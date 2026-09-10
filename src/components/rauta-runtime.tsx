@@ -30,6 +30,25 @@ const MACHINE = "KettlebellBotMachine"
  *  animation beat: most ticks do nothing at all. */
 const IDLE_TICK_MS = 1100
 
+const MOOD_INTENSITY: Record<NonNullable<RautaProps["mood"]>, number> = {
+  calm: 0.42,
+  curious: 0.52,
+  thinking: 0.46,
+  working: 0.62,
+  bored: 0.3,
+  blocked: 0.66,
+  sleepy: 0.24,
+  focused: 0.56,
+  excited: 0.86,
+  happy: 0.68,
+  proud: 0.7,
+  confused: 0.54,
+  skeptical: 0.48,
+  nervous: 0.72,
+  playful: 0.76,
+  listening: 0.5,
+}
+
 export default function RautaRuntime({
   mood = "calm",
   label,
@@ -55,6 +74,7 @@ export default function RautaRuntime({
   const gazeX = useStateMachineInput(rive, MACHINE, "gazeX")
   const gazeY = useStateMachineInput(rive, MACHINE, "gazeY")
   const pressedInput = useStateMachineInput(rive, MACHINE, "pressed")
+  const hoverInput = useStateMachineInput(rive, MACHINE, "hover")
 
   // Every one-shot the artwork exposes, bound once and addressed by name, so a
   // screen asks for "celebrate" rather than reaching for a rig handle.
@@ -85,6 +105,7 @@ export default function RautaRuntime({
 
   const activity = useRef<RautaActivity>(createRautaActivity())
   const previousKey = useRef(reactionKey)
+  const keyVariation = useRef(0)
   const previousRequest = useRef<number | undefined>(undefined)
   const previousInteraction = useRef<number | undefined>(undefined)
 
@@ -110,8 +131,8 @@ export default function RautaRuntime({
     if (status) status.value = RAUTA_MOOD_STATUS[mood]
   }, [mood, status])
   useEffect(() => {
-    if (intensity) intensity.value = 0.58
-  }, [intensity])
+    if (intensity) intensity.value = MOOD_INTENSITY[mood]
+  }, [intensity, mood])
   useEffect(() => {
     if (pressedInput) pressedInput.value = isPressed
   }, [isPressed, pressedInput])
@@ -120,7 +141,14 @@ export default function RautaRuntime({
   useEffect(() => {
     if (previousKey.current === reactionKey) return
     previousKey.current = reactionKey
-    const timer = window.setTimeout(() => play("explicit", "acknowledge"), 120)
+    const reactions: readonly RautaReaction[] = [
+      "acknowledge",
+      "wink",
+      "gearUp",
+      "relieved",
+    ]
+    const reaction = reactions[keyVariation.current++ % reactions.length]
+    const timer = window.setTimeout(() => play("explicit", reaction), 120)
     return () => window.clearTimeout(timer)
   }, [reactionKey, play])
 
@@ -184,7 +212,11 @@ export default function RautaRuntime({
         if (gazeY)
           gazeY.value = ((event.clientY - box.top) / box.height) * 2 - 1
       }}
+      onPointerEnter={(event) => {
+        if (event.pointerType === "mouse" && hoverInput) hoverInput.value = true
+      }}
       onPointerLeave={() => {
+        if (hoverInput) hoverInput.value = false
         if (gazeX) gazeX.value = 0
         if (gazeY) gazeY.value = 0
       }}

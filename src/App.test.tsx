@@ -82,6 +82,29 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Muscles" })).toBeInTheDocument()
   })
 
+  it("reviews and regenerates an engine proposal before creating it", async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await goToExercises(user, ["chest"], ["dumbbell"])
+
+    await user.click(
+      screen.getByRole("button", { name: "Build workout with RAUTA" })
+    )
+    expect(
+      await screen.findByRole("heading", { name: "Proposed workout" })
+    ).toBeInTheDocument()
+    expect(useWorkouts.getState().workouts).toHaveLength(0)
+
+    await user.click(
+      screen.getByRole("button", { name: "Regenerate proposed workout" })
+    )
+    expect(useWorkouts.getState().workouts).toHaveLength(0)
+
+    await user.click(screen.getByRole("button", { name: "Use workout" }))
+    expect(useWorkouts.getState().workouts).toHaveLength(1)
+    expect(useWorkouts.getState().workouts[0].planned).toBeDefined()
+  })
+
   it("always uses workouts as the native launch page", () => {
     const native = vi
       .spyOn(Capacitor, "isNativePlatform")
@@ -137,7 +160,7 @@ describe("App", () => {
     ).toBeInTheDocument()
   })
 
-  it("shows settings only on workouts page and home button without erase button in flow header", async () => {
+  it("shows settings only on workouts page, and the way home in RAUTA's corner of the flow header", async () => {
     const user = userEvent.setup()
     render(<App />)
 
@@ -150,9 +173,10 @@ describe("App", () => {
       screen.queryByRole("button", { name: /reset/i })
     ).not.toBeInTheDocument()
 
-    const homeButton = screen.getByRole("button", { name: "My workouts" })
-    expect(homeButton).toBeInTheDocument()
-    await user.click(homeButton)
+    // RAUTA stands where the home button used to, and carries the way back in
+    // the panel it opens.
+    await user.click(screen.getByRole("button", { name: "RAUTA" }))
+    await user.click(screen.getByRole("button", { name: "My workouts" }))
 
     // Now on workouts page: settings button is shown
     expect(
@@ -230,6 +254,43 @@ describe("App", () => {
       await screen.findByRole("heading", { name: "Exercises" })
     ).toBeInTheDocument()
     expect(screen.getByTestId("exercise-results")).toBeInTheDocument()
+  })
+
+  it("only shows equipment used for selected muscles on the equipment page", async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    fireEvent.click(screen.getByRole("button", { name: "Front Chest" }))
+    await user.click(screen.getByRole("button", { name: /choose equipment/i }))
+
+    expect(
+      await screen.findByRole("heading", { name: "Equipment" })
+    ).toBeInTheDocument()
+
+    // Used for chest
+    expect(
+      screen.getByRole("checkbox", { name: "Barbell" })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("checkbox", { name: "Dumbbell" })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("checkbox", { name: "Body Weight" })
+    ).toBeInTheDocument()
+
+    // Not used for chest
+    expect(
+      screen.queryByRole("checkbox", { name: "Rope" })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("checkbox", { name: "Hammer" })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("checkbox", { name: "Sled Machine" })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("checkbox", { name: "Tire" })
+    ).not.toBeInTheDocument()
   })
 
   it("morphs optional controls without remounting the primary action", async () => {
@@ -710,8 +771,13 @@ describe("App", () => {
     )!
     expect(within(detailPage).getByText(first.name)).toBeInTheDocument()
     expect(within(detailPage).getByText(second.name)).toBeInTheDocument()
-    expect(within(detailPage).getByText("01")).toBeInTheDocument()
-    expect(within(detailPage).getByText("02")).toBeInTheDocument()
+    // Numbered in the order they will be performed. Scoped to the list: the
+    // workout's own summary counts the same exercises, and "02" there means
+    // how many there are rather than which one this is.
+    const order = within(detailPage)
+      .getAllByRole("listitem")
+      .map((item) => item.textContent?.slice(0, 2))
+    expect(order).toEqual(["01", "02"])
     expect(
       screen.queryByRole("button", { name: "Edit workout" })
     ).not.toBeInTheDocument()

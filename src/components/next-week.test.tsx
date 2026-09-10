@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import * as engine from "@/training"
@@ -31,9 +31,9 @@ function workoutsPage(onCreatePlan = vi.fn()) {
       <WorkoutsPage
         onCreate={() => {}}
         onCreatePlan={onCreatePlan}
+        onSettings={() => {}}
         onDelete={() => {}}
         onSelect={() => {}}
-        onSettings={() => {}}
       />
     ),
   }
@@ -46,28 +46,26 @@ describe("next-week UI", () => {
     const { view } = workoutsPage(onCreatePlan)
 
     expect(
-      screen.getByRole("button", { name: "Train with RAUTA" })
+      screen.getByRole("button", { name: "RAUTA actions" })
     ).toHaveTextContent("This week is done. Let’s plan the next one.")
+    await user.click(screen.getByRole("button", { name: "Open RAUTA actions" }))
+    expect(
+      screen.getByRole("button", { name: "Extend training plan" })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "New training plan" })
+    ).toBeInTheDocument()
     await user.click(
-      screen.getByRole("button", { name: "Open RAUTA actions" })
+      screen.getByRole("button", { name: "Extend training plan" })
     )
-    expect(
-      screen.getByRole("button", { name: "Plan next week" })
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole("button", { name: "New training week" })
-    ).toBeInTheDocument()
-    await user.click(screen.getByRole("button", { name: "Plan next week" }))
     expect(onCreatePlan).toHaveBeenCalledWith(sessions[0].programId)
 
     view.unmount()
     vi.setSystemTime(new Date(ADAPT_NOW))
     workoutsPage()
-    await user.click(
-      screen.getByRole("button", { name: "Open RAUTA actions" })
-    )
+    await user.click(screen.getByRole("button", { name: "Open RAUTA actions" }))
     expect(
-      screen.queryByRole("button", { name: "Plan next week" })
+      screen.queryByRole("button", { name: "Extend training plan" })
     ).not.toBeInTheDocument()
   })
 
@@ -113,14 +111,12 @@ describe("next-week UI", () => {
     const user = userEvent.setup()
     workoutsPage()
     expect(
-      screen.getByRole("button", { name: "Train with RAUTA" })
+      screen.getByRole("button", { name: "RAUTA actions" })
     ).toHaveTextContent("Your next week is ready.")
-    await user.click(
-      screen.getByRole("button", { name: "Open RAUTA actions" })
+    await user.click(screen.getByRole("button", { name: "Open RAUTA actions" }))
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Your next week is ready."
     )
-    expect(
-      within(screen.getByRole("dialog")).getByRole("status")
-    ).toHaveTextContent("Your next week is ready.")
   })
 
   it("shows a controlled RAUTA refusal without replacing the source plan", async () => {
@@ -141,9 +137,7 @@ describe("next-week UI", () => {
     )
 
     await user.click(screen.getByRole("button", { name: "Extend plan" }))
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      /volume/i
-    )
+    expect(await screen.findByRole("alert")).toHaveTextContent(/volume/i)
     expect(onCreated).not.toHaveBeenCalled()
     expect(records().data.programs).toHaveLength(1)
     expect(activeProgramRecord()?.id).toBe(sessions[0].programId)

@@ -59,13 +59,21 @@ describe("WorkoutDetailPage", () => {
     await startNow(user)
     await user.click(screen.getByRole("button", { name: "Finish workout" }))
     const dialog = screen.getByRole("dialog", { name: "Finish workout?" })
-    await user.click(within(dialog).getByRole("button", { name: "Finish workout" }))
-    expect(within(dialog).getByRole("alert")).toHaveTextContent("Couldn’t save this change")
+    await user.click(
+      within(dialog).getByRole("button", { name: "Finish workout" })
+    )
+    expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      "Couldn’t save this change"
+    )
     expect(useActiveWorkout.getState().session).not.toBeNull()
     const retryDialog = screen.getByRole("dialog", { name: "Finish workout?" })
-    await user.click(within(retryDialog).getByRole("button", { name: "Try again" }))
+    await user.click(
+      within(retryDialog).getByRole("button", { name: "Try again" })
+    )
     expect(finish).toHaveBeenCalledTimes(2)
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    )
   })
 
   beforeEach(() => {
@@ -322,6 +330,9 @@ describe("WorkoutDetailPage", () => {
 
     await startNow(user)
 
+    // A running session opens on the exercise being performed; the workout it
+    // belongs to — and everything about editing it — is the other tab.
+    await user.click(screen.getByRole("tab", { name: "Workout" }))
     expect(
       screen.getByRole("button", { name: "Reorder 3/4 sit-up" })
     ).toBeInTheDocument()

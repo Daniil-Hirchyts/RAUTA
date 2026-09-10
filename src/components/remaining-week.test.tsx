@@ -35,8 +35,8 @@ function page(onSelect: (workout: Workout) => void = () => {}) {
     <WorkoutsPage
       onCreate={() => {}}
       onCreatePlan={() => {}}
-      onDelete={() => {}}
       onSettings={() => {}}
+      onDelete={() => {}}
       onSelect={onSelect}
     />
   )
@@ -51,7 +51,7 @@ describe("RAUTA remaining-week actions", () => {
       const opened = vi.fn()
       const view = render(page(opened))
       expect(
-        screen.getByRole("button", { name: "Train with RAUTA" })
+        screen.getByRole("button", { name: "RAUTA actions" })
       ).toHaveTextContent(/adjust the rest of your week/)
       await user.click(
         screen.getByRole("button", { name: "Open RAUTA actions" })
@@ -59,12 +59,18 @@ describe("RAUTA remaining-week actions", () => {
       await user.click(
         screen.getByRole("button", { name: "Adjust remaining week" })
       )
+      // The panel closes itself once the week has been adjusted. Waiting on
+      // the choices rather than on the button that was pressed: that one is
+      // wearing a loader by now, and would look "gone" while still working.
       await waitFor(
-        () => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+        () =>
+          expect(
+            screen.queryByRole("button", { name: "Choose exercises" })
+          ).not.toBeInTheDocument(),
         { timeout: 3000 }
       )
       expect(
-        screen.getByRole("button", { name: "Train with RAUTA" })
+        screen.getByRole("button", { name: "RAUTA actions" })
       ).toHaveTextContent("I adjusted 2 remaining sessions")
       const plan = screen.getByRole("region", { name: /Next workouts/i })
       expect(
@@ -89,9 +95,9 @@ describe("RAUTA remaining-week actions", () => {
       expect(
         screen.queryByRole("button", { name: "Adjust remaining week" })
       ).not.toBeInTheDocument()
-      expect(
-        within(screen.getByRole("dialog")).getByRole("status")
-      ).toHaveTextContent(/already been incorporated/)
+      expect(screen.getByRole("status")).toHaveTextContent(
+        /already been incorporated/
+      )
       expect(records().data.programs).toHaveLength(2)
     }
   )
@@ -139,7 +145,9 @@ describe("RAUTA remaining-week actions", () => {
       expect(await screen.findByRole("alert")).toHaveTextContent(
         /could not adjust the remaining week/
       )
-      expect(screen.getByRole("dialog")).toBeInTheDocument()
+      expect(
+        screen.getByRole("button", { name: "Adjust remaining week" })
+      ).toBeInTheDocument()
       expect(records().data.programs).toHaveLength(1)
       expect(useWorkouts.getState().workouts).toHaveLength(3)
     }
@@ -172,19 +180,13 @@ describe("RAUTA remaining-week actions", () => {
     expect(
       screen.queryByRole("button", { name: "Adjust remaining week" })
     ).not.toBeInTheDocument()
-    expect(
-      within(screen.getByRole("dialog")).getByRole("status")
-    ).toHaveTextContent(/Log performed sets/)
-    await user.click(
-      screen.getByRole("button", { name: "Close RAUTA actions" })
-    )
+    expect(screen.getByRole("status")).toHaveTextContent(/Log performed sets/)
+    await user.click(screen.getByRole("button", { name: "RAUTA actions" }))
     vi.setSystemTime(new Date("2026-09-20T12:00:00.000Z"))
     await user.click(screen.getByRole("button", { name: "Open RAUTA actions" }))
+    expect(screen.getByRole("status")).toHaveTextContent(/This week is done/)
     expect(
-      within(screen.getByRole("dialog")).getByRole("status")
-    ).toHaveTextContent(/This week is done/)
-    expect(
-      screen.getByRole("button", { name: "Plan next week" })
+      screen.getByRole("button", { name: "Extend training plan" })
     ).toBeInTheDocument()
   })
 

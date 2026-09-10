@@ -6,6 +6,7 @@ import { useWorkouts } from "@/store/use-workouts"
 import { ENGINE_VERSION } from "@/training"
 import type {
   MuscleId,
+  PlanningPreferences,
   PlannedExercise,
   PlannedSession,
   TrainingProgram,
@@ -34,10 +35,19 @@ export function buildEngineWorkoutProgram(input: {
   date: string
   exerciseIds?: readonly string[]
   focusMuscles?: readonly MuscleId[]
+  avoidExerciseIds?: readonly string[]
+  availableEquipment?: PlanningPreferences["availableEquipment"]
   now?: string
 }): TrainingProgram {
   const now = input.now ?? new Date().toISOString()
-  const request = buildTrainingRequest(buildTrainingEngineInputs(), now)
+  const request = buildTrainingRequest(
+    buildTrainingEngineInputs({
+      ...(input.availableEquipment
+        ? { availableEquipment: [...input.availableEquipment] }
+        : {}),
+    }),
+    now
+  )
   request.schedule = {
     weekStart: mondayFor(input.date),
     days: [0],
@@ -52,16 +62,39 @@ export function buildEngineWorkoutProgram(input: {
   )
   if (!exerciseIds.length) {
     const requested = new Set(focus)
-    exerciseIds = ranked
-      .filter(({ exerciseId }) =>
+    const avoided = new Set(input.avoidExerciseIds ?? [])
+    const eligible = ranked.filter(({ exerciseId }) =>
         optimization.index.byId
           .get(exerciseId)!
           .metadata.setRoles.some(
             (role) => role.role === "direct" && requested.has(role.muscleId)
           )
       )
+    const picked: string[] = []
+    for (const muscleId of focus) {
+      const choices = eligible.filter(({ exerciseId }) =>
+        !picked.includes(exerciseId) &&
+        optimization.index.byId
+          .get(exerciseId)!
+          .metadata.setRoles.some(
+            (role) => role.role === "direct" && role.muscleId === muscleId
+          )
+      )
+      const fresh = choices.filter(({ exerciseId }) => !avoided.has(exerciseId))
+      const pool = (fresh.length ? fresh : choices).slice(0, 4)
+      if (pool.length)
+        picked.push(pool[Math.floor(Math.random() * pool.length)].exerciseId)
+    }
+    const remaining = eligible
+      .filter(({ exerciseId }) => !picked.includes(exerciseId))
+      .sort((left, right) => {
+        const freshness =
+          Number(avoided.has(left.exerciseId)) -
+          Number(avoided.has(right.exerciseId))
+        return freshness || Math.random() - 0.5
+      })
+    exerciseIds = [...picked, ...remaining.map(({ exerciseId }) => exerciseId)]
       .slice(0, optimization.policy.maxExercisesPerSession)
-      .map(({ exerciseId }) => exerciseId)
   }
   if (!exerciseIds.length)
     throw new Error("No exercise matches those muscles and your saved equipment.")
@@ -115,6 +148,20 @@ export function buildEngineWorkoutProgram(input: {
       warnings: [],
     },
   }
+}
+
+export function proposeEngineWorkout(input: {
+  date: string
+  focusMuscles: readonly MuscleId[]
+  previousExerciseIds?: readonly string[]
+  availableEquipment?: PlanningPreferences["availableEquipment"]
+}) {
+  return buildEngineWorkoutProgram({
+    date: input.date,
+    focusMuscles: input.focusMuscles,
+    avoidExerciseIds: input.previousExerciseIds,
+    availableEquipment: input.availableEquipment,
+  }).weeks[0].sessions[0].exercises.map((exercise) => exercise.exerciseId)
 }
 
 export function createEngineWorkout(input: {

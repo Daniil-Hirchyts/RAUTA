@@ -1,4 +1,4 @@
-import { Check, Trash2 } from "lucide-react"
+import { Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Stepper } from "@/components/ui/stepper"
@@ -45,7 +45,6 @@ export type SetEditorValue = {
   context: LoadContext
 }
 
-const RIR_CHOICES = [null, 0, 1, 2, 3, 4] as const
 const MAX_REPS = 100
 const SIDE_LABELS: Record<SetSide, string> = {
   both: "Both",
@@ -118,6 +117,7 @@ export function SetEditor({
   onChange,
   onDiscard,
   onSubmit,
+  showLoad = true,
   submitLabel,
   value,
 }: {
@@ -129,11 +129,15 @@ export function SetEditor({
   onChange: (update: (value: SetEditorValue) => SetEditorValue) => void
   onDiscard?: () => void
   onSubmit: () => void
+  /** Whether this set has a load to state at all. A set the plan gave no load
+   *  for is reps and nothing else: there is no number to dial in, and asking
+   *  for one would be asking the person to invent it. */
+  showLoad?: boolean
   submitLabel: string
   value: SetEditorValue
 }) {
   const sides = sideOptions(exercise)
-  const measured = isMeasuredInKg(value.mode)
+  const measured = showLoad && isMeasuredInKg(value.mode)
   const { context } = value
   // Nothing to record until the load is a number. The button says so rather
   // than accepting a set with a load nobody stated.
@@ -178,25 +182,6 @@ export function SetEditor({
           }))
         }
       />
-
-      <ChipRow label="RIR">
-        {RIR_CHOICES.map((choice) => (
-          <Chip
-            key={choice ?? "none"}
-            label={
-              choice === null
-                ? "Do not record reps in reserve"
-                : `${choice} reps in reserve`
-            }
-            onSelect={() =>
-              onChange((current) => ({ ...current, rir: choice }))
-            }
-            selected={value.rir === choice}
-          >
-            {choice === null ? "—" : choice}
-          </Chip>
-        ))}
-      </ChipRow>
 
       {modes.length > 1 ? (
         <ChipRow label="How">
@@ -260,7 +245,6 @@ export function SetEditor({
             onSubmit()
           }}
         >
-          <Check className="size-5" />
           {unestablished
             ? `Dial in the ${value.mode === "assistance" ? "assistance" : "load"}`
             : submitLabel}

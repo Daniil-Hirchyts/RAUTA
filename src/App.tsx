@@ -12,7 +12,6 @@ import {
   ArrowUp,
   ChevronLeft,
   FlipHorizontal2,
-  Home,
   Plus,
   Search,
   SearchX,
@@ -21,6 +20,7 @@ import {
 } from "lucide-react"
 
 import { AnimatedNumber } from "@/components/animated-number"
+import { Rauta } from "@/components/rauta"
 import { AppControlMorph, TextSwap } from "@/components/app-morph"
 import {
   AppControlButton,
@@ -76,13 +76,11 @@ import {
   EXERCISE_PAGE_SIZE,
   EXERCISES,
   EXERCISES_BY_ID,
+  equipmentForMuscles,
   filterExercises,
 } from "@/lib/exercises"
 import { triggerHaptic } from "@/lib/haptics"
-import {
-  createEngineWorkout,
-  ensureEngineWorkout,
-} from "@/lib/engine-workout"
+import { ensureEngineWorkout, proposeEngineWorkout } from "@/lib/engine-workout"
 import { syncICloudNow } from "@/lib/icloud-sync"
 import { isNative } from "@/lib/native"
 import { substituteRunningPlannedExercise } from "@/lib/planned-substitution"
@@ -344,6 +342,10 @@ export function App() {
   const [presetEditorOpen, setPresetEditorOpen] = useState(false)
   const [bodySide, setBodySide] = useState<"front" | "back">("front")
   const equipmentScrollRef = useRef<HTMLElement>(null)
+  const availableEquipment = useMemo(
+    () => equipmentForMuscles(selectedMuscles),
+    [selectedMuscles]
+  )
 
   const trainingProfile = useTrainingProfile((state) => state.profile)
   const trainingData = useTrainingRecords((state) => state.data)
@@ -675,14 +677,7 @@ export function App() {
                           <ChevronLeft className="size-5" />
                         </AppHeaderButton>
                       }
-                      right={
-                        <AppHeaderButton
-                          aria-label="My workouts"
-                          onClick={() => resetPages([{ type: "workouts" }])}
-                        >
-                          <Home className="size-5" />
-                        </AppHeaderButton>
-                      }
+                      right={null}
                       scrollRef={
                         stage === 2
                           ? equipmentScrollRef
@@ -753,6 +748,7 @@ export function App() {
                       >
                         <EquipmentGrid
                           onToggle={toggleEquipment}
+                          options={availableEquipment}
                           selected={selectedEquipment}
                         />
                       </section>
@@ -973,15 +969,22 @@ export function App() {
                               className="mr-2.5"
                               onClick={() => {
                                 try {
-                                  const workoutId = createEngineWorkout({
-                                    date: new Date().toISOString().slice(0, 10),
+                                  const date = new Date()
+                                    .toISOString()
+                                    .slice(0, 10)
+                                  const exerciseIds = proposeEngineWorkout({
+                                    date,
                                     focusMuscles: selectedMuscles,
+                                    availableEquipment:
+                                      toEngineEquipment(selectedEquipment),
                                   })
-                                  triggerHaptic("success")
-                                  resetPages([
-                                    { type: "workouts" },
-                                    { type: "workout-detail", workoutId },
-                                  ])
+                                  triggerHaptic("medium")
+                                  pushPage({
+                                    type: "workout-form",
+                                    exerciseIds,
+                                    workoutId: null,
+                                    engineFocusMuscles: [...selectedMuscles],
+                                  })
                                 } catch {
                                   triggerHaptic("warning")
                                 }
@@ -1119,6 +1122,18 @@ export function App() {
                 <WorkoutFormPage
                   initialExerciseIds={page.exerciseIds}
                   onBack={popPage}
+                  onRegenerate={
+                    page.engineFocusMuscles
+                      ? (exerciseIds) =>
+                          proposeEngineWorkout({
+                            date: new Date().toISOString().slice(0, 10),
+                            focusMuscles: page.engineFocusMuscles!,
+                            previousExerciseIds: exerciseIds,
+                            availableEquipment:
+                              toEngineEquipment(selectedEquipment),
+                          })
+                      : undefined
+                  }
                   onSaved={(workoutId) => {
                     cancelSelectMode()
                     resetPages([
@@ -1202,6 +1217,25 @@ export function App() {
             )
           })}
         </div>
+        {/* One character for the whole picking flow, standing in the corner a
+            home button would have. It is mounted here rather than in each
+            page's header so that moving between muscles, equipment and
+            exercises does not tear it down and build it again — and it carries
+            the way home in the panel it opens. */}
+        {stageForPage(activeEntry.page) !== null ? (
+          <Rauta
+            actions={[
+              {
+                label: "My workouts",
+                onSelect: () => resetPages([{ type: "workouts" }]),
+                primary: true,
+              },
+            ]}
+            label="RAUTA"
+            place="top"
+            size={72}
+          />
+        ) : null}
       </AppShell>
     </div>
   )

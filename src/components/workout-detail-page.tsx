@@ -15,7 +15,6 @@ import {
 } from "lucide-react"
 
 import { ActiveWorkoutHero } from "@/components/active-workout-hero"
-import { ActiveWorkoutTimer } from "@/components/active-workout-timer"
 import { ExerciseSetLog } from "@/components/exercise-set-log"
 import { ConfirmModal, type ConfirmationKind } from "@/components/confirm-modal"
 import { AppControlMorph } from "@/components/app-morph"
@@ -30,6 +29,7 @@ import {
 } from "@/components/app-shell"
 import { MorphingActionSlot } from "@/components/morphing-action-slot"
 import { SortableExerciseList } from "@/components/sortable-exercise-list"
+import { SlidingTabs } from "@/components/ui/sliding-tabs"
 import { Button } from "@/components/ui/button"
 import { MatrixLoader } from "@/components/ui/matrix-loader"
 import { WorkoutCountdown } from "@/components/workout-countdown"
@@ -40,14 +40,16 @@ import {
   exerciseStatus,
   formatDuration,
   nextPendingExerciseId,
+  sessionProgress,
 } from "@/lib/active-workout"
 import { formatDateLong } from "@/lib/date"
 import { triggerHaptic } from "@/lib/haptics"
+import { cueRauta } from "@/lib/rauta-cues"
 import {
-  formatPrescription,
   plannedSessionView,
   type PlannedSessionView,
 } from "@/lib/training-plan"
+import { formatKg } from "@/lib/resistance"
 import { activePlannedCoverage } from "@/lib/training-session"
 import { cn } from "@/lib/utils"
 import { shareWorkout } from "@/lib/workout-sharing"
@@ -59,7 +61,7 @@ import {
 import { useActiveWorkout } from "@/store/use-active-workout"
 import { useTrainingRecords } from "@/store/use-training-records"
 import { isStartablePlannedSession } from "@/training-persistence/program"
-import { useWorkouts } from "@/store/use-workouts"
+import { useWorkouts, type Workout } from "@/store/use-workouts"
 import type { ExerciseSummary } from "@/types"
 
 /**
@@ -80,13 +82,133 @@ function PlannedTargets({
     (entry) => entry.exerciseId === exerciseId
   )
   if (!item) return null
+  const reps =
+    item.reps.min === item.reps.max
+      ? `${item.reps.max}`
+      : `${item.reps.min}–${item.reps.max}`
   return (
-    <p className="mx-(--app-content-inset) mt-1.5 overflow-x-auto rounded-2xl border border-border bg-card/60 px-3 py-2 text-[13px] font-semibold whitespace-nowrap text-muted-foreground tabular-nums">
-      <span className="mr-2 font-black tracking-[0.14em] text-primary uppercase">
-        Plan
-      </span>
-      {formatPrescription(item)}
-    </p>
+    <div className="workout-prescription overflow-x-auto tabular-nums">
+      <div className="workout-prescription__item">
+        <span className="workout-prescription__label">Sets</span>
+        <strong className="workout-prescription__value">{item.sets}</strong>
+      </div>
+      <div className="workout-prescription__item">
+        <span className="workout-prescription__label">Reps</span>
+        <strong className="workout-prescription__value">{reps}</strong>
+      </div>
+      <div className="workout-prescription__item">
+        <span className="workout-prescription__label">RIR</span>
+        <strong className="workout-prescription__value">{item.rir}</strong>
+      </div>
+      {item.loadKg !== null ? (
+        <div className="workout-prescription__item">
+          <span className="workout-prescription__label">Load</span>
+          <strong className="workout-prescription__value">
+            {formatKg(item.loadKg)} kg
+          </strong>
+        </div>
+      ) : null}
+      <div className="workout-prescription__item">
+        <span className="workout-prescription__label">Rest</span>
+        <strong className="workout-prescription__value">
+          {Math.round(item.restSeconds)}s
+        </strong>
+      </div>
+    </div>
+  )
+}
+
+function WorkoutOverview({
+  completion,
+  exerciseCount,
+  past,
+  plannedSession,
+  structuredDurationSeconds,
+  structuredExerciseCount,
+}: {
+  completion: NonNullable<Workout["completion"]> | null
+  exerciseCount: number
+  past: boolean
+  plannedSession: PlannedSessionView | null
+  structuredDurationSeconds?: number
+  structuredExerciseCount?: number
+}) {
+  const primary = past
+    ? {
+        icon: <CheckCircle2 />,
+        value:
+          completion || structuredExerciseCount !== undefined
+            ? `${completion?.completedExerciseIds.length ?? structuredExerciseCount}/${exerciseCount}`
+            : "—",
+        label: "Completed",
+      }
+    : {
+        icon: <ListChecks />,
+        value: plannedSession?.prescription.length ?? exerciseCount,
+        label: "Exercises",
+      }
+  const secondary = past
+    ? [
+        {
+          icon: <Clock3 />,
+          value:
+            completion || structuredDurationSeconds !== undefined
+              ? formatDuration(
+                  completion?.durationMs ?? structuredDurationSeconds! * 1000
+                )
+              : "—",
+          label: "Duration",
+        },
+        {
+          icon: <Activity />,
+          value: completion?.activeCalories ?? "—",
+          label: "kcal",
+        },
+      ]
+    : [
+        {
+          icon: <Layers />,
+          value: plannedSession?.workingSets ?? "—",
+          label: "Sets",
+        },
+        {
+          icon: <Clock3 />,
+          value: plannedSession?.minutes ?? "—",
+          label: "Minutes",
+        },
+      ]
+
+  const primaryValue =
+    typeof primary.value === "number"
+      ? String(primary.value).padStart(2, "0")
+      : primary.value
+
+  return (
+    <section
+      aria-label={past ? "Workout stats" : "Planned session"}
+      className={`workout-overview ${past ? "workout-overview--past" : ""}`}
+    >
+      <div className="workout-overview__hero">
+        <div>
+          <p className="workout-overview__eyebrow">{primary.label}</p>
+          <p className="workout-overview__value tabular-nums">{primaryValue}</p>
+        </div>
+        <span className="workout-overview__mark" aria-hidden="true">
+          {primary.icon}
+        </span>
+      </div>
+      <div className="workout-overview__rail">
+        {secondary.map((item) => (
+          <div className="workout-overview__metric" key={item.label}>
+            <span className="workout-overview__metric-icon">{item.icon}</span>
+            <p className="workout-overview__metric-value font-readout tabular-nums">
+              {item.value}
+            </p>
+            <p className="workout-overview__metric-label">{item.label}</p>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -114,12 +236,12 @@ export function WorkoutDetailPage({
   workoutId: string
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  /** Which half of a running session is on screen: the exercise being
+   *  performed, on its own, or the whole workout it belongs to. Without a
+   *  session there is only the workout, so there is nothing to choose. */
+  const [tab, setTab] = useState<0 | 1>(0)
   const [confirming, setConfirming] = useState<ConfirmationKind | null>(null)
   const [confirmationIssue, setConfirmationIssue] = useState<string | null>(
-    null
-  )
-  // At most one set editor is open at a time, and only where it was asked for.
-  const [editingExerciseId, setEditingExerciseId] = useState<string | null>(
     null
   )
   const [actionIssue, setActionIssue] = useState<string | null>(null)
@@ -184,6 +306,11 @@ export function WorkoutDetailPage({
     isPlanned &&
     (!plannedSession ||
       !isStartablePlannedSession(trainingData, programId!, plannedSessionId!))
+  /** Whether the page is showing the whole workout rather than the one
+   *  exercise being performed. Without a session there is nothing else to
+   *  show. */
+  const showPlan = !session || tab === 1
+  const progress = session ? sessionProgress(session) : null
   const isPast =
     !session &&
     (Boolean(workout.completion) ||
@@ -194,6 +321,18 @@ export function WorkoutDetailPage({
         )
       ))
   const completion = workout.completion
+  const structuredCompletion = plannedSessionId
+    ? trainingData.sessions.find(
+        (item) => item.plannedSessionId === plannedSessionId
+      )
+    : trainingData.sessions.find((item) => item.sourceWorkoutId === workout.id)
+  const completedExerciseIds = completion
+    ? new Set(completion.completedExerciseIds)
+    : new Set(
+        structuredCompletion?.exercises
+          .filter((item) => item.sets.some((set) => set.completed))
+          .map((item) => item.exerciseId) ?? []
+      )
 
   // A running session mirrors the saved workout through the store, so an edit
   // made here — or from the find-an-exercise flow — reaches it either way.
@@ -252,6 +391,36 @@ export function WorkoutDetailPage({
           }
           right={shareButton}
           scrollRef={scrollRef}
+          subtitle={
+            session && progress ? (
+              // How far through the workout you are, under the day it is on:
+              // the panel at the foot of the screen is for the clock, and this
+              // is for the shape of the session.
+              <span className="flex items-center justify-center gap-2">
+                <span className="tabular-nums">
+                  {progress.completed} of {progress.total} done
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="flex max-w-[6rem] items-center gap-1"
+                >
+                  {session.exerciseIds.map((id) => (
+                    <span
+                      className={cn(
+                        "h-1 shrink rounded-full transition-[width,background-color] duration-250",
+                        session.completedIds.includes(id)
+                          ? "w-2.5 min-w-1 bg-primary-gradient"
+                          : id === session.currentExerciseId
+                            ? "w-4 min-w-2 bg-primary/55"
+                            : "w-2.5 min-w-1 bg-white/12"
+                      )}
+                      key={id}
+                    />
+                  ))}
+                </span>
+              </span>
+            ) : undefined
+          }
           title={
             isPast || session ? (
               formatDateLong(workout.date)
@@ -282,82 +451,35 @@ export function WorkoutDetailPage({
         <div
           className={cn(
             "app-scroll-region min-h-0 flex-1 space-y-5 overflow-y-auto pt-5",
-            session ? "pb-28" : "pb-6"
+            // The foot of the screen belongs to the character's panel, and it
+            // has the clock in it.
+            session ? "pb-44" : "pb-6"
           )}
           ref={scrollRef}
           tabIndex={-1}
         >
-          {isPast ? (
-            <section
-              aria-label="Workout stats"
-              className="content-glow content-glow--subtle mx-(--app-content-inset) grid grid-cols-3 gap-1.5 rounded-3xl border border-border bg-card/70 p-1.5"
-            >
-              <div className="rounded-2xl bg-muted/45 p-3 text-center">
-                <Clock3 className="mx-auto size-4 text-primary" />
-                <p className="mt-1.5 font-readout text-xl font-black tracking-tight tabular-nums">
-                  {completion ? formatDuration(completion.durationMs) : "—"}
-                </p>
-                <p className="text-xs font-semibold text-muted-foreground">
-                  Duration
-                </p>
-              </div>
-              <div className="rounded-2xl bg-muted/45 p-3 text-center">
-                <Activity className="mx-auto size-4 text-gold" />
-                <p className="mt-1.5 font-readout text-xl font-black tracking-tight tabular-nums">
-                  {completion ? completion.activeCalories : "—"}
-                </p>
-                <p className="text-xs font-semibold text-muted-foreground">
-                  kcal
-                </p>
-              </div>
-              <div className="rounded-2xl bg-muted/45 p-3 text-center">
-                <CheckCircle2 className="mx-auto size-4 text-success" />
-                <p className="mt-1.5 font-readout text-xl font-black tracking-tight tabular-nums">
-                  {completion
-                    ? `${completion.completedExerciseIds.length}/${workout.exerciseIds.length}`
-                    : "—"}
-                </p>
-                <p className="text-xs font-semibold text-muted-foreground">
-                  Completed
-                </p>
-              </div>
-            </section>
+          {session ? (
+            <div className="mx-(--app-content-inset)">
+              <SlidingTabs
+                activeIndex={tab}
+                onChange={(index) => setTab(index === 1 ? 1 : 0)}
+                tabs={[{ label: "Exercise" }, { label: "Workout" }]}
+              />
+            </div>
           ) : null}
-          {plannedSession && !session && !isPast ? (
-            <section
-              aria-label="Planned session"
-              className="content-glow content-glow--subtle mx-(--app-content-inset) grid grid-cols-3 gap-1.5 rounded-3xl border border-border bg-card/70 p-1.5"
-            >
-              <div className="rounded-2xl bg-muted/45 p-3 text-center">
-                <ListChecks className="mx-auto size-4 text-primary" />
-                <p className="mt-1.5 font-readout text-xl font-black tracking-tight tabular-nums">
-                  {plannedSession.prescription.length}
-                </p>
-                <p className="text-xs font-semibold text-muted-foreground">
-                  Exercises
-                </p>
-              </div>
-              <div className="rounded-2xl bg-muted/45 p-3 text-center">
-                <Layers className="mx-auto size-4 text-primary" />
-                <p className="mt-1.5 font-readout text-xl font-black tracking-tight tabular-nums">
-                  {plannedSession.workingSets}
-                </p>
-                <p className="text-xs font-semibold text-muted-foreground">
-                  Sets
-                </p>
-              </div>
-              <div className="rounded-2xl bg-muted/45 p-3 text-center">
-                <Clock3 className="mx-auto size-4 text-primary" />
-                <p className="mt-1.5 font-readout text-xl font-black tracking-tight tabular-nums">
-                  {plannedSession.minutes}
-                </p>
-                <p className="text-xs font-semibold text-muted-foreground">
-                  Minutes
-                </p>
-              </div>
-            </section>
+          {showPlan && (isPast || plannedSession) ? (
+            <WorkoutOverview
+              completion={completion}
+              exerciseCount={workout.exerciseIds.length}
+              past={isPast}
+              plannedSession={plannedSession}
+              structuredDurationSeconds={structuredCompletion?.durationSeconds}
+              structuredExerciseCount={
+                structuredCompletion ? completedExerciseIds.size : undefined
+              }
+            />
           ) : null}
-          {plannedUnavailable || actionIssue ? (
+          {(!isPast && plannedUnavailable) || actionIssue ? (
             <div
               className="mx-(--app-content-inset) rounded-3xl border border-destructive/40 bg-destructive/10 p-4 text-sm font-semibold text-foreground"
               role="alert"
@@ -374,108 +496,129 @@ export function WorkoutDetailPage({
             </div>
           ) : (
             <>
-              {session && exercise && (
-                <ActiveWorkoutHero
-                  exercise={exercise}
-                  onOpenExercise={onOpenExercise}
-                />
-              )}
-
-              {session && <WorkoutSessionCompanion session={session} />}
-
-              <SortableExerciseList
-                exerciseIds={workout.exerciseIds}
-                onFindAlternative={
-                  isPast || plannedUnavailable
-                    ? undefined
-                    : (candidate) => {
-                        if (isPlanned) {
-                          const draftExercise =
-                            trainingData.activeWorkout?.exercises.find(
-                              (item) => item.exerciseId === candidate.id
-                            )
-                          if (
-                            draftExercise?.sets.some((set) => set.observation)
-                          ) {
-                            triggerHaptic("warning")
-                            setActionIssue(
-                              "This exercise already has recorded sets, so it can’t be replaced in this session."
-                            )
-                            return
-                          }
-                        }
-                        setActionIssue(null)
-                        triggerHaptic("light")
-                        onFindAlternative(candidate)
-                      }
-                }
-                onOpenExercise={onOpenExercise}
-                onRemove={
-                  // A planned session's exercises are the plan's, not this
-                  // page's: dropping one here would leave the projection
-                  // describing a session the program never prescribed.
-                  isPast
-                    ? undefined
-                    : (id) => {
-                        triggerHaptic("warning")
-                        setExerciseIds(
-                          workout.exerciseIds.filter(
-                            (exerciseId) => exerciseId !== id
-                          )
-                        )
-                      }
-                }
-                onReorder={isPast ? undefined : setExerciseIds}
-                renderBelow={(exerciseId) => (
+              {/* The exercise being performed, on its own: the demonstration
+                  once, the sets under it, and nothing else to scroll past
+                  mid-set. The rest of the workout is one tap away. */}
+              {session && !showPlan ? (
+                exercise ? (
                   <>
-                    {plannedSession && !session ? (
-                      <PlannedTargets
-                        exerciseId={exerciseId}
-                        session={plannedSession}
-                      />
-                    ) : null}
-                    {session ? (
-                      <ExerciseSetLog
-                        editing={editingExerciseId === exerciseId}
-                        exerciseId={exerciseId}
-                        onEditingChange={(editing) =>
-                          setEditingExerciseId(editing ? exerciseId : null)
-                        }
-                      />
-                    ) : null}
-                  </>
-                )}
-                onToggleComplete={
-                  session
-                    ? (id) => {
-                        triggerHaptic("selection")
-                        toggleComplete(id)
+                    <ActiveWorkoutHero
+                      exercise={exercise}
+                      onOpenExercise={onOpenExercise}
+                    />
+                    <ExerciseSetLog
+                      exerciseId={exercise.id}
+                      restSeconds={
+                        plannedSession?.prescription.find(
+                          (item) => item.exerciseId === exercise.id
+                        )?.restSeconds
                       }
-                    : undefined
-                }
-                statusOf={
-                  session ? (id) => exerciseStatus(session, id) : undefined
-                }
-              />
+                    />
+                  </>
+                ) : (
+                  <p className="px-8 text-center text-sm text-muted-foreground">
+                    Every exercise in this workout is done.
+                  </p>
+                )
+              ) : null}
+
+              {showPlan ? (
+                <SortableExerciseList
+                  exerciseIds={workout.exerciseIds}
+                  onFindAlternative={
+                    isPast || plannedUnavailable
+                      ? undefined
+                      : (candidate) => {
+                          if (isPlanned) {
+                            const draftExercise =
+                              trainingData.activeWorkout?.exercises.find(
+                                (item) => item.exerciseId === candidate.id
+                              )
+                            if (
+                              draftExercise?.sets.some((set) => set.observation)
+                            ) {
+                              triggerHaptic("warning")
+                              setActionIssue(
+                                "This exercise already has recorded sets, so it can’t be replaced in this session."
+                              )
+                              return
+                            }
+                          }
+                          setActionIssue(null)
+                          triggerHaptic("light")
+                          onFindAlternative(candidate)
+                        }
+                  }
+                  onOpenExercise={onOpenExercise}
+                  onRemove={
+                    // A planned session's exercises are the plan's, not this
+                    // page's: dropping one here would leave the projection
+                    // describing a session the program never prescribed.
+                    isPast
+                      ? undefined
+                      : (id) => {
+                          triggerHaptic("warning")
+                          setExerciseIds(
+                            workout.exerciseIds.filter(
+                              (exerciseId) => exerciseId !== id
+                            )
+                          )
+                        }
+                  }
+                  onReorder={isPast ? undefined : setExerciseIds}
+                  renderBelow={
+                    plannedSession
+                      ? (exerciseId) => (
+                          // What the week asked of this exercise. The sets
+                          // performed against it are logged on its own tab,
+                          // where there is room to do it one exercise at a time.
+                          <PlannedTargets
+                            exerciseId={exerciseId}
+                            session={plannedSession}
+                          />
+                        )
+                      : undefined
+                  }
+                  onToggleComplete={
+                    session
+                      ? (id) => {
+                          triggerHaptic("selection")
+                          toggleComplete(id)
+                        }
+                      : undefined
+                  }
+                  statusOf={
+                    session
+                      ? (id) => exerciseStatus(session, id)
+                      : isPast
+                        ? (id) =>
+                            completedExerciseIds.has(id)
+                              ? "completed"
+                              : "pending"
+                        : undefined
+                  }
+                  // The same card whether the workout has started or not: a
+                  // running session does not change what an exercise is.
+                  variant="overview"
+                />
+              ) : null}
             </>
           )}
         </div>
 
+        {/* One band at the foot of the screen: the character and the clock in
+            the same panel, rather than a fixed bar with a companion beside
+            it. */}
         {session ? (
-          <div
-            className="app-surface-bottom-dock active-workout-dock"
-            data-rauta-floor
-          >
-            <ActiveWorkoutTimer
-              exercise={exercise}
-              onNext={
-                skipTarget ? () => setCurrentExercise(skipTarget) : undefined
-              }
-              onPause={pauseWorkout}
-              onResume={resumeWorkout}
-              session={session}
-            />
-          </div>
+          <WorkoutSessionCompanion
+            exercise={exercise}
+            onNext={
+              skipTarget ? () => setCurrentExercise(skipTarget) : undefined
+            }
+            onPause={pauseWorkout}
+            onResume={resumeWorkout}
+            session={session}
+          />
         ) : null}
       </AppSurface>
 
@@ -518,17 +661,36 @@ export function WorkoutDetailPage({
               <Flag />
             </AppControlButton>
             <AppControlMorph className="app-command-fill" role="primary">
-              <Button
-                size="cta"
-                className="w-full"
-                disabled={!exercise}
-                onClick={() => {
-                  triggerHaptic("success")
-                  completeCurrent()
-                }}
-              >
-                Mark done
-              </Button>
+              {/* Nothing left to mark done: the only thing left is to finish,
+                  so that is what the band offers. */}
+              {exercise ? (
+                <Button
+                  size="cta"
+                  className="w-full"
+                  onClick={() => {
+                    triggerHaptic("success")
+                    completeCurrent()
+                    cueRauta("exercise-completed")
+                  }}
+                >
+                  Mark done
+                </Button>
+              ) : (
+                <Button
+                  size="cta"
+                  className="w-full"
+                  onClick={() => {
+                    triggerHaptic("medium")
+                    setConfirming(
+                      finishRecordsPartial
+                        ? "finish-workout-partial"
+                        : "finish-workout"
+                    )
+                  }}
+                >
+                  Finish
+                </Button>
+              )}
             </AppControlMorph>
           </div>
         ) : isPast ? (
@@ -574,7 +736,10 @@ export function WorkoutDetailPage({
               <Trash2 />
             </AppControlButton>
             <MorphingActionSlot visible={workout.exerciseIds.length > 0}>
-              <AppControlButton aria-label="Add exercise" onClick={onAddExercise}>
+              <AppControlButton
+                aria-label="Add exercise"
+                onClick={onAddExercise}
+              >
                 <Plus />
               </AppControlButton>
             </MorphingActionSlot>
@@ -620,9 +785,12 @@ export function WorkoutDetailPage({
             onCountdownChange?.(false)
             if (!startWorkout(workout)) {
               triggerHaptic("warning")
+              cueRauta("action-blocked")
               setActionIssue(
                 "This planned session can’t be started from this plan. Create a current plan from My workouts."
               )
+            } else {
+              cueRauta("workout-started")
             }
           }}
         />
@@ -642,12 +810,15 @@ export function WorkoutDetailPage({
             else if (
               confirming === "finish-workout" ||
               confirming === "finish-workout-partial"
-            )
+            ) {
               onFinish()
+              cueRauta("workout-finished")
+            }
             setConfirming(null)
             setConfirmationIssue(null)
           } catch {
             triggerHaptic("warning")
+            cueRauta("action-blocked")
             setConfirmationIssue("Couldn’t save this change. Please try again.")
           }
         }}

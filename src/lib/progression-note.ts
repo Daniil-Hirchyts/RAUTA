@@ -90,8 +90,8 @@ export function progressionNote(
       return note("It has been a while. Find the load again, easy first set.")
     if (reason === "grid_unavailable")
       return note("Set this station's load step and I can progress it.")
-    if (reason === "no_history")
-      return note("Not enough logged sets yet. Find a working load.")
+    // No history is not a remark. The card already opens on the plan's reps
+    // with the load at zero, which says the same thing without saying it.
     return null
   }
   return null

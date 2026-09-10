@@ -1,3 +1,4 @@
+import { ActiveWorkoutTimer } from "@/components/active-workout-timer"
 import { Rauta, type RautaMood } from "@/components/rauta"
 import {
   sessionProgress,
@@ -5,6 +6,7 @@ import {
 } from "@/lib/active-workout"
 import { activePlannedCoverage } from "@/lib/training-session"
 import { useTrainingRecords } from "@/store/use-training-records"
+import type { ExerciseSummary } from "@/types"
 
 /**
  * RAUTA during a workout.
@@ -22,6 +24,12 @@ function line(
   /** Prescribed working sets still unlogged, or null for a free workout. */
   outstanding: number | null
 ) {
+  const setBeat = [
+    "Steady work. I have every set.",
+    "Logged cleanly. Keep your pace.",
+    "Another one recorded. Breathe, then go.",
+    "The board is moving. Stay with it.",
+  ][sets % 4]
   if (sets === 0)
     return {
       mood: "focused" as RautaMood,
@@ -58,22 +66,33 @@ function line(
   if (sets === 1)
     return {
       mood: "happy" as RautaMood,
-      text: "First set logged. That one counts now.",
+      text: [
+        "First set logged. That one counts now.",
+        "We're underway. First set is in.",
+      ][completed % 2],
     }
   if (outstanding !== null)
     return {
       mood: "working" as RautaMood,
-      text: `${sets} logged · ${outstanding} prescribed ${outstanding === 1 ? "set" : "sets"} to go.`,
+      text: `${setBeat} ${outstanding} prescribed ${outstanding === 1 ? "set" : "sets"} to go.`,
     }
   return {
     mood: "working" as RautaMood,
-    text: `${sets} sets logged · ${completed} of ${total} exercises done.`,
+    text: `${setBeat} ${completed} of ${total} exercises done.`,
   }
 }
 
 export function WorkoutSessionCompanion({
+  exercise,
+  onNext,
+  onPause,
+  onResume,
   session,
 }: {
+  exercise?: ExerciseSummary | null
+  onNext?: () => void
+  onPause: () => void
+  onResume: () => void
   session: ActiveWorkoutSession
 }) {
   const data = useTrainingRecords((state) => state.data)
@@ -100,15 +119,27 @@ export function WorkoutSessionCompanion({
   // before structured logging keeps working without a companion.
   if (!draft) return null
 
-  // No box of its own: the character stands at the foot of the screen and
-  // comments on the session from there, whatever the page is scrolled to.
+  // One band at the foot of the screen, not two: the clock is the thing being
+  // glanced at mid-set, and the character stands on the same panel it is in.
+  // What RAUTA says is a passing remark — a workout is not a conversation —
+  // but the panel stays, because the clock is in it.
   return (
     <Rauta
+      footer={
+        <ActiveWorkoutTimer
+          exercise={exercise}
+          onNext={onNext}
+          onPause={onPause}
+          onResume={onResume}
+          session={session}
+        />
+      }
       label="RAUTA is following this workout"
       mood={mood}
-      reactionKey={`${sets}:${completed}`}
-      size={72}
+      place="bottom"
+      size={96}
       speech={text}
+      transient
     />
   )
 }

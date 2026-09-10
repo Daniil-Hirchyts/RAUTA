@@ -66,6 +66,37 @@ export function triggerHaptic(input: HapticInput) {
   navigator.vibrate(VIBRATION_PATTERNS[input])
 }
 
+/**
+ * The end of a rest, out loud.
+ *
+ * Two rising notes, deliberately short. Unlike the interface chimes this is
+ * not gated on the sound setting: a rest timer nobody hears is a rest timer
+ * that does not work, and it only ever sounds because somebody started one.
+ */
+export function playRestAlarm() {
+  if (typeof window === "undefined" || !("AudioContext" in window)) return
+  try {
+    const context = new AudioContext()
+    for (const [index, frequency] of [660, 880].entries()) {
+      const at = context.currentTime + index * 0.18
+      const oscillator = context.createOscillator()
+      const gain = context.createGain()
+      oscillator.frequency.value = frequency
+      oscillator.type = "sine"
+      gain.gain.setValueAtTime(0.0001, at)
+      gain.gain.exponentialRampToValueAtTime(0.12, at + 0.015)
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.16)
+      oscillator.connect(gain)
+      gain.connect(context.destination)
+      oscillator.start(at)
+      oscillator.stop(at + 0.17)
+    }
+    window.setTimeout(() => void context.close(), 600)
+  } catch {
+    // Audio is optional; blocked playback leaves the countdown itself intact.
+  }
+}
+
 function playSoundChime(input: "success" | "warning") {
   if (typeof window === "undefined" || !("AudioContext" in window)) return
 

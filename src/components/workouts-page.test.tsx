@@ -1,18 +1,18 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { beforeEach, describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { WorkoutsPage } from "@/components/workouts-page"
 import { useActiveWorkout } from "@/store/use-active-workout"
-import { useWorkouts } from "@/store/use-workouts"
+import { useWorkouts, type Workout } from "@/store/use-workouts"
 
-function renderPage() {
+function renderPage(onSelect: (workout: Workout) => void = () => {}) {
   render(
     <WorkoutsPage
       onCreate={() => {}}
       onCreatePlan={() => {}}
       onDelete={() => {}}
-      onSelect={() => {}}
+      onSelect={onSelect}
       onSettings={() => {}}
     />
   )
@@ -66,6 +66,32 @@ describe("WorkoutsPage", () => {
     expect(screen.getByText(/Paused/)).toBeInTheDocument()
   })
 
+  it("moves the running-session action to the persistent CTA", async () => {
+    const id = useWorkouts.getState().createWorkout({
+      name: "Push day",
+      date: "2026-09-01",
+      exerciseIds: ["0001"],
+    })
+    const workout = useWorkouts
+      .getState()
+      .workouts.find((item) => item.id === id)!
+    useActiveWorkout.getState().start(workout)
+    const onSelect = vi.fn()
+
+    renderPage(onSelect)
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Open RAUTA actions" })
+    )
+    expect(
+      screen.getAllByRole("button", { name: "Resume workout" })
+    ).toHaveLength(1)
+    await userEvent.click(
+      screen.getByRole("button", { name: "Resume workout" })
+    )
+    expect(onSelect).toHaveBeenCalledWith(workout)
+  })
+
   it("shows plain exercise counts when nothing is running", () => {
     useWorkouts.getState().createWorkout({
       name: "Push day",
@@ -106,7 +132,10 @@ describe("WorkoutsPage", () => {
     expect(screen.getByRole("tab", { name: /Past/ })).toBeVisible()
 
     // The "Next" tab is active by default, showing the upcoming workout
-    expect(screen.getByRole("tab", { name: /Next/ })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("tab", { name: /Next/ })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    )
 
     // Switch to "Past" to see completed workout stats
     await userEvent.click(screen.getByRole("tab", { name: /Past/ }))

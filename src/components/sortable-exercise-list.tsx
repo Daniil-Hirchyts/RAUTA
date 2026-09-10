@@ -1,6 +1,11 @@
 import { DragDropProvider } from "@dnd-kit/react"
 import { isSortable, useSortable } from "@dnd-kit/react/sortable"
-import { ArrowLeftRight, GripVertical, Trash2 } from "lucide-react"
+import {
+  ArrowLeftRight,
+  CheckCircle2,
+  GripVertical,
+  Trash2,
+} from "lucide-react"
 import { useState, type ReactNode, type Ref } from "react"
 
 import { AnimatedCheck } from "@/components/animated-check"
@@ -29,6 +34,7 @@ function SortableExerciseRow({
   onToggleComplete,
   reorderable,
   status,
+  variant,
 }: {
   /** Rendered under the row, inside the same item: the set log of a workout
    *  being performed belongs to its exercise, not to a screen of its own. */
@@ -44,6 +50,7 @@ function SortableExerciseRow({
   onToggleComplete?: (id: string) => void
   reorderable: boolean
   status?: ExerciseStatus
+  variant: "default" | "overview"
 }) {
   const { handleRef, isDragSource, ref } = useSortable({
     disabled: !reorderable,
@@ -54,13 +61,19 @@ function SortableExerciseRow({
 
   const row = (
     <div
-      className={`relative isolate mx-(--app-content-inset) flex h-32 w-[calc(100%_-_2_*_var(--app-content-inset))] overflow-hidden rounded-3xl border bg-card shadow-sm shadow-black/10 transition-[border-color,box-shadow,opacity] ${
+        className={`workout-sequence-row relative isolate flex overflow-hidden bg-card transition-[border-color,box-shadow,opacity] ${
+        variant === "overview"
+          ? "h-36 w-full bg-transparent"
+          : "mx-(--app-content-inset) h-32 w-[calc(100%_-_2_*_var(--app-content-inset))] rounded-3xl border shadow-sm shadow-black/10"
+      } ${
         isDragSource
           ? "border-primary/70 opacity-90 shadow-xl shadow-black/30"
           : status === "active"
             ? "border-primary/60"
             : status === "completed"
-              ? "border-border opacity-55"
+              ? variant === "overview"
+                ? "border-border"
+                : "border-border opacity-55"
               : "border-border"
       }`}
       data-status={status}
@@ -80,13 +93,17 @@ function SortableExerciseRow({
           <AnimatedCheck checked={status === "completed"} className="size-7" />
         </button>
       ) : (
-        <div className="grid w-9 shrink-0 place-items-center border-r border-border bg-card text-base font-black text-primary tabular-nums min-[360px]:w-12 min-[360px]:text-lg">
-          {String(index + 1).padStart(2, "0")}
+        <div className="workout-sequence-number grid w-9 shrink-0 place-items-center border-r border-border bg-card tabular-nums min-[360px]:w-12">
+          {variant === "overview" && status === "completed" ? (
+            <CheckCircle2 className="size-5 text-success" />
+          ) : (
+            String(index + 1).padStart(2, "0")
+          )}
         </div>
       )}
       <button
         aria-label={`Open ${exercise.name} demonstration`}
-        className="interactive-spring isolate aspect-square h-24 shrink-0 bg-card min-[360px]:h-32"
+          className={`workout-sequence-media interactive-spring isolate aspect-square shrink-0 bg-card ${variant === "overview" ? "h-36" : "h-24 min-[360px]:h-32"}`}
         disabled={!onOpen}
         onClick={() => onOpen?.(exercise)}
         type="button"
@@ -137,6 +154,16 @@ function SortableExerciseRow({
     </div>
   )
 
+  const rowWithBelow =
+    variant === "overview" ? (
+      <div className="workout-sequence-item">
+        {row}
+        {below ? <div className="border-t border-border">{below}</div> : null}
+      </div>
+    ) : (
+      row
+    )
+
   const swipeable =
     onRemove || onFindAlternative ? (
       <SwipeableRow
@@ -172,10 +199,10 @@ function SortableExerciseRow({
         isOpen={isOpen}
         onOpenChange={onOpenChange}
       >
-        {row}
+        {rowWithBelow}
       </SwipeableRow>
     ) : (
-      row
+      rowWithBelow
     )
 
   return (
@@ -185,7 +212,7 @@ function SortableExerciseRow({
       ref={reorderable ? (ref as Ref<HTMLLIElement>) : undefined}
     >
       {swipeable}
-      {below}
+      {variant === "default" ? below : null}
     </li>
   )
 }
@@ -199,6 +226,7 @@ export function SortableExerciseList({
   onToggleComplete,
   renderBelow,
   statusOf,
+  variant = "default",
 }: {
   exerciseIds: string[]
   onFindAlternative?: (exercise: ExerciseSummary) => void
@@ -211,6 +239,7 @@ export function SortableExerciseList({
   /** Extra content for each exercise, kept inside its list item. */
   renderBelow?: (exerciseId: string) => ReactNode
   statusOf?: (id: string) => ExerciseStatus
+  variant?: "default" | "overview"
 }) {
   const [openRowId, setOpenRowId] = useState<string | null>(null)
   const reorderable = Boolean(onReorder)
@@ -250,6 +279,7 @@ export function SortableExerciseList({
               onToggleComplete={onToggleComplete}
               reorderable={reorderable}
               status={statusOf?.(id)}
+              variant={variant}
             />
           )
         })}

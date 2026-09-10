@@ -7,18 +7,14 @@ import {
 } from "motion/react"
 
 import {
-  angleDelta,
   bounceInBounds,
   bounceStrength,
   clampToBounds,
+  clampTravel,
   clampVelocity,
   homeReturnDelay,
-  normalizeAngle,
   orientationInfluence,
   rautaBounds,
-  ROTATION_THRESHOLD_DEGREES,
-  settleRotation,
-  touchAngle,
   NO_ORIENTATION,
   type OrientationInfluence,
   type Point,
@@ -28,24 +24,23 @@ import {
 /**
  * Moving RAUTA around the screen.
  *
- * The character is dragged, thrown, twisted and tilted, all of which happen at
- * pointer or sensor rate. None of it goes through React state: position,
- * rotation and scale are motion values written straight to the element, so a
- * drag repaints the character and nothing else on the screen.
+ * The character is dragged, thrown and tilted, all of which happen at pointer
+ * or sensor rate. None of it goes through React state: position and scale are
+ * motion values written straight to the element, so a drag repaints the
+ * character and nothing else on the screen.
  *
- * The rules it obeys — where it may go, how hard it may be thrown, what counts
- * as a deliberate twist, how much a tilt is worth — are all in
- * `@/lib/rauta-motion`. This hook is the wiring: measure the real element and
- * viewport, read the gestures, run one animation loop, keep one sensor
- * listener, and tear all of it down on unmount.
+ * The rules it obeys — where it may go, how hard it may be thrown, how quickly
+ * it comes home, how much a tilt is worth — are all in `@/lib/rauta-motion`.
+ * This hook is the wiring: measure the real element and viewport, read the
+ * gestures, run one animation loop, keep one sensor listener, and tear all of
+ * it down on unmount.
  */
 
 export type RautaGestureEvent =
   | { type: "drag-start" }
-  | { type: "drag-end"; speed: number }
-  | { type: "throw"; speed: number }
+  | { type: "drag-end"; speed: number; velocityX: number; velocityY: number }
+  | { type: "throw"; speed: number; velocityX: number; velocityY: number }
   | { type: "collision"; strength: "soft" | "hard"; edges: string[] }
-  | { type: "rotate"; degrees: number }
   | { type: "return" }
   | { type: "tap" }
   | { type: "gesture-end" }
@@ -89,17 +84,19 @@ function frameBox(node: HTMLElement) {
   }
 }
 
-const FRICTION = 0.94
-const REST_SPEED = 40
-const MAX_FLIGHT_MS = 1400
+const FRICTION = 0.9
+const REST_SPEED = 60
+/** A throw is a gesture, not a journey: it lands, and the magnet takes over. */
+const MAX_FLIGHT_MS = 520
 /** A press that never really moved is a tap, not a drag. */
 const TAP_SLOP = 7
-/** The pull home: firm enough to read as a magnet, soft enough to watch. */
+/** The pull home: quick and definite. The character belongs in one place, and
+ *  the way back to it is not something to sit and watch. */
 const HOME_SPRING = {
   type: "spring",
-  stiffness: 180,
-  damping: 21,
-  mass: 1.1,
+  stiffness: 420,
+  damping: 30,
+  mass: 0.9,
 } as const
 
 export function useRautaMotion(options: RautaMotionOptions = {}) {
@@ -109,7 +106,6 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
   const ref = useRef<HTMLDivElement | null>(null)
   const x = useMotionValue(0)
   const y = useMotionValue(0)
-  const rotate = useMotionValue(0)
   const scale = useMotionValue(1)
 
   const bounds = useRef<RautaBounds>({ left: 0, right: 0, top: 0, bottom: 0 })
@@ -119,11 +115,6 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
     from: Point
     origin: Point
     moved: boolean
-  } | null>(null)
-  const twist = useRef<{
-    angle: number
-    from: number
-    engaged: boolean
   } | null>(null)
   const samples = useRef<Sample[]>([])
   const frame = useRef<number | null>(null)
@@ -146,20 +137,14 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
     // be with no offset applied.
     const width = node.offsetWidth || rect.width
     const height = node.offsetHeight || rect.height
-    // Use the current rotation, rather than an invisible diagonal-sized square.
-    const radians = (rotate.get() * Math.PI) / 180
-    const c = Math.abs(Math.cos(radians))
-    const s = Math.abs(Math.sin(radians))
-    const bodyWidth = width * (body?.width ?? 1)
-    const bodyHeight = height * (body?.height ?? 1)
-    const dx = width * ((body?.left ?? 0) + (body?.width ?? 1) / 2 - 0.5)
-    const dy = height * ((body?.top ?? 0) + (body?.height ?? 1) / 2 - 0.5)
+    // The silhouette inside the artboard, which is what may not leave the
+    // screen; the transparent margin around it is free to.
     const centerX =
-      (dx * Math.cos(radians) - dy * Math.sin(radians)) * scale.get()
+      width * ((body?.left ?? 0) + (body?.width ?? 1) / 2 - 0.5) * scale.get()
     const centerY =
-      (dx * Math.sin(radians) + dy * Math.cos(radians)) * scale.get()
-    const envelopeWidth = (bodyWidth * c + bodyHeight * s) * scale.get()
-    const envelopeHeight = (bodyHeight * c + bodyWidth * s) * scale.get()
+      height * ((body?.top ?? 0) + (body?.height ?? 1) / 2 - 0.5) * scale.get()
+    const envelopeWidth = width * (body?.width ?? 1) * scale.get()
+    const envelopeHeight = height * (body?.height ?? 1) * scale.get()
     bounds.current = rautaBounds({
       rect: {
         left:
@@ -183,7 +168,7 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
       x.set(fitted.x)
       y.set(fitted.y)
     }
-  }, [body, inset, rotate, scale, x, y])
+  }, [body, inset, scale, x, y])
 
   const stopFlight = useCallback(() => {
     if (frame.current !== null) cancelAnimationFrame(frame.current)
@@ -211,7 +196,7 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
    */
   const pullHome = useCallback(() => {
     cancelHome()
-    const target = clampToBounds({ x: 0, y: 0 }, bounds.current)
+    const target = { x: 0, y: 0 }
     const distance = Math.hypot(x.get() - target.x, y.get() - target.y)
     if (distance < 1) return
     const timer = window.setTimeout(() => {
@@ -253,8 +238,13 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
       const step = (now: number) => {
         const dt = Math.min(0.05, (now - last) / 1000)
         last = now
-        const next = { x: x.get() + v.x * dt, y: y.get() + v.y * dt }
-        const result = bounceInBounds(next, v, bounds.current)
+        const flown = { x: x.get() + v.x * dt, y: y.get() + v.y * dt }
+        const leashed = clampTravel(flown)
+        // Hitting the end of the leash spends the throw: what is left of it
+        // would only be spent pulling against the same limit.
+        if (leashed.x !== flown.x || leashed.y !== flown.y)
+          v = { x: v.x * 0.2, y: v.y * 0.2 }
+        const result = bounceInBounds(leashed, v, bounds.current)
         v = result.velocity
         x.set(result.position.x)
         y.set(result.position.y)
@@ -291,20 +281,6 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
     [stopFlight, x, y]
   )
 
-  const releaseTwist = useCallback(() => {
-    if (!twist.current?.engaged) {
-      twist.current = null
-      return
-    }
-    twist.current = null
-    const settled = settleRotation(rotate.get())
-    rotate.set(settled)
-    measure()
-    const fitted = clampToBounds({ x: x.get(), y: y.get() }, bounds.current)
-    x.set(fitted.x)
-    y.set(fitted.y)
-  }, [measure, rotate, x, y])
-
   const handlers = useMemo(() => {
     if (disabled) return {}
     return {
@@ -328,20 +304,6 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
         scale.set(1)
         measure()
 
-        if (pointers.current.size === 2) {
-          // Two fingers means a twist, and a twist is not a drag: whichever
-          // drag was in progress ends here so the character cannot slide while
-          // it turns.
-          suppressClick.current = true
-          const [a, b] = [...pointers.current.values()]
-          twist.current = {
-            angle: touchAngle(a, b),
-            from: rotate.get(),
-            engaged: false,
-          }
-          drag.current = null
-          return
-        }
         if (pointers.current.size === 1) {
           drag.current = {
             id: event.pointerId,
@@ -360,27 +322,6 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
           y: event.clientY,
         })
 
-        if (pointers.current.size >= 2 && twist.current) {
-          const [a, b] = [...pointers.current.values()]
-          const delta = angleDelta(twist.current.angle, touchAngle(a, b))
-          // Only a real twist turns the character; resting two fingers on it
-          // does nothing at all.
-          if (!twist.current.engaged) {
-            if (Math.abs(delta) < ROTATION_THRESHOLD_DEGREES) return
-            twist.current = { ...twist.current, engaged: true }
-            notify.current?.({ type: "rotate", degrees: delta })
-          }
-          rotate.set(normalizeAngle(twist.current.from + delta))
-          measure()
-          const fitted = clampToBounds(
-            { x: x.get(), y: y.get() },
-            bounds.current
-          )
-          x.set(fitted.x)
-          y.set(fitted.y)
-          return
-        }
-
         const gesture = drag.current
         if (!gesture || gesture.id !== event.pointerId) return
         const dx = event.clientX - gesture.from.x
@@ -391,10 +332,8 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
           notify.current?.({ type: "drag-start" })
         }
         if (!gesture.moved) return
-        // One finger translates. It never rotates — turning the character is a
-        // thing you have to mean.
         const next = clampToBounds(
-          { x: gesture.origin.x + dx, y: gesture.origin.y + dy },
+          clampTravel({ x: gesture.origin.x + dx, y: gesture.origin.y + dy }),
           bounds.current
         )
         x.set(next.x)
@@ -407,11 +346,6 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
       onPointerUp(event: React.PointerEvent<HTMLDivElement>) {
         pointers.current.delete(event.pointerId)
         scale.set(1)
-        if (twist.current) {
-          notify.current?.({ type: "gesture-end" })
-          releaseTwist()
-          return
-        }
         const gesture = drag.current
         drag.current = null
         if (!gesture || gesture.id !== event.pointerId) return
@@ -436,13 +370,23 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
             : { x: 0, y: 0 }
         const clamped = clampVelocity(velocity)
         const speed = Math.hypot(clamped.x, clamped.y)
-        notify.current?.({ type: "drag-end", speed })
+        notify.current?.({
+          type: "drag-end",
+          speed,
+          velocityX: clamped.x,
+          velocityY: clamped.y,
+        })
         // Reduced motion skips the flight, not the way back.
         if (reduced || speed < REST_SPEED) {
           pullHome()
           return
         }
-        notify.current?.({ type: "throw", speed })
+        notify.current?.({
+          type: "throw",
+          speed,
+          velocityX: clamped.x,
+          velocityY: clamped.y,
+        })
         fling(clamped)
       },
 
@@ -459,7 +403,6 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
         suppressClick.current = true
         notify.current?.({ type: "gesture-end" })
         drag.current = null
-        twist.current = null
         scale.set(1)
         pullHome()
       },
@@ -471,8 +414,6 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
     measure,
     pullHome,
     reduced,
-    releaseTwist,
-    rotate,
     scale,
     stopFlight,
     x,
@@ -552,7 +493,6 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
       cancelHome()
       pointers.current.clear()
       drag.current = null
-      twist.current = null
       scale.set(1)
     }
   }, [cancelHome, disabled, reduced, stopFlight, scale])
@@ -565,14 +505,24 @@ export function useRautaMotion(options: RautaMotionOptions = {}) {
     [cancelHome, stopFlight]
   )
 
-  return { ref, x, y, rotate, scale, handlers, measure } satisfies {
+  /** Put the character back in its place immediately, unless a finger is
+   *  currently holding it somewhere else. Used when the place itself moves. */
+  const settle = useCallback(() => {
+    if (pointers.current.size > 0) return
+    cancelHome()
+    stopFlight()
+    x.set(0)
+    y.set(0)
+  }, [cancelHome, stopFlight, x, y])
+
+  return { ref, x, y, scale, handlers, measure, settle } satisfies {
     ref: React.RefObject<HTMLDivElement | null>
     x: MotionValue<number>
     y: MotionValue<number>
-    rotate: MotionValue<number>
     scale: MotionValue<number>
     handlers: Record<string, unknown>
     measure: () => void
+    settle: () => void
   }
 }
 

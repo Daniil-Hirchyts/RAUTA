@@ -1,8 +1,6 @@
 import { useMemo, useRef, useState } from "react"
-import { ArrowRight, CalendarRange, SlidersHorizontal, X } from "lucide-react"
 import { Rauta } from "./rauta"
-import { AppModal } from "./app-modal"
-import { Button } from "./ui/button"
+import type { RautaAction } from "./rauta-panel"
 import { MatrixLoader } from "./ui/matrix-loader"
 import {
   adjustRemainingWeek,
@@ -46,21 +44,16 @@ function planLine(input: {
 export function WorkoutCompanion({
   onCreate,
   onCreatePlan,
-  onSettings,
   onResume,
 }: {
   onCreate: () => void
   onCreatePlan: (sourceProgramId?: string) => void
-  onSettings: () => void
   onResume?: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [working, setWorking] = useState(false)
   const busy = useRef(false)
   const [outcome, setOutcome] = useState<RemainingWeekOutcome | null>(null)
-  /** What RAUTA is saying right now, which the panel says for it. Null between
-   *  lines, when the panel goes back to describing the day itself. */
-  const [said, setSaid] = useState<string | null>(null)
   const profile = useTrainingProfile((state) => state.profile)
   const trainingData = useTrainingRecords((state) => state.data)
   const workouts = useWorkouts((state) => state.workouts)
@@ -115,7 +108,9 @@ export function WorkoutCompanion({
         setWorking(false)
         setOutcome(result)
         triggerHaptic(result.status === "adjusted" ? "success" : "warning")
-        if (result.status === "adjusted") setOpen(false)
+        if (result.status === "adjusted") {
+          setOpen(false)
+        }
       })
     )
   }
@@ -123,160 +118,84 @@ export function WorkoutCompanion({
     close()
     action()
   }
+  const blocked =
+    plan.hasPlan && eligibility.status === "blocked"
+      ? eligibility.message
+      : null
+  // What RAUTA is saying: the outcome of the last thing it did, the offer it
+  // is making, or the state of the week. Opening the panel is a question —
+  // "what can you do?" — so an answer that is a refusal is given there.
+  const line =
+    outcome?.message ??
+    (onResume
+      ? "Your workout is waiting. Want to continue?"
+      : ((canAdjust ? offer : null) ??
+        (canPlanNext ? nextOffer : null) ??
+        // A week that is already planned is the answer to "what now?"; why the
+        // logged sets cannot be used only matters when there is nothing better
+        // to say.
+        (open && !plan.nextWeekReady && blocked ? blocked : null) ??
+        plan.line ??
+        (profile.name
+          ? `Ready, ${profile.name}? I can shape today's session.`
+          : "Tell me what we're training today.")))
+
+  const actions: RautaAction[] = [
+    ...(canAdjust || working
+      ? [
+          {
+            label: working ? (
+              <MatrixLoader
+                label="Adjusting your week"
+                rounded
+                variant="orbit"
+              />
+            ) : (
+              "Adjust remaining week"
+            ),
+            onSelect: adjust,
+            primary: true,
+            disabled: working,
+          },
+        ]
+      : []),
+    ...(canPlanNext && nextSourceId
+      ? [
+          {
+            label: "Extend training plan",
+            onSelect: () => act(() => onCreatePlan(nextSourceId)),
+            primary: true,
+            disabled: working,
+          },
+        ]
+      : []),
+    {
+      label: plan.hasPlan ? "New training plan" : "Create training plan",
+      onSelect: () => act(() => onCreatePlan()),
+      primary: !onResume && !canAdjust && !canPlanNext,
+      disabled: working,
+    },
+    {
+      label: "Choose exercises",
+      onSelect: () => act(onCreate),
+      disabled: working,
+    },
+  ]
+
   return (
-    <>
-      {/* The character stands in front of the bar rather than inside it: it is
-          pinned to the foot of the screen and takes no room in this row, so
-          the silhouette overhangs the bar into the list above. The left
-          padding is the room it stands in, and the corner is the shell's own
-          curve less the inset it sits in — concentric with the screen around
-          it. A plain radius rather than the page's softened corner, because
-          this panel is read as a piece of the shell rather than as a card on
-          it, and the shell's own surface is drawn the same way. */}
-      <div className="frosted-glass content-glow content-glow--subtle pointer-events-auto flex items-center gap-1 rounded-(--app-card-radius) border py-6 pr-4 pl-[6.75rem] corner-round">
-        <Rauta
-          mood={onResume ? "focused" : plan.line ? "proud" : "calm"}
-          size={140}
-          speech={
-            outcome?.message ??
-            (canAdjust ? offer : canPlanNext ? nextOffer : plan.line) ??
-            "Ready when you are. Tap me to plan your training."
-          }
-          label="Open RAUTA actions"
-          onActivate={() => setOpen(true)}
-          // The panel is the character's mouth here: what it would say in a
-          // bubble is said in the line below instead, so a nudge, a throw and
-          // a plan all arrive in the one place the page already reads from.
-          onSay={setSaid}
-        />
-        <button
-          className="flex min-w-0 flex-1 items-center gap-2.5 text-left active:scale-[0.985]"
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Train with RAUTA"
-        >
-          <span className="min-w-0 flex-1">
-            <strong
-              aria-live="polite"
-              className="line-clamp-2 block text-[15px] leading-snug tracking-tight"
-            >
-              {outcome?.message ??
-                said ??
-                (onResume
-                  ? "Your workout is waiting. Want to continue?"
-                  : (outcome?.message ??
-                    (canAdjust ? offer : null) ??
-                    (canPlanNext ? nextOffer : null) ??
-                    plan.line ??
-                    (profile.name
-                      ? `Ready, ${profile.name}? I can shape today's session.`
-                      : "Tell me what we're training today.")))}
-            </strong>
-            <span className="mt-1 block truncate text-[12px] text-muted-foreground">
-              {GOAL_CHOICES[profile.goal].title} ·{" "}
-              {profile.preferredSessionDurationMinutes} min
-            </span>
-          </span>
-          <span
-            aria-hidden="true"
-            className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/15 text-primary"
-          >
-            <ArrowRight className="size-5" />
-          </span>
-        </button>
-      </div>
-      <AppModal open={open} onClose={close} label="RAUTA actions">
-        <div className="relative p-2">
-          <button
-            autoFocus
-            type="button"
-            aria-label="Close RAUTA actions"
-            onClick={close}
-            className="absolute top-0 right-0 grid size-11 place-items-center rounded-full active:bg-muted"
-          >
-            <X className="size-5" />
-          </button>
-          <h2 className="pr-9 text-xl font-bold">
-            {working ? "Adjusting your week." : "RAUTA is ready."}
-          </h2>
-          <p
-            className="mt-2 mb-5 text-sm text-muted-foreground"
-            role={outcome?.status === "blocked" ? "alert" : "status"}
-          >
-            {outcome?.message ??
-              (canAdjust
-                ? offer
-                : canPlanNext
-                  ? nextOffer
-                  : plan.nextWeekReady
-                    ? plan.line
-                    : plan.hasPlan && eligibility.status === "blocked"
-                      ? eligibility.message
-                      : "Let me plan the week, choose your own exercises, or tune your training preferences.")}
-          </p>
-          <div className="space-y-2">
-            {canAdjust || working ? (
-              <Button className="w-full" disabled={working} onClick={adjust}>
-                {working ? (
-                  <MatrixLoader
-                    label="Adjusting your week"
-                    rounded
-                    variant="orbit"
-                  />
-                ) : (
-                  "Adjust remaining week"
-                )}
-              </Button>
-            ) : null}
-            {canPlanNext && nextSourceId ? (
-              <Button
-                className="w-full"
-                disabled={working}
-                onClick={() => act(() => onCreatePlan(nextSourceId))}
-              >
-                <CalendarRange className="size-4" />
-                Plan next week
-              </Button>
-            ) : null}
-            {onResume ? (
-              <Button
-                className="w-full"
-                disabled={working}
-                onClick={() => act(onResume)}
-              >
-                Resume workout <ArrowRight className="size-4" />
-              </Button>
-            ) : null}
-            <Button
-              className="w-full"
-              disabled={working}
-              variant={
-                onResume || canAdjust || canPlanNext ? "secondary" : "default"
-              }
-              onClick={() => act(onCreatePlan)}
-            >
-              <CalendarRange className="size-4" />
-              {plan.hasPlan ? "New training week" : "Create training week"}
-            </Button>
-            <Button
-              className="w-full"
-              disabled={working}
-              variant="secondary"
-              onClick={() => act(onCreate)}
-            >
-              Choose exercises <ArrowRight className="size-4" />
-            </Button>
-            <Button
-              className="w-full"
-              disabled={working}
-              variant="ghost"
-              onClick={() => act(onSettings)}
-            >
-              <SlidersHorizontal className="size-4" /> My preferences
-            </Button>
-          </div>
-        </div>
-      </AppModal>
-    </>
+    <Rauta
+      actions={actions}
+      alert={outcome?.status === "blocked"}
+      label="Open RAUTA actions"
+      meta={`${GOAL_CHOICES[profile.goal].title} · ${profile.preferredSessionDurationMinutes} min`}
+      mood={onResume ? "focused" : plan.line ? "proud" : "calm"}
+      onOpenChange={(next) => {
+        if (!busy.current) setOpen(next)
+      }}
+      open={open}
+      reactionKey={outcome ? `${outcome.status}:${outcome.message}` : undefined}
+      size={104}
+      speech={line}
+    />
   )
 }

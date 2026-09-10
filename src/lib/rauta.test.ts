@@ -1,18 +1,16 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  angleDelta,
   bounceInBounds,
   bounceStrength,
   clampToBounds,
+  clampTravel,
   clampVelocity,
   MAX_THROW_VELOCITY,
+  MAX_TRAVEL,
   NO_ORIENTATION,
   orientationInfluence,
   rautaBounds,
-  ROTATION_THRESHOLD_DEGREES,
-  settleRotation,
-  touchAngle,
 } from "@/lib/rauta-motion"
 import {
   createRautaActivity,
@@ -21,6 +19,7 @@ import {
   requestRautaReaction,
   scheduleRautaIdle,
 } from "@/lib/rauta"
+import { pickRautaResponse } from "@/lib/rauta-cues"
 
 /**
  * RAUTA as behaviour rather than as frames.
@@ -165,6 +164,30 @@ describe("what RAUTA is allowed to express", () => {
     expect(seen.size).toBeGreaterThan(2)
   })
 
+  it("never repeats the same idle beat back to back", () => {
+    let activity = createRautaActivity(0)
+    const played: string[] = []
+    for (let now = 6000; now <= 60_000; now += 6000) {
+      const outcome = scheduleRautaIdle(
+        { ...activity, ambientDueAt: now },
+        now,
+        () => 0
+      )
+      activity = outcome.activity
+      if (outcome.play) played.push(outcome.play)
+    }
+    for (let index = 1; index < played.length; index += 1)
+      expect(played[index]).not.toBe(played[index - 1])
+  })
+
+  it("gives repeated product actions different replies", () => {
+    const first = pickRautaResponse("set-saved", undefined, () => 0)
+    const second = pickRautaResponse("set-saved", 0, () => 0)
+    expect(first.line).toBe("Set locked in.")
+    expect(second.line).not.toBe(first.line)
+    expect(second.reaction).not.toBe(first.reaction)
+  })
+
   it("reschedules rather than spinning when a thought is blocked", () => {
     let activity = createRautaActivity(0)
     activity = requestRautaReaction(activity, {
@@ -294,29 +317,16 @@ describe("being thrown", () => {
   })
 })
 
-describe("turning RAUTA", () => {
-  it("measures a twist between two fingers", () => {
-    expect(touchAngle({ x: 0, y: 0 }, { x: 10, y: 0 })).toBe(0)
-    expect(touchAngle({ x: 0, y: 0 }, { x: 0, y: 10 })).toBe(90)
-  })
+describe("keeping RAUTA on a leash", () => {
+  it("lets the character be carried, but only so far", () => {
+    // Within reach, a drag is exactly what the finger did.
+    expect(clampTravel({ x: 40, y: 30 })).toEqual({ x: 40, y: 30 })
 
-  it("takes the short way round rather than spinning at the seam", () => {
-    expect(angleDelta(350, 10)).toBe(20)
-    expect(angleDelta(10, 350)).toBe(-20)
-  })
-
-  it("ignores two fingers that are not actually twisting", () => {
-    // Resting a second finger on the character shifts the angle a little; that
-    // is below the threshold and must not turn anything.
-    const drift = angleDelta(0, ROTATION_THRESHOLD_DEGREES - 2)
-    expect(Math.abs(drift)).toBeLessThan(ROTATION_THRESHOLD_DEGREES)
-  })
-
-  it("settles on a quarter turn when released", () => {
-    expect(settleRotation(43)).toBe(0)
-    expect(settleRotation(50)).toBe(90)
-    expect(settleRotation(-10)).toBe(0)
-    expect(settleRotation(315)).toBe(0)
+    // Past it, the direction is kept and only the distance is cut, so the
+    // character follows the finger without ever leaving its own corner.
+    const corner = clampTravel({ x: 300, y: 400 })
+    expect(Math.hypot(corner.x, corner.y)).toBeCloseTo(MAX_TRAVEL, 5)
+    expect(corner.y / corner.x).toBeCloseTo(4 / 3, 5)
   })
 })
 

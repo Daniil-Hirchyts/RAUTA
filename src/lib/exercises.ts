@@ -59,6 +59,24 @@ export const EQUIPMENT_OPTIONS = [
   ...[...availableEquipment].sort((left, right) => left.localeCompare(right)),
 ]
 
+export function equipmentForMuscles(
+  muscles: MuscleId[],
+  exercises: ExerciseSummary[] = EXERCISES
+) {
+  if (muscles.length === 0) return EQUIPMENT_OPTIONS
+
+  const muscleSet = new Set(muscles)
+  const used = new Set<string>()
+
+  for (const exercise of exercises) {
+    if (exercise.muscles.some((muscle) => muscleSet.has(muscle))) {
+      used.add(exercise.equipment)
+    }
+  }
+
+  return EQUIPMENT_OPTIONS.filter((equipment) => used.has(equipment))
+}
+
 export function musclesForExerciseIds(ids: string[]) {
   const muscles: MuscleId[] = []
 

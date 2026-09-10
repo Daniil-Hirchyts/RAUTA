@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type ReactNode,
 } from "react"
 import { createPortal } from "react-dom"
 import {
@@ -23,12 +24,24 @@ import {
 } from "@/hooks/use-rauta-motion"
 import { triggerHaptic } from "@/lib/haptics"
 import type { RautaMood, RautaReaction, RautaSource } from "@/lib/rauta"
-import { placeRautaSpeech } from "@/lib/rauta-speech-placement"
+import {
+  pickRautaResponse,
+  RAUTA_CUE_EVENT,
+  type RautaCue,
+} from "@/lib/rauta-cues"
 
-import { RautaSpeech } from "./rauta-speech"
+import { RautaPanel, type RautaAction } from "./rauta-panel"
 
 // The 512px artboard reserves space for jumps around the actual silhouette.
 const RAUTA_BODY = { left: 0.2, top: 0.1, width: 0.6, height: 0.75 }
+
+/** Air between the panel and the edges of the screen it sits in. */
+const GUTTER = 12
+
+/** The shortest a panel may be, whatever it is holding and however small the
+ *  character standing against it. */
+const PANEL_MIN_HEIGHT = 96
+const FLOATING_LIFT = 8
 
 const AnimatedRauta = lazy(() => import("./rauta-runtime"))
 
@@ -58,11 +71,32 @@ export type RautaProps = {
    *  its own foot can instead mark that element `data-rauta-floor`, and the
    *  character stands on top of it. */
   inset?: { top?: number; right?: number; bottom?: number; left?: number }
-  /** Told what the character is saying, and told `null` when it has finished
-   *  saying it. A screen that takes this over speaks for the character in its
-   *  own layout — a panel it is standing on, say — and the floating bubble is
-   *  not shown at all: one voice, in one place. */
-  onSay?: (line: string | null) => void
+  /** A quieter second line under what the character says: what the screen is
+   *  set to, rather than something RAUTA is saying about it. */
+  meta?: ReactNode
+  /** What it is saying went wrong, rather than what it is going to do. */
+  alert?: boolean
+  /** The line is a passing remark, not the state of the screen: it is said
+   *  when it changes and then the panel goes away again. For a screen being
+   *  worked on — a set being logged, a timer running — where a standing panel
+   *  would be a slab over the top of the work. */
+  transient?: boolean
+  /** What tapping the character offers to do. With actions, a tap opens the
+   *  panel and the choices grow into it; without them a tap is `onActivate`. */
+  actions?: RautaAction[]
+  /** The screen's own instrument, shown inside the panel: one panel at the
+   *  foot of the screen rather than a character's bar and a fixed bar under
+   *  it. A screen with one keeps its panel whether or not there is a line. */
+  footer?: ReactNode
+  /** Which edge the character stands against, and which way its panel opens.
+   *  Bottom by default; a screen that keeps its own controls down there puts
+   *  the character in the top corner instead. */
+  place?: "bottom" | "top"
+  /** Whether the choices are showing. Left alone, the character keeps track of
+   *  that itself; a screen that has to close the panel — because the thing it
+   *  offered has now been done — passes both of these and owns it. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 /** Where the character is rendered, and the area its bubble may use. Both are
@@ -71,6 +105,10 @@ export type RautaProps = {
  *  pointer rate. */
 type RautaLayer = {
   host: HTMLElement
+  /** The page's own layer. The panel goes in here rather than on the surface,
+   *  so the page's title and its back button paint over the top of it: the
+   *  navigation sits inside the panel rather than being covered by it. */
+  page: HTMLElement | null
   stage: { left: number; top: number; width: number; height: number }
 }
 
@@ -78,6 +116,7 @@ function sameLayer(a: RautaLayer | null, b: RautaLayer) {
   return (
     a !== null &&
     a.host === b.host &&
+    a.page === b.page &&
     a.stage.left === b.stage.left &&
     a.stage.top === b.stage.top &&
     a.stage.width === b.stage.width &&
@@ -111,19 +150,28 @@ export function RautaStill() {
  * respond — so only the things that genuinely happened to it get a reaction,
  * and the scheduler underneath still applies its own cooldowns on top.
  */
-function reactionFor(event: RautaGestureEvent): RautaReaction | null {
+function reactionFor(
+  event: RautaGestureEvent,
+  variation: number
+): RautaReaction | null {
   switch (event.type) {
     case "tap":
-      return "tapped"
+      return ["tapped", "wink", "laugh", "acknowledge"][
+        variation % 4
+      ] as RautaReaction
     case "drag-start":
       return null
+    case "drag-end":
+      return event.speed < 180
+        ? (["relieved", "wink", "acknowledge"][variation % 3] as RautaReaction)
+        : null
     case "throw":
-      // Being flung is startling; being nudged is not.
-      return event.speed > 900 ? "surprise" : null
+      if (event.speed < 900) return "wobble"
+      if (event.speed > 1450)
+        return event.velocityX < 0 ? "spinLeft" : "spinRight"
+      return "surprise"
     case "collision":
       return event.strength === "hard" ? "recoil" : "wobble"
-    case "rotate":
-      return "surprise"
     default:
       return null
   }
@@ -142,50 +190,72 @@ function reactionFor(event: RautaGestureEvent): RautaReaction | null {
  * dragging the character never re-renders the screen behind it.
  */
 export function Rauta({
-  size = 104,
+  actions,
+  alert,
+  footer,
+  transient = false,
+  size: requestedSize,
   label = "Interact with RAUTA",
+  meta,
   onActivate,
-  onSay,
+  onOpenChange,
+  open: shown,
+  place = "bottom",
   speech,
   inset,
   ...props
 }: RautaProps) {
   const reduced = useReducedMotion()
+  const size = requestedSize ?? (place === "top" ? 72 : 104)
   const { active } = usePageLayer()
   const [runtimeReady, setRuntimeReady] = useState(false)
   const [loadingPress, setLoadingPress] = useState(false)
   const [request, setRequest] = useState<RautaRequest | undefined>()
   const [pressed, setPressed] = useState(false)
-  const [spoken, setSpoken] = useState<{ text: string; nonce: number } | null>(
+  /** Whether the panel is showing what tapping the character offers. Owned
+   *  here unless the screen passed its own answer. */
+  const [opened, setOpened] = useState(false)
+  const open = active && (shown ?? opened)
+  const show = useCallback(
+    (next: boolean) => {
+      if (shown === undefined) setOpened(next)
+      onOpenChange?.(next)
+    },
+    [onOpenChange, shown]
+  )
+  /**
+   * What the character has just said, over the top of what the screen has it
+   * saying. The `speech` prop is a standing line — the state of the plan, the
+   * step you are on — and stays up as long as it is true; a remark about being
+   * thrown into a wall is worth a few seconds and then the standing line is
+   * back. With neither, there is nothing to say and no panel to say it in.
+   */
+  const [remark, setRemark] = useState<{ text: string; nonce: number } | null>(
     null
   )
-  const [speechVisible, setSpeechVisible] = useState(false)
-  const speechNonce = useRef(0)
+  const remarkNonce = useRef(0)
   const say = useCallback((text: string) => {
-    setSpoken({ text, nonce: ++speechNonce.current })
-    setSpeechVisible(true)
+    setRemark({ text, nonce: ++remarkNonce.current })
   }, [])
   useEffect(() => {
-    if (!active || !speech) return
-    const timer = window.setTimeout(() => say(speech), 350)
+    if (!remark) return
+    const timer = window.setTimeout(() => setRemark(null), 2600)
     return () => window.clearTimeout(timer)
-  }, [active, speech, say])
+  }, [remark])
+  // A passing line is said once, when it changes, and then it is over.
+  const said = useRef<string | undefined>(undefined)
   useEffect(() => {
-    if (!spoken) return
-    const timer = window.setTimeout(() => setSpeechVisible(false), 4800)
-    return () => window.clearTimeout(timer)
-  }, [spoken])
-  // Whoever is showing the line — the bubble here, or a panel the screen owns —
-  // is told the same thing at the same time, including that it is over.
-  const announce = useRef(onSay)
-  useEffect(() => {
-    announce.current = onSay
-  }, [onSay])
-  useEffect(() => {
-    announce.current?.(speechVisible && spoken ? spoken.text : null)
-  }, [speechVisible, spoken])
-  const speaksHere = !onSay
+    if (!transient || !active || !speech || said.current === speech) return
+    said.current = speech
+    say(speech)
+  }, [active, say, speech, transient])
+  // A page that is not the one in view says nothing and offers nothing: read
+  // that off the layer rather than syncing state to it.
+  const line = active
+    ? (remark?.text ?? (transient ? null : (speech ?? null)))
+    : null
   const nonce = useRef(0)
+  const gestureVariation = useRef(0)
   const anchor = useRef<HTMLDivElement | null>(null)
   const [layer, setLayer] = useState<RautaLayer | null>(null)
   /** Where the character rests, in the surface's coordinates: the foot of the
@@ -205,10 +275,15 @@ export function Rauta({
       originY.set(0)
       return
     }
-    const floor = node
-      .closest(".app-screen")
-      ?.querySelector<HTMLElement>("[data-rauta-floor]")
     const update = () => {
+      const page =
+        node.closest<HTMLElement>(".app-page-layer") ??
+        host.querySelector<HTMLElement>('.app-page-layer[data-active="true"]')
+      const screen =
+        node.closest<HTMLElement>(".app-screen") ??
+        page?.querySelector<HTMLElement>(".app-screen") ??
+        page
+      const floor = screen?.querySelector<HTMLElement>("[data-rauta-floor]")
       const surface = host.getBoundingClientRect()
       // An absolutely positioned child starts inside the host's border, so
       // every reading below is taken from that padding edge.
@@ -227,21 +302,44 @@ export function Rauta({
         floor?.isConnected === true
           ? floor.getBoundingClientRect().top - baseTop
           : host.clientHeight
-      originX.set(inset?.left ?? 0)
-      originY.set(
-        Math.min(floorTop, host.clientHeight) - size - (inset?.bottom ?? 0)
-      )
-      // The bubble gets the visible surface, minus the page's own title: it may
+      // The band the page's title occupies, taken from its height rather than
+      // from where it currently is: the title slides away as the page scrolls,
+      // and the panel under it must not jump up and down with it.
+      const header =
+        screen?.querySelector<HTMLElement>(".app-shell-header") ?? null
+      const ceiling = header ? header.offsetHeight : 0
+      if (place === "top") {
+        // The corner a screen keeps for its home button, standing at the
+        // height of the title rather than under it — a screen that keeps its
+        // own controls along the bottom gets its character up here, and the
+        // panel opens downwards from it. Where that corner is already taken
+        // by a control, the character stands beside it rather than over it.
+        const corner = screen?.querySelector(
+          ".app-shell-header-row .app-shell-header-action:last-child button"
+        )
+        const taken = corner ? corner.getBoundingClientRect().width + GUTTER : 0
+        // Half a gutter of air on both axes, so the silhouette clears the
+        // surface's own corner curve rather than being shaved by it.
+        originX.set(
+          host.clientWidth - size - GUTTER / 2 - (inset?.right ?? 0) - taken
+        )
+        originY.set(Math.max(0, GUTTER / 2 + (inset?.top ?? 0) - FLOATING_LIFT))
+      } else {
+        originX.set(inset?.left ?? 0)
+        originY.set(
+          Math.min(floorTop, host.clientHeight) -
+            size -
+            (inset?.bottom ?? 0) -
+            FLOATING_LIFT
+        )
+      }
+      // The panel gets the visible surface, minus the page's own title: it may
       // pass in front of the content it is talking about, never in front of the
       // heading that says where you are.
-      const header = node
-        .closest(".app-screen")
-        ?.querySelector(".app-shell-header")
-        ?.getBoundingClientRect()
-      const stageTop =
-        Math.max(surface.top, header?.bottom ?? surface.top) - baseTop
+      const stageTop = ceiling
       const next: RautaLayer = {
         host,
+        page,
         stage: {
           left: surface.left - baseLeft,
           top: stageTop,
@@ -256,10 +354,18 @@ export function Rauta({
     // reading is taken again once it has landed.
     const painted = requestAnimationFrame(update)
     const landed = window.setTimeout(update, 420)
+    // A character that outlives the page it is standing on — one flow, several
+    // pages — has to hand its panel to whichever page is in view now.
+    const stack = host.querySelector(".app-page-stack") ?? host
+    const pages = new MutationObserver(update)
+    pages.observe(stack, {
+      attributeFilter: ["data-active"],
+      attributes: true,
+      subtree: true,
+    })
     const observer = new ResizeObserver(update)
     observer.observe(host)
     if (frame && frame !== host) observer.observe(frame)
-    if (floor) observer.observe(floor)
     observer.observe(node)
     window.addEventListener("resize", update)
     // Scrolling is deliberately not listened for. Where the character stands
@@ -269,9 +375,20 @@ export function Rauta({
       cancelAnimationFrame(painted)
       window.clearTimeout(landed)
       observer.disconnect()
+      pages.disconnect()
       window.removeEventListener("resize", update)
     }
-  }, [active, inset?.bottom, inset?.left, originX, originY, size])
+  }, [
+    active,
+    inset?.bottom,
+    inset?.left,
+    inset?.right,
+    inset?.top,
+    originX,
+    originY,
+    place,
+    size,
+  ])
   const markRuntimeReady = useCallback(() => setRuntimeReady(true), [])
 
   const react = useCallback((source: RautaSource, reaction: RautaReaction) => {
@@ -279,21 +396,44 @@ export function Rauta({
     setRequest({ reaction, source, nonce: nonce.current })
   }, [])
 
+  // Screens announce meaningful workout actions in product language. The
+  // active RAUTA alone translates them into a varied line and a rig trigger.
+  useEffect(() => {
+    if (!active) return
+    const answer = (event: Event) => {
+      const cue = (event as CustomEvent<RautaCue>).detail
+      const response = pickRautaResponse(cue)
+      say(response.line)
+      react("explicit", response.reaction)
+    }
+    window.addEventListener(RAUTA_CUE_EVENT, answer)
+    return () => window.removeEventListener(RAUTA_CUE_EVENT, answer)
+  }, [active, react, say])
+
   const onGesture = useCallback(
     (event: RautaGestureEvent) => {
-      if (event.type === "drag-start") {
-        setPressed(true)
-        setSpeechVisible(false)
-      }
+      const variation = gestureVariation.current
+      if (event.type === "drag-start") setPressed(true)
       if (event.type === "drag-end")
-        say(event.speed > 900 ? "Here we go!" : "I'll drift back.")
+        say(
+          event.speed > 900
+            ? ["Here we go!", "Airborne!", "Easy with the iron!"][variation % 3]
+            : ["Back to my post.", "Settled.", "Right where I belong."][
+                variation % 3
+              ]
+        )
       if (event.type === "return") triggerHaptic("selection")
-      if (event.type === "rotate") say("A new perspective!")
       if (event.type === "collision")
         say(
           event.strength === "hard"
-            ? "Whoa. Found the edge!"
-            : "Just a little bounce."
+            ? [
+                "Whoa. Found the edge!",
+                "That's one solid wall.",
+                "Impact registered. I'm fine.",
+              ][variation % 3]
+            : ["Just a little bounce.", "Soft landing.", "A tiny detour."][
+                variation % 3
+              ]
         )
       if (
         event.type === "drag-end" ||
@@ -303,14 +443,21 @@ export function Rauta({
         setPressed(false)
       if (event.type === "collision" && event.strength === "hard")
         triggerHaptic("warning")
-      const reaction = reactionFor(event)
+      const reaction = reactionFor(event, variation)
+      if (
+        event.type === "tap" ||
+        event.type === "drag-end" ||
+        event.type === "throw" ||
+        event.type === "collision"
+      )
+        gestureVariation.current += 1
       if (reaction) react("interaction", reaction)
     },
     [react, say]
   )
 
   const interactive = !reduced && active
-  const { ref, x, y, rotate, scale, handlers, measure } = useRautaMotion({
+  const { ref, x, y, scale, handlers, measure, settle } = useRautaMotion({
     inset,
     body: RAUTA_BODY,
     onGesture,
@@ -319,89 +466,74 @@ export function Rauta({
 
   useLayoutEffect(() => {
     measure()
-  }, [layer, measure])
-
-  // Motion values keep the bubble in sync with both dragging and page layout.
-  const stageLeft = useMotionValue(0)
-  const stageTop = useMotionValue(0)
-  const stageWidth = useMotionValue(390)
-  const stageHeight = useMotionValue(700)
-  const speechWidth = useMotionValue(0)
-  const speechHeight = useMotionValue(0)
-  useLayoutEffect(() => {
-    stageLeft.set(layer?.stage.left ?? 0)
-    stageTop.set(layer?.stage.top ?? 0)
-    stageWidth.set(layer?.stage.width ?? layer?.host.clientWidth ?? 390)
-    stageHeight.set(layer?.stage.height ?? layer?.host.clientHeight ?? 700)
-  }, [layer, stageHeight, stageLeft, stageTop, stageWidth])
-
-  // The bubble is measured rather than assumed: how wide a sentence comes out,
-  // and how tall it wraps, is what decides which side of the character it can
-  // go on. An unmeasured bubble would be placed as if it took no room at all
-  // and would hang off the edge of the screen, so the measurement is taken
-  // from the element itself the moment it appears — including when the
-  // character moves into the shell's portal and takes the bubble with it.
-  const bubble = useRef<HTMLDivElement | null>(null)
-  const watching = useRef<ResizeObserver | null>(null)
-  const read = useCallback(() => {
-    const node = bubble.current
-    if (!node) return
-    // Offsets, not the client rect, so the entrance animation scaling the
-    // bubble cannot make it measure smaller than it will be.
-    speechWidth.set(node.offsetWidth)
-    speechHeight.set(node.offsetHeight)
-  }, [speechHeight, speechWidth])
-  const measureSpeech = useCallback(
-    (node: HTMLDivElement | null) => {
-      bubble.current = node
-      watching.current?.disconnect()
-      watching.current = null
-      if (!node) return
-      read()
-      if (typeof ResizeObserver === "undefined") return
-      watching.current = new ResizeObserver(read)
-      watching.current.observe(node)
-    },
-    [read]
-  )
-  // Text can change without the box being replaced — a longer line wraps to a
-  // taller bubble — and not every browser reports that through an observer.
-  useLayoutEffect(read)
-  useEffect(() => () => watching.current?.disconnect(), [])
-
-  const spot = useTransform(() =>
-    placeRautaSpeech({
-      character: {
-        left: originX.get() + x.get(),
-        top: originY.get() + y.get(),
-        width: size,
-        height: size,
-      },
-      bubble: { width: speechWidth.get(), height: speechHeight.get() },
-      frame: {
-        left: stageLeft.get(),
-        top: stageTop.get(),
-        width: stageWidth.get(),
-        height: stageHeight.get(),
-      },
-      inset,
-    })
-  )
-  const speechX = useTransform(spot, (place) => place.x)
-  const speechY = useTransform(spot, (place) => place.y)
+    // The place has moved — a different screen, a different corner, a resize.
+    // Whatever the character was doing about the old one is finished with.
+    settle()
+  }, [layer, measure, place, settle, size])
 
   // The slot and the drag are one transform, so following a scroll costs the
   // same as a drag frame: two motion values and no render.
   const renderX = useTransform(() => originX.get() + x.get())
   const renderY = useTransform(() => originY.get() + y.get())
 
+  const offers = Boolean(actions && actions.length > 0)
+  const toggle = useCallback(() => {
+    triggerHaptic("selection")
+    show(!open)
+  }, [open, show])
   const activate = () => {
-    say(speech ?? "I'm here. Drag me, give me a twist, or let's train.")
     triggerHaptic("selection")
     // The only place motion access is ever asked for: a deliberate touch on the
     // character itself, never on launch. A refusal changes nothing else.
     void requestRautaOrientation()
+    if (offers) show(!open)
+    else if (!line) say("I'm here. Drag me, throw me, or let's train.")
     onActivate?.()
+  }
+
+  /**
+   * Where the panel sits, and how much of its own edge it gives up to the
+   * character standing against it.
+   *
+   * The artboard is mostly transparent margin, so the room to leave is the
+   * silhouette's width, not the box's — and the character overlaps the panel
+   * rather than sitting beside it, which is what makes the two read as one
+   * thing rather than as an icon next to a bar.
+   */
+  const reserve = Math.max(0, size * RAUTA_BODY.width + size * RAUTA_BODY.left)
+  const stage = layer?.stage
+  // Part of the shell rather than a card floating on it: the panel meets the
+  // sides and the edge it sits against, and only the edge facing the page is
+  // drawn. Its outer corners are the shell's own curve, so the two are
+  // concentric; the inner ones are a card's.
+  // Positioned inline rather than through classes: the panel's glow treatment
+  // is unlayered CSS and would otherwise win over a utility.
+  const panelStyle: React.CSSProperties = {
+    position: "absolute",
+    zIndex: 25,
+    left: 0,
+    right: 0,
+    // Never shorter than the character standing against it, and never thinner
+    // than a band worth reading: a panel the silhouette overhangs on both
+    // sides reads as a bar RAUTA is falling out of, whatever it is holding.
+    minHeight: Math.max(PANEL_MIN_HEIGHT, Math.round(size * 0.92)),
+    borderLeftWidth: 0,
+    borderRightWidth: 0,
+    // The shell's own curve on every corner, open or closed: two of them are
+    // the shell's, and the other two have to answer them.
+    borderRadius: "var(--app-surface-radius)",
+    ...(place === "bottom"
+      ? {
+          bottom: 0,
+          borderBottomWidth: 0,
+        }
+      : {
+          top: 0,
+          borderTopWidth: 0,
+          // The page's title and its buttons live in this band, so the panel
+          // starts its own content below them.
+          paddingTop: stage?.top ?? 0,
+        }),
   }
 
   const loadingGate = !runtimeReady || loadingPress
@@ -422,7 +554,7 @@ export function Rauta({
       }}
       {...handlers}
     >
-      <motion.div className="h-full w-full" style={{ rotate, scale }}>
+      <motion.div className="h-full w-full" style={{ scale }}>
         {reduced || !active ? (
           <button
             type="button"
@@ -472,45 +604,46 @@ export function Rauta({
           </div>
         )}
       </motion.div>
-      {active && speaksHere ? (
-        <motion.div
-          ref={measureSpeech}
-          className="pointer-events-none absolute top-0 left-0 w-max"
-          style={{
-            x: speechX,
-            y: speechY,
-            // Wide enough for a sentence, never wider than the screen it has
-            // to stay inside.
-            maxWidth: Math.max(
-              176,
-              Math.min(264, (layer?.stage.width ?? 320) - 32)
-            ),
-          }}
-        >
-          <RautaSpeech visible={speechVisible && !pressed}>
-            <p
-              role="status"
-              className="text-[13px] leading-snug text-foreground"
-            >
-              {spoken?.text}
-            </p>
-          </RautaSpeech>
-        </motion.div>
-      ) : null}
     </motion.div>
   )
   const floating = Boolean(layer) && active
+  const panel = (
+    <RautaPanel
+      actions={actions}
+      alert={alert}
+      footer={footer}
+      // Pinned to the surface when there is one to pin it to, and simply the
+      // next thing in the layout when there is not.
+      className={floating ? undefined : "w-full"}
+      line={line}
+      meta={meta}
+      onToggle={offers ? toggle : undefined}
+      open={open}
+      place={place}
+      reserve={floating ? reserve : 0}
+      style={floating ? panelStyle : undefined}
+      // Nothing to say, nothing to choose and nothing to show is no panel at
+      // all: it is not an empty bar waiting for a line, it is the line.
+      visible={Boolean(line) || Boolean(footer) || (offers && open)}
+    />
+  )
   return (
     // Floating, the character takes no room in the page at all: the row it was
     // written into closes up, and the character stands over the screen instead.
     // Without a surface to stand on — an inactive page, or a screen with no
     // shell around it — it falls back to being an ordinary part of the layout.
-    <div
-      ref={anchor}
-      className={floating ? "hidden" : "shrink-0"}
-      style={floating ? undefined : { width: size, height: size }}
-    >
-      {floating && layer ? createPortal(character, layer.host) : character}
+    <div className={floating ? "contents" : "flex w-full flex-col gap-2"}>
+      <div
+        data-rauta-slot
+        ref={anchor}
+        className={floating ? "hidden" : "shrink-0"}
+        style={floating ? undefined : { width: size, height: size }}
+      >
+        {floating && layer ? createPortal(character, layer.host) : character}
+      </div>
+      {floating && layer
+        ? createPortal(panel, layer.page ?? layer.host)
+        : panel}
     </div>
   )
 }

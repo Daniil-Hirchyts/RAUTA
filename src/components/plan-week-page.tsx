@@ -116,7 +116,7 @@ export function PlanWeekPage({
         <div className="app-scroll-region min-h-0 flex-1 overflow-y-auto px-(--app-content-inset) pt-5 pb-6">
           <div className="flex items-center gap-1.5">
             <Rauta
-              size={92}
+              size={120}
               speech={
                 continuing
                   ? "Pick future dates. I'll use your logged sets for them."

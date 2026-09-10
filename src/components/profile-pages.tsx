@@ -11,8 +11,8 @@ import {
   AppSurface,
 } from "@/components/app-shell"
 import { type BodySide } from "@/components/body-map"
-import { EquipmentPresetEditor } from "@/components/equipment-presets"
 import { EquipmentLoadSettings } from "@/components/equipment-load-settings"
+import { EquipmentPresetEditor } from "@/components/equipment-presets"
 import { FlowProgress } from "@/components/flow-progress"
 import { MorphingActionSlot } from "@/components/morphing-action-slot"
 import {
@@ -136,7 +136,6 @@ function ProfileStepFlow({
           key={step.title}
         >
           <div className="profile-step-content my-auto w-full shrink-0">
-            <ProfileCompanion step={step.title} />
             {step.content}
             {step.caption ? (
               <p className="mt-3 px-1 text-center text-sm text-muted-foreground">
@@ -150,6 +149,11 @@ function ProfileStepFlow({
             </div>
           ) : null}
         </div>
+
+        {/* Outside the keyed scroller on purpose: the step's content is torn
+            down and rebuilt on every step, and the character standing over it
+            is not. It only changes what it says. */}
+        <ProfileCompanion step={step.title} />
 
         {step.dock ? (
           <div
@@ -278,13 +282,14 @@ export function ProfileEquipmentPage({
   onOpenLoadSteps,
 }: {
   onBack: () => void
+  /** Describing what a stack actually offers is its own page, opened from
+   *  this one's command band. */
   onOpenLoadSteps: () => void
 }) {
   const [presetEditorOpen, setPresetEditorOpen] = useState(false)
   const gymEquipment = useFilters((state) => state.gymEquipment)
   const setGymEquipment = useFilters((state) => state.setGymEquipment)
   const loadEquipment = loadConfigurableEquipment(gymEquipment)
-
   return (
     <AppScreen bottomControls>
       <AppSurface>

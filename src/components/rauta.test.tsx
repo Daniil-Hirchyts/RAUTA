@@ -11,6 +11,7 @@ const sdk = vi.hoisted(() => {
       "facing",
       "gazeX",
       "gazeY",
+      "hover",
       "pressed",
       "tapped",
       "acknowledge",
@@ -99,28 +100,36 @@ describe("RAUTA interaction boundary", () => {
     expect(Number(sdk.inputs.facing.value)).toBe(facing)
   })
 
-  it("routes explicit bot actions through existing workout and settings callbacks", () => {
+  it("lets the rig notice a mouse hover and resets it on leave", () => {
+    render(<RautaRuntime label="Bot" ambient={false} />)
+    const bot = screen.getByRole("button", { name: "Bot" })
+    fireEvent.pointerEnter(bot, { pointerType: "mouse" })
+    expect(sdk.inputs.hover.value).toBe(true)
+    fireEvent.pointerLeave(bot, { pointerType: "mouse" })
+    expect(sdk.inputs.hover.value).toBe(false)
+  })
+
+  it("routes explicit bot actions through the existing workout callbacks", () => {
     const create = vi.fn(),
       plan = vi.fn(),
-      settings = vi.fn(),
       resume = vi.fn()
     render(
       <WorkoutCompanion
         onCreate={create}
         onCreatePlan={plan}
-        onSettings={settings}
         onResume={resume}
       />
     )
-    fireEvent.click(screen.getByRole("button", { name: "Train with RAUTA" }))
+    fireEvent.click(screen.getByRole("button", { name: "RAUTA actions" }))
     expect(create).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole("button", { name: "Resume workout" }))
-    expect(resume).toHaveBeenCalledOnce()
-    fireEvent.click(screen.getByRole("button", { name: "Train with RAUTA" }))
+    expect(screen.queryByRole("button", { name: "Resume workout" })).toBeNull()
     fireEvent.click(screen.getByRole("button", { name: "Choose exercises" }))
     expect(create).toHaveBeenCalledOnce()
-    fireEvent.click(screen.getByRole("button", { name: "Train with RAUTA" }))
-    fireEvent.click(screen.getByRole("button", { name: "My preferences" }))
-    expect(settings).toHaveBeenCalledOnce()
+    expect(resume).not.toHaveBeenCalled()
+    // Preferences are the page's own business, in its own header. What the
+    // character offers is what to train, not how the app is set up.
+    fireEvent.click(screen.getByRole("button", { name: "RAUTA actions" }))
+    expect(screen.queryByRole("button", { name: "My preferences" })).toBeNull()
+    expect(plan).not.toHaveBeenCalled()
   })
 })

@@ -20,7 +20,12 @@ export type AppPage =
   | { type: "exercises"; preferredWorkoutId?: string | null }
   | { type: "exercise-detail"; exerciseId: string }
   | { type: "workout-destination"; preferredWorkoutId?: string | null }
-  | { type: "workout-form"; exerciseIds: string[]; workoutId?: string | null }
+  | {
+      type: "workout-form"
+      exerciseIds: string[]
+      workoutId?: string | null
+      engineFocusMuscles?: MuscleId[]
+    }
   | { type: "equipment-preset" }
   | {
       type: "exercise-alternatives"
@@ -85,7 +90,10 @@ export function isValidAppPage(page: AppPage) {
       return (
         (page.workoutId == null || validIdentifier(page.workoutId)) &&
         page.exerciseIds.length > 0 &&
-        page.exerciseIds.every((id) => EXERCISES_BY_ID.has(id))
+        page.exerciseIds.every((id) => EXERCISES_BY_ID.has(id)) &&
+        (page.engineFocusMuscles === undefined ||
+          (page.engineFocusMuscles.length > 0 &&
+            page.engineFocusMuscles.every(validIdentifier)))
       )
   }
 }
@@ -148,7 +156,7 @@ export function pageKey(page: AppPage) {
     case "exercise-alternatives":
       return `${page.type}:${page.workoutId}:${page.exerciseId}`
     case "workout-form":
-      return `${page.type}:${page.workoutId ?? "new"}:${page.exerciseIds.join(",")}`
+      return `${page.type}:${page.workoutId ?? "new"}:${page.exerciseIds.join(",")}:${page.engineFocusMuscles?.join(",") ?? "manual"}`
     case "muscles":
     case "equipment":
     case "exercises":
@@ -159,3 +167,4 @@ export function pageKey(page: AppPage) {
   }
 }
 import { EXERCISES_BY_ID } from "@/lib/exercises"
+import type { MuscleId } from "@/types"

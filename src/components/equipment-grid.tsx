@@ -15,15 +15,17 @@ import { equipmentImage } from "@/lib/visuals"
 export function EquipmentGrid({
   className,
   onToggle,
+  options = EQUIPMENT_OPTIONS,
   selected,
 }: {
   className?: string
   onToggle: (equipment: string) => void
+  options?: readonly string[]
   selected: string[]
 }) {
   return (
     <div className={cn("grid grid-cols-2 gap-3", className)}>
-      {EQUIPMENT_OPTIONS.map((equipment, equipmentIndex) => {
+      {options.map((equipment, equipmentIndex) => {
         const checked = selected.includes(equipment)
         return (
           <button

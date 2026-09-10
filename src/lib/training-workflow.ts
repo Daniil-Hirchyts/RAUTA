@@ -222,7 +222,7 @@ export function planTrainingWeek(
   )
   if (!request.schedule.days.length)
     throw new Error(
-      "There are no future sessions left in this week. Create a new training week instead."
+      "There are no future sessions left in this period. Create a new training plan instead."
     )
   const result = source
     ? adaptTrainingProgram({

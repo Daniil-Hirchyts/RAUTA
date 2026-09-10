@@ -8,8 +8,8 @@
  * clock or React.
  *
  * The rules it enforces are the ones that keep the character usable: it stays
- * reachable inside the screen, a hard swipe cannot fling it out of the app, a
- * one-finger drag never rotates, and a tilted phone nudges rather than slides.
+ * reachable inside the screen, a hard swipe cannot fling it out of the app, and
+ * a tilted phone nudges rather than slides.
  */
 
 export type Point = { x: number; y: number }
@@ -157,30 +157,6 @@ export function bounceStrength(impact: number): "none" | "soft" | "hard" {
   return impact < 1100 ? "soft" : "hard"
 }
 
-/** The angle between two touch points, in degrees. */
-export function touchAngle(a: Point, b: Point) {
-  return (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI
-}
-
-/** The shortest way round from one angle to another, so a twist across the
- *  180° seam reads as a small turn rather than a full spin. */
-export function angleDelta(from: number, to: number) {
-  return ((((to - from) % 360) + 540) % 360) - 180
-}
-
-/** A twist has to be deliberate before it turns the character at all. Below
- *  this, two fingers resting on the screen are just two fingers. */
-export const ROTATION_THRESHOLD_DEGREES = 8
-
-export function normalizeAngle(angle: number) {
-  return ((angle % 360) + 360) % 360
-}
-
-/** The nearest quarter turn, which is where a released rotation settles. */
-export function settleRotation(angle: number) {
-  return normalizeAngle(Math.round(normalizeAngle(angle) / 90) * 90)
-}
-
 export type OrientationSample = {
   /** Front-to-back tilt in degrees, as `deviceorientation` reports it. */
   beta: number | null
@@ -239,18 +215,31 @@ export function orientationInfluence(
 
 export const NO_ORIENTATION: OrientationInfluence = { x: 0, y: 0, lean: 0 }
 
-/** Let go this close to where it belongs and the character is simply pulled
- *  back: nobody means to park it a centimetre from its own slot. */
+/** How far the character may be taken from its own place at all. It is on a
+ *  short leash: far enough to be picked up, played with and thrown, never far
+ *  enough to be lost on the other side of the screen. */
+export const MAX_TRAVEL = 132
+
+/** Keeps a point inside the leash, along the direction it was pulled. */
+export function clampTravel(point: Point, max = MAX_TRAVEL): Point {
+  const distance = Math.hypot(point.x, point.y)
+  if (distance <= max || distance === 0) return { ...point }
+  const scale = max / distance
+  return { x: point.x * scale, y: point.y * scale }
+}
+
+/** Let go this close to where it belongs and the character is pulled back with
+ *  no pause at all: nobody means to park it a centimetre from its own place. */
 export const HOME_MAGNET_RADIUS = 96
 
 /**
  * How long the character is left where it was put before the pull home starts.
  *
- * Far away it stays put long enough to be seen there — the throw is the point,
- * and snatching it back immediately would make the screen feel like it was
- * fighting the gesture. Close to home there is nothing to look at, so the
- * magnet takes it almost at once.
+ * Short on purpose. However long it was carried and however hard it was thrown,
+ * it belongs in one place, and a character that lingers where it was dropped
+ * reads as one that has been left there. Far enough to be worth seeing land, it
+ * waits a beat; near home it does not wait at all.
  */
 export function homeReturnDelay(distance: number) {
-  return distance <= HOME_MAGNET_RADIUS ? 180 : 900
+  return distance <= HOME_MAGNET_RADIUS ? 0 : 200
 }

@@ -67,6 +67,8 @@ describe("what RAUTA is allowed to say about a load", () => {
   })
 
   it("admits to having no evidence at all", () => {
+    // Nothing logged yet is not worth a line: the card opens on the plan's
+    // reps with the load at zero, which is the same statement.
     expect(
       progressionNote(
         recommendation({
@@ -75,8 +77,8 @@ describe("what RAUTA is allowed to say about a load", () => {
           reasons: ["no_history"],
           confidence: "none",
         })
-      )?.text
-    ).toBe("Not enough logged sets yet. Find a working load.")
+      )
+    ).toBeNull()
     expect(
       progressionNote(
         recommendation({

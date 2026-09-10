@@ -11,7 +11,8 @@
 
 @font-face {
   font-family: "Matrix Sans Print";
-  src: url("/fonts/matrix-sans-print/MatrixSansPrint-Regular.woff2") format("woff2");
+  src: url("/fonts/matrix-sans-print/MatrixSansPrint-Regular.woff2")
+    format("woff2");
   font-style: normal;
   font-weight: 400;
   font-display: swap;
@@ -229,6 +230,283 @@
 .equipment-card-image {
   padding: 0.625rem;
   filter: saturate(1.25);
+}
+
+/* Workout detail uses the same visual language as the instrument references:
+   one dominant readout, a luminous data rail, and a quieter sequence below. */
+.workout-overview {
+  --workout-signal: var(--primary);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin-inline: var(--app-content-inset);
+  border: 1px solid
+    color-mix(in oklch, var(--workout-signal), var(--border) 52%);
+  border-radius: 2rem;
+  background:
+    radial-gradient(
+      circle at 82% 10%,
+      color-mix(in oklch, var(--workout-signal), transparent 82%),
+      transparent 38%
+    ),
+    linear-gradient(
+      160deg,
+      color-mix(in oklch, var(--card), black 14%),
+      var(--obsidian)
+    );
+  box-shadow:
+    0 18px 42px rgb(0 0 0 / 0.22),
+    inset 0 0 0 1px rgb(255 255 255 / 0.025);
+}
+
+.workout-overview::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background-image: radial-gradient(
+    color-mix(in oklch, var(--foreground), transparent 88%) 1px,
+    transparent 1px
+  );
+  background-size: 12px 12px;
+  content: "";
+  mask-image: linear-gradient(to bottom, black, transparent 78%);
+  opacity: 0.36;
+}
+
+.workout-overview--past {
+  --workout-signal: var(--success);
+}
+
+.workout-overview__hero {
+  display: flex;
+  min-height: 9.5rem;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.25rem 1.1rem;
+}
+
+.workout-overview__eyebrow,
+.workout-overview__metric-label,
+.workout-prescription__label {
+  color: color-mix(in oklch, var(--foreground), transparent 38%);
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.workout-overview__value {
+  margin-top: 0.55rem;
+  color: var(--foreground);
+  font-family: "Matrix Sans Print", sans-serif;
+  font-size: clamp(3.75rem, 18vw, 5.5rem);
+  font-synthesis: none;
+  font-weight: 400;
+  letter-spacing: 0.025em;
+  line-height: 0.78;
+  text-shadow: 0 0 22px
+    color-mix(in oklch, var(--workout-signal), transparent 55%);
+}
+
+.workout-overview__mark {
+  position: relative;
+  display: grid;
+  size: 5.5rem;
+  place-items: center;
+  color: var(--workout-signal);
+}
+
+.workout-overview__mark::before {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(currentcolor 1px, transparent 1px);
+  background-size: 8px 8px;
+  content: "";
+  mask-image: radial-gradient(circle at center, black, transparent 72%);
+  opacity: 0.42;
+}
+
+.workout-overview__mark svg {
+  position: relative;
+  size: 1.55rem;
+  stroke-width: 1.6;
+  filter: drop-shadow(
+    0 0 8px color-mix(in oklch, var(--workout-signal), transparent 55%)
+  );
+}
+
+.workout-overview__rail {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0 0.75rem 0.75rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in oklch, var(--workout-signal), transparent 58%);
+  border-radius: 1.5rem;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in oklch, var(--workout-signal), transparent 72%),
+      color-mix(in oklch, var(--oxblood), transparent 12%)
+    ),
+    var(--obsidian);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 10px 24px rgb(0 0 0 / 0.18);
+}
+
+.workout-overview__metric {
+  min-width: 0;
+}
+
+.workout-overview__metric + .workout-overview__metric {
+  padding-left: 0.75rem;
+  border-left: 1px solid color-mix(in oklch, var(--foreground), transparent 84%);
+}
+
+.workout-overview__metric-icon {
+  display: inline-flex;
+  margin-bottom: 0.35rem;
+  color: var(--workout-signal);
+}
+
+.workout-overview__metric-icon svg {
+  size: 0.9rem;
+  stroke-width: 1.7;
+}
+
+.workout-overview__metric-value {
+  color: var(--foreground);
+  font-size: 1.35rem;
+  font-synthesis: none;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.workout-overview__metric-label {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.55rem;
+}
+
+.workout-sequence-item {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin-inline: var(--app-content-inset);
+  border: 1px solid color-mix(in oklch, var(--primary), var(--border) 62%);
+  border-radius: 1.75rem;
+  background: color-mix(in oklch, var(--card), transparent 16%);
+  box-shadow: 0 12px 26px rgb(0 0 0 / 0.12);
+}
+
+.workout-sequence-item + .workout-sequence-item {
+  margin-top: 0.75rem;
+}
+
+.workout-sequence-row {
+  background: transparent;
+}
+
+.workout-sequence-number {
+  color: var(--primary);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.workout-sequence-media {
+  background: color-mix(in oklch, var(--card), black 12%);
+}
+
+.workout-prescription {
+  display: flex;
+  min-width: max-content;
+  align-items: center;
+  gap: clamp(1.25rem, 5vw, 2.25rem);
+  padding: 0.7rem 1rem 0.8rem;
+  border-top: 1px solid color-mix(in oklch, var(--primary), var(--border) 72%);
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--primary), transparent 91%),
+    transparent 78%
+  );
+}
+
+.workout-prescription__item {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.workout-prescription__value {
+  color: var(--foreground);
+  font-family: "Matrix Sans Print", sans-serif;
+  font-size: 0.95rem;
+  font-synthesis: none;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.workout-prescription__item:first-child .workout-prescription__value {
+  color: var(--primary-soft);
+}
+
+.t-tabs {
+  position: relative;
+  display: flex;
+  width: calc(100% - 2 * var(--app-content-inset));
+  align-items: center;
+  gap: 0.15rem;
+  min-height: 2.5rem;
+  margin-inline: var(--app-content-inset);
+  padding: 0.2rem;
+  border: 1px solid color-mix(in oklch, var(--border), transparent 14%);
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--card), black 12%);
+}
+
+.t-tabs-pill {
+  position: absolute;
+  top: 0.2rem;
+  bottom: 0.2rem;
+  left: 0;
+  z-index: 0;
+  border-radius: 999px;
+  background: var(--primary-gradient);
+  box-shadow: 0 4px 12px color-mix(in oklch, var(--primary), transparent 68%);
+  pointer-events: none;
+  transition:
+    transform 220ms var(--ease-smooth-out),
+    width 220ms var(--ease-smooth-out);
+}
+
+.t-tab {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  min-width: 0;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0.52rem 0.8rem;
+  border-radius: 999px;
+  color: var(--muted-foreground);
+  font-size: 0.84rem;
+  font-weight: 750;
+  line-height: 1;
+  transition: color 180ms ease;
+}
+
+.t-tab[aria-selected="true"] {
+  color: var(--primary-foreground);
+}
+
+.t-tab > span {
+  font-size: 0.65rem;
 }
 
 @supports (height: 100lvh) {
@@ -877,109 +1155,6 @@ html[data-native="ios"] .app-drag-grain {
   pointer-events: none;
 }
 
-/* RAUTA keeps the floor of the workouts page rather than riding the list: the
-   week, the plan and the history all scroll behind this band and fade out
-   underneath it, so the character is in the same place on every visit. */
-.workouts-companion-dock {
-  position: absolute;
-  z-index: 20;
-  inset: auto 0 0;
-  /* The character overhangs the top of its bar, so the fade has to start
-     further up here than it does over a plain dock — far enough that the list
-     has faded out before it reaches the top of RAUTA's head. */
-  padding: 3.5rem var(--app-content-inset) var(--app-content-inset);
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    color-mix(in oklch, var(--background) 62%, transparent) 42%,
-    var(--background) 100%
-  );
-  pointer-events: none;
-}
-
-/* ── Sliding pill tabs ──────────────────────────────────────────────────
-   A bar of buttons with a pill that glides behind the active one.
-   Width + translateX are written inline by JS; the transition tweens.
-
-   Styled as a raised plate consistent with the app's warm obsidian
-   surface language: gradient background, inset hairline, gold border,
-   and the active pill carries the primary accent gradient with a glow. */
-
-.t-tabs {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 4px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in oklch, var(--card), var(--foreground) 4%) 0%,
-      var(--card) 60%,
-      color-mix(in oklch, var(--card), black 10%) 100%
-    );
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklch, var(--foreground) 7%, transparent),
-    0 4px 12px -4px rgb(0 0 0 / 0.5);
-}
-
-.t-tab {
-  position: relative;
-  appearance: none;
-  border: 0;
-  background: transparent;
-  flex: 1;
-  height: 38px;
-  padding: 0 16px;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  border-radius: calc(var(--radius-lg) - 4px);
-  z-index: 1;
-  transition:
-    color var(--duration-fast) var(--ease-smooth-out),
-    opacity var(--duration-fast) var(--ease-smooth-out);
-}
-
-.t-tab:not([aria-selected="true"]):hover {
-  color: var(--foreground);
-}
-
-.t-tab[aria-selected="true"] {
-  color: var(--primary-foreground);
-}
-
-.t-tabs-pill {
-  position: absolute;
-  top: 4px;
-  left: 0;
-  height: 38px;
-  width: 0;
-  border-radius: calc(var(--radius-lg) - 4px);
-  background: var(--primary-gradient);
-  transform: translateX(0);
-  transition:
-    transform var(--duration-fast) var(--ease-smooth-out),
-    width var(--duration-fast) var(--ease-smooth-out);
-  will-change: transform, width;
-  z-index: 0;
-  pointer-events: none;
-  box-shadow:
-    0 2px 8px color-mix(in oklch, var(--primary) 40%, transparent),
-    inset 0 1px 0 color-mix(in oklch, white 18%, transparent);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .t-tabs-pill,
-  .t-tab {
-    transition: none !important;
-  }
-}
-
 /* The list cards on the workouts page: a raised plate rather than a flat
    rectangle. The hairline along the top edge is what does that — it reads as
    the light catching an edge — and the gradient keeps the foot of the plate
@@ -991,13 +1166,12 @@ html[data-native="ios"] .app-drag-grain {
 .workout-card {
   position: relative;
   border: 1px solid var(--border);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in oklch, var(--card), var(--foreground) 5%) 0%,
-      var(--card) 58%,
-      color-mix(in oklch, var(--card), black 14%) 100%
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--card), var(--foreground) 5%) 0%,
+    var(--card) 58%,
+    color-mix(in oklch, var(--card), black 14%) 100%
+  );
   box-shadow:
     inset 0 1px 0 color-mix(in oklch, var(--foreground) 9%, transparent),
     0 8px 18px -12px rgb(0 0 0 / 0.7);
@@ -1060,12 +1234,27 @@ html[data-native="ios"] .app-drag-grain {
 }
 
 .workout-card:active {
-  background-image:
-    linear-gradient(
-      180deg,
-      color-mix(in oklch, var(--card), var(--foreground) 9%) 0%,
-      color-mix(in oklch, var(--card), var(--foreground) 3%) 100%
-    );
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--card), var(--foreground) 9%) 0%,
+    color-mix(in oklch, var(--card), var(--foreground) 3%) 100%
+  );
+}
+
+.workout-muscle-map .body-silhouette path {
+  fill: color-mix(in oklch, var(--muted-foreground) 42%, var(--card));
+  stroke: color-mix(in oklch, var(--foreground) 26%, var(--card));
+}
+
+.workout-muscle-map .muscle-region:not(.is-selected) {
+  color: color-mix(in oklch, var(--muted-foreground) 54%, var(--card));
+}
+
+.workout-muscle-map .muscle-region.is-selected {
+  color: var(--primary);
+  filter: drop-shadow(
+    0 0 4px color-mix(in oklch, var(--primary) 55%, transparent)
+  );
 }
 
 /* How much of a workout was actually completed, under its numbers. The track
@@ -1879,7 +2068,6 @@ li:has(.interactive-spring:active),
   padding-right: 0.25rem;
 }
 
-
 .preset-chip[aria-pressed="true"],
 .preset-chip[data-pressed="true"] {
   border-color: var(--primary);
@@ -2014,5 +2202,7 @@ li:has(.interactive-spring:active),
   animation: app-page-enter var(--page-enter-dur) var(--ease-smooth-out) both;
 }
 @media (prefers-reduced-motion: reduce) {
-  .profile-step-content { animation: none; }
+  .profile-step-content {
+    animation: none;
+  }
 }

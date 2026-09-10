@@ -127,14 +127,16 @@ describe("planned sessions in the existing workout UI", () => {
       first.reps.min === first.reps.max
         ? `${first.reps.max}`
         : `${first.reps.min}–${first.reps.max}`
+    expect(screen.getAllByText("Sets").length).toBeGreaterThan(0)
+    expect(screen.getAllByText(String(first.sets)).length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Reps").length).toBeGreaterThan(0)
+    expect(screen.getAllByText(reps).length).toBeGreaterThan(0)
+    expect(screen.getAllByText("RIR").length).toBeGreaterThan(0)
+    expect(screen.getAllByText(String(first.rir)).length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Rest").length).toBeGreaterThan(0)
     expect(
-      screen.getAllByText(
-        new RegExp(`${first.sets} × ${reps} · RIR ${first.rir}`)
-      ).length
+      screen.getAllByText(`${Math.round(first.restSeconds)}s`).length
     ).toBeGreaterThan(0)
-    expect(screen.getByLabelText("Planned session")).toHaveTextContent(
-      String(sessions[0].workingSets)
-    )
     expect(
       screen.getByRole("button", { name: /Change date/ })
     ).toBeInTheDocument()
@@ -236,11 +238,16 @@ describe("planned sessions in the existing workout UI", () => {
       screen.getAllByRole("button", { name: "Find alternative" }).length
     ).toBeGreaterThan(0)
     await startNow(user)
+    // Swapping an exercise is a change to the workout, so it lives on the
+    // workout's own tab rather than over the set being logged.
+    await user.click(screen.getByRole("tab", { name: "Workout" }))
     expect(
       screen.getAllByRole("button", { name: "Find alternative" }).length
     ).toBeGreaterThan(0)
 
+    await user.click(screen.getByRole("tab", { name: "Exercise" }))
     await logFirstPlannedSet(user)
+    await user.click(screen.getByRole("tab", { name: "Workout" }))
     await user.click(
       screen.getAllByRole("button", { name: "Find alternative" })[0]
     )
@@ -410,14 +417,14 @@ describe("planned sessions in the existing workout UI", () => {
     expect(records().data.activeWorkout).toBeNull()
   })
 
-  it("shows a prescribed load without letting it become a set at another station", async () => {
+  it("shows a prescribed load without dialling it in for you", async () => {
     const user = userEvent.setup()
     const sessions = week()
     const workout = renderPlannedDetail(sessions[0])
     await startNow(user)
 
     // The plan prescribes against the station the engine planned for. Put a
-    // load on that prescription, then move to a machine it was not measured at.
+    // load on that prescription, at a station this exercise is not logged at.
     const draft = records().data.activeWorkout!
     const exercise = draft.exercises[0]
     const planned = exercise.sets.find((set) => set.setType === "working")!
@@ -441,17 +448,13 @@ describe("planned sessions in the existing workout UI", () => {
     await user.click(
       screen.getAllByRole("button", { name: /^Log set \d of / })[0]
     )
-    await user.click(
-      screen.getByRole("button", {
-        name: "Add another station for this exercise",
-      })
-    )
 
-    // The prescription stays on the card; the dial does not inherit its load.
+    // The prescription stays on the card; the dial does not inherit a load
+    // that was measured somewhere this exercise is not being performed. It
+    // opens at zero, to be found here.
     const load = screen.getByRole("group", { name: "Load" })
-    expect(within(load).getByText("—")).toBeInTheDocument()
-    const [submit] = screen.getAllByRole("button", { name: /Dial in the load/ })
-    expect(submit).toHaveAttribute("aria-disabled", "true")
+    expect(load).toHaveTextContent("0")
+    expect(load).not.toHaveTextContent("40")
     expect(workout).toBeTruthy()
   })
 })
