@@ -53,7 +53,6 @@ struct ExerciseCard: View {
             ) {
                 store.favorites.toggleFavorite(exercise.id)
             }
-            .background(FrostedBackground(cornerRadius: 16, compact: true))
             .padding(20)
         }
         .overlay(alignment: .topTrailing) {

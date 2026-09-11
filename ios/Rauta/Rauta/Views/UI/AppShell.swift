@@ -1,8 +1,8 @@
 import SwiftUI
 import UIKit
 
-/// The frame owns the only rounded surface and the only command row. Pages are
-/// layers inside it; changing pages can never move or remount the frame.
+/// The frame owns the rounded app surface and its command row. Content remains
+/// visually stable while compact controls can use Liquid Glass above it.
 struct AppShell<Content: View, Controls: View>: View {
     var commandsVisible: Bool
     @ViewBuilder var content: () -> Content
@@ -102,14 +102,9 @@ struct AppGrain: View {
 /// seam. Stepping the radius down band by band means each band is only slightly
 /// sharper than the one above it, and detail dissolves on the way up.
 struct AppTopScrim: View {
-    private static let radii: [CGFloat] = [48, 32, 16, 8, 4, 2, 1]
-
     var body: some View {
         ZStack(alignment: .top) {
-            ForEach(Array(Self.radii.enumerated()), id: \.offset) { index, radius in
-                ProgressiveBlur(radius: radius)
-                    .mask(bandMask(for: index))
-            }
+            AppGradientBlur(edge: .top)
 
             // Match the web scrim: the page remains visible through the blur,
             // with only a warm background-colour fade at the very top. The
@@ -130,6 +125,25 @@ struct AppTopScrim: View {
         .accessibilityHidden(true)
         .ignoresSafeArea(edges: .top)
     }
+}
+
+/// The colourless, progressively fading backdrop blur shared by the fixed
+/// edges of the app. Reversing the edge gives the bottom RAUTA treatment the
+/// same dissolve as the shell header.
+struct AppGradientBlur: View {
+    var edge: VerticalEdge
+    private static let radii: [CGFloat] = [48, 32, 16, 8, 4, 2, 1]
+
+    var body: some View {
+        ZStack {
+            ForEach(Array(Self.radii.enumerated()), id: \.offset) { index, radius in
+                ProgressiveBlur(radius: radius)
+                    .mask(bandMask(for: index))
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
 
     /// Each band is fully opaque across the middle eighth of its own range and
     /// fades out over the eighth on either side, so no two steps ever meet at an
@@ -144,8 +158,8 @@ struct AppTopScrim: View {
                 .init(color: .black, location: start + step),
                 .init(color: .clear, location: Swift.min(1, start + 2 * step)),
             ],
-            startPoint: .top,
-            endPoint: .bottom
+            startPoint: edge == .top ? .top : .bottom,
+            endPoint: edge == .top ? .bottom : .top
         )
     }
 }
@@ -477,6 +491,21 @@ struct ScrollOffsetObserver: UIViewRepresentable {
 }
 
 extension AnyTransition {
+    static func page(_ direction: NavigationDirection) -> AnyTransition {
+        switch direction {
+        case .forward:
+            return .asymmetric(
+                insertion: .opacity.combined(with: .offset(x: 16, y: 0)),
+                removal: .opacity.combined(with: .offset(x: -8, y: 0))
+            )
+        case .back:
+            return .asymmetric(
+                insertion: .opacity.combined(with: .offset(x: -12, y: 0)),
+                removal: .opacity.combined(with: .offset(x: 14, y: 0))
+            )
+        }
+    }
+
     /// The arrival the subtitle and every animated readout share.
     static var digitPop: AnyTransition {
         .asymmetric(

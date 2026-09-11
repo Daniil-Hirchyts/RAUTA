@@ -136,12 +136,16 @@ struct LikeButton: View {
             Haptics.trigger(.selection)
             action()
         } label: {
-            ZStack {
-                if !chromeless {
-                    Circle()
-                        .fill(Theme.card)
-                        .overlay(Circle().strokeBorder(Theme.border, lineWidth: 1))
-                }
+            heartContent
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(liked ? [.isSelected] : [])
+    }
+
+    @ViewBuilder
+    private var heartContent: some View {
+        let content = ZStack {
                 Image(systemName: liked ? "heart.fill" : "heart")
                     .font(.system(size: iconSize, weight: .semibold))
                     .foregroundStyle(Theme.primary)
@@ -165,10 +169,19 @@ struct LikeButton: View {
             }
             .frame(width: size, height: size)
             .contentShape(Circle())
+
+        if chromeless {
+            content
+        } else {
+            content
+                .glassSurface(
+                    liked ? .tinted(Theme.primary.opacity(0.28)) : .clear,
+                    in: Circle(),
+                    interactive: true,
+                    border: liked ? Theme.Glassware.brightEdge : Theme.Glassware.edge,
+                    legacyFill: Theme.card.opacity(0.78)
+                )
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
-        .accessibilityAddTraits(liked ? [.isSelected] : [])
     }
 
     private func burst() {
@@ -216,8 +229,7 @@ struct MorphingActionSlot<Content: View>: View {
 
     var body: some View {
         content()
-            .frame(width: visible ? Theme.Metrics.controlsHeight : 0)
-            .padding(.trailing, visible ? 10 : 0)
+            .frame(width: visible ? 48 : 0)
             .opacity(visible ? 1 : 0)
             .scaleEffect(visible ? 1 : 0.7)
             .clipped()

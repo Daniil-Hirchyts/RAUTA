@@ -30,31 +30,27 @@ struct ProfileEquipmentScreen: View {
                     .padding(.bottom, 112)
                 }
 
-                if !presetEditorOpen {
-                    EquipmentPresets(
-                        value: store.filters.gymEquipment,
-                        onChange: store.filters.setGymEquipment
+                EquipmentPresets(
+                    value: store.filters.gymEquipment,
+                    onChange: store.filters.setGymEquipment
+                )
+                .padding(.bottom, 10)
+                .padding(.top, 28)
+                .background(
+                    LinearGradient(
+                        stops: [
+                            .init(color: .clear, location: 0),
+                            .init(color: Theme.background.opacity(0.75), location: 0.35),
+                            .init(color: Theme.background.opacity(0.96), location: 0.65),
+                            .init(color: Theme.background, location: 0.85),
+                            .init(color: Theme.background, location: 1),
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
                     )
-                    .padding(.bottom, 10)
-                    .padding(.top, 28)
-                    .background(
-                        LinearGradient(
-                            stops: [
-                                .init(color: .clear, location: 0),
-                                .init(color: Theme.background.opacity(0.75), location: 0.35),
-                                .init(color: Theme.background.opacity(0.96), location: 0.65),
-                                .init(color: Theme.background, location: 0.85),
-                                .init(color: Theme.background, location: 1),
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .allowsHitTesting(false)
-                    )
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
+                    .allowsHitTesting(false)
+                )
             }
-            .animation(Theme.Motion.smoothOut(0.22), value: presetEditorOpen)
         } controls: {
             if presetEditorOpen {
                 HStack(spacing: 10) {
@@ -66,28 +62,30 @@ struct ProfileEquipmentScreen: View {
                     }
                 }
             } else {
-                HStack(spacing: 10) {
-                    if !store.filters.gymEquipment.isEmpty {
-                        AppControlButton(systemImage: "xmark", label: "Clear equipment selection") {
-                            Haptics.trigger(.selection)
-                            store.filters.setGymEquipment([])
+                HStack(spacing: 8) {
+                    AppMenuButton(label: "Equipment actions") {
+                        if !store.filters.gymEquipment.isEmpty {
+                            Button {
+                                Haptics.trigger(.selection)
+                                store.filters.setGymEquipment([])
+                            } label: {
+                                Label("Clear selection", systemImage: "xmark")
+                            }
                         }
-                    }
 
-                    AppControlButton(
-                        systemImage: "scalemass",
-                        label: "Set load steps",
-                        isDisabled: loadEquipment.isEmpty
-                    ) {
-                        store.navigation.push(.profileLoadSteps)
-                    }
+                        Button {
+                            store.navigation.push(.profileLoadSteps)
+                        } label: {
+                            Label("Set load steps", systemImage: "scalemass")
+                        }
+                        .disabled(loadEquipment.isEmpty)
 
-                    AppControlButton(
-                        systemImage: "plus",
-                        label: "Create equipment preset",
-                        isDisabled: store.filters.gymEquipment.isEmpty
-                    ) {
-                        presetEditorOpen = true
+                        Button {
+                            presetEditorOpen = true
+                        } label: {
+                            Label("Create equipment preset", systemImage: "plus")
+                        }
+                        .disabled(store.filters.gymEquipment.isEmpty)
                     }
 
                     AppButton("Done", size: .cta, expands: true, action: store.navigation.pop)

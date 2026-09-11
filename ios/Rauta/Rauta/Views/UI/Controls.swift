@@ -14,13 +14,22 @@ struct AppSwitch: View {
             withAnimation(Theme.Motion.smoothOut(0.2)) { isOn.toggle() }
         } label: {
             ZStack(alignment: isOn ? .trailing : .leading) {
-                Capsule()
-                    .fill(isOn ? AnyShapeStyle(Theme.primaryGradient) : AnyShapeStyle(Theme.muted))
-                    .overlay(
-                        Capsule().strokeBorder(
-                            isOn ? Theme.primary.opacity(0.8) : .clear, lineWidth: 1
-                        )
+                Color.clear
+                    .glassSurface(
+                        isOn ? .tinted(Theme.primary) : .clear,
+                        in: Capsule(),
+                        interactive: !isDisabled,
+                        border: isOn ? Theme.Glassware.brightEdge : Theme.Glassware.edge,
+                        legacyFill: Theme.muted
                     )
+                    .overlay {
+                        if isOn {
+                            Capsule()
+                                .fill(Theme.primaryGradient)
+                                .opacity(Theme.Glassware.primaryWash)
+                        }
+                    }
+                    .clipShape(Capsule())
                 Circle()
                     .fill(.white)
                     .frame(width: 22, height: 22)
@@ -59,9 +68,8 @@ struct AppTextField: View {
             .padding(.horizontal, 16)
             .frame(height: 44)
             .background(Theme.input.opacity(0.5), in: Capsule())
-            .overlay(
-                Capsule().strokeBorder(focused ? Theme.ring : .clear, lineWidth: 1)
-            )
+            .overlay(Capsule().strokeBorder(focused ? Theme.ring : .clear, lineWidth: 1))
+            .animation(Theme.Motion.smoothOut(0.2), value: focused)
             .opacity(isDisabled ? 0.5 : 1)
     }
 }
@@ -89,16 +97,15 @@ private struct StepButton: View {
             .font(.system(size: 20, weight: .medium))
             .foregroundStyle(Theme.primary)
             .frame(width: 48, height: 48)
-            .background(
-                RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
-                    .fill(Theme.card)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
-                    .strokeBorder(Theme.border, lineWidth: 1)
+            .glassSurface(
+                isDisabled ? .inert : .regular,
+                in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous),
+                interactive: !isDisabled,
+                border: Theme.Glassware.edge,
+                legacyFill: Theme.card
             )
             .opacity(isDisabled ? 0.35 : 1)
-            .scaleEffect(isPressed ? 0.94 : 1)
+            .scaleEffect(isPressed && !Theme.Glassware.supportsLiquidGlass ? 0.94 : 1)
             .animation(Theme.Motion.spring, value: isPressed)
             .contentShape(Rectangle())
             .gesture(
@@ -154,39 +161,41 @@ struct AppStepper: View {
     var onStep: (Int) -> Void
 
     var body: some View {
-        HStack(spacing: 6) {
-            StepButton(
-                systemImage: "minus",
-                label: "Decrease \(label.lowercased())",
-                isDisabled: !canDecrement
-            ) { onStep(-1) }
+        GlassGroup(spacing: 8) {
+            HStack(spacing: 6) {
+                StepButton(
+                    systemImage: "minus",
+                    label: "Decrease \(label.lowercased())",
+                    isDisabled: !canDecrement
+                ) { onStep(-1) }
 
-            VStack(spacing: 2) {
-                Text(label.uppercased())
-                    .font(Theme.sans(10, weight: .black))
-                    .kerning(1.8)
-                    .foregroundStyle(Theme.mutedForeground)
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(display)
-                        .font(Theme.sans(21, weight: .black))
-                        .kerning(-0.4)
-                        .monospacedDigit()
-                        .foregroundStyle(Theme.foreground)
-                    if let unit {
-                        Text(unit)
-                            .font(Theme.sans(13, weight: .bold))
-                            .foregroundStyle(Theme.mutedForeground)
+                VStack(spacing: 2) {
+                    Text(label.uppercased())
+                        .font(Theme.sans(10, weight: .black))
+                        .kerning(1.8)
+                        .foregroundStyle(Theme.mutedForeground)
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(display)
+                            .font(Theme.sans(21, weight: .black))
+                            .kerning(-0.4)
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.foreground)
+                        if let unit {
+                            Text(unit)
+                                .font(Theme.sans(13, weight: .bold))
+                                .foregroundStyle(Theme.mutedForeground)
+                        }
                     }
+                    .lineLimit(1)
                 }
-                .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity)
 
-            StepButton(
-                systemImage: "plus",
-                label: "Increase \(label.lowercased())",
-                isDisabled: false
-            ) { onStep(1) }
+                StepButton(
+                    systemImage: "plus",
+                    label: "Increase \(label.lowercased())",
+                    isDisabled: false
+                ) { onStep(1) }
+            }
         }
         .padding(6)
         .background(
@@ -217,53 +226,57 @@ struct TabDefinition: Identifiable, Hashable {
 struct SlidingTabs: View {
     var tabs: [TabDefinition]
     @Binding var activeIndex: Int
-
-    @Namespace private var pill
+    @Namespace private var selectionNamespace
 
     var body: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 0) {
             ForEach(Array(tabs.enumerated()), id: \.element.id) { index, tab in
                 let selected = index == activeIndex
                 Button {
                     guard index != activeIndex else { return }
                     Haptics.trigger(.selection)
-                    withAnimation(Theme.Motion.smoothOut(0.22)) { activeIndex = index }
+                    withAnimation(Theme.Motion.spring) { activeIndex = index }
                 } label: {
-                    HStack(spacing: 6) {
-                        Text(tab.label)
-                            .font(Theme.sans(13.5, weight: .bold))
-                        if let count = tab.count {
-                            Text("\(count)")
-                                .font(Theme.sans(10, weight: .bold))
-                                .monospacedDigit()
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(
-                                    selected ? Color.black.opacity(0.15) : Theme.muted.opacity(0.6),
-                                    in: Capsule()
-                                )
-                        }
-                    }
-                    .foregroundStyle(selected ? Theme.primaryForeground : Theme.mutedForeground)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background {
+                    ZStack {
                         if selected {
                             Capsule()
                                 .fill(Theme.primaryGradient)
-                                .shadow(color: Theme.primary.opacity(0.32), radius: 6, y: 4)
-                                .matchedGeometryEffect(id: "tab-pill", in: pill)
+                                .matchedGeometryEffect(
+                                    id: "active-tab",
+                                    in: selectionNamespace
+                                )
+                                .shadow(color: Theme.primary.opacity(0.18), radius: 8, y: 3)
                         }
+
+                        HStack(spacing: 6) {
+                            Text(tab.label)
+                                .font(Theme.sans(13, weight: .bold))
+                            if let count = tab.count {
+                                Text("\(count)")
+                                    .font(Theme.sans(10, weight: .bold))
+                                    .monospacedDigit()
+                                    .opacity(0.8)
+                            }
+                        }
+                        .foregroundStyle(
+                            selected ? Theme.primaryForeground : Theme.secondaryForeground
+                        )
                     }
-                    .contentShape(Capsule())
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 36)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
         }
         .padding(3)
-        .frame(minHeight: 40)
-        .background(Theme.mix(Theme.card, .black, 0.12), in: Capsule())
-        .overlay(Capsule().strokeBorder(Theme.border.opacity(0.86), lineWidth: 1))
+        .glassSurface(
+            .regular,
+            in: Capsule(),
+            border: Theme.Glassware.edge,
+            legacyFill: Theme.card.opacity(0.74)
+        )
+        .frame(minHeight: 42)
     }
 }
 

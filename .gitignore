@@ -44,3 +44,5 @@ scripts/.tmp-*
 # Local browser verification and scratch artifacts
 output/playwright/
 .playwright-cli/
+
+.cache

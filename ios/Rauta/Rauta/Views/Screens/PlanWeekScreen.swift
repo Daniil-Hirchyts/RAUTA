@@ -362,15 +362,13 @@ struct PlanMonthCalendar: View {
 }
 
 struct WorkoutDateCalendarModal: View {
-    @State private var visibleMonth: Date
-    @State private var selectedDates: Set<String>
+    @State private var selectedDate: Date
     let onClose: () -> Void
     let onSelect: (String) -> Void
 
     init(date: String, onClose: @escaping () -> Void, onSelect: @escaping (String) -> Void) {
         let parsed = CalendarDate.parse(date) ?? Date()
-        _visibleMonth = State(initialValue: PlanMonthCalendar.monthStart(parsed))
-        _selectedDates = State(initialValue: [date])
+        _selectedDate = State(initialValue: parsed)
         self.onClose = onClose
         self.onSelect = onSelect
     }
@@ -382,19 +380,26 @@ struct WorkoutDateCalendarModal: View {
             onClose: onClose,
             panelPadding: 6
         ) {
-            PlanMonthCalendar(
-                visibleMonth: $visibleMonth,
-                selectedDates: $selectedDates,
-                singleSelection: true,
-                cellSize: 44,
-                modalStyle: true,
-                selectionHaptic: .success,
-                onSelectionChange: {},
-                onSelectDate: { iso in
-                    onClose()
-                    onSelect(iso)
-                }
+            DatePicker(
+                "Workout date",
+                selection: $selectedDate,
+                displayedComponents: .date
             )
+            .datePickerStyle(.graphical)
+            .labelsHidden()
+            .tint(Theme.primary)
+            .padding(12)
+            .glassSurface(
+                .clear,
+                in: RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous),
+                border: Theme.Glassware.edge,
+                legacyFill: Theme.card.opacity(0.78)
+            )
+            .onChange(of: selectedDate) { _, newValue in
+                Haptics.trigger(.success)
+                onClose()
+                onSelect(CalendarDate.toISO(newValue))
+            }
         }
     }
 }

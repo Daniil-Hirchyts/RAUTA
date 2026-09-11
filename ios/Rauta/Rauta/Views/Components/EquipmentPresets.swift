@@ -84,44 +84,54 @@ private struct PresetChip: View {
     var action: () -> Void
 
     var body: some View {
-        HStack(spacing: 4) {
+        GlassGroup(spacing: 4) {
+            HStack(spacing: 6) {
             Button(action: action) {
                 Text(name)
                     .font(Theme.sans(13, weight: .semibold))
                     .lineLimit(1)
-                    .padding(.leading, 14)
-                    .padding(.trailing, onDelete == nil ? 14 : 4)
-                    .padding(.vertical, 8)
-                    .contentShape(Rectangle())
+                    .padding(.horizontal, 13)
+                    .frame(height: 34)
+                    .foregroundStyle(selected ? Theme.primaryForeground : Theme.secondaryForeground)
+                    .glassSurface(
+                        selected ? .tinted(Theme.primary) : .clear,
+                        in: Capsule(),
+                        interactive: true,
+                        border: selected ? Theme.Glassware.brightEdge : Theme.Glassware.edge,
+                        legacyFill: selected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.72)
+                    )
+                    .overlay {
+                        if selected {
+                            Capsule()
+                                .fill(Theme.primaryGradient)
+                                .opacity(Theme.Glassware.primaryWash)
+                                .allowsHitTesting(false)
+                        }
+                    }
+                    .clipShape(Capsule())
             }
             .buttonStyle(.plain)
+            .accessibilityAddTraits(selected ? [.isSelected] : [])
 
             if let onDelete {
                 Button(action: onDelete) {
                     Image(systemName: "trash")
                         .font(.system(size: 13, weight: .medium))
-                        .frame(width: 28, height: 28)
-                        .contentShape(Circle())
+                        .foregroundStyle(Theme.primary)
+                        .frame(width: 34, height: 34)
+                        .glassSurface(
+                            .clear,
+                            in: Circle(),
+                            interactive: true,
+                            border: Theme.Glassware.edge,
+                            legacyFill: Theme.card.opacity(0.72)
+                        )
                 }
                 .buttonStyle(.plain)
-                .opacity(0.65)
-                .padding(.trailing, 8)
                 .accessibilityLabel("Delete \(name) preset")
             }
         }
-        .foregroundStyle(selected ? Theme.primaryForeground : Theme.secondaryForeground)
-        .background(
-            selected
-                ? AnyShapeStyle(Theme.primaryGradient)
-                : AnyShapeStyle(Theme.card),
-            in: Capsule()
-        )
-        .overlay(
-            Capsule().strokeBorder(
-                selected ? Theme.primary.opacity(0.8) : Theme.border, lineWidth: 1
-            )
-        )
-        .accessibilityAddTraits(selected ? [.isSelected] : [])
+        }
     }
 }
 
@@ -151,9 +161,13 @@ struct EquipmentPresetEditor: View {
                 .submitLabel(.done)
                 .onSubmit(save)
                 .padding(.horizontal, 16)
-                .frame(height: Theme.Metrics.controlsHeight)
-                .background(Theme.card, in: Capsule())
-                .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
+                .frame(height: 42)
+                .glassSurface(
+                    .regular,
+                    in: Capsule(),
+                    border: focused ? Theme.ring : Theme.Glassware.edge,
+                    legacyFill: Theme.card.opacity(0.78)
+                )
                 .shadow(color: .black.opacity(0.18), radius: 12, y: 8)
                 .accessibilityLabel("Preset name")
 
@@ -217,9 +231,13 @@ struct ExerciseSearchField: View {
                     .accessibilityLabel("Clear search")
                 }
             }
-            .frame(height: Theme.Metrics.controlsHeight)
-            .background(Theme.card, in: Capsule())
-            .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
+            .frame(height: 42)
+            .glassSurface(
+                .regular,
+                in: Capsule(),
+                border: focused ? Theme.ring : Theme.Glassware.edge,
+                legacyFill: Theme.card.opacity(0.78)
+            )
             .shadow(color: .black.opacity(0.18), radius: 12, y: 8)
 
             AppControlButton(systemImage: "xmark", label: "Close search", action: onClose)

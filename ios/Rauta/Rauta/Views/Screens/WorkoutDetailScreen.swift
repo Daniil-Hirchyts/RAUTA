@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
 struct WorkoutDetailScreen: View {
@@ -49,22 +50,6 @@ struct WorkoutDetailScreen: View {
                     } : nil,
                     backLabel: "Back to workouts",
                     onBack: store.navigation.pop,
-                    right: {
-                        ShareLink(
-                            item: WorkoutSharing.text(workout),
-                            subject: Text(WorkoutSharing.title(workout))
-                        ) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundStyle(Theme.primary)
-                                .frame(width: 44, height: 44)
-                                .contentShape(Circle())
-                        }
-                        .buttonStyle(.plain)
-                        .simultaneousGesture(TapGesture().onEnded {
-                            Haptics.trigger(.light)
-                        })
-                    },
                     content: { content(workout) },
                     controls: { controls(workout) }
                 )
@@ -215,17 +200,26 @@ struct WorkoutDetailScreen: View {
 
     @ViewBuilder private func controls(_ workout: Workout) -> some View {
         if let session {
-            HStack(spacing: 10) {
-                AppControlButton(systemImage: "xmark", label: "Discard session") {
-                    Haptics.trigger(.warning)
-                    confirmation = .discardSession
-                }
-                AppControlButton(systemImage: "plus", label: "Add exercise") {
-                    beginExerciseFlow(preferredWorkoutId: workout.id)
-                }
-                AppControlButton(systemImage: "flag", label: "Finish workout") {
-                    Haptics.trigger(.medium)
-                    confirmation = finishConfirmation
+            HStack(spacing: 8) {
+                AppMenuButton(label: "Workout actions") {
+                    shareAction(workout)
+                    Button {
+                        beginExerciseFlow(preferredWorkoutId: workout.id)
+                    } label: {
+                        Label("Add exercise", systemImage: "plus")
+                    }
+                    Button {
+                        Haptics.trigger(.medium)
+                        confirmation = finishConfirmation
+                    } label: {
+                        Label("Finish workout", systemImage: "flag")
+                    }
+                    Button(role: .destructive) {
+                        Haptics.trigger(.warning)
+                        confirmation = .discardSession
+                    } label: {
+                        Label("Discard session", systemImage: "xmark")
+                    }
                 }
                 if session.currentExerciseId != nil {
                     AppButton("Mark done", size: .cta, expands: true) {
@@ -240,22 +234,40 @@ struct WorkoutDetailScreen: View {
                 }
             }
         } else if isPast {
-            HStack(spacing: 10) {
-                AppControlButton(systemImage: "trash", label: "Delete workout", variant: .destructive) {
-                    Haptics.trigger(.warning)
-                    confirmation = .deleteWorkout
+            HStack(spacing: 8) {
+                AppMenuButton(label: "Workout actions") {
+                    shareAction(workout)
+                    Button(action: duplicate) {
+                        Label("Copy to today", systemImage: "doc.on.doc")
+                    }
+                    Button(role: .destructive) {
+                        Haptics.trigger(.warning)
+                        confirmation = .deleteWorkout
+                    } label: {
+                        Label("Delete workout", systemImage: "trash")
+                    }
                 }
-                AppButton("Copy to today", size: .cta, expands: true, action: duplicate)
+                Spacer(minLength: 0)
             }
         } else {
-            HStack(spacing: 10) {
-                AppControlButton(systemImage: "trash", label: "Delete workout", variant: .destructive) {
-                    Haptics.trigger(.warning)
-                    confirmation = .deleteWorkout
-                }
-                if !workout.exerciseIds.isEmpty {
-                    AppControlButton(systemImage: "plus", label: "Add exercise") {
-                        beginExerciseFlow(preferredWorkoutId: workout.id)
+            HStack(spacing: 8) {
+                AppMenuButton(label: "Workout actions") {
+                    shareAction(workout)
+                    Button(action: duplicate) {
+                        Label("Copy to today", systemImage: "doc.on.doc")
+                    }
+                    if !workout.exerciseIds.isEmpty {
+                        Button {
+                            beginExerciseFlow(preferredWorkoutId: workout.id)
+                        } label: {
+                            Label("Add exercise", systemImage: "plus")
+                        }
+                    }
+                    Button(role: .destructive) {
+                        Haptics.trigger(.warning)
+                        confirmation = .deleteWorkout
+                    } label: {
+                        Label("Delete workout", systemImage: "trash")
                     }
                 }
                 AppButton(
@@ -274,6 +286,15 @@ struct WorkoutDetailScreen: View {
                     }
                 }
             }
+        }
+    }
+
+    private func shareAction(_ workout: Workout) -> some View {
+        ShareLink(
+            item: WorkoutSharing.text(workout),
+            subject: Text(WorkoutSharing.title(workout))
+        ) {
+            Label("Share workout", systemImage: "square.and.arrow.up")
         }
     }
 
@@ -649,23 +670,24 @@ private struct WorkoutExerciseRow: View {
     let onRemove: () -> Void
 
     @State private var isOpen = false
+    @State private var swipeDrag: CGFloat?
+
+    private var revealWidth: CGFloat { canFindAlternative && canRemove ? 148 : 92 }
+    private var settledX: CGFloat { isOpen ? -revealWidth : 0 }
+    private var swipeOffset: CGFloat { swipeDrag ?? settledX }
 
     var body: some View {
-        Group {
+        ZStack(alignment: .trailing) {
             if canFindAlternative || canRemove {
-                SwipeableRow(
-                    isOpen: $isOpen,
-                    actionInset: Theme.Metrics.contentInset,
-                    revealWidth: canFindAlternative && canRemove ? 148 : 92,
-                    action: { swipeActions },
-                    content: { card }
-                )
-            } else {
-                card
+                swipeActions
+                    .frame(width: revealWidth + Theme.Metrics.contentInset)
+                    .opacity(swipeOffset < -8 ? 1 : 0)
             }
+
+            card
+                .offset(x: canFindAlternative || canRemove ? swipeOffset : 0)
         }
         .modifier(CardReorderPlacement(reorder: reorder, id: exercise.id, spacing: 20))
-
     }
 
     private var card: some View {
@@ -723,8 +745,14 @@ private struct WorkoutExerciseRow: View {
                 .onTapGesture(perform: onOpen)
 
                 if canReorder {
-                    CardReorderHandle(reorder: reorder, id: exercise.id,
-                        order: exerciseIds, name: exercise.name, height: 144, commit: onReorder)
+                    CardReorderHandle(
+                        reorder: reorder,
+                        id: exercise.id,
+                        order: exerciseIds,
+                        name: exercise.name,
+                        height: 144,
+                        commit: onReorder
+                    )
                 }
             }
             .frame(height: 144)
@@ -758,8 +786,35 @@ private struct WorkoutExerciseRow: View {
                 AppGrain().clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             }
         }
-    }
+        .overlay {
+            if canFindAlternative || canRemove {
+                WorkoutCardSwipeObserver(
+                    onChanged: { translation in
+                        swipeDrag = Swift.min(
+                            0,
+                            Swift.max(-revealWidth, settledX + translation)
+                        )
+                    },
+                    onEnded: { projectedTranslation in
+                        let projectedX = settledX + projectedTranslation
+                        withAnimation(Theme.Motion.smoothOut(0.24)) {
+                            isOpen = projectedX <= -revealWidth / 2
+                            swipeDrag = nil
+                        }
+                    }
+                )
+                .allowsHitTesting(false)
 
+                if isOpen {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(Theme.Motion.smoothOut(0.22)) { isOpen = false }
+                        }
+                }
+            }
+        }
+    }
 
     private var swipeActions: some View {
         HStack(spacing: 10) {
@@ -776,6 +831,113 @@ private struct WorkoutExerciseRow: View {
                 }
             }
         }
+    }
+}
+
+/// Installs a horizontal-only recognizer on the enclosing `ScrollView`.
+/// Vertical drags fail this recognizer before it begins, leaving the native
+/// scroll pan untouched; horizontal drags update only the card under the touch.
+private struct WorkoutCardSwipeObserver: UIViewRepresentable {
+    let onChanged: (CGFloat) -> Void
+    let onEnded: (CGFloat) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onChanged: onChanged, onEnded: onEnded)
+    }
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: .zero)
+        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = false
+        context.coordinator.hostView = view
+        DispatchQueue.main.async { context.coordinator.installIfNeeded() }
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.hostView = uiView
+        context.coordinator.onChanged = onChanged
+        context.coordinator.onEnded = onEnded
+        DispatchQueue.main.async { context.coordinator.installIfNeeded() }
+    }
+
+    static func dismantleUIView(_ uiView: UIView, coordinator: Coordinator) {
+        coordinator.uninstall()
+    }
+
+    final class Coordinator: NSObject {
+        weak var hostView: UIView?
+        weak var scrollView: UIScrollView?
+        var onChanged: (CGFloat) -> Void
+        var onEnded: (CGFloat) -> Void
+        private var panRecognizer: UIPanGestureRecognizer?
+
+        init(onChanged: @escaping (CGFloat) -> Void, onEnded: @escaping (CGFloat) -> Void) {
+            self.onChanged = onChanged
+            self.onEnded = onEnded
+        }
+
+        func installIfNeeded() {
+            guard let hostView else { return }
+            let enclosingScrollView = sequence(first: hostView.superview, next: { $0?.superview })
+                .compactMap { $0 as? UIScrollView }
+                .first
+            guard enclosingScrollView !== scrollView else { return }
+            uninstall()
+            scrollView = enclosingScrollView
+            guard let enclosingScrollView else { return }
+            let recognizer = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
+            recognizer.delegate = self
+            recognizer.cancelsTouchesInView = false
+            recognizer.delaysTouchesBegan = false
+            recognizer.delaysTouchesEnded = false
+            enclosingScrollView.addGestureRecognizer(recognizer)
+            panRecognizer = recognizer
+        }
+
+        func uninstall() {
+            if let panRecognizer {
+                scrollView?.removeGestureRecognizer(panRecognizer)
+            }
+            panRecognizer = nil
+            scrollView = nil
+        }
+
+        @objc private func handlePan(_ recognizer: UIPanGestureRecognizer) {
+            guard let scrollView else { return }
+
+            switch recognizer.state {
+            case .began, .changed:
+                onChanged(recognizer.translation(in: scrollView).x)
+            case .ended:
+                let translation = recognizer.translation(in: scrollView).x
+                let velocity = recognizer.velocity(in: scrollView).x
+                onEnded(translation + velocity * 0.16)
+            case .cancelled, .failed:
+                onEnded(0)
+            default:
+                break
+            }
+        }
+    }
+}
+
+extension WorkoutCardSwipeObserver.Coordinator: UIGestureRecognizerDelegate {
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard let pan = gestureRecognizer as? UIPanGestureRecognizer,
+              let hostView,
+              let scrollView else { return false }
+        let velocity = pan.velocity(in: scrollView)
+        let rowFrame = hostView.convert(hostView.bounds, to: scrollView)
+        let touch = pan.location(in: scrollView)
+        return rowFrame.contains(touch) && abs(velocity.x) > abs(velocity.y) * 1.08
+    }
+
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool {
+        true
     }
 }
 
@@ -889,34 +1051,42 @@ private struct WorkoutSessionDock: View {
                 }
                 .frame(maxWidth: .infinity)
 
-                Button {
-                    Haptics.trigger(.medium)
-                    session.runningSince == nil ? onResume() : onPause()
-                } label: {
-                    Image(systemName: session.runningSince == nil ? "play.fill" : "pause.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(Theme.foreground)
-                        .frame(width: 42, height: 42)
-                        .background(Theme.card, in: Circle())
-                        .overlay(Circle().strokeBorder(Theme.border, lineWidth: 1))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(session.runningSince == nil ? "Resume workout" : "Pause workout")
+                GlassGroup(spacing: 10) {
+                    HStack(spacing: 8) {
+                        Button {
+                            Haptics.trigger(.medium)
+                            session.runningSince == nil ? onResume() : onPause()
+                        } label: {
+                            Image(systemName: session.runningSince == nil ? "play.fill" : "pause.fill")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(Theme.foreground)
+                                .frame(width: 42, height: 42)
+                                .glassSurface(.clear, in: Circle(), interactive: true, border: Theme.Glassware.edge, legacyFill: Theme.card)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(session.runningSince == nil ? "Resume workout" : "Pause workout")
 
-                Button {
-                    Haptics.trigger(.light)
-                    onNext?()
-                } label: {
-                    Image(systemName: "forward.end.fill")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(onNext == nil ? Theme.mutedForeground : Theme.foreground)
-                        .frame(width: 42, height: 42)
-                        .background(Theme.card, in: Circle())
-                        .overlay(Circle().strokeBorder(Theme.border, lineWidth: 1))
+                        Button {
+                            Haptics.trigger(.light)
+                            onNext?()
+                        } label: {
+                            Image(systemName: "forward.end.fill")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(onNext == nil ? Theme.mutedForeground : Theme.foreground)
+                                .frame(width: 42, height: 42)
+                                .glassSurface(
+                                    onNext == nil ? .inert : .clear,
+                                    in: Circle(),
+                                    interactive: onNext != nil,
+                                    border: Theme.Glassware.edge,
+                                    legacyFill: Theme.card
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(onNext == nil)
+                        .accessibilityLabel(exercise.map { "Skip \($0.name)" } ?? "Next exercise")
+                    }
                 }
-                .buttonStyle(.plain)
-                .disabled(onNext == nil)
-                .accessibilityLabel(exercise.map { "Skip \($0.name)" } ?? "Next exercise")
             }
         }
         .padding(.horizontal, 12)

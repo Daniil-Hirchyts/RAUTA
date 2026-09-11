@@ -8,7 +8,7 @@ struct RootView: View {
         ZStack {
             page(for: store.navigation.activePage)
                 .id(store.navigation.activeEntry?.id)
-                .transition(pageTransition)
+                .transition(.page(store.navigation.direction))
         }
         .environment(\.appStore, store)
         .animation(Theme.Motion.pageEnter, value: store.navigation.activeEntry?.id)
@@ -61,21 +61,6 @@ struct RootView: View {
             EquipmentPresetScreen()
         case .exerciseAlternatives(let exerciseId, let workoutId):
             ExerciseAlternativesScreen(exerciseId: exerciseId, workoutId: workoutId)
-        }
-    }
-
-    private var pageTransition: AnyTransition {
-        switch store.navigation.direction {
-        case .forward:
-            return .asymmetric(
-                insertion: .opacity.combined(with: .move(edge: .trailing)),
-                removal: .opacity
-            )
-        case .back:
-            return .asymmetric(
-                insertion: .opacity,
-                removal: .opacity.combined(with: .move(edge: .trailing))
-            )
         }
     }
 

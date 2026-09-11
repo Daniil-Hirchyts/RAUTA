@@ -3,8 +3,6 @@ import SwiftUI
 struct WorkoutsScreen: View {
     @ObservedObject private var store = AppStore.shared
     @State private var tab = 0
-    @State private var openRowId: String?
-    @State private var pendingDelete: Workout?
     @State private var issue: String?
     @State private var upcomingLimit = 6
     @State private var pastLimit = 6
@@ -27,61 +25,73 @@ struct WorkoutsScreen: View {
     }
 
     var body: some View {
-        ZStack {
-            RautaScreen(title: "My workouts", right: {
-                AppHeaderButton(systemImage: "gearshape", label: "Settings") { store.navigation.push(.settings) }
-            }, content: {
-                ZStack(alignment: .bottom) {
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            StreakStrip(workouts: past.filter { $0.completion != nil })
-                            SlidingTabs(tabs: [
-                                TabDefinition(label: "Next", count: upcoming.count),
-                                TabDefinition(label: "Past", count: past.count)
-                            ], activeIndex: $tab).padding(.top, 20).padding(.bottom, 16)
-                            let items = tab == 0 ? upcoming : past
-                            let itemLimit = tab == 0 ? upcomingLimit : pastLimit
-                            let remaining = Swift.max(0, items.count - itemLimit)
-                            let showLess = itemLimit > 6
-                            if items.isEmpty {
-                                Text(tab == 0 ? "No upcoming workouts" : "No past workouts yet")
-                                    .font(Theme.sans(13)).foregroundStyle(Theme.mutedForeground)
-                            }
-                            LazyVStack(spacing: 10) {
-                                ForEach(items.prefix(itemLimit)) { workout in
-                                    WorkoutRow(workout: workout, isPast: tab == 1,
-                                               isRunning: store.activeWorkout.session?.workoutId == workout.id,
-                                               isOpen: Binding(get: { openRowId == workout.id }, set: { openRowId = $0 ? workout.id : nil }),
-                                               onOpen: { open(workout) }, onCopy: { copy(workout) },
-                                               onDelete: { pendingDelete = workout })
-                                }
-                                sectionFooter(
-                                    remaining: remaining,
-                                    showLess: showLess,
-                                    onMore: {
-                                        if tab == 0 { upcomingLimit += 6 }
-                                        else { pastLimit += 6 }
-                                    },
-                                    onLess: {
-                                        if tab == 0 { upcomingLimit = 6 }
-                                        else { pastLimit = 6 }
-                                    }
+        RautaScreen(title: "My workouts", right: {
+            AppHeaderButton(systemImage: "gearshape", label: "Settings") {
+                store.navigation.push(.settings)
+            }
+        }, content: {
+            ZStack(alignment: .bottom) {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        StreakStrip(workouts: past.filter { $0.completion != nil })
+
+                        WorkoutsModeSwitcher(selection: $tab)
+                            .padding(.top, 10)
+                            .padding(.bottom, 10)
+
+                        let items = tab == 0 ? upcoming : past
+                        let itemLimit = tab == 0 ? upcomingLimit : pastLimit
+                        let remaining = Swift.max(0, items.count - itemLimit)
+                        let showLess = itemLimit > 6
+
+                        if items.isEmpty {
+                            Text(tab == 0 ? "No upcoming workouts" : "No past workouts yet")
+                                .font(Theme.sans(13))
+                                .foregroundStyle(Theme.mutedForeground)
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, 24)
+                        }
+
+                        LazyVStack(spacing: 14) {
+                            ForEach(items.prefix(itemLimit)) { workout in
+                                WorkoutRow(
+                                    workout: workout,
+                                    isPast: tab == 1,
+                                    isRunning: store.activeWorkout.session?.workoutId == workout.id,
+                                    onOpen: { open(workout) }
                                 )
                             }
-                        }.padding(.horizontal, 12).padding(.top, 20).padding(.bottom, 144)
+
+                            sectionFooter(
+                                remaining: remaining,
+                                showLess: showLess,
+                                onMore: {
+                                    if tab == 0 { upcomingLimit += 6 }
+                                    else { pastLimit += 6 }
+                                },
+                                onLess: {
+                                    if tab == 0 { upcomingLimit = 6 }
+                                    else { pastLimit = 6 }
+                                }
+                            )
+                        }
+                        .id(tab)
                     }
-                    RautaBottomDock(speech: companionLine, meta: "\(ProfileVocabulary.goalLabel(store.trainingProfile.profile.goal)) · \(Int(store.trainingProfile.profile.preferredSessionDurationMinutes)) min",
-                                    mood: store.activeWorkout.session == nil ? .calm : .focused, actions: companionActions)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 20)
+                    .padding(.bottom, 144)
                 }
-            }, controls: {
-                AppButton(store.activeWorkout.session == nil ? "New workout" : "Resume workout", size: .cta, expands: true) {
-                    if let session = store.activeWorkout.session { store.navigation.push(.workoutDetail(workoutId: session.workoutId)) }
-                    else { startExerciseFlow() }
-                }
-            })
-            ConfirmModal(kind: pendingDelete == nil ? nil : .deleteWorkout, error: issue,
-                         onCancel: { pendingDelete = nil; issue = nil }, onConfirm: deleteWorkout)
-        }
+
+                RautaBottomDock(
+                    speech: companionLine,
+                    meta: "\(ProfileVocabulary.goalLabel(store.trainingProfile.profile.goal)) · \(Int(store.trainingProfile.profile.preferredSessionDurationMinutes)) min",
+                    mood: store.activeWorkout.session == nil ? .calm : .focused,
+                    actions: companionActions,
+                    floating: true,
+                    showsText: false
+                )
+            }
+        })
         .task {
             // Restore any missing lightweight projection from its authoritative plan.
             for view in TrainingPlan.activePlannedSessions() where !TrainingPlan.isPlannedSessionRecorded(view.sessionId) {
@@ -174,22 +184,56 @@ struct WorkoutsScreen: View {
         store.navigation.push(.muscles(preferredWorkoutId: nil))
     }
     private func open(_ workout: Workout) {
-        if openRowId == workout.id { openRowId = nil; return }
         _ = EngineWorkout.ensureEngineWorkout(workout.id)
         store.navigation.push(.workoutDetail(workoutId: workout.id))
     }
-    private func copy(_ workout: Workout) {
-        do {
-            _ = try EngineWorkout.duplicateWithEngine(workout.id, date: CalendarDate.today)
-            openRowId = nil; Haptics.trigger(.success)
-        } catch { issue = error.localizedDescription }
+}
+
+private struct WorkoutsModeSwitcher: View {
+    @Binding var selection: Int
+    @Namespace private var indicator
+
+    var body: some View {
+        HStack(spacing: 0) {
+            option(title: "Next", index: 0)
+            option(title: "Past", index: 1)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 44)
     }
-    private func deleteWorkout() {
-        guard let workout = pendingDelete else { return }
-        do {
-            try TrainingEdits.deleteScheduledWorkout(workout.id)
-            pendingDelete = nil; issue = nil; openRowId = nil
-        } catch { issue = error.localizedDescription }
+
+    private func option(title: String, index: Int) -> some View {
+        let selected = selection == index
+
+        return VStack(spacing: 5) {
+            Text(title)
+                .font(Theme.sans(13, weight: selected ? .bold : .semibold))
+                .foregroundStyle(selected ? Theme.foreground : Theme.mutedForeground)
+
+            ZStack {
+                Capsule()
+                    .fill(.clear)
+                    .frame(width: 34, height: 2)
+
+                if selected {
+                    Capsule()
+                        .fill(Theme.primaryGradient)
+                        .frame(width: 34, height: 2)
+                        .matchedGeometryEffect(id: "workout-mode", in: indicator)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard selection != index else { return }
+            Haptics.trigger(.selection)
+            withAnimation(Theme.Motion.spring) { selection = index }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 
@@ -197,17 +241,17 @@ private struct StreakStrip: View {
     let workouts: [Workout]
     private var streak: Streak { StreakBuilder.build(workouts) }
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("\(streak.currentStreak)").font(Theme.readout(32)).foregroundStyle(Theme.foreground)
+                Text("\(streak.currentStreak)").font(Theme.readout(28)).foregroundStyle(Theme.foreground)
                 Text("day streak").font(Theme.sans(14, weight: .semibold)).foregroundStyle(Theme.mutedForeground)
             }
             HStack(spacing: 4) {
                 ForEach(streak.week) { day in
                     VStack(spacing: 6) {
                         Flame(lit: day.workouts > 0)
-                            .frame(width: day.isToday ? 44.8 : 35.2, height: day.isToday ? 56 : 44)
-                            .frame(height: 56, alignment: .bottom).opacity(day.isFuture ? 0.6 : 1)
+                            .frame(width: day.isToday ? 38.4 : 30.4, height: day.isToday ? 48 : 38)
+                            .frame(height: 48, alignment: .bottom).opacity(day.isFuture ? 0.6 : 1)
                         Text(CalendarDate.weekdayShort(day.date)).font(Theme.sans(10, weight: .semibold))
                             .foregroundStyle(day.isToday ? Theme.primaryForeground : Theme.mutedForeground)
                             .padding(.horizontal, 6).padding(.vertical, 2)
@@ -215,7 +259,7 @@ private struct StreakStrip: View {
                     }.frame(maxWidth: .infinity)
                 }
             }
-        }.padding(16).frame(maxWidth: .infinity)
+        }.padding(14).frame(maxWidth: .infinity)
             .background(Theme.card.opacity(0.6), in: RoundedRectangle(cornerRadius: 36, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 36, style: .continuous).strokeBorder(Theme.border))
     }
@@ -238,23 +282,14 @@ private struct WorkoutRow: View {
     let workout: Workout
     let isPast: Bool
     let isRunning: Bool
-    @Binding var isOpen: Bool
     let onOpen: () -> Void
-    let onCopy: () -> Void
-    let onDelete: () -> Void
     @State private var runningPulse = false
     private var muscles: [MuscleId] { ExerciseCatalogue.musclesForExerciseIds(workout.exerciseIds) }
     var body: some View {
-        SwipeableRow(isOpen: $isOpen, actionInset: 20, revealWidth: 148, action: {
-            HStack(spacing: 8) {
-                action("doc.on.doc", label: "Copy workout to today", onCopy)
-                action("trash", label: "Delete workout", onDelete)
-            }
-        }, content: {
-            Button(action: onOpen) {
-                HStack(spacing: 12) {
-                    dateStamp
-                    VStack(alignment: .leading, spacing: 4) {
+        Button(action: onOpen) {
+            HStack(spacing: 12) {
+                dateStamp
+                VStack(alignment: .leading, spacing: 4) {
                         if isRunning, let session = ActiveWorkoutStore.shared.session {
                             TimelineView(.periodic(from: .now, by: 1)) { _ in
                                 HStack(spacing: 6) {
@@ -275,12 +310,25 @@ private struct WorkoutRow: View {
                             }
                             progress(session.completedIds.count).padding(.top, 6)
                         } else if let completion = workout.completion {
-                            HStack(spacing: 8) {
-                                stat(ActiveWorkout.formatDuration(completion.durationMs), "Duration", Theme.foreground)
-                                stat("\(Int(completion.activeCalories)) kcal", "Energy", Theme.gold)
-                                stat("\(completion.completedExerciseIds.count)/\(workout.exerciseIds.count)", "Completed", Theme.success)
+                            HStack(spacing: 6) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(Theme.success)
+                                Text(ActiveWorkout.formatDuration(completion.durationMs))
+                                Text("·")
+                                    .foregroundStyle(Theme.mutedForeground)
+                                Text("\(completion.completedExerciseIds.count)/\(workout.exerciseIds.count) exercises")
                             }
-                            progress(completion.completedExerciseIds.count).padding(.top, 6)
+                            .font(Theme.sans(13, weight: .semibold))
+                            .foregroundStyle(Theme.foreground)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
+
+                            if completion.activeCalories > 0 {
+                                Text("\(Int(completion.activeCalories)) kcal")
+                                    .font(Theme.sans(11, weight: .medium))
+                                    .foregroundStyle(Theme.gold)
+                            }
                         } else if isPast {
                             Text("Not completed · \(Wording.countLabel(workout.exerciseIds.count, "exercise"))")
                                 .font(Theme.sans(13, weight: .semibold))
@@ -291,15 +339,32 @@ private struct WorkoutRow: View {
                             Text(muscles.prefix(3).map(\.label).joined(separator: " · ") + (muscles.count > 3 ? " +\(muscles.count - 3)" : ""))
                                 .font(Theme.sans(11, weight: .medium)).foregroundStyle(Theme.mutedForeground).lineLimit(1)
                         }
-                    }.frame(maxWidth: .infinity, alignment: .leading)
-                    BodyPreview(selectedMuscles: muscles, width: 80, height: 56)
-                        .opacity(isPast ? 0.9 : 1)
-                }.padding(12)
-                    .background(LinearGradient(colors: [Theme.mix(Theme.card, Theme.foreground, 0.05), Theme.card, Theme.mix(Theme.card, .black, 0.14)], startPoint: .top, endPoint: .bottom),
-                                in: RoundedRectangle(cornerRadius: 36, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 36, style: .continuous).strokeBorder(isRunning ? Theme.primary.opacity(0.6) : Theme.border))
-            }.buttonStyle(.plain)
-        })
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                BodyPreview(selectedMuscles: muscles, width: 88, height: 64)
+                    .opacity(isPast ? 0.9 : 1)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 16)
+            .frame(minHeight: 104)
+            .background(
+                LinearGradient(
+                    colors: [
+                        Theme.mix(Theme.card, Theme.foreground, 0.05),
+                        Theme.card,
+                        Theme.mix(Theme.card, .black, 0.14)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                ),
+                in: RoundedRectangle(cornerRadius: 36, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 36, style: .continuous)
+                    .strokeBorder(isRunning ? Theme.primary.opacity(0.6) : Theme.border)
+            )
+        }
+        .buttonStyle(.plain)
     }
     private var dateStamp: some View {
         VStack(spacing: 2) {
@@ -307,37 +372,18 @@ private struct WorkoutRow: View {
             Text(CalendarDate.dayOfMonth(workout.date)).font(Theme.readout(21))
             if isPast { Text(CalendarDate.monthShort(workout.date).uppercased()).font(Theme.sans(9, weight: .bold)).opacity(0.6) }
         }.foregroundStyle(isRunning ? Theme.primaryForeground : isPast ? Theme.mutedForeground : Theme.foreground)
-            .padding(.vertical, 8).frame(width: 52)
+            .padding(.vertical, 10).frame(width: 58)
             .background(
                 isRunning
                     ? AnyShapeStyle(Theme.primaryGradient)
                     : AnyShapeStyle(Theme.muted.opacity(isPast ? 0.35 : 0.45)),
                 in: RoundedRectangle(cornerRadius: 16)
             )
-            .overlay {
-                if !isPast {
-                    RoundedRectangle(cornerRadius: 16)
-                        .strokeBorder(isRunning ? Theme.primary.opacity(0.7) : Theme.border)
-                }
-            }
-    }
-    private func stat(_ value: String, _ caption: String, _ color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(value).font(Theme.readout(15)).foregroundStyle(color).lineLimit(1).minimumScaleFactor(0.7)
-            Text(caption.uppercased()).font(Theme.sans(9, weight: .bold)).tracking(0.9).foregroundStyle(Theme.mutedForeground)
-        }.frame(maxWidth: .infinity, alignment: .leading)
     }
     private func progress(_ done: Int) -> some View {
         GeometryReader { p in
             Capsule().fill(Theme.muted)
             Capsule().fill(Theme.primaryGradient).frame(width: p.size.width * min(1, Double(done) / Double(max(1, workout.exerciseIds.count))))
         }.frame(height: 4)
-    }
-    private func action(_ icon: String, label: String, _ handler: @escaping () -> Void) -> some View {
-        Button(action: handler) {
-            Image(systemName: icon).font(.system(size: 20)).foregroundStyle(Theme.primary)
-                .frame(width: 56, height: 56).background(Theme.card, in: Circle())
-                .overlay(Circle().strokeBorder(icon == "trash" ? Theme.primary : Theme.border))
-        }.buttonStyle(.plain).accessibilityLabel(label)
     }
 }

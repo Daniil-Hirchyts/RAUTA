@@ -11,6 +11,7 @@ struct SwipeableRow<Content: View, Action: View>: View {
     /// The card's right-side margin, included in the exposed action area.
     var actionInset: CGFloat = 0
     var revealWidth: CGFloat = swipeRevealWidth
+    var rasterizeContent: Bool = false
     @ViewBuilder var action: () -> Action
     @ViewBuilder var content: () -> Content
 
@@ -24,20 +25,15 @@ struct SwipeableRow<Content: View, Action: View>: View {
         ZStack(alignment: .trailing) {
             action()
                 .frame(width: revealWidth + actionInset)
-                .opacity(offset < -1 ? 1 : 0)
-                .animation(.easeOut(duration: 0.15), value: offset < -1)
+                .opacity(offset < -8 ? 1 : 0)
 
-            content()
+            rowContent
                 .offset(x: offset)
-                .animation(drag == nil ? Theme.Motion.smoothOut(0.28) : nil, value: offset)
-                .gesture(
+                .simultaneousGesture(
                     DragGesture(minimumDistance: dragLockDistance)
                         .onChanged { value in
                             if !locked {
-                                // Vertical intent — let the list scroll instead.
-                                guard abs(value.translation.width)
-                                    >= abs(value.translation.height)
-                                else { return }
+                                guard abs(value.translation.width) >= abs(value.translation.height) else { return }
                                 locked = true
                             }
                             drag = Swift.min(
@@ -51,11 +47,22 @@ struct SwipeableRow<Content: View, Action: View>: View {
                                 return
                             }
                             let finalX = drag ?? settledX
-                            isOpen = finalX <= -revealWidth / 2
-                            drag = nil
+                            withAnimation(Theme.Motion.smoothOut(0.24)) {
+                                isOpen = finalX <= -revealWidth / 2
+                                drag = nil
+                            }
                             locked = false
                         }
                 )
+        }
+    }
+
+    @ViewBuilder
+    private var rowContent: some View {
+        if rasterizeContent {
+            content().drawingGroup(opaque: false)
+        } else {
+            content()
         }
     }
 }
@@ -72,9 +79,15 @@ struct SwipeDeleteAction: View {
         } label: {
             Image(systemName: "trash")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(Theme.primaryForeground)
-                .frame(width: 52, height: 52)
-                .background(Theme.primaryGradient, in: Circle())
+                .foregroundStyle(Theme.primary)
+                .frame(width: 42, height: 42)
+                .glassSurface(
+                    .tinted(Theme.primary.opacity(0.36)),
+                    in: Circle(),
+                    interactive: true,
+                    border: Theme.Glassware.brightEdge,
+                    legacyFill: Theme.card.opacity(0.78)
+                )
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)

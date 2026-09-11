@@ -89,7 +89,7 @@ struct ExercisePickerScreen: View {
                 )
             }
             .padding(.horizontal, 16)
-            .padding(.top, 8)
+            .padding(.top, Theme.Metrics.headerHeight + DeviceScreen.safeAreaInsets.top)
             .padding(.bottom, 12)
 
         case .equipment:
@@ -198,11 +198,12 @@ struct ExercisePickerScreen: View {
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundStyle(Theme.primary)
                                 .frame(width: 48, height: 48)
-                                .background(.ultraThinMaterial, in: Circle())
-                                .background(Theme.card.opacity(0.78), in: Circle())
-                                .overlay(
-                                    Circle()
-                                        .strokeBorder(Theme.mix(Theme.border, Theme.primary, 0.55), lineWidth: 1)
+                                .glassSurface(
+                                    .regular,
+                                    in: Circle(),
+                                    interactive: true,
+                                    border: Theme.mix(Theme.border, Theme.primary, 0.55),
+                                    legacyFill: Theme.card.opacity(0.78)
                                 )
                                 .shadow(color: .black.opacity(0.4), radius: 14, y: 12)
                         }
@@ -242,10 +243,6 @@ struct ExercisePickerScreen: View {
         )
     }
 
-    private var isPresetsHidden: Bool {
-        presetEditorOpen
-    }
-
     private var equipmentPresetsDock: some View {
         VStack(spacing: 0) {
             EquipmentPresets(value: nil, onChange: nil)
@@ -266,10 +263,6 @@ struct ExercisePickerScreen: View {
             )
             .allowsHitTesting(false)
         )
-        .offset(y: isPresetsHidden ? 90 : 0)
-        .opacity(isPresetsHidden ? 0 : 1)
-        .animation(Theme.Motion.smoothOut(0.42), value: isPresetsHidden)
-        .allowsHitTesting(!isPresetsHidden)
     }
 
     private var emptyExercisesMessage: String {
@@ -286,22 +279,25 @@ struct ExercisePickerScreen: View {
     @ViewBuilder private var controls: some View {
         switch stage {
         case .muscles:
-            HStack(spacing: 0) {
-                AppControlButton(
-                    systemImage: "arrow.left.arrow.right",
-                    label: "Show \(side == .front ? "back" : "front")"
-                ) {
-                    Haptics.trigger(.selection)
-                    side = side == .front ? .back : .front
-                }
-                .padding(.trailing, 10)
+            HStack(spacing: 8) {
+                AppMenuButton(label: "Muscle actions") {
+                    Button {
+                        Haptics.trigger(.selection)
+                        side = side == .front ? .back : .front
+                    } label: {
+                        Label(
+                            "Show \(side == .front ? "back" : "front")",
+                            systemImage: "arrow.left.arrow.right"
+                        )
+                    }
 
-                MorphingActionSlot(visible: !selectedMuscles.isEmpty) {
-                    AppControlButton(
-                        systemImage: "xmark",
-                        label: "Clear muscle selection"
-                    ) {
-                        store.filters.setMuscles([])
+                    if !selectedMuscles.isEmpty {
+                        Button {
+                            Haptics.trigger(.selection)
+                            store.filters.setMuscles([])
+                        } label: {
+                            Label("Clear muscle selection", systemImage: "xmark")
+                        }
                     }
                 }
 
@@ -324,24 +320,24 @@ struct ExercisePickerScreen: View {
                     }
                 }
             } else {
-                HStack(spacing: 0) {
-                    MorphingActionSlot(visible: !selectedEquipment.isEmpty) {
-                        AppControlButton(
-                            systemImage: "xmark",
-                            label: "Clear equipment selection"
-                        ) {
-                            store.filters.setEquipment([])
+                HStack(spacing: 8) {
+                    AppMenuButton(label: "Equipment actions") {
+                        if !selectedEquipment.isEmpty {
+                            Button {
+                                Haptics.trigger(.selection)
+                                store.filters.setEquipment([])
+                            } label: {
+                                Label("Clear equipment selection", systemImage: "xmark")
+                            }
                         }
-                    }
 
-                    AppControlButton(
-                        systemImage: "plus",
-                        label: "Save equipment preset",
-                        isDisabled: selectedEquipment.isEmpty
-                    ) {
-                        presetEditorOpen = true
+                        Button {
+                            presetEditorOpen = true
+                        } label: {
+                            Label("Save equipment preset", systemImage: "plus")
+                        }
+                        .disabled(selectedEquipment.isEmpty)
                     }
-                    .padding(.trailing, 10)
 
                     AppButton(
                         "Show exercises",
@@ -364,43 +360,39 @@ struct ExercisePickerScreen: View {
                     searchOpen = false
                 }
             } else {
-                HStack(spacing: 0) {
-                    MorphingActionSlot(visible: store.navigation.selectMode) {
-                        AppControlButton(
-                            systemImage: "xmark",
-                            label: "Cancel selection"
-                        ) {
-                            cancelSelectMode()
+                HStack(spacing: 8) {
+                    AppMenuButton(label: "Exercise actions") {
+                        if store.navigation.selectMode {
+                            Button {
+                                cancelSelectMode()
+                            } label: {
+                                Label("Cancel selection", systemImage: "xmark")
+                            }
+                        } else if preferredWorkoutId == nil {
+                            Button {
+                                buildWorkoutWithRauta()
+                            } label: {
+                                Label("Build workout with RAUTA", systemImage: "sparkles")
+                            }
+                        }
+
+                        Button {
+                            Haptics.trigger(.medium)
+                            searchOpen = true
+                        } label: {
+                            Label("Search exercises", systemImage: "magnifyingglass")
+                        }
+
+                        Button {
+                            Haptics.trigger(.selection)
+                            favoritesOnly.toggle()
+                        } label: {
+                            Label(
+                                favoritesOnly ? "Show all exercises" : "Show favorites only",
+                                systemImage: favoritesOnly ? "heart.slash" : "heart"
+                            )
                         }
                     }
-
-                    MorphingActionSlot(
-                        visible: !store.navigation.selectMode && preferredWorkoutId == nil
-                    ) {
-                        AppControlButton(
-                            systemImage: "sparkles",
-                            label: "Build workout with RAUTA"
-                        ) {
-                            buildWorkoutWithRauta()
-                        }
-                    }
-
-                    AppControlButton(
-                        systemImage: "magnifyingglass",
-                        label: "Search exercises"
-                    ) {
-                        Haptics.trigger(.medium)
-                        searchOpen = true
-                    }
-                    .padding(.trailing, 10)
-
-                    AppControlButton(
-                        systemImage: favoritesOnly ? "heart.fill" : "heart",
-                        label: favoritesOnly ? "Show all exercises" : "Show favorites only"
-                    ) {
-                        favoritesOnly.toggle()
-                    }
-                    .padding(.trailing, 10)
 
                     AppButton(
                         store.navigation.selectMode ? "Add to workout" : "Select",

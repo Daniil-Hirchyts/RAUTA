@@ -128,7 +128,7 @@ extension Theme {
         static let controlsHeight: CGFloat = 52
         static var controlsInset: CGFloat { max(0, deviceRadius - controlsHeight / 2) }
         /// The header block reserves this much above scrolling content.
-        static let headerHeight: CGFloat = 68
+        static let headerHeight: CGFloat = 76
         static let headerContentTop: CGFloat = 12
     }
 

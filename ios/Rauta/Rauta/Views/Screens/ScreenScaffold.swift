@@ -25,7 +25,7 @@ struct RautaScreen<Content: View, Controls: View, Right: View>: View {
                     // the fixed translucent title treatment.
                     .contentMargins(
                         .top,
-                        68 + DeviceScreen.safeAreaInsets.top,
+                        Theme.Metrics.headerHeight + DeviceScreen.safeAreaInsets.top,
                         for: .scrollContent
                     )
 
@@ -228,12 +228,23 @@ struct SelectionChip: View {
                 .font(Theme.sans(13, weight: .semibold))
                 .foregroundStyle(selected ? Theme.primaryForeground : Theme.secondaryForeground)
                 .padding(.horizontal, 13)
-                .padding(.vertical, 9)
-                .background(
-                    selected ? AnyShapeStyle(Theme.primaryGradient) : AnyShapeStyle(Theme.card),
-                    in: Capsule()
+                .frame(height: 34)
+                .glassSurface(
+                    selected ? .tinted(Theme.primary) : .clear,
+                    in: Capsule(),
+                    interactive: true,
+                    border: selected ? Theme.Glassware.brightEdge : Theme.Glassware.edge,
+                    legacyFill: selected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.72)
                 )
-                .overlay(Capsule().strokeBorder(selected ? Theme.primary : Theme.border))
+                .overlay {
+                    if selected {
+                        Capsule()
+                            .fill(Theme.primaryGradient)
+                            .opacity(Theme.Glassware.primaryWash)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .clipShape(Capsule())
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])

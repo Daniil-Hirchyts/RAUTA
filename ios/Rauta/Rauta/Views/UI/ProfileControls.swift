@@ -20,8 +20,8 @@ struct ProfileNameControl: View {
                 if !draft.isEmpty {
                     Button { draft = "" } label: {
                         Image(systemName: "xmark").font(.system(size: 14)).foregroundStyle(Theme.mutedForeground)
-                            .frame(width: 32, height: 32).background(Theme.card, in: Circle())
-                            .overlay(Circle().stroke(Theme.border))
+                            .frame(width: 32, height: 32)
+                            .glassSurface(.clear, in: Circle(), interactive: true, border: Theme.Glassware.edge, legacyFill: Theme.card)
                     }.accessibilityLabel("Clear name").padding(.bottom, 12)
                 }
             }
@@ -56,8 +56,14 @@ struct ProfileExperienceControl: View {
                             }.frame(maxWidth: .infinity, alignment: .leading)
                             ProfileCheck(checked: selected)
                         }.padding(16)
-                            .background(selected ? Theme.primary.opacity(0.1) : Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.xl3, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.xl3, style: .continuous).strokeBorder(selected ? Theme.primary.opacity(0.6) : Theme.border))
+                            .background(
+                                selected ? Theme.primary.opacity(0.1) : Theme.card,
+                                in: RoundedRectangle(cornerRadius: Theme.Radius.xl3, style: .continuous)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Theme.Radius.xl3, style: .continuous)
+                                    .strokeBorder(selected ? Theme.primary.opacity(0.6) : Theme.border)
+                            )
                     }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
                 }
             }

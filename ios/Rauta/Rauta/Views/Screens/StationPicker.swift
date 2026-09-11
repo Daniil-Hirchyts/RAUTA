@@ -45,22 +45,26 @@ struct StationPicker: View {
                         }
                     }
                 }
-                Button { edit(active) } label: {
-                    Image(systemName: "slider.horizontal.3")
-                        .foregroundStyle(Theme.primary)
-                        .frame(width: 34, height: 34)
-                        .background(Theme.card, in: Circle())
+                GlassGroup(spacing: 8) {
+                    HStack(spacing: 6) {
+                        Button { edit(active) } label: {
+                            Image(systemName: "slider.horizontal.3")
+                                .foregroundStyle(Theme.primary)
+                                .frame(width: 34, height: 34)
+                                .glassSurface(.clear, in: Circle(), interactive: true, border: Theme.Glassware.edge, legacyFill: Theme.card)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Edit station")
+                        Button(action: add) {
+                            Image(systemName: "plus")
+                                .foregroundStyle(Theme.primary)
+                                .frame(width: 34, height: 34)
+                                .glassSurface(.clear, in: Circle(), interactive: true, border: Theme.Glassware.edge, legacyFill: Theme.card)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Add station")
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Edit station")
-                Button(action: add) {
-                    Image(systemName: "plus")
-                        .foregroundStyle(Theme.primary)
-                        .frame(width: 34, height: 34)
-                        .background(Theme.card, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add station")
             }
             if let issue {
                 Text(issue).font(Theme.sans(11)).foregroundStyle(Theme.destructive)
@@ -230,7 +234,7 @@ private struct StationEditorSheet: View {
                                         .font(Theme.sans(12, weight: .semibold))
                                         .foregroundStyle(Theme.foreground)
                                         .padding(8)
-                                        .background(Theme.card, in: Capsule())
+                                        .glassSurface(.clear, in: Capsule(), interactive: true, border: Theme.Glassware.edge, legacyFill: Theme.card)
                                 }
                                 .buttonStyle(.plain)
                                 .accessibilityLabel("Remove \(Resistance.formatKg(load)) kilograms")

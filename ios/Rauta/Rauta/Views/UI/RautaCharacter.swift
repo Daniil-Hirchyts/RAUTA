@@ -62,40 +62,140 @@ struct RautaBottomDock: View {
     var meta: String?
     var mood: RautaMood = .calm
     var actions: [CompanionAction] = []
-    var characterSize: CGFloat = 104
+    var characterSize: CGFloat = 112
+    var floating = false
+    var showsText = true
     @State private var open = false
 
-    private var reserve: CGFloat { characterSize * 0.8 }
-    private var minimumHeight: CGFloat { max(96, characterSize * 0.92) }
+    private var reserve: CGFloat { characterSize * 0.82 }
+    private var minimumHeight: CGFloat { max(128, characterSize * 1.08) }
+    private var expandedActionsHeight: CGFloat {
+        let count = CGFloat(actions.count)
+        return 20 + count * 44 + max(0, count - 1) * 8
+    }
+    /// RAUTA is a shell-level surface, so every corner follows the shell's
+    /// continuous radius.
+    private var panelShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: Theme.Metrics.surfaceRadius, style: .continuous)
+    }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if open {
-                VStack(spacing: 8) {
-                    ForEach(actions) { action in
-                        AppButton(action.title, variant: action.primary ? .primary : .secondary, expands: true) {
-                            open = false; action.action()
-                        }
-                    }
-                }.padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 6)
-            }
+        if floating {
+            floatingBody
+        } else {
+            panelBody
+        }
+    }
+
+    private var panelBody: some View {
+        ZStack(alignment: .bottom) {
             Button { if !actions.isEmpty { withAnimation(.easeOut(duration: 0.22)) { open.toggle() } } } label: {
                 VStack(spacing: 4) {
                     Text(speech).font(Theme.sans(15, weight: .semibold)).tracking(-0.3).multilineTextAlignment(.center)
                     if let meta { Text(meta).font(Theme.sans(12)).foregroundStyle(Theme.mutedForeground).lineLimit(1) }
-                }.foregroundStyle(Theme.foreground).frame(maxWidth: .infinity).padding(.horizontal, reserve).padding(.top, 16).padding(.bottom, 20)
+                }.foregroundStyle(Theme.foreground).frame(maxWidth: .infinity).padding(.horizontal, reserve).padding(.top, 22).padding(.bottom, 24)
             }.buttonStyle(.plain).accessibilityLabel("RAUTA actions")
-        }.frame(minHeight: minimumHeight)
+                .frame(height: minimumHeight, alignment: .bottom)
+        }
+        .frame(height: minimumHeight)
             .background {
                 ZStack {
                     Theme.card.opacity(0.94)
                     RadialGradient(colors: [Theme.primary.opacity(0.24), .clear], center: UnitPoint(x: 0.8, y: 1.25), startRadius: 0, endRadius: 230)
-                }.clipShape(RoundedRectangle(cornerRadius: Theme.Metrics.surfaceRadius))
-                    .overlay(RoundedRectangle(cornerRadius: Theme.Metrics.surfaceRadius).strokeBorder(Theme.border))
+                }
+                .clipShape(panelShape)
+                .overlay(
+                    panelShape
+                        .strokeBorder(Theme.border)
+                )
             }
             .overlay(alignment: .bottomLeading) {
                 RautaCharacter(mood: mood, reactionKey: speech, onActivate: { withAnimation { open.toggle() } })
-                    .frame(width: characterSize, height: characterSize).offset(y: -8)
+                    .frame(width: characterSize, height: characterSize).offset(x: 4, y: -10)
             }
+            .overlay(alignment: .top) {
+                if open, !actions.isEmpty {
+                    GlassGroup(spacing: 4) {
+                        VStack(spacing: 8) {
+                            ForEach(actions) { action in
+                                AppButton(action.title, variant: action.primary ? .primary : .secondary, expands: true) {
+                                    open = false
+                                    action.action()
+                                }
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .background(
+                        Theme.mix(Theme.card, Theme.primary, 0.08).opacity(0.96),
+                        in: RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                            .strokeBorder(Theme.Glassware.edge)
+                    )
+                    .padding(.horizontal, 16)
+                    .offset(y: -expandedActionsHeight - 10)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .zIndex(20)
+                }
+            }
+            .zIndex(open ? 20 : 0)
+    }
+
+    private var floatingBody: some View {
+        HStack(alignment: .bottom, spacing: 4) {
+            ZStack {
+                RautaCharacter(
+                    mood: mood,
+                    reactionKey: speech,
+                    onActivate: {
+                        guard !actions.isEmpty else { return }
+                        open = true
+                    }
+                )
+                .frame(width: characterSize, height: characterSize)
+                .popover(isPresented: $open, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
+                    AppMenuSurface(dismiss: { open = false }) {
+                        ForEach(actions) { action in
+                            Button {
+                                open = false
+                                action.action()
+                            } label: {
+                                Text(action.title)
+                            }
+                        }
+                    }
+                    .presentationCompactAdaptation(.popover)
+                    .presentationBackground(.clear)
+                }
+            }
+            .frame(width: characterSize + 18, height: characterSize + 10)
+
+            if showsText {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(speech)
+                        .font(Theme.sans(15, weight: .semibold))
+                        .tracking(-0.3)
+                        .lineLimit(2)
+                    if let meta {
+                        Text(meta)
+                            .font(Theme.sans(12))
+                            .foregroundStyle(Theme.mutedForeground)
+                            .lineLimit(1)
+                    }
+                }
+                .foregroundStyle(Theme.foreground)
+                .frame(maxWidth: .infinity, minHeight: characterSize * 0.72, alignment: .center)
+                .padding(.trailing, 14)
+                .padding(.bottom, 8)
+            } else {
+                Spacer(minLength: 0)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: minimumHeight, alignment: .bottomLeading)
+        .background {
+            AppGradientBlur(edge: .bottom)
+        }
     }
 }

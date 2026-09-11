@@ -7,19 +7,29 @@ enum ButtonVariant {
 enum ButtonSize {
     case standard, icon, cta, iconCTA
 
-    var height: CGFloat {
+    /// The visible pane stays compact while the surrounding Button keeps a
+    /// comfortable hit target.
+    var visualHeight: CGFloat {
         switch self {
-        case .standard: return 44
-        case .icon: return 44
-        case .cta, .iconCTA: return Theme.Metrics.controlsHeight
+        case .standard: return 40
+        case .icon: return 40
+        case .cta: return 46
+        case .iconCTA: return 42
+        }
+    }
+
+    var hitHeight: CGFloat {
+        switch self {
+        case .standard, .icon: return 44
+        case .cta, .iconCTA: return 48
         }
     }
 
     var cornerRadius: CGFloat {
         switch self {
-        case .standard: return Theme.Radius.xl4
-        case .icon, .iconCTA: return height / 2
-        case .cta: return Theme.Radius.xl2
+        case .standard: return visualHeight / 2
+        case .icon, .iconCTA: return visualHeight / 2
+        case .cta: return visualHeight / 2
         }
     }
 }
@@ -49,23 +59,17 @@ struct AppButton<Label: View>: View {
     @State private var shakePhase = 0
     @State private var lastAction: (label: String, at: Date)?
 
-    private var background: some ShapeStyle {
-        AnyShapeStyle(resolvedBackground)
-    }
-
-    private var resolvedBackground: AnyShapeStyle {
-        if isDisabled { return AnyShapeStyle(Theme.muted) }
+    private var tone: GlassTone {
+        if isDisabled { return .inert }
         switch variant {
         case .primary:
-            return AnyShapeStyle(isPressed ? Theme.primaryGradientActive : Theme.primaryGradient)
+            return .tinted(isPressed ? Theme.primaryGradientActiveStart : Theme.primary)
         case .secondary:
-            return AnyShapeStyle(isPressed ? Theme.secondary.opacity(0.9) : Theme.secondary)
+            return .regular
         case .ghost:
-            return AnyShapeStyle(isPressed ? Theme.card.opacity(0.9) : Theme.card)
+            return .clear
         case .destructive:
-            return AnyShapeStyle(
-                isPressed ? Theme.mix(Theme.card, Theme.primary, 0.28) : Theme.card
-            )
+            return .clear
         }
     }
 
@@ -82,8 +86,8 @@ struct AppButton<Label: View>: View {
     private var borderColor: Color {
         if isDisabled { return Theme.border }
         switch variant {
-        case .primary: return isPressed ? Theme.primarySofter : Theme.primary.opacity(0.8)
-        case .secondary, .ghost: return Theme.border
+        case .primary: return isPressed ? Theme.primarySofter.opacity(0.62) : Theme.Glassware.brightEdge
+        case .secondary, .ghost: return Theme.Glassware.edge
         case .destructive: return Theme.primary
         }
     }
@@ -100,22 +104,25 @@ struct AppButton<Label: View>: View {
         Button {
             press()
         } label: {
-            label()
+            buttonSurface(
+                label()
                 .font(font)
                 .lineLimit(1)
                 .frame(maxWidth: expands ? .infinity : nil)
                 .frame(
-                    width: (size == .icon || size == .iconCTA) ? size.height : nil,
-                    height: size.height
+                    width: (size == .icon || size == .iconCTA) ? size.visualHeight : nil,
+                    height: size.visualHeight
                 )
                 .padding(.horizontal, horizontalPadding)
                 .foregroundStyle(foreground)
-                .background(background, in: shape)
-                .overlay(shape.strokeBorder(borderColor, lineWidth: 1))
                 .contentShape(shape)
+            )
+            .frame(
+                minWidth: (size == .icon || size == .iconCTA) ? size.hitHeight : nil,
+                minHeight: size.hitHeight
+            )
         }
         .buttonStyle(PressReporting(isPressed: $isPressed))
-        .scaleEffect(isPressed && !isDisabled ? 0.96 : 1)
         .animation(Theme.Motion.spring, value: isPressed)
         .modifier(ShakeEffect(phase: shakePhase))
         .accessibilityLabel(accessibilityLabel ?? "")
@@ -132,6 +139,21 @@ struct AppButton<Label: View>: View {
 
     private var shape: RoundedRectangle {
         RoundedRectangle(cornerRadius: size.cornerRadius, style: .continuous)
+    }
+
+    @ViewBuilder
+    private func buttonSurface<Content: View>(_ content: Content) -> some View {
+        content
+            .glassSurface(tone, in: shape, interactive: !isDisabled, border: borderColor)
+            .overlay {
+                if !isDisabled, variant == .primary {
+                    shape
+                        .fill(isPressed ? Theme.primaryGradientActive : Theme.primaryGradient)
+                        .opacity(Theme.Glassware.primaryWash)
+                        .allowsHitTesting(false)
+                }
+            }
+            .clipShape(shape)
     }
 
     private func press() {
@@ -226,7 +248,7 @@ struct AppControlButton: View {
             action: action
         ) {
             Image(systemName: systemImage)
-                .font(.system(size: 20, weight: .medium))
+                .font(.system(size: 18, weight: .medium))
         }
     }
 }
@@ -247,7 +269,84 @@ struct AppHeaderButton: View {
             action: action
         ) {
             Image(systemName: systemImage)
-                .font(.system(size: 18, weight: .medium))
+                .font(.system(size: 17, weight: .medium))
         }
+    }
+}
+
+/// A compact glass entry point for secondary actions that do not need to
+/// compete with the screen's primary command.
+struct AppMenuButton<MenuContent: View>: View {
+    var label: String
+    @ViewBuilder var menu: () -> MenuContent
+    @State private var isPresented = false
+
+    var body: some View {
+        Button {
+            Haptics.trigger(.selection)
+            isPresented = true
+        } label: {
+            ZStack {
+                Color.clear
+                RautaCharacter(mood: .focused)
+                    .frame(width: 54, height: 54)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+            .frame(width: 44, height: 44)
+            .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .frame(minWidth: 44, minHeight: 44)
+        .accessibilityLabel(label)
+        .popover(isPresented: $isPresented, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
+            AppMenuSurface(dismiss: { isPresented = false }) {
+                menu()
+            }
+                .presentationCompactAdaptation(.popover)
+                .presentationBackground(.clear)
+        }
+    }
+}
+
+struct AppMenuSurface<Content: View>: View {
+    var dismiss: () -> Void
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
+
+        VStack(alignment: .leading, spacing: 2) {
+            content()
+        }
+        .buttonStyle(AppMenuRowButtonStyle())
+        .labelStyle(.titleAndIcon)
+        .padding(8)
+        .frame(minWidth: 232, idealWidth: 248, maxWidth: 280, alignment: .leading)
+        .glassSurface(.regular, in: shape, legacyFill: .clear)
+        .padding(6)
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                DispatchQueue.main.async { dismiss() }
+            }
+        )
+    }
+}
+
+private struct AppMenuRowButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(Theme.sans(16, weight: .medium))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+            .background(
+                configuration.isPressed ? Theme.foreground.opacity(0.08) : .clear,
+                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+            )
+            .opacity(isEnabled ? 1 : 0.38)
     }
 }

@@ -106,13 +106,10 @@ struct WorkoutFormScreen: View {
                 title: workout == nil ? (focusMuscles == nil ? "New workout" : "Proposed workout") : "Edit workout",
                 onBack: store.navigation.pop
             ) {
-                VStack(spacing: 0) {
-                    WorkoutFormDatePicker(selection: $date) { showingDate = true }
-                        .padding(.horizontal, Theme.Metrics.contentInset)
-                        .padding(.top, 20)
+                ScrollView {
+                    VStack(spacing: 12) {
+                        WorkoutFormDatePicker(selection: $date) { showingDate = true }
 
-                    ScrollView {
-                        VStack(spacing: 12) {
                             ForEach(Array(exerciseIds.enumerated()), id: \.element) { index, id in
                                 if let exercise = ExerciseCatalogue.byId[id] {
                                     EditableExerciseRow(
@@ -136,12 +133,11 @@ struct WorkoutFormScreen: View {
                             if let issue { InlineNotice(message: issue, isError: true) }
                         }
                         .padding(.horizontal, Theme.Metrics.contentInset)
-                        .padding(.top, 10)
+                        .padding(.top, 20)
                         .padding(.bottom, 24)
-                    }
-                    .scrollDisabled(reorder.active != nil)
-                    .onDisappear { reorder.cancel() }
                 }
+                .scrollDisabled(reorder.active != nil)
+                .onDisappear { reorder.cancel() }
             } controls: {
                 HStack(spacing: 10) {
                     if focusMuscles != nil {
@@ -372,8 +368,13 @@ private struct EditableExerciseRow: View {
                     .font(.system(size: 19, weight: .semibold))
                     .foregroundStyle(Theme.primary)
                     .frame(width: 56, height: 56)
-                    .background(Theme.card, in: Circle())
-                    .overlay(Circle().strokeBorder(Theme.primary, lineWidth: 1))
+                    .glassSurface(
+                        .tinted(Theme.primary.opacity(0.5)),
+                        in: Circle(),
+                        interactive: true,
+                        border: Theme.Glassware.brightEdge,
+                        legacyFill: Theme.card
+                    )
                     .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
             }
             .buttonStyle(.plain)
