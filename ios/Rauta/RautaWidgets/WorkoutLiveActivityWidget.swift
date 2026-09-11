@@ -19,50 +19,56 @@ struct WorkoutLiveActivityWidget: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.center) {
-                    VStack(spacing: 3) {
-                        HStack(spacing: 5) {
-                            WorkoutGlyph(isPaused: context.state.isPaused)
-                                .font(.system(size: 12, weight: .bold))
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack(spacing: 6) {
+                            RautaActivityMark(isPaused: context.state.isPaused)
+                                .frame(width: 22, height: 22)
+
                             Text(context.attributes.workoutDate)
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(.system(size: 12, weight: .bold))
                                 .lineLimit(1)
+
+                            Spacer(minLength: 6)
+                            StatusLabel(state: context.state)
                         }
                         .foregroundStyle(Color(WorkoutActivityPalette.accent))
 
                         WorkoutTimerText(state: context.state)
-                            .font(.system(size: 30, weight: .heavy))
+                            .font(.system(size: 42, weight: .black, design: .rounded))
+                            .tracking(-1.2)
                             .foregroundStyle(Color(WorkoutActivityPalette.text))
+
+                        Text(context.state.exerciseName)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color(WorkoutActivityPalette.text).opacity(0.82))
+                            .lineLimit(1)
                     }
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 4)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack(spacing: 8) {
                         ProgressDots(state: context.state)
-                        Text(context.state.progressText)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Color(WorkoutActivityPalette.mutedText))
                         Spacer(minLength: 8)
-                        StatusLabel(state: context.state)
+                        Text(context.state.progressText)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color(WorkoutActivityPalette.mutedText))
+                            .lineLimit(1)
                     }
-                    .padding(.top, 2)
+                    .padding(.horizontal, 4)
+                    .padding(.top, 1)
                 }
             } compactLeading: {
-                WorkoutGlyph(isPaused: context.state.isPaused)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(Color(WorkoutActivityPalette.accent))
+                RautaActivityMark(isPaused: context.state.isPaused)
+                    .frame(width: 18, height: 18)
             } compactTrailing: {
                 WorkoutTimerText(state: context.state)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Color(WorkoutActivityPalette.text))
-                    .frame(maxWidth: 52, alignment: .trailing)
+                    .frame(maxWidth: 56, alignment: .trailing)
             } minimal: {
-                HStack(spacing: 2) {
-                    WorkoutGlyph(isPaused: context.state.isPaused)
-                        .font(.system(size: 10, weight: .bold))
-                    WorkoutTimerText(state: context.state)
-                        .font(.system(size: 11, weight: .semibold))
-                }
-                .foregroundStyle(Color(WorkoutActivityPalette.accent))
+                RautaActivityMark(isPaused: context.state.isPaused)
+                    .frame(width: 18, height: 18)
             }
             .keylineTint(Color(WorkoutActivityPalette.accent))
         }
@@ -118,7 +124,7 @@ private struct LockScreenCard: View {
                 .font(.system(size: 70, weight: .black, design: .rounded))
                 .tracking(-2.2)
                 .foregroundStyle(Color(WorkoutActivityPalette.text))
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: 84, maxHeight: 84, alignment: .leading)
                 .layoutPriority(1)
 
             HStack(spacing: 6) {
@@ -146,10 +152,10 @@ private struct LockScreenCard: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, minHeight: 160, maxHeight: 160, alignment: .topLeading)
         .background(
             ZStack {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                ContainerRelativeShape()
                     .fill(Color.white.opacity(0.03))
                 LinearGradient(
                     colors: [
@@ -160,13 +166,12 @@ private struct LockScreenCard: View {
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .clipShape(ContainerRelativeShape())
             }
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            ContainerRelativeShape()
                 .stroke(Color(WorkoutActivityPalette.accent).opacity(0.28), lineWidth: 1)
         }
-        .padding(6)
     }
 }

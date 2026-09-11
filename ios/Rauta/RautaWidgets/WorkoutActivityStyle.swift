@@ -26,6 +26,39 @@ struct WorkoutGlyph: View {
     }
 }
 
+/// The RAUTA mark used by the Dynamic Island. The full Rive runtime belongs in
+/// the app; WidgetKit gets a lightweight rendered pose so the Island stays
+/// fast and deterministic while still carrying the same character identity.
+@available(iOS 16.1, *)
+struct RautaActivityMark: View {
+    var isPaused: Bool
+
+    var body: some View {
+        Image("RautaIsland")
+            .resizable()
+            .renderingMode(.original)
+            .scaledToFit()
+            .opacity(isPaused ? 0.68 : 1)
+            .shadow(
+                color: Color(WorkoutActivityPalette.accent).opacity(isPaused ? 0.08 : 0.18),
+                radius: 3
+            )
+            .overlay(alignment: .bottomTrailing) {
+                if isPaused {
+                    ZStack {
+                        Circle()
+                            .fill(Color(WorkoutActivityPalette.accent))
+                        Image(systemName: "pause.fill")
+                            .font(.system(size: 4.5, weight: .black))
+                            .foregroundStyle(Color(WorkoutActivityPalette.background))
+                    }
+                    .frame(width: 8, height: 8)
+                }
+            }
+            .accessibilityHidden(true)
+    }
+}
+
 /// The workout clock. A running session hands WidgetKit the instant to count
 /// from and never touches it again; a paused one shows the frozen reading.
 @available(iOS 16.1, *)
