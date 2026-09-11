@@ -153,16 +153,15 @@ struct WorkoutFormScreen: View {
                 }
             }
 
-            if showingDate {
-                WorkoutDateCalendarModal(
-                    date: CalendarDate.toISO(date),
-                    onClose: { showingDate = false },
-                    onSelect: { iso in
-                        if let selected = CalendarDate.parse(iso) { date = selected }
-                    }
-                )
-                .zIndex(9)
-            }
+            WorkoutDateCalendarModal(
+                isPresented: showingDate,
+                date: CalendarDate.toISO(date),
+                onClose: { showingDate = false },
+                onSelect: { iso in
+                    if let selected = CalendarDate.parse(iso) { date = selected }
+                }
+            )
+            .zIndex(9)
         }
         .onAppear(perform: load)
     }

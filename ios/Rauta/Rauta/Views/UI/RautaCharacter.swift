@@ -52,6 +52,7 @@ struct RautaCharacter: View {
 
 struct CompanionAction: Identifiable {
     var title: String
+    var systemImage: String = "sparkles"
     var primary = false
     var action: () -> Void
     var id: String { title }
@@ -65,10 +66,13 @@ struct RautaBottomDock: View {
     var characterSize: CGFloat = 112
     var floating = false
     var showsText = true
+    var glassContainer = false
     @State private var open = false
 
     private var reserve: CGFloat { characterSize * 0.82 }
-    private var minimumHeight: CGFloat { max(128, characterSize * 1.08) }
+    private var minimumHeight: CGFloat {
+        glassContainer ? max(108, characterSize + 8) : max(118, characterSize * 1.08)
+    }
     private var expandedActionsHeight: CGFloat {
         let count = CGFloat(actions.count)
         return 20 + count * 44 + max(0, count - 1) * 8
@@ -76,7 +80,10 @@ struct RautaBottomDock: View {
     /// RAUTA is a shell-level surface, so every corner follows the shell's
     /// continuous radius.
     private var panelShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: Theme.Metrics.surfaceRadius, style: .continuous)
+        RoundedRectangle(
+            cornerRadius: glassContainer ? Theme.Metrics.cardRadius : Theme.Metrics.surfaceRadius,
+            style: .continuous
+        )
     }
 
     var body: some View {
@@ -162,7 +169,7 @@ struct RautaBottomDock: View {
                                 open = false
                                 action.action()
                             } label: {
-                                Text(action.title)
+                                Label(action.title, systemImage: action.systemImage)
                             }
                         }
                     }
@@ -170,7 +177,11 @@ struct RautaBottomDock: View {
                     .presentationBackground(.clear)
                 }
             }
-            .frame(width: characterSize + 18, height: characterSize + 10)
+            .frame(
+                width: characterSize + 18,
+                height: glassContainer ? characterSize + 4 : characterSize + 10,
+                alignment: .bottom
+            )
 
             if showsText {
                 VStack(alignment: .leading, spacing: 4) {
@@ -193,9 +204,24 @@ struct RautaBottomDock: View {
                 Spacer(minLength: 0)
             }
         }
+        .padding(.horizontal, glassContainer ? 8 : 0)
+        .padding(.bottom, glassContainer ? 4 : 0)
         .frame(maxWidth: .infinity, minHeight: minimumHeight, alignment: .bottomLeading)
         .background {
-            AppGradientBlur(edge: .bottom)
+            if glassContainer {
+                Color.clear
+                    .glassSurface(
+                        .regular,
+                        in: panelShape,
+                        border: Theme.Glassware.edge,
+                        legacyFill: .clear
+                    )
+            } else {
+                AppGradientBlur(edge: .bottom, radiusScale: showsText ? 1 : 0.38)
+                    .frame(height: showsText ? minimumHeight : 72)
+            }
         }
+        .padding(.horizontal, glassContainer ? Theme.Metrics.contentInset : 0)
+        .padding(.bottom, glassContainer ? Theme.Metrics.contentInset : 0)
     }
 }

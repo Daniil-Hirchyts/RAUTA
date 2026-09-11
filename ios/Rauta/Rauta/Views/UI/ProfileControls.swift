@@ -81,15 +81,53 @@ struct ProfileExperienceControl: View {
                 .foregroundStyle(healthLimited ? Theme.primary : Theme.foreground)
                 .padding(4)
             }.buttonStyle(.plain)
-        }
-        .overlay {
-            AppModal(isPresented: healthOpen, label: "Health", onClose: { healthOpen = false }) {
-                VStack(spacing: 16) {
+            .popover(isPresented: $healthOpen, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
+                AppMenuSurface(dismiss: {}) {
                     Text("Anything to train around?")
-                        .font(Theme.sans(18, weight: .black))
-                        .multilineTextAlignment(.center)
-                    ProfileHealthControl()
-                    AppButton("Done", expands: true) { healthOpen = false }
+                        .font(Theme.sans(13, weight: .bold))
+                        .foregroundStyle(Theme.mutedForeground)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 6)
+                        .padding(.bottom, 2)
+
+                    healthMenuRow(
+                        "Nothing to train around",
+                        checked: store.trainingProfile.profile.health.status == .healthy,
+                        action: store.trainingProfile.setHealthy
+                    )
+
+                    ForEach(ProfileVocabulary.healthLimitations, id: \.self) { limitation in
+                        healthMenuRow(
+                            ProfileVocabulary.label(for: limitation),
+                            checked: (store.trainingProfile.profile.health.reasons ?? []).contains(limitation)
+                        ) {
+                            store.trainingProfile.toggleHealthLimitation(limitation)
+                        }
+                    }
+                }
+                .presentationCompactAdaptation(.popover)
+                .presentationBackground(.clear)
+            }
+        }
+    }
+
+    private func healthMenuRow(
+        _ title: String,
+        checked: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            Haptics.trigger(.selection)
+            action()
+        } label: {
+            HStack(spacing: 12) {
+                Text(title)
+                    .font(Theme.sans(15, weight: checked ? .semibold : .regular))
+                Spacer(minLength: 16)
+                if checked {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(Theme.primary)
                 }
             }
         }

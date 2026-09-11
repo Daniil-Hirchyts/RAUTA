@@ -279,7 +279,8 @@ struct MusclePrioritiesScreen: View {
                         onSideChange: { side = $0 },
                         showCornerCount: false,
                         showFlipButton: false,
-                        side: side
+                        side: side,
+                        figureOffsetY: 48
                     )
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

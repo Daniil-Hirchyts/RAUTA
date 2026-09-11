@@ -76,8 +76,9 @@ struct WorkoutDetailScreen: View {
                 .zIndex(10)
             }
 
-            if showingDate, let workout, session == nil, !isPast {
+            if let workout, session == nil, !isPast {
                 WorkoutDateCalendarModal(
+                    isPresented: showingDate,
                     date: workout.date,
                     onClose: { showingDate = false },
                     onSelect: reschedule
@@ -179,7 +180,7 @@ struct WorkoutDetailScreen: View {
                 }
                 .padding(Theme.Metrics.contentInset)
                 .padding(.top, session == nil ? 0 : 8)
-                .padding(.bottom, session == nil ? 24 : 152)
+                .padding(.bottom, session == nil ? 24 : 144)
             }
             .scrollDisabled(reorder.active != nil)
             .onDisappear { reorder.cancel() }
@@ -483,13 +484,10 @@ private struct WorkoutOverview: View {
                         .minimumScaleFactor(0.75)
                 }
                 Spacer(minLength: 8)
-                ZStack {
-                    DotPattern(spacing: 8, radius: 1, color: signal, opacity: 0.42)
-                    Image(systemName: past ? "checkmark.circle" : "checklist")
-                        .font(.system(size: 25, weight: .regular))
-                        .foregroundStyle(signal)
-                        .shadow(color: signal.opacity(0.45), radius: 8)
-                }
+                Image(systemName: past ? "checkmark.circle" : "checklist")
+                    .font(.system(size: 25, weight: .regular))
+                    .foregroundStyle(signal)
+                    .shadow(color: signal.opacity(0.45), radius: 8)
                 .frame(width: 88, height: 88)
             }
             .frame(maxWidth: .infinity, minHeight: 152, alignment: .bottom)
@@ -614,12 +612,16 @@ private struct LiveExerciseCard: View {
                             .frame(width: hero.size.width, height: hero.size.height)
                             .background(Theme.card)
 
-                        LinearGradient(
-                            colors: [.clear, .black.opacity(0.45), .black.opacity(0.8)],
-                            startPoint: .center,
-                            endPoint: .bottom
-                        )
-                        .frame(width: hero.size.width, height: hero.size.height)
+                        Rectangle()
+                            .fill(.ultraThinMaterial)
+                            .frame(width: hero.size.width, height: 118)
+                            .mask(
+                                LinearGradient(
+                                    colors: [.clear, .white.opacity(0.72), .white],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
                         .zIndex(1)
                         .allowsHitTesting(false)
 
@@ -629,15 +631,14 @@ private struct LiveExerciseCard: View {
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
                             .padding(.horizontal, 16)
-                            .padding(.top, 40)
                             .padding(.bottom, 14)
-                            .shadow(color: .black.opacity(0.65), radius: 6, y: 1)
+                            .shadow(color: .black.opacity(0.34), radius: 4, y: 1)
                             .frame(maxWidth: .infinity, alignment: .bottom)
                             .zIndex(2)
                     }
                     .frame(width: hero.size.width, height: hero.size.height)
                 }
-                .frame(height: min(352, max(192, UIScreen.main.bounds.height * 0.34)))
+                .frame(height: min(380, UIScreen.main.bounds.width - Theme.Metrics.contentInset * 2))
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl3, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.Radius.xl3, style: .continuous)
@@ -720,7 +721,7 @@ private struct WorkoutExerciseRow: View {
                 }
 
                 Button(action: onOpen) {
-                    ExerciseMediaView(exerciseId: exercise.id)
+                    ExerciseMediaView(exerciseId: exercise.id, animated: true)
                         .frame(width: 144, height: 144)
                         .background(Theme.mix(Theme.card, .black, 0.12))
                 }
@@ -990,129 +991,73 @@ private struct WorkoutPrescriptionStrip: View {
 }
 
 private struct WorkoutSessionDock: View {
-    @ObservedObject private var store = AppStore.shared
     let session: ActiveWorkoutSession
     let exercise: ExerciseSummary?
     let onNext: (() -> Void)?
     let onPause: () -> Void
     let onResume: () -> Void
 
-    private var progress: ActiveWorkout.Progress { ActiveWorkout.progress(session) }
-
-    private var setCount: Int {
-        store.trainingRecords.data.activeWorkout?.exercises.reduce(0) { total, exercise in
-            total + exercise.sets.filter { $0.observation?.completed == true }.count
-        } ?? 0
-    }
-
-    private var speech: String {
-        if setCount == 0 { return "Log the first set when it's done. I'll keep the record." }
-        if let coverage = TrainingSessionBridge.activePlannedCoverage() {
-            if !coverage.verified { return "I can't verify the plan. Logged sets will be saved as partial." }
-            let outstanding = max(0, coverage.prescribed - coverage.performed)
-            if outstanding == 0 { return "Whole session done — \(Wording.countLabel(setCount, "set")) against the plan." }
-            if progress.completed >= progress.total, progress.total > 0 {
-                return "\(Wording.countLabel(outstanding, "prescribed set")) still open. Finishing now saves this as partial."
-            }
-            return "Logged cleanly. \(Wording.countLabel(outstanding, "prescribed set")) to go."
-        }
-        if progress.completed >= progress.total, progress.total > 0 {
-            return "Every exercise done — \(Wording.countLabel(setCount, "set")) on the board."
-        }
-        return setCount == 1
-            ? "First set logged. That one counts now."
-            : "Steady work. I have every set."
-    }
-
     var body: some View {
-        VStack(spacing: 8) {
-            Text(speech)
-                .font(Theme.sans(12, weight: .semibold))
-                .foregroundStyle(Theme.foreground)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-                .padding(.leading, 92)
-                .padding(.trailing, 12)
+        let shape = RoundedRectangle(cornerRadius: Theme.Metrics.cardRadius, style: .continuous)
 
-            HStack(spacing: 8) {
-                Color.clear.frame(width: 82, height: 1)
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(session.runningSince == nil ? "PAUSED" : "IN PROGRESS")
+                    .font(Theme.sans(10, weight: .bold))
+                    .kerning(1.4)
+                    .foregroundStyle(Theme.primary)
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    Text(ActiveWorkout.formatDuration(ActiveWorkout.elapsedMs(session)))
+                        .font(Theme.readout(32))
+                        .foregroundStyle(Theme.foreground)
+                        .monospacedDigit()
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, 8)
 
-                VStack(spacing: 2) {
-                    Text(session.runningSince == nil ? "PAUSED" : "IN PROGRESS")
-                        .font(Theme.sans(10, weight: .bold))
-                        .kerning(1.4)
-                        .foregroundStyle(Theme.primary)
-                    TimelineView(.periodic(from: .now, by: 1)) { _ in
-                        Text(ActiveWorkout.formatDuration(ActiveWorkout.elapsedMs(session)))
-                            .font(Theme.readout(30))
+            GlassGroup(spacing: 8) {
+                HStack(spacing: 6) {
+                    Button {
+                        Haptics.trigger(.medium)
+                        session.runningSince == nil ? onResume() : onPause()
+                    } label: {
+                        Image(systemName: session.runningSince == nil ? "play.fill" : "pause.fill")
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(Theme.foreground)
-                            .monospacedDigit()
+                            .frame(width: 38, height: 38)
+                            .glassSurface(.clear, in: Circle(), interactive: true, border: Theme.Glassware.edge, legacyFill: .clear)
                     }
-                }
-                .frame(maxWidth: .infinity)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(session.runningSince == nil ? "Resume workout" : "Pause workout")
 
-                GlassGroup(spacing: 10) {
-                    HStack(spacing: 8) {
-                        Button {
-                            Haptics.trigger(.medium)
-                            session.runningSince == nil ? onResume() : onPause()
-                        } label: {
-                            Image(systemName: session.runningSince == nil ? "play.fill" : "pause.fill")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundStyle(Theme.foreground)
-                                .frame(width: 42, height: 42)
-                                .glassSurface(.clear, in: Circle(), interactive: true, border: Theme.Glassware.edge, legacyFill: Theme.card)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(session.runningSince == nil ? "Resume workout" : "Pause workout")
-
-                        Button {
-                            Haptics.trigger(.light)
-                            onNext?()
-                        } label: {
-                            Image(systemName: "forward.end.fill")
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(onNext == nil ? Theme.mutedForeground : Theme.foreground)
-                                .frame(width: 42, height: 42)
-                                .glassSurface(
-                                    onNext == nil ? .inert : .clear,
-                                    in: Circle(),
-                                    interactive: onNext != nil,
-                                    border: Theme.Glassware.edge,
-                                    legacyFill: Theme.card
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(onNext == nil)
-                        .accessibilityLabel(exercise.map { "Skip \($0.name)" } ?? "Next exercise")
+                    Button {
+                        Haptics.trigger(.light)
+                        onNext?()
+                    } label: {
+                        Image(systemName: "forward.end.fill")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(onNext == nil ? Theme.mutedForeground : Theme.foreground)
+                            .frame(width: 38, height: 38)
+                            .glassSurface(
+                                onNext == nil ? .inert : .clear,
+                                in: Circle(),
+                                interactive: onNext != nil,
+                                border: Theme.Glassware.edge,
+                                legacyFill: .clear
+                            )
                     }
+                    .buttonStyle(.plain)
+                    .disabled(onNext == nil)
+                    .accessibilityLabel(exercise.map { "Skip \($0.name)" } ?? "Next exercise")
                 }
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 12)
-        .padding(.bottom, 14)
-        .frame(minHeight: 126)
-        .background {
-            ZStack {
-                Theme.card.opacity(0.94)
-                RadialGradient(
-                    colors: [Theme.primary.opacity(0.20), .clear],
-                    center: UnitPoint(x: 0.12, y: 1.1),
-                    startRadius: 0,
-                    endRadius: 220
-                )
-            }
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Metrics.surfaceRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Metrics.surfaceRadius, style: .continuous)
-                    .strokeBorder(Theme.border, lineWidth: 1)
-            )
-        }
-        .overlay(alignment: .bottomLeading) {
-            RautaCharacter(mood: .focused, reactionKey: speech)
-                .frame(width: 96, height: 96)
-                .offset(x: 4, y: -4)
-        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, minHeight: 88)
+        .glassSurface(.regular, in: shape, legacyFill: .clear)
+        .padding(.horizontal, Theme.Metrics.contentInset)
+        .padding(.bottom, Theme.Metrics.contentInset)
     }
 }

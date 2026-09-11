@@ -22,6 +22,7 @@ struct CoverflowCarousel<ID: Hashable, Media: View>: View {
     var minimumCardWidth: CGFloat = 190
     var maximumCardWidth: CGFloat = 264
     var widthFraction: CGFloat = 0.58
+    var cardHeightRatio: CGFloat = 1.22
     var loop = true
     var focusedScale: CGFloat = 1.08
     var depth: CGFloat = 0.20
@@ -48,6 +49,7 @@ struct CoverflowCarousel<ID: Hashable, Media: View>: View {
                     max(minimumCardWidth, proxy.size.width * widthFraction)
                 )
                 let pitch = cardWidth * (1 + gap)
+                let cardHeight = cardWidth * cardHeightRatio
 
                 ZStack {
                     ForEach(slides.indices, id: \.self) { index in
@@ -56,7 +58,12 @@ struct CoverflowCarousel<ID: Hashable, Media: View>: View {
                         let recession = 1 / (1 + depth * ramp)
                         let focus = 1 + (focusedScale - 1) * max(0, 1 - abs(distance))
 
-                        card(slides[index], selected: index == selectedIndex, width: cardWidth)
+                        card(
+                            slides[index],
+                            selected: index == selectedIndex,
+                            width: cardWidth,
+                            height: cardHeight
+                        )
                             .rotation3DEffect(
                                 .degrees(-min(82, rotate * ramp) * (distance < 0 ? -1 : 1)),
                                 axis: (x: 0, y: 1, z: 0),
@@ -68,7 +75,7 @@ struct CoverflowCarousel<ID: Hashable, Media: View>: View {
                             .zIndex(100 - abs(distance))
                     }
                 }
-                .frame(width: proxy.size.width, height: cardWidth + 72)
+                .frame(width: proxy.size.width, height: cardHeight + 72)
                 .contentShape(Rectangle())
                 .highPriorityGesture(
                     DragGesture(minimumDistance: 6)
@@ -86,11 +93,11 @@ struct CoverflowCarousel<ID: Hashable, Media: View>: View {
 
             if !slides.isEmpty, let description = slides[selectedIndex].description {
                 Text(description)
-                    .font(Theme.sans(14))
-                    .foregroundStyle(Theme.mutedForeground)
+                    .font(Theme.sans(19, weight: .semibold))
+                    .foregroundStyle(Theme.foreground.opacity(0.86))
                     .multilineTextAlignment(.center)
-                    .lineSpacing(5)
-                    .frame(maxWidth: 352, minHeight: 40)
+                    .lineSpacing(6)
+                    .frame(maxWidth: 360, minHeight: 50)
                     .padding(.horizontal, 24)
                     .id(slides[selectedIndex].id)
                     .transition(.opacity)
@@ -108,14 +115,19 @@ struct CoverflowCarousel<ID: Hashable, Media: View>: View {
     private var deckHeight: CGFloat {
         let screenWidth = UIScreen.main.bounds.width
         let width = min(maximumCardWidth, max(minimumCardWidth, screenWidth * widthFraction))
-        return width + 72
+        return width * cardHeightRatio + 72
     }
 
-    private func card(_ slide: CoverflowSlide<ID>, selected: Bool, width: CGFloat) -> some View {
+    private func card(
+        _ slide: CoverflowSlide<ID>,
+        selected: Bool,
+        width: CGFloat,
+        height: CGFloat
+    ) -> some View {
         Button {
             choose(id: slide.id)
         } label: {
-            ZStack(alignment: .bottomLeading) {
+            ZStack(alignment: .bottom) {
                 Theme.card
                 media(slide)
 
@@ -129,10 +141,12 @@ struct CoverflowCarousel<ID: Hashable, Media: View>: View {
                     .font(Theme.sans(15, weight: .bold))
                     .foregroundStyle(.white)
                     .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
                     .padding(.horizontal, 16)
                     .padding(.bottom, 14)
             }
-            .frame(width: width, height: width)
+            .frame(width: width, height: height)
             .overlay(alignment: .topTrailing) {
                 ProfileCheck(checked: selected)
                     .padding(12)

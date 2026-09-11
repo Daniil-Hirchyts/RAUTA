@@ -1,8 +1,8 @@
 {
   "fill" : {
     "linear-gradient" : [
-      "gray:0.21234,1.00000",
-      "gray:0.54103,1.00000"
+      "display-p3:1.00000,1.00000,1.00000,1.00000",
+      "display-p3:0.52798,0.52798,0.52798,1.00000"
     ],
     "orientation" : {
       "start" : {
@@ -17,18 +17,87 @@
   },
   "groups" : [
     {
+      "blur-material" : null,
+      "layers" : [
+        {
+          "blend-mode" : "overlay",
+          "glass" : true,
+          "image-name" : "grain.png",
+          "name" : "grain",
+          "opacity-specializations" : [
+            {
+              "value" : 0.19
+            },
+            {
+              "appearance" : "dark",
+              "value" : 0.11
+            },
+            {
+              "appearance" : "tinted",
+              "value" : 0.14
+            }
+          ],
+          "position" : {
+            "scale" : 1.15,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "glass" : false,
+          "image-name" : "kettlebell-bot-pose.png",
+          "name" : "kettlebell-bot-pose"
+        },
+        {
+          "glass" : false,
+          "hidden" : true,
+          "image-name" : "kettlebell-bot-icon-grain.png",
+          "name" : "kettlebell-bot-icon-grain",
+          "position" : {
+            "scale" : 1.1,
+            "translation-in-points" : [
+              44.60355382528701,
+              18.95389111943655
+            ]
+          }
+        }
+      ],
+      "shadow-specializations" : [
+        {
+          "value" : {
+            "kind" : "layer-color",
+            "opacity" : 1
+          }
+        },
+        {
+          "appearance" : "dark",
+          "value" : {
+            "kind" : "layer-color",
+            "opacity" : 0.28
+          }
+        }
+      ],
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
       "blur-material" : 0.5,
       "hidden" : true,
       "layers" : [
         {
           "glass" : true,
+          "hidden" : false,
           "image-name" : "ChatGPT Image Aug 31, 2026, 01_24_24 PM (2) 2.png",
           "name" : "ChatGPT Image Aug 31, 2026, 01_24_24 PM (2) 2",
           "position" : {
-            "scale" : 0.48,
+            "scale" : 0.78,
             "translation-in-points" : [
-              -114.53361334978447,
-              131.75496194267782
+              8.056442044070394,
+              -7.292661642998041
             ]
           }
         }
@@ -43,12 +112,12 @@
       },
       "shadow" : {
         "kind" : "layer-color",
-        "opacity" : 0.5
+        "opacity" : 0.39
       },
       "specular" : true,
       "translucency" : {
-        "enabled" : false,
-        "value" : 0.5
+        "enabled" : true,
+        "value" : 0.13
       }
     },
     {
@@ -86,7 +155,7 @@
     },
     {
       "blur-material" : 0.49,
-      "hidden" : false,
+      "hidden" : true,
       "layers" : [
         {
           "hidden" : false,
@@ -114,7 +183,7 @@
     },
     {
       "blur-material" : 0.5,
-      "hidden" : false,
+      "hidden" : true,
       "layers" : [
         {
           "hidden" : false,
@@ -152,7 +221,7 @@
     },
     {
       "blur-material" : 1,
-      "hidden" : false,
+      "hidden" : true,
       "layers" : [
         {
           "image-name" : "ChatGPT Image Aug 31, 2026, 12_59_05 PM (1).png",
@@ -160,8 +229,8 @@
           "position" : {
             "scale" : 0.69,
             "translation-in-points" : [
-              -2.3351326379695365,
-              -12.7245587497639
+              -55.67271568764045,
+              14.639526268397503
             ]
           }
         }

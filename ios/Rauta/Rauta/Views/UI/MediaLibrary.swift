@@ -143,6 +143,12 @@ enum ExerciseMedia {
         let stride = Swift.max(1, Int((Double(count) / Double(maxFrames)).rounded(.up)))
         var frames: [UIImage] = []
         var duration: TimeInterval = 0
+        // UIImageView gives every item in animationImages the same duration.
+        // WebP does not: most exercise clips hold their first and last pose,
+        // then run the movement frames at roughly 10 fps. Repeating references
+        // to a decoded frame preserves those source timings without duplicating
+        // the image pixels in memory.
+        let timingQuantum: TimeInterval = 0.1
 
         for index in Swift.stride(from: 0, to: count, by: stride) {
             guard let cgImage = CGImageSourceCreateImageAtIndex(source, index, nil)
@@ -150,11 +156,16 @@ enum ExerciseMedia {
             let size = CGSize(width: cgImage.width, height: cgImage.height)
             let ciImage = CIImage(cgImage: cgImage, options: [.colorSpace: srgbSpace])
             guard let rendered = render(ciImage, size: size) else { continue }
-            frames.append(rendered)
+            let nextIndex = Swift.min(index + stride, count)
+            let sourceDuration = (index..<nextIndex).reduce(0.0) { partial, frameIndex in
+                partial + frameDelay(source, frameIndex)
+            }
+            let repeats = Swift.max(1, Int((sourceDuration / timingQuantum).rounded()))
+            frames.append(contentsOf: repeatElement(rendered, count: repeats))
             if index == 0 && posterCache.object(forKey: key) == nil {
                 posterCache.setObject(rendered, forKey: key)
             }
-            duration += frameDelay(source, index) * Double(stride)
+            duration += Double(repeats) * timingQuantum
         }
         guard !frames.isEmpty else { return nil }
         let animated = frames.count == 1
@@ -162,6 +173,10 @@ enum ExerciseMedia {
             : (UIImage.animatedImage(with: frames, duration: Swift.max(duration, 0.1)) ?? frames[0])
         animationCache.setObject(animated, forKey: key)
         return animated
+    }
+
+    static func cachedAnimation(for exerciseId: String) -> UIImage? {
+        animationCache.object(forKey: exerciseId as NSString)
     }
 
     /// A single treated frame, cached — what a grid of hundreds of cards can
@@ -273,7 +288,7 @@ struct ExerciseMediaView: View {
             return
         }
 
-        if let existingAnim = ExerciseMedia.animation(for: id) {
+        if let existingAnim = ExerciseMedia.cachedAnimation(for: id) {
             animatedImage = existingAnim
         } else {
             let decoded = await Task.detached(priority: .userInitiated) {

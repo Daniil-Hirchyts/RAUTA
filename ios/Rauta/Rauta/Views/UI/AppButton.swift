@@ -289,15 +289,15 @@ struct AppMenuButton<MenuContent: View>: View {
             ZStack {
                 Color.clear
                 RautaCharacter(mood: .focused)
-                    .frame(width: 54, height: 54)
+                    .frame(width: 72, height: 72)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
             }
-            .frame(width: 44, height: 44)
+            .frame(width: 60, height: 52)
             .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .frame(minWidth: 44, minHeight: 44)
+        .frame(minWidth: 60, minHeight: 52)
         .accessibilityLabel(label)
         .popover(isPresented: $isPresented, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
             AppMenuSurface(dismiss: { isPresented = false }) {

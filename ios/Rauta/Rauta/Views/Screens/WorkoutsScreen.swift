@@ -87,8 +87,10 @@ struct WorkoutsScreen: View {
                     meta: "\(ProfileVocabulary.goalLabel(store.trainingProfile.profile.goal)) · \(Int(store.trainingProfile.profile.preferredSessionDurationMinutes)) min",
                     mood: store.activeWorkout.session == nil ? .calm : .focused,
                     actions: companionActions,
+                    characterSize: 100,
                     floating: true,
-                    showsText: false
+                    showsText: true,
+                    glassContainer: true
                 )
             }
         })
@@ -159,7 +161,7 @@ struct WorkoutsScreen: View {
         if let source = TrainingPlan.activeProgramRecord(), store.activeWorkout.session == nil {
             let remaining = TrainingWorkflow.remainingTrainingSlots(source, ISOTime.now())
             if !remaining.sessions.isEmpty && store.trainingRecords.data.sessions.contains(where: { $0.plannedProgramId == source.id }) {
-                actions.append(CompanionAction(title: "Adjust remaining week", primary: true) {
+                actions.append(CompanionAction(title: "Adjust remaining week", systemImage: "arrow.triangle.2.circlepath", primary: true) {
                     do {
                         let result = try TrainingWorkflow.generateAndSavePlan(source: source)
                         if let program = result.result.program { TrainingPlan.projectPlannedWorkouts(TrainingPlan.sessionViews(program)) }
@@ -167,15 +169,15 @@ struct WorkoutsScreen: View {
                     } catch { issue = error.localizedDescription }
                 })
             } else if remaining.sessions.isEmpty {
-                actions.append(CompanionAction(title: "Extend training plan", primary: true) {
+                actions.append(CompanionAction(title: "Extend training plan", systemImage: "calendar.badge.plus", primary: true) {
                     store.navigation.push(.planWeek(sourceProgramId: source.id))
                 })
             }
         }
-        actions.append(CompanionAction(title: store.trainingRecords.data.activeProgramId == nil ? "Create training plan" : "New training plan", primary: actions.isEmpty) {
+        actions.append(CompanionAction(title: store.trainingRecords.data.activeProgramId == nil ? "Create training plan" : "New training plan", systemImage: "calendar.badge.plus", primary: actions.isEmpty) {
             store.navigation.push(.planWeek(sourceProgramId: nil))
         })
-        actions.append(CompanionAction(title: "Choose exercises", action: startExerciseFlow))
+        actions.append(CompanionAction(title: "Choose exercises", systemImage: "list.bullet.rectangle", action: startExerciseFlow))
         return actions
     }
     private func startExerciseFlow() {
@@ -240,41 +242,189 @@ private struct WorkoutsModeSwitcher: View {
 private struct StreakStrip: View {
     let workouts: [Workout]
     private var streak: Streak { StreakBuilder.build(workouts) }
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: 36, style: .continuous)
+    }
+
     var body: some View {
-        VStack(spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("\(streak.currentStreak)").font(Theme.readout(28)).foregroundStyle(Theme.foreground)
-                Text("day streak").font(Theme.sans(14, weight: .semibold)).foregroundStyle(Theme.mutedForeground)
+        VStack(spacing: 14) {
+            HStack(alignment: .center, spacing: 14) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("CURRENT STREAK")
+                        .font(Theme.sans(9, weight: .black))
+                        .kerning(1.45)
+                        .foregroundStyle(Theme.primary)
+
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("\(streak.currentStreak)")
+                            .font(Theme.readout(30))
+                            .foregroundStyle(Theme.foreground)
+                        Text(streak.currentStreak == 1 ? "day" : "days")
+                            .font(Theme.sans(15, weight: .bold))
+                            .foregroundStyle(Theme.foreground.opacity(0.78))
+                    }
+                }
+                .padding(.leading, 10)
+
+                Spacer(minLength: 8)
+
+                HStack(spacing: 12) {
+                    streakMetric(value: streak.weekWorkouts, label: "THIS WEEK")
+
+                    Rectangle()
+                        .fill(Theme.foreground.opacity(0.10))
+                        .frame(width: 1, height: 30)
+
+                    streakMetric(value: streak.longestStreak, label: "BEST")
+                }
+                .padding(.trailing, 4)
             }
-            HStack(spacing: 4) {
-                ForEach(streak.week) { day in
-                    VStack(spacing: 6) {
-                        Flame(lit: day.workouts > 0)
-                            .frame(width: day.isToday ? 38.4 : 30.4, height: day.isToday ? 48 : 38)
-                            .frame(height: 48, alignment: .bottom).opacity(day.isFuture ? 0.6 : 1)
-                        Text(CalendarDate.weekdayShort(day.date)).font(Theme.sans(10, weight: .semibold))
-                            .foregroundStyle(day.isToday ? Theme.primaryForeground : Theme.mutedForeground)
-                            .padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(day.isToday ? Theme.primary : .clear, in: Capsule())
-                    }.frame(maxWidth: .infinity)
+
+            GlassGroup(spacing: 6) {
+                HStack(spacing: 4) {
+                    ForEach(streak.week) { day in
+                        VStack(spacing: 6) {
+                            Flame(lit: day.workouts > 0)
+                                .frame(width: day.isToday ? 38.4 : 30.4, height: day.isToday ? 48 : 38)
+                                .frame(height: 48, alignment: .bottom).opacity(day.isFuture ? 0.6 : 1)
+                            Text(CalendarDate.weekdayShort(day.date)).font(Theme.sans(10, weight: .semibold))
+                                .foregroundStyle(day.isToday ? Theme.primaryForeground : Theme.mutedForeground)
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(day.isToday ? Theme.primary : .clear, in: Capsule())
+                        }.frame(maxWidth: .infinity)
+                    }
                 }
             }
-        }.padding(14).frame(maxWidth: .infinity)
-            .background(Theme.card.opacity(0.6), in: RoundedRectangle(cornerRadius: 36, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 36, style: .continuous).strokeBorder(Theme.border))
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity)
+        .background {
+            ZStack {
+                Color.clear
+                    .glassSurface(
+                        .regular,
+                        in: shape,
+                        border: Theme.Glassware.edge,
+                        legacyFill: Theme.card.opacity(0.64)
+                    )
+                RadialGradient(
+                    colors: [Theme.primary.opacity(0.14), .clear],
+                    center: UnitPoint(x: 0.52, y: 0.72),
+                    startRadius: 0,
+                    endRadius: 150
+                )
+                .clipShape(shape)
+                .allowsHitTesting(false)
+            }
+        }
+        .overlay(alignment: .top) {
+            Capsule()
+                .fill(.white.opacity(0.08))
+                .frame(width: 74, height: 1)
+                .padding(.top, 1)
+        }
+    }
+
+    private func streakMetric(value: Int, label: String) -> some View {
+        VStack(spacing: 1) {
+            Text("\(value)")
+                .font(Theme.readout(15))
+                .foregroundStyle(Theme.foreground)
+            Text(label)
+                .font(Theme.sans(7, weight: .black))
+                .kerning(0.9)
+                .foregroundStyle(Theme.mutedForeground)
+        }
+        .frame(minWidth: 42)
     }
 }
 
 private struct Flame: View {
     var lit: Bool
+
     var body: some View {
-        Canvas { context, size in
-            var ctx = context; ctx.scaleBy(x: size.width / 32, y: size.height / 40)
-            if let path = SVGPath.parse("M16.6 1.6c.6 6.4 9.9 10.4 9.9 22.1a10.5 10.5 0 0 1-21 0c0-5.4 2.1-9 4.9-11.9.1 3.1 1.3 5.3 3.1 6.4 1.8-1.7 3-8.6 3.1-16.6Z") {
-                ctx.fill(path, with: lit ? .linearGradient(Gradient(colors: [Theme.primaryGradientStart, Theme.primaryGradientEnd]), startPoint: .zero, endPoint: CGPoint(x: 0, y: 40)) : .color(.white.opacity(0.09)))
+        ZStack {
+            Color.clear
+                .glassSurface(
+                    lit ? .tinted(Theme.primary.opacity(0.68)) : .regular,
+                    in: FlameShape(),
+                    border: lit ? Theme.primary.opacity(0.42) : .white.opacity(0.07),
+                    legacyFill: lit ? Theme.primary.opacity(0.68) : .white.opacity(0.055)
+                )
+
+            Canvas { context, size in
+                var ctx = context
+                ctx.scaleBy(x: size.width / 32, y: size.height / 40)
+
+                if lit, let outer = SVGPath.parse(FlameShape.definition) {
+                    ctx.fill(
+                        outer,
+                        with: .linearGradient(
+                            Gradient(colors: [
+                                Theme.primaryGradientStart.opacity(0.64),
+                                Theme.primaryGradientEnd.opacity(0.28)
+                            ]),
+                            startPoint: .zero,
+                            endPoint: CGPoint(x: 0, y: 40)
+                        )
+                    )
+                }
+
+                if lit, let inner = SVGPath.parse("M16.2 15.8c0 4 6.1 6.1 6.1 11a6.2 6.2 0 0 1-12.4 0c0-4.9 6.3-7 6.3-11Z") {
+                    ctx.fill(
+                        inner,
+                        with: .linearGradient(
+                            Gradient(colors: [
+                                .white.opacity(0.42),
+                                Theme.primaryGradientEnd.opacity(0.18)
+                            ]),
+                            startPoint: CGPoint(x: 16, y: 16),
+                            endPoint: CGPoint(x: 16, y: 34)
+                        )
+                    )
+                }
+
+                if lit, let highlight = SVGPath.parse("M13.2 21.6c-1.2 1.6-1.8 3-1.9 4.6") {
+                    ctx.stroke(
+                        highlight,
+                        with: .color(.white.opacity(0.72)),
+                        style: StrokeStyle(lineWidth: 1.55, lineCap: .round)
+                    )
+                }
+
+                if lit, let ember = SVGPath.parse("M17.2 24.3c1.9 1.7 2.7 3.2 2.7 4.8a3.7 3.7 0 0 1-7.4 0c0-1.5 1.2-3.2 4.7-4.8Z") {
+                    ctx.fill(ember, with: .color(.white.opacity(0.15)))
+                }
             }
-            if lit, let inner = SVGPath.parse("M16.2 15.8c0 4 6.1 6.1 6.1 11a6.2 6.2 0 0 1-12.4 0c0-4.9 6.3-7 6.3-11Z") { ctx.fill(inner, with: .color(.white.opacity(0.26))) }
+            .allowsHitTesting(false)
         }
+        .shadow(
+            color: lit ? Theme.primary.opacity(0.25) : .clear,
+            radius: lit ? 7 : 0,
+            y: lit ? 3 : 0
+        )
+    }
+}
+
+private struct FlameShape: InsettableShape {
+    static let definition = "M16.6 1.6c.6 6.4 9.9 10.4 9.9 22.1a10.5 10.5 0 0 1-21 0c0-5.4 2.1-9 4.9-11.9.1 3.1 1.3 5.3 3.1 6.4 1.8-1.7 3-8.6 3.1-16.6Z"
+
+    var insetAmount: CGFloat = 0
+
+    func path(in rect: CGRect) -> Path {
+        guard let source = SVGPath.parse(Self.definition) else { return Path() }
+        let target = rect.insetBy(dx: insetAmount, dy: insetAmount)
+        let scaleX = target.width / 32
+        let scaleY = target.height / 40
+        let transform = CGAffineTransform(translationX: target.minX, y: target.minY)
+            .scaledBy(x: scaleX, y: scaleY)
+        return source.applying(transform)
+    }
+
+    func inset(by amount: CGFloat) -> FlameShape {
+        var copy = self
+        copy.insetAmount += amount
+        return copy
     }
 }
 
@@ -283,70 +433,24 @@ private struct WorkoutRow: View {
     let isPast: Bool
     let isRunning: Bool
     let onOpen: () -> Void
-    @State private var runningPulse = false
     private var muscles: [MuscleId] { ExerciseCatalogue.musclesForExerciseIds(workout.exerciseIds) }
+
     var body: some View {
         Button(action: onOpen) {
             HStack(spacing: 12) {
                 dateStamp
-                VStack(alignment: .leading, spacing: 4) {
-                        if isRunning, let session = ActiveWorkoutStore.shared.session {
-                            TimelineView(.periodic(from: .now, by: 1)) { _ in
-                                HStack(spacing: 6) {
-                                    Circle()
-                                        .fill(Theme.primary)
-                                        .frame(width: 6, height: 6)
-                                        .opacity(runningPulse ? 0.35 : 1)
-                                    Text("\(session.runningSince == nil ? "Paused" : "In progress") · \(ActiveWorkout.formatDuration(ActiveWorkout.elapsedMs(session))) · \(session.completedIds.count)/\(workout.exerciseIds.count)")
-                                        .font(Theme.sans(13, weight: .bold))
-                                }
-                                .foregroundStyle(Theme.primary)
-                                .onAppear {
-                                    guard !runningPulse else { return }
-                                    withAnimation(.easeInOut(duration: 1).repeatForever(autoreverses: true)) {
-                                        runningPulse = true
-                                    }
-                                }
-                            }
-                            progress(session.completedIds.count).padding(.top, 6)
-                        } else if let completion = workout.completion {
-                            HStack(spacing: 6) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(Theme.success)
-                                Text(ActiveWorkout.formatDuration(completion.durationMs))
-                                Text("·")
-                                    .foregroundStyle(Theme.mutedForeground)
-                                Text("\(completion.completedExerciseIds.count)/\(workout.exerciseIds.count) exercises")
-                            }
-                            .font(Theme.sans(13, weight: .semibold))
-                            .foregroundStyle(Theme.foreground)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.82)
-
-                            if completion.activeCalories > 0 {
-                                Text("\(Int(completion.activeCalories)) kcal")
-                                    .font(Theme.sans(11, weight: .medium))
-                                    .foregroundStyle(Theme.gold)
-                            }
-                        } else if isPast {
-                            Text("Not completed · \(Wording.countLabel(workout.exerciseIds.count, "exercise"))")
-                                .font(Theme.sans(13, weight: .semibold))
-                                .foregroundStyle(Theme.mutedForeground)
-                        } else {
-                            Text((workout.planned == nil ? "" : "\(workout.name) · ") + Wording.countLabel(workout.exerciseIds.count, "exercise"))
-                                .font(Theme.sans(15, weight: .bold)).foregroundStyle(Theme.foreground)
-                            Text(muscles.prefix(3).map(\.label).joined(separator: " · ") + (muscles.count > 3 ? " +\(muscles.count - 3)" : ""))
-                                .font(Theme.sans(11, weight: .medium)).foregroundStyle(Theme.mutedForeground).lineLimit(1)
-                        }
+                VStack(alignment: .leading, spacing: 5) {
+                    title
+                    detail
+                    progressBars
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                BodyPreview(selectedMuscles: muscles, width: 88, height: 64)
+                BodyPreview(selectedMuscles: muscles, width: 70, height: 60)
                     .opacity(isPast ? 0.9 : 1)
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 16)
-            .frame(minHeight: 104)
+            .padding(.vertical, 10)
+            .frame(minHeight: 100)
             .background(
                 LinearGradient(
                     colors: [
@@ -366,24 +470,110 @@ private struct WorkoutRow: View {
         }
         .buttonStyle(.plain)
     }
+
     private var dateStamp: some View {
         VStack(spacing: 2) {
-            Text(CalendarDate.weekdayShort(workout.date).uppercased()).font(Theme.sans(9, weight: .bold)).tracking(1.26).opacity(0.75)
-            Text(CalendarDate.dayOfMonth(workout.date)).font(Theme.readout(21))
-            if isPast { Text(CalendarDate.monthShort(workout.date).uppercased()).font(Theme.sans(9, weight: .bold)).opacity(0.6) }
-        }.foregroundStyle(isRunning ? Theme.primaryForeground : isPast ? Theme.mutedForeground : Theme.foreground)
-            .padding(.vertical, 10).frame(width: 58)
-            .background(
-                isRunning
-                    ? AnyShapeStyle(Theme.primaryGradient)
-                    : AnyShapeStyle(Theme.muted.opacity(isPast ? 0.35 : 0.45)),
-                in: RoundedRectangle(cornerRadius: 16)
-            )
+            Text(CalendarDate.weekdayShort(workout.date).uppercased())
+                .font(Theme.sans(8, weight: .black))
+                .tracking(1.15)
+            Text(CalendarDate.dayOfMonth(workout.date))
+                .font(Theme.readout(20))
+            if isPast {
+                Text(CalendarDate.monthShort(workout.date).uppercased())
+                    .font(Theme.sans(8, weight: .black))
+                    .tracking(0.8)
+                    .opacity(0.66)
+            }
+        }
+        .foregroundStyle(isRunning ? Theme.primary : isPast ? Theme.mutedForeground : Theme.foreground)
+        .frame(width: 52)
+        .frame(minHeight: 58)
     }
-    private func progress(_ done: Int) -> some View {
-        GeometryReader { p in
-            Capsule().fill(Theme.muted)
-            Capsule().fill(Theme.primaryGradient).frame(width: p.size.width * min(1, Double(done) / Double(max(1, workout.exerciseIds.count))))
-        }.frame(height: 4)
+
+    private var title: some View {
+        Text("\(workout.name) · \(Wording.countLabel(workout.exerciseIds.count, "exercise"))")
+            .font(Theme.sans(16, weight: .heavy))
+            .tracking(-0.2)
+            .foregroundStyle(Theme.foreground)
+            .lineLimit(1)
+    }
+
+    @ViewBuilder private var detail: some View {
+        if isRunning, let session = ActiveWorkoutStore.shared.session {
+            TimelineView(.periodic(from: .now, by: 60)) { _ in
+                HStack(spacing: 6) {
+                    Circle().fill(Theme.primary).frame(width: 6, height: 6)
+                    Text("\(session.runningSince == nil ? "Paused" : "In progress") · \(minutes(ActiveWorkout.elapsedMs(session)))")
+                }
+                .font(Theme.sans(11, weight: .black))
+                .tracking(0.35)
+                .foregroundStyle(Theme.primary)
+                .textCase(.uppercase)
+            }
+        } else if let completion = workout.completion {
+            HStack(spacing: 7) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(Theme.success)
+                Text("Completed")
+                Text(minutes(completion.durationMs))
+                if completion.activeCalories > 0 {
+                    Text("\(Int(completion.activeCalories)) kcal")
+                        .foregroundStyle(Theme.gold)
+                }
+            }
+            .font(Theme.sans(12, weight: .semibold))
+            .foregroundStyle(Theme.foreground)
+            .lineLimit(1)
+            .minimumScaleFactor(0.78)
+        } else if isPast {
+            Text("Not completed")
+                .font(Theme.sans(13, weight: .semibold))
+                .foregroundStyle(Theme.mutedForeground)
+        } else {
+            Text(muscleSummary)
+                .font(Theme.sans(11, weight: .medium))
+                .foregroundStyle(Theme.mutedForeground)
+                .lineLimit(1)
+        }
+    }
+
+    private var progressBars: some View {
+        let completed = completedExerciseIds
+        let current = isRunning ? ActiveWorkoutStore.shared.session?.currentExerciseId : nil
+
+        return HStack(spacing: 4) {
+            ForEach(workout.exerciseIds, id: \.self) { id in
+                Capsule()
+                    .fill(progressFill(id: id, completed: completed, current: current))
+                    .frame(height: 4)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.top, 3)
+    }
+
+    private var completedExerciseIds: Set<String> {
+        if isRunning, let session = ActiveWorkoutStore.shared.session {
+            return Set(session.completedIds)
+        }
+        return Set(workout.completion?.completedExerciseIds ?? [])
+    }
+
+    private func progressFill(id: String, completed: Set<String>, current: String?) -> AnyShapeStyle {
+        if completed.contains(id) {
+            if isPast { return AnyShapeStyle(Theme.success) }
+            return AnyShapeStyle(Theme.primaryGradient)
+        }
+        if id == current { return AnyShapeStyle(Theme.primary.opacity(0.48)) }
+        return AnyShapeStyle(Theme.foreground.opacity(0.10))
+    }
+
+    private var muscleSummary: String {
+        muscles.prefix(3).map(\.label).joined(separator: " · ")
+            + (muscles.count > 3 ? " +\(muscles.count - 3)" : "")
+    }
+
+    private func minutes(_ milliseconds: Double) -> String {
+        "\(Swift.max(1, Int((milliseconds / 60_000).rounded(.up)))) min"
     }
 }

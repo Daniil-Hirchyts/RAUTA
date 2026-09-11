@@ -38,7 +38,7 @@ struct SettingsScreen: View {
                                     label: "Apple Health integration"
                                 )
                             }
-                            settingsRow(title: "Sync completed workouts", detail: "Includes workout duration automatically", icon: "heart.text.square", showsDivider: true) {
+                            settingsRow(title: "Sync workouts", detail: "Save completed workouts", icon: "heart.text.square", showsDivider: true) {
                                 AppSwitch(
                                     isOn: Binding(
                                         get: { store.settings.autoSyncWorkouts },
@@ -50,7 +50,7 @@ struct SettingsScreen: View {
                             }
                             settingsRow(
                                 title: "Active calories",
-                                detail: "Estimated from how long you trained, and your Health weight when you allow it",
+                                detail: "Workout time + Health weight",
                                 icon: "waveform.path.ecg",
                                 showsDivider: store.settings.healthStatus == .connected
                             ) {
@@ -73,7 +73,7 @@ struct SettingsScreen: View {
                         section("Workout & Gym") {
                             settingsAction(
                                 title: "Available equipment",
-                                detail: "What an automatic plan may use",
+                                detail: "For generated plans",
                                 icon: "dumbbell",
                                 value: equipmentSummary,
                                 showsDivider: true
@@ -89,7 +89,7 @@ struct SettingsScreen: View {
                                     label: "Haptic feedback"
                                 )
                             }
-                            settingsRow(title: "Sound chimes", detail: "Play a short cue for completed actions", icon: "bell.badge", showsDivider: true) {
+                            settingsRow(title: "Sound chimes", detail: "Cue after key actions", icon: "bell.badge", showsDivider: true) {
                                 AppSwitch(
                                     isOn: Binding(
                                         get: { store.settings.soundChimesEnabled },
@@ -98,7 +98,7 @@ struct SettingsScreen: View {
                                     label: "Sound chimes"
                                 )
                             }
-                            settingsRow(title: "Keep screen awake", detail: "Prevents auto-lock during an active workout", icon: "iphone", showsDivider: false) {
+                            settingsRow(title: "Keep screen awake", detail: "Prevent auto-lock in workouts", icon: "iphone", showsDivider: false) {
                                 AppSwitch(
                                     isOn: Binding(
                                         get: { store.settings.keepAwake },
@@ -134,7 +134,7 @@ struct SettingsScreen: View {
                                 ShareLink(item: exportURL) {
                                     settingsActionLabel(
                                         title: "Export data",
-                                        detail: "Save one file holding every workout, favorite and preset",
+                                        detail: "Save one backup file",
                                         icon: "arrow.down.to.line",
                                         showsDivider: true
                                     )
@@ -144,7 +144,7 @@ struct SettingsScreen: View {
                                 Button(action: prepareExport) {
                                     settingsActionLabel(
                                         title: "Export data",
-                                        detail: "Save one file holding every workout, favorite and preset",
+                                        detail: "Save one backup file",
                                         icon: "arrow.down.to.line",
                                         showsDivider: true
                                     )
@@ -155,7 +155,7 @@ struct SettingsScreen: View {
                             Button { importing = true } label: {
                                 settingsActionLabel(
                                     title: "Import data",
-                                    detail: "Restore from a RAUTA backup file",
+                                    detail: "Restore a RAUTA backup",
                                     icon: "doc.badge.arrow.up",
                                     showsDivider: true
                                 )
@@ -229,31 +229,31 @@ struct SettingsScreen: View {
     }
 
     private var healthConnectionDescription: String {
-        guard store.settings.healthStatus == .connected else { return "Save completed strength workouts to Health" }
+        guard store.settings.healthStatus == .connected else { return "Save workouts to Health" }
         if let weight = store.settings.healthBodyWeightKg {
-            return "Connected · \(Resistance.formatKg(weight)) kg from Health"
+            return "Connected · \(Resistance.formatKg(weight)) kg"
         }
-        return "Connected · finished workouts are saved to Health"
+        return "Connected · workouts sync"
     }
 
     private var iCloudDescription: String {
         switch store.iCloud.status {
         case .checking:
-            return "Checking your iCloud account…"
+            return "Checking iCloud…"
         case .syncing:
-            return "Saving workouts and settings…"
+            return "Saving backup…"
         case .unavailable:
-            return "Sign in to iCloud to enable backup"
+            return "Sign in to iCloud"
         case .error:
-            return store.iCloud.error ?? "The last backup could not be saved"
+            return store.iCloud.error ?? "Backup failed"
         case .synced:
             guard let value = store.iCloud.lastSyncedAt, let millis = ISOTime.parse(value) else {
-                return "Your data is backed up automatically"
+                return "Backed up automatically"
             }
             let formatter = DateFormatter()
             formatter.timeStyle = .short
             formatter.dateStyle = .none
-            return "Saved automatically · \(formatter.string(from: Date(timeIntervalSince1970: millis / 1000)))"
+            return "Saved · \(formatter.string(from: Date(timeIntervalSince1970: millis / 1000)))"
         }
     }
 
@@ -374,7 +374,8 @@ struct SettingsScreen: View {
                 Text(detail)
                     .font(Theme.sans(14))
                     .foregroundStyle(Theme.mutedForeground)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }

@@ -13,7 +13,9 @@ struct ActiveSetLog: View {
     @State private var side: SetSide = .both
     @State private var stationContext: StationContext?
     @State private var restUntil: Date?
+    @State private var phaseAnchor = Date()
     @State private var issue: String?
+    @State private var modeMenuOpen = false
 
     private var exercise: ExerciseSummary? { ExerciseCatalogue.byId[exerciseId] }
     private var draft: PersistedActiveExerciseDraft? {
@@ -69,18 +71,19 @@ struct ActiveSetLog: View {
                 if let issue { InlineNotice(message: issue, isError: true) }
             }
         }
-        .onAppear(perform: loadCurrent)
+        .onAppear {
+            phaseAnchor = Date()
+            loadCurrent()
+        }
         .onChange(of: selectedSetId) { _, _ in loadCurrent() }
         .task(id: restUntil) {
             guard let restUntil else { return }
             let duration = restUntil.timeIntervalSinceNow
-            if duration > 0 {
-                try? await Task.sleep(for: .seconds(duration))
-                guard !Task.isCancelled else { return }
-            }
+            guard duration > 0 else { return }
+            try? await Task.sleep(for: .seconds(duration))
+            guard !Task.isCancelled, self.restUntil == restUntil else { return }
             Chimes.playRestAlarm()
             Haptics.trigger(.heavy)
-            self.restUntil = nil
         }
     }
 
@@ -93,7 +96,6 @@ struct ActiveSetLog: View {
                     .lineLimit(1)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Theme.primary.opacity(0.12), in: Capsule())
             }
             if let progressionNote {
                 Text(progressionText(progressionNote))
@@ -104,18 +106,33 @@ struct ActiveSetLog: View {
             } else {
                 Spacer(minLength: 0)
             }
-            if let restUntil {
-                TimelineView(.periodic(from: .now, by: 1)) { context in
-                    let remaining = max(0, Int(restUntil.timeIntervalSince(context.date).rounded(.up)))
-                    Text(restClock(remaining))
-                        .font(Theme.sans(11, weight: .bold))
-                        .monospacedDigit()
-                        .foregroundStyle(Theme.foreground)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Theme.muted.opacity(0.6), in: Capsule())
-                }
+            phaseTimer
+        }
+    }
+
+    private var phaseTimer: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let remaining = restUntil.map { $0.timeIntervalSince(context.date) } ?? -1
+            let isResting = remaining > 0
+            let elapsedAnchor = restUntil ?? phaseAnchor
+            let seconds = isResting
+                ? Int(remaining.rounded(.up))
+                : max(0, Int(context.date.timeIntervalSince(elapsedAnchor).rounded(.down)))
+
+            HStack(spacing: 5) {
+                Text(isResting ? "REST" : "SET")
+                    .font(Theme.sans(9, weight: .black))
+                    .kerning(1.1)
+                    .foregroundStyle(isResting ? Theme.primary : Theme.mutedForeground)
+                Text(restClock(seconds))
+                    .font(Theme.sans(11, weight: .bold))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.foreground)
             }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Theme.muted.opacity(0.6), in: Capsule())
+            .accessibilityLabel(isResting ? "Rest timer" : "Current set timer")
         }
     }
 
@@ -130,7 +147,7 @@ struct ActiveSetLog: View {
             .font(Theme.sans(9, weight: .bold))
             .kerning(1.08)
             .foregroundStyle(Theme.mutedForeground)
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 12)
             .padding(.bottom, 6)
             .overlay(alignment: .bottom) {
                 Rectangle().fill(Theme.border.opacity(0.6)).frame(height: 1)
@@ -151,11 +168,11 @@ struct ActiveSetLog: View {
                     }
                     .font(Theme.sans(15, weight: .semibold))
                     .foregroundStyle(set.observation?.completed == true ? Theme.foreground : Theme.mutedForeground)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 10)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 12)
                     .background(
                         (selectedSet?.id == set.id ? Theme.primary : Theme.muted).opacity(0.12),
-                        in: RoundedRectangle(cornerRadius: Theme.Radius.xl2)
+                        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
                     )
                 }
                 .buttonStyle(.plain)
@@ -183,20 +200,6 @@ struct ActiveSetLog: View {
                     canDecrement: reps > 1
                 ) { direction in
                     reps = min(100, max(1, reps + Double(direction)))
-                }
-
-                let modes = Resistance.modes(for: exercise)
-                if modes.count > 1 {
-                    chipRow(label: "How") {
-                        ForEach(modes, id: \.self) { candidate in
-                            SelectionChip(
-                                title: Resistance.modeLabel(candidate),
-                                selected: mode == candidate
-                            ) {
-                                changeMode(candidate)
-                            }
-                        }
-                    }
                 }
 
                 if Resistance.sideOptions(for: exercise).count > 1 {
@@ -227,13 +230,64 @@ struct ActiveSetLog: View {
                     }
                     .frame(maxWidth: 100)
                 }
+                if let exercise {
+                    let modes = Resistance.modes(for: exercise)
+                    if modes.count > 1 {
+                        modeMenu(modes)
+                    }
+                }
                 AppButton(
                     resolvedSubmitLabel,
+                    variant: .ghost,
                     isDisabled: Resistance.isMeasuredInKg(mode) && kilograms == nil,
                     expands: true,
                     action: save
                 )
             }
+        }
+    }
+
+    private func modeMenu(_ modes: [ResistanceMode]) -> some View {
+        AppControlButton(
+            systemImage: modeIcon(mode),
+            label: "How: \(Resistance.modeLabel(mode))"
+        ) {
+            Haptics.trigger(.selection)
+            modeMenuOpen = true
+        }
+        .popover(isPresented: $modeMenuOpen, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
+            AppMenuSurface(dismiss: { modeMenuOpen = false }) {
+                ForEach(modes, id: \.self) { candidate in
+                    Button {
+                        modeMenuOpen = false
+                        changeMode(candidate)
+                    } label: {
+                        HStack(spacing: 10) {
+                            Label(
+                                Resistance.modeLabel(candidate),
+                                systemImage: modeIcon(candidate)
+                            )
+                            Spacer(minLength: 12)
+                            if mode == candidate {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(Theme.primary)
+                            }
+                        }
+                    }
+                }
+            }
+            .presentationCompactAdaptation(.popover)
+            .presentationBackground(.clear)
+        }
+    }
+
+    private func modeIcon(_ mode: ResistanceMode) -> String {
+        switch mode {
+        case .externalLoad: return "scalemass"
+        case .assistance: return "arrow.down.to.line"
+        case .bodyweight: return "figure.stand"
+        case .bandResistance: return "oval"
+        case .unknown: return "questionmark"
         }
     }
 
@@ -285,7 +339,7 @@ struct ActiveSetLog: View {
                 settings: store.trainingRecords.data.settings,
                 equipmentIncrementKg: store.filters.equipmentLoadIncrements[exercise.equipment]
             )
-            kilograms = resistance.kg
+            kilograms = Resistance.isMeasuredInKg(mode) ? (resistance.kg ?? 0) : nil
             reps = observation.reps ?? 10
             rir = observation.rir
             side = set?.side ?? .both
@@ -295,9 +349,12 @@ struct ActiveSetLog: View {
         let defaults = defaultEditorValue(for: exercise)
         mode = defaults.mode
         stationContext = defaults.context
-        kilograms = set?.target.flatMap {
+        let targetLoad = set?.target.flatMap {
             Resistance.carryOverLoad($0.resistance, defaults.mode, defaults.context)
-        } ?? defaults.kg
+        }
+        kilograms = Resistance.isMeasuredInKg(defaults.mode)
+            ? (targetLoad ?? defaults.kg ?? 0)
+            : nil
         reps = set?.target?.reps.max ?? defaults.reps
         rir = set?.target?.rir ?? defaults.rir
         side = set?.side ?? defaults.side
@@ -426,6 +483,7 @@ struct ActiveSetLog: View {
         mode = nextMode
         stationContext = nextContext
         kilograms = carriedLoad(mode: nextMode, context: nextContext)
+            ?? (Resistance.isMeasuredInKg(nextMode) ? 0 : nil)
     }
 
     private func carriedLoad(mode: ResistanceMode, context: StationContext) -> Double? {

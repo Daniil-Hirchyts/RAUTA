@@ -16,8 +16,11 @@ struct ExerciseDetailScreen: View {
                         liked: store.favorites.isFavorite(exercise.id),
                         label: store.favorites.isFavorite(exercise.id)
                             ? "Remove \(exercise.name) from favorites"
-                            : "Add \(exercise.name) to favorites"
+                            : "Add \(exercise.name) to favorites",
+                        size: 40,
+                        iconSize: 17
                     ) { store.favorites.toggleFavorite(exercise.id) }
+                    .frame(width: 44, height: 44)
                 }
             ) {
                 ScrollView {

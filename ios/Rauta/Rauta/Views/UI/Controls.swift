@@ -93,13 +93,15 @@ private struct StepButton: View {
     @State private var isPressed = false
 
     var body: some View {
+        let shape = Circle()
+
         Image(systemName: systemImage)
             .font(.system(size: 20, weight: .medium))
             .foregroundStyle(Theme.primary)
             .frame(width: 48, height: 48)
             .glassSurface(
                 isDisabled ? .inert : .regular,
-                in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous),
+                in: shape,
                 interactive: !isDisabled,
                 border: Theme.Glassware.edge,
                 legacyFill: Theme.card
@@ -107,7 +109,7 @@ private struct StepButton: View {
             .opacity(isDisabled ? 0.35 : 1)
             .scaleEffect(isPressed && !Theme.Glassware.supportsLiquidGlass ? 0.94 : 1)
             .animation(Theme.Motion.spring, value: isPressed)
-            .contentShape(Rectangle())
+            .contentShape(shape)
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { _ in

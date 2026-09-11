@@ -102,9 +102,10 @@ private struct LockScreenCard: View {
     var state: WorkoutActivityAttributes.ContentState
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 4) {
             HStack(spacing: 7) {
-                Image(systemName: "calendar")
+                Image(systemName: "calendar.fill")
+                    .font(.system(size: 10, weight: .black))
                 Text(workoutDate)
                     .lineLimit(1)
                 Spacer(minLength: 8)
@@ -114,27 +115,24 @@ private struct LockScreenCard: View {
             .foregroundStyle(Color(WorkoutActivityPalette.accent))
 
             WorkoutTimerText(state: state)
-                .font(.system(size: 44, weight: .heavy))
+                .font(.system(size: 70, weight: .black, design: .rounded))
+                .tracking(-2.2)
                 .foregroundStyle(Color(WorkoutActivityPalette.text))
-                .frame(maxWidth: .infinity, alignment: .center)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
 
-            HStack(spacing: 9) {
+            HStack(spacing: 6) {
                 WorkoutGlyph(isPaused: state.isPaused)
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 10, weight: .black))
                     .foregroundStyle(Color(WorkoutActivityPalette.accent))
+
                 Text(state.exerciseName)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color(WorkoutActivityPalette.text))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color(WorkoutActivityPalette.text).opacity(0.88))
                     .lineLimit(1)
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 11)
-            .padding(.vertical, 9)
             .frame(maxWidth: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.white.opacity(0.055))
-            )
 
             HStack(spacing: 7) {
                 ProgressDots(state: state)
@@ -146,15 +144,28 @@ private struct LockScreenCard: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .padding(14)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.035))
+            ZStack {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color.white.opacity(0.03))
+                LinearGradient(
+                    colors: [
+                        Color(WorkoutActivityPalette.accent).opacity(0.09),
+                        Color.clear,
+                        Color.white.opacity(0.025)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            }
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color(WorkoutActivityPalette.accent).opacity(0.22), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color(WorkoutActivityPalette.accent).opacity(0.28), lineWidth: 1)
         }
         .padding(6)
     }

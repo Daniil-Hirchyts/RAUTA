@@ -5,7 +5,6 @@ struct PlanWeekScreen: View {
     let sourceProgramId: String?
 
     @State private var selectedDates: Set<String> = []
-    @State private var visibleMonth: Date = PlanMonthCalendar.monthStart(Date())
     @State private var working = false
     @State private var block: PlanBlock?
 
@@ -22,19 +21,11 @@ struct PlanWeekScreen: View {
                     VStack(alignment: .leading, spacing: 0) {
                         planIntro
 
-                        PlanMonthCalendar(
-                            visibleMonth: $visibleMonth,
+                        PlanDatePicker(
                             selectedDates: $selectedDates,
                             onSelectionChange: { block = nil }
                         )
-                        .padding(.top, 24)
-
-                        Text(selectionSummary)
-                            .font(Theme.sans(14))
-                            .foregroundStyle(Theme.mutedForeground)
-                            .lineSpacing(3)
-                            .padding(.horizontal, 4)
-                            .padding(.top, 12)
+                        .padding(.top, 18)
 
                         if let block {
                             blockNotice(block)
@@ -43,14 +34,19 @@ struct PlanWeekScreen: View {
                     }
                     .padding(.horizontal, Theme.Metrics.contentInset)
                     .padding(.top, 20)
-                    .padding(.bottom, 24)
+                    .padding(.bottom, 142)
                 }
 
                 RautaBottomDock(
                     speech: continuing
-                        ? "Pick future dates. I'll use your logged sets for them."
-                        : "Pick your dates. I'll use your saved preferences for the rest.",
-                    characterSize: 120
+                        ? "Pick the next dates. I'll adapt from your logged work."
+                        : "Pick your dates. I'll build the plan from your preferences.",
+                    meta: selectionSummary,
+                    mood: .focused,
+                    characterSize: 100,
+                    floating: true,
+                    showsText: true,
+                    glassContainer: true
                 )
             }
         } controls: {
@@ -78,20 +74,25 @@ struct PlanWeekScreen: View {
     }
 
     private var planIntro: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text(continuing ? "Choose every date you want to add." : "Choose every date you want in this plan.")
-                .font(Theme.sans(15, weight: .bold))
+        VStack(alignment: .leading, spacing: 8) {
+            Text(continuing ? "PLAN MORE TRAINING" : "BUILD YOUR SCHEDULE")
+                .font(Theme.sans(10, weight: .black))
+                .kerning(1.8)
+                .foregroundStyle(Theme.primary)
+
+            Text(continuing ? "When do you want to train next?" : "When do you want to train?")
+                .font(Theme.sans(24, weight: .black))
                 .foregroundStyle(Theme.foreground)
-                .tracking(-0.2)
-                .lineSpacing(2)
+                .tracking(-0.7)
+                .lineLimit(2)
 
             Text(profileLine)
-                .font(Theme.sans(11))
+                .font(Theme.sans(12, weight: .medium))
                 .foregroundStyle(Theme.mutedForeground)
-                .lineLimit(2)
+                .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 12)
+        .padding(.vertical, 8)
     }
 
     private var profileLine: String {
@@ -101,8 +102,8 @@ struct PlanWeekScreen: View {
 
     private var selectionSummary: String {
         selectedDates.isEmpty
-            ? "Pick at least one date."
-            : "\(Wording.countLabel(selectedDates.count, "training date")) selected. You can move to another month and keep adding dates."
+            ? "Select at least one training day"
+            : "\(Wording.countLabel(selectedDates.count, "training day")) selected"
     }
 
     private func blockNotice(_ block: PlanBlock) -> some View {
@@ -165,10 +166,6 @@ struct PlanWeekScreen: View {
             CalendarDate.shift(CalendarDate.today, by: mondayOffset + $0)
         })
 
-        if let first = selectedDates.sorted().first,
-           let firstDate = CalendarDate.parse(first) {
-            visibleMonth = PlanMonthCalendar.monthStart(firstDate)
-        }
     }
 
     private func create() {
@@ -201,6 +198,52 @@ struct PlanWeekScreen: View {
         case .profileEquipment: store.navigation.push(.profileEquipment)
         case .profilePriorities: store.navigation.push(.profilePriorities)
         }
+    }
+}
+
+private struct PlanDatePicker: View {
+    @Binding var selectedDates: Set<String>
+    var onSelectionChange: () -> Void
+
+    private var calendar: Calendar { Calendar.current }
+    private var earliestDate: Date { calendar.startOfDay(for: Date()) }
+
+    private var selection: Binding<Set<DateComponents>> {
+        Binding(
+            get: {
+                Set(selectedDates.compactMap { iso in
+                    guard let date = CalendarDate.parse(iso) else { return nil }
+                    return calendar.dateComponents([.year, .month, .day], from: date)
+                })
+            },
+            set: { values in
+                selectedDates = Set(values.compactMap { components in
+                    guard let date = calendar.date(from: components) else { return nil }
+                    let iso = CalendarDate.toISO(date)
+                    return iso >= CalendarDate.today ? iso : nil
+                })
+                Haptics.trigger(.selection)
+                onSelectionChange()
+            }
+        )
+    }
+
+    var body: some View {
+        MultiDatePicker(
+            "Training dates",
+            selection: selection,
+            in: earliestDate...
+        )
+        .labelsHidden()
+        .tint(Theme.primary)
+        .padding(12)
+        .frame(maxWidth: .infinity)
+        .glassSurface(
+            .clear,
+            in: RoundedRectangle(cornerRadius: Theme.Radius.xl3, style: .continuous),
+            border: Theme.Glassware.edge,
+            legacyFill: Theme.card.opacity(0.74)
+        )
     }
 }
 
@@ -362,12 +405,14 @@ struct PlanMonthCalendar: View {
 }
 
 struct WorkoutDateCalendarModal: View {
+    var isPresented: Bool
     @State private var selectedDate: Date
     let onClose: () -> Void
     let onSelect: (String) -> Void
 
-    init(date: String, onClose: @escaping () -> Void, onSelect: @escaping (String) -> Void) {
+    init(isPresented: Bool, date: String, onClose: @escaping () -> Void, onSelect: @escaping (String) -> Void) {
         let parsed = CalendarDate.parse(date) ?? Date()
+        self.isPresented = isPresented
         _selectedDate = State(initialValue: parsed)
         self.onClose = onClose
         self.onSelect = onSelect
@@ -375,7 +420,7 @@ struct WorkoutDateCalendarModal: View {
 
     var body: some View {
         AppModal(
-            isPresented: true,
+            isPresented: isPresented,
             label: "Choose workout date",
             onClose: onClose,
             panelPadding: 6

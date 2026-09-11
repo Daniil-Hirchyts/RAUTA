@@ -132,12 +132,13 @@ struct AppTopScrim: View {
 /// same dissolve as the shell header.
 struct AppGradientBlur: View {
     var edge: VerticalEdge
+    var radiusScale: CGFloat = 1
     private static let radii: [CGFloat] = [48, 32, 16, 8, 4, 2, 1]
 
     var body: some View {
         ZStack {
             ForEach(Array(Self.radii.enumerated()), id: \.offset) { index, radius in
-                ProgressiveBlur(radius: radius)
+                ProgressiveBlur(radius: radius * max(0, radiusScale))
                     .mask(bandMask(for: index))
             }
         }
