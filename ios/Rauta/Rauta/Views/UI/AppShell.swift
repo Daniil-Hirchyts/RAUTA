@@ -5,6 +5,7 @@ import UIKit
 /// visually stable while compact controls can use Liquid Glass above it.
 struct AppShell<Content: View, Controls: View>: View {
     var commandsVisible: Bool
+    var fullScreen = false
     @ViewBuilder var content: () -> Content
     @ViewBuilder var controls: () -> Controls
 
@@ -19,11 +20,11 @@ struct AppShell<Content: View, Controls: View>: View {
                 Theme.shell.ignoresSafeArea()
 
                 surface()
-                    .padding(.horizontal, Theme.Metrics.surfaceGutter)
-                    .padding(.top, Theme.Metrics.surfaceGutter)
+                    .padding(.horizontal, fullScreen ? 0 : Theme.Metrics.surfaceGutter)
+                    .padding(.top, fullScreen ? 0 : Theme.Metrics.surfaceGutter)
                     .padding(
                         .bottom,
-                        Theme.Metrics.surfaceGutter
+                        (fullScreen ? 0 : Theme.Metrics.surfaceGutter)
                             + (commandsVisible ? controlsSpace : 0)
                     )
                     .animation(Theme.Motion.smoothOut(0.32), value: commandsVisible)
@@ -41,11 +42,18 @@ struct AppShell<Content: View, Controls: View>: View {
         }
     }
 
+    @ViewBuilder
     private func surface() -> some View {
-        content()
+        let base = content()
             .scrollIndicators(.hidden)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(surfaceBackground)
+
+        if fullScreen {
+            base
+                .overlay(AppGrain())
+        } else {
+            base
             .clipShape(
                 RoundedRectangle(
                     cornerRadius: Theme.Metrics.surfaceRadius, style: .continuous
@@ -58,6 +66,7 @@ struct AppShell<Content: View, Controls: View>: View {
                 .strokeBorder(Theme.border, lineWidth: 1)
             )
             .overlay(AppGrain())
+        }
     }
 
     private var surfaceBackground: some View {

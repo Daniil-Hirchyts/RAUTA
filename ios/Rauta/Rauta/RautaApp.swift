@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UserNotifications
 
 @main
 struct RautaApp: App {
@@ -19,6 +20,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
         AppStore.shared.bootstrap()
         return true
     }
@@ -29,5 +31,14 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
     func applicationWillTerminate(_ application: UIApplication) {
         AppStore.shared.persistNow()
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .list, .sound]
     }
 }

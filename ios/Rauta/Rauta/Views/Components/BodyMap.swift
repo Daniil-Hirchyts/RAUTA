@@ -60,6 +60,8 @@ struct BodyFigure: View {
     var view: BodyView_Model
     var selectedMuscles: [MuscleId]
     var muscleWeights: [MuscleId: Double] = [:]
+    var selectedColor: Color = Theme.primary
+    var showsSelectionGlow: Bool = true
     var onToggle: ((MuscleId) -> Void)?
     var compact: Bool = false
 
@@ -107,7 +109,7 @@ struct BodyFigure: View {
                     let selected = selectedMuscles.contains(muscle)
                     let weight = selected ? (muscleWeights[muscle] ?? 1) : 0
                     let fill = selected
-                        ? Theme.mix(Self.restingFill, Theme.primary, weight)
+                        ? Theme.mix(Self.restingFill, selectedColor, weight)
                         : Self.restingFill
 
                     path
@@ -119,7 +121,9 @@ struct BodyFigure: View {
                         }
                         .shadow(
                             color: selected
-                                ? Theme.primary.opacity(0.55 * weight)
+                                ? (showsSelectionGlow
+                                    ? selectedColor.opacity(0.55 * weight)
+                                    : .clear)
                                 : .black.opacity(0.45),
                             radius: selected ? 4 : 2,
                             y: selected ? 0 : 2
@@ -271,13 +275,23 @@ struct BodyPreview: View {
     var width: CGFloat = 96
     var height: CGFloat = 64
 
+    private static let restingFill = Color(hex: 0x3D322B)
+    private static let silhouetteFill = Color(hex: 0x2D241F)
+    private static let outline = Color(hex: 0x100D0B)
+
     var body: some View {
-        HStack(spacing: 2) {
-            BodyFigure(
-                view: BodyPaths.front, selectedMuscles: selectedMuscles, compact: true
+        Canvas(rendersAsynchronously: true) { context, size in
+            let gap: CGFloat = 2
+            let figureWidth = max(1, (size.width - gap) / 2)
+            draw(
+                BodyPaths.front,
+                in: CGRect(x: 0, y: 0, width: figureWidth, height: size.height),
+                context: &context
             )
-            BodyFigure(
-                view: BodyPaths.back, selectedMuscles: selectedMuscles, compact: true
+            draw(
+                BodyPaths.back,
+                in: CGRect(x: figureWidth + gap, y: 0, width: figureWidth, height: size.height),
+                context: &context
             )
         }
         .frame(width: width, height: height)
@@ -286,5 +300,45 @@ struct BodyPreview: View {
                 ? "No target muscles"
                 : "Target muscles: " + selectedMuscles.map(\.label).joined(separator: ", ")
         )
+    }
+
+    private func draw(_ model: BodyView_Model, in rect: CGRect, context: inout GraphicsContext) {
+        let scale = Swift.min(
+            rect.width / model.viewBox.width,
+            rect.height / model.viewBox.height
+        )
+        let offsetX = rect.minX + (rect.width - model.viewBox.width * scale) / 2
+            - model.viewBox.minX * scale
+        let offsetY = rect.minY + (rect.height - model.viewBox.height * scale) / 2
+            - model.viewBox.minY * scale
+        let transform = CGAffineTransform(translationX: offsetX, y: offsetY)
+            .scaledBy(x: scale, y: scale)
+
+        for part in model.parts {
+            for source in part.paths {
+                let path = source.applying(transform)
+                if let muscle = part.muscle {
+                    let selected = selectedMuscles.contains(muscle)
+                    context.fill(
+                        path,
+                        with: .color(selected ? Theme.primary : Self.restingFill)
+                    )
+                    if !selected {
+                        context.stroke(
+                            path,
+                            with: .color(Self.outline),
+                            lineWidth: max(0.45, 2.2 * scale)
+                        )
+                    }
+                } else {
+                    context.fill(path, with: .color(Self.silhouetteFill))
+                    context.stroke(
+                        path,
+                        with: .color(Self.outline),
+                        lineWidth: max(0.45, 2.2 * scale)
+                    )
+                }
+            }
+        }
     }
 }

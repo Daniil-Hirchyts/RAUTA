@@ -7,17 +7,32 @@ struct RautaCharacter: View {
     var reactionKey = ""
     var onActivate: (() -> Void)?
     @Environment(\.accessibilityReduceMotion) private var reducedMotion
-    @StateObject private var rig = RiveViewModel(fileName: "Media/rauta", stateMachineName: "KettlebellBotMachine", artboardName: "KettlebellBot", loadCdn: false)
+    @StateObject private var rig = RiveViewModel(
+        fileName: "Media/rauta",
+        stateMachineName: "KettlebellBotMachine",
+        autoPlay: false,
+        artboardName: "KettlebellBot",
+        loadCdn: false
+    )
     @State private var drag = CGSize.zero
     @State private var activity = RautaActivity()
+    @State private var pauseTask: Task<Void, Never>?
 
     var body: some View {
         rig.view().offset(drag)
-            .onAppear(perform: updateMood)
+            .onAppear {
+                rig.setPreferredFramesPerSecond(preferredFramesPerSecond: 20)
+                updateMood()
+            }
+            .onDisappear {
+                pauseTask?.cancel()
+                rig.pause()
+            }
             .onChange(of: mood) { _, _ in updateMood() }
             .onChange(of: reactionKey) { _, _ in react(.acknowledge, source: .explicit) }
             .onTapGesture { react(.tapped, source: .interaction); onActivate?(); Haptics.trigger(.light) }
             .gesture(DragGesture(minimumDistance: 8).onChanged { value in
+                wake(for: 0.45)
                 drag = value.translation
                 rig.setInput("pressed", value: true)
                 rig.setInput("gazeX", value: Double(max(-1, min(1, drag.width / 100))))
@@ -29,24 +44,41 @@ struct RautaCharacter: View {
             })
             .task {
                 while !Task.isCancelled {
-                    do { try await Task.sleep(for: .seconds(1.1)) } catch { return }
+                    do { try await Task.sleep(for: .seconds(8)) } catch { return }
                     guard !reducedMotion else { continue }
                     let result = RautaScheduler.idle(activity, now: Date().timeIntervalSince1970 * 1000)
                     activity = result.activity
-                    if let reaction = result.play { rig.triggerInput(reaction.rawValue) }
+                    if let reaction = result.play {
+                        wake(for: 0.9)
+                        rig.triggerInput(reaction.rawValue)
+                    }
                 }
             }
             .accessibilityLabel(onActivate == nil ? "Interact with RAUTA" : "Open RAUTA actions")
             .accessibilityAddTraits(.isButton)
     }
     private func updateMood() {
+        wake(for: reducedMotion ? 0.12 : 0.35)
         rig.setInput("status", value: Double(mood.status))
         rig.setInput("intensity", value: mood.intensity)
     }
     private func react(_ reaction: RautaReaction, source: RautaSource) {
         let result = RautaScheduler.request(activity, source: source, reaction: reaction, now: Date().timeIntervalSince1970 * 1000)
         activity = result.activity
-        if let reaction = result.play { rig.triggerInput(reaction.rawValue) }
+        if let reaction = result.play {
+            wake(for: reducedMotion ? 0.16 : 0.9)
+            rig.triggerInput(reaction.rawValue)
+        }
+    }
+
+    private func wake(for seconds: Double) {
+        pauseTask?.cancel()
+        rig.play()
+        pauseTask = Task { @MainActor in
+            do { try await Task.sleep(for: .seconds(seconds)) } catch { return }
+            guard !Task.isCancelled else { return }
+            rig.pause()
+        }
     }
 }
 
@@ -67,11 +99,13 @@ struct RautaBottomDock: View {
     var floating = false
     var showsText = true
     var glassContainer = false
+    var compact = false
     @State private var open = false
 
     private var reserve: CGFloat { characterSize * 0.82 }
     private var minimumHeight: CGFloat {
-        glassContainer ? max(108, characterSize + 8) : max(118, characterSize * 1.08)
+        if compact { return 82 }
+        return glassContainer ? max(108, characterSize + 8) : max(118, characterSize * 1.08)
     }
     private var expandedActionsHeight: CGFloat {
         let count = CGFloat(actions.count)
@@ -184,16 +218,18 @@ struct RautaBottomDock: View {
             )
 
             if showsText {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .center, spacing: 4) {
                     Text(speech)
                         .font(Theme.sans(15, weight: .semibold))
                         .tracking(-0.3)
                         .lineLimit(2)
+                        .multilineTextAlignment(.center)
                     if let meta {
                         Text(meta)
                             .font(Theme.sans(12))
                             .foregroundStyle(Theme.mutedForeground)
                             .lineLimit(1)
+                            .multilineTextAlignment(.center)
                     }
                 }
                 .foregroundStyle(Theme.foreground)
@@ -206,7 +242,7 @@ struct RautaBottomDock: View {
         }
         .padding(.horizontal, glassContainer ? 8 : 0)
         .padding(.bottom, glassContainer ? 4 : 0)
-        .frame(maxWidth: .infinity, minHeight: minimumHeight, alignment: .bottomLeading)
+        .frame(maxWidth: .infinity, minHeight: minimumHeight, maxHeight: compact ? minimumHeight : nil, alignment: .bottomLeading)
         .background {
             if glassContainer {
                 Color.clear

@@ -249,21 +249,23 @@ final class AppSessionStore: ObservableObject {
     func push(_ page: AppPage) {
         guard page.isValid else { return }
         direction = .forward
-        pages.append(makeEntry(page))
+        pages = pages + [makeEntry(page)]
         persist()
     }
 
     func pop() {
         guard pages.count > 1 else { return }
         direction = .back
-        pages.removeLast()
+        pages = Array(pages.dropLast())
         persist()
     }
 
     func replace(_ page: AppPage) {
         guard page.isValid, !pages.isEmpty else { return }
         direction = .forward
-        pages[pages.count - 1] = makeEntry(page)
+        var nextPages = pages
+        nextPages[nextPages.count - 1] = makeEntry(page)
+        pages = nextPages
         persist()
     }
 

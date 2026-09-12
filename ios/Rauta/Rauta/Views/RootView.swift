@@ -3,17 +3,39 @@ import SwiftUI
 @MainActor
 struct RootView: View {
     @ObservedObject private var store = AppStore.shared
+    @ObservedObject private var navigation = AppSessionStore.shared
+    @State private var renderedEntry: AppPageEntry?
 
     var body: some View {
         ZStack {
-            page(for: store.navigation.activePage)
-                .id(store.navigation.activeEntry?.id)
-                .transition(.page(store.navigation.direction))
+            if let rootEntry = navigation.pages.first {
+                page(for: rootEntry.page)
+                    .id(rootEntry.id)
+            } else {
+                WorkoutsScreen()
+            }
+
+            if let renderedEntry,
+               renderedEntry.id != navigation.pages.first?.id {
+                page(for: renderedEntry.page)
+                    .id(renderedEntry.id)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Theme.shell.ignoresSafeArea())
+                    .zIndex(100)
+            }
         }
         .environment(\.appStore, store)
-        .animation(Theme.Motion.pageEnter, value: store.navigation.activeEntry?.id)
         .simultaneousGesture(edgeBackGesture)
         .preferredColorScheme(.dark)
+        .onAppear {
+            renderedEntry = navigation.activeEntry
+        }
+        .onReceive(navigation.$pages) { pages in
+            renderedEntry = pages.last ?? pages.first
+#if DEBUG
+            UserDefaults.standard.set(renderedEntry?.page.key ?? "nil", forKey: "rautaDebugRenderedRoute")
+#endif
+        }
     }
 
     @ViewBuilder
@@ -67,13 +89,13 @@ struct RootView: View {
     private var edgeBackGesture: some Gesture {
         DragGesture(minimumDistance: 20)
             .onEnded { value in
-                guard store.navigation.pages.count > 1,
+                guard navigation.pages.count > 1,
                       value.startLocation.x < 24,
                       value.translation.width > 90,
                       abs(value.translation.height) < 80
                 else { return }
                 Haptics.trigger(.selection)
-                store.navigation.pop()
+                navigation.pop()
             }
     }
 }

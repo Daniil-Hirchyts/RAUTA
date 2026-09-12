@@ -96,6 +96,12 @@ struct ActiveWorkoutSession: Codable, Hashable, Sendable {
     /// Elapsed time banked by every stretch before the current one.
     var accumulatedMs: Double
     var startedAt: Double
+    /// Epoch ms when the current set phase began. Unlike a view-local timer,
+    /// this survives tab changes, backgrounding and relaunches with the session.
+    var setPhaseStartedAt: Double?
+    /// Epoch ms when the current rest period ends. While this is in the future
+    /// the UI counts down; afterwards the next set counts up from that instant.
+    var restUntil: Double?
 }
 
 enum ExerciseStatus: String { case pending, active, completed }

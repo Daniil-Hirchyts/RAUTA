@@ -2,7 +2,7 @@
   "fill" : {
     "linear-gradient" : [
       "display-p3:1.00000,1.00000,1.00000,1.00000",
-      "display-p3:0.52798,0.52798,0.52798,1.00000"
+      "display-p3:0.56181,0.56181,0.56181,1.00000"
     ],
     "orientation" : {
       "start" : {
@@ -28,14 +28,14 @@
       ],
       "layers" : [
         {
-          "blend-mode" : "overlay",
+          "blend-mode" : "plus-darker",
           "glass" : true,
           "hidden" : false,
           "image-name" : "grain.png",
           "name" : "grain",
           "opacity-specializations" : [
             {
-              "value" : 0.19
+              "value" : 0.1
             },
             {
               "appearance" : "dark",
@@ -47,7 +47,7 @@
             }
           ],
           "position" : {
-            "scale" : 1.15,
+            "scale" : 1.97,
             "translation-in-points" : [
               0,
               0
@@ -61,7 +61,7 @@
             },
             {
               "appearance" : "dark",
-              "value" : "screen"
+              "value" : "plus-lighter"
             },
             {
               "appearance" : "tinted",
@@ -129,6 +129,10 @@
               "value" : false
             },
             {
+              "appearance" : "dark",
+              "value" : false
+            },
+            {
               "appearance" : "tinted",
               "value" : true
             }
@@ -136,7 +140,19 @@
           "hidden" : false,
           "image-name" : "kettlebell-bot-pose.png",
           "name" : "kettlebell-bot-pose",
-          "opacity" : 1
+          "opacity-specializations" : [
+            {
+              "value" : 0
+            },
+            {
+              "appearance" : "dark",
+              "value" : 0
+            },
+            {
+              "appearance" : "tinted",
+              "value" : 1
+            }
+          ]
         },
         {
           "blend-mode-specializations" : [
@@ -159,6 +175,10 @@
           ],
           "glass-specializations" : [
             {
+              "value" : false
+            },
+            {
+              "appearance" : "dark",
               "value" : false
             },
             {

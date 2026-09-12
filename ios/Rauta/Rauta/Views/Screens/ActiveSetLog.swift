@@ -4,6 +4,8 @@ struct ActiveSetLog: View {
     @ObservedObject private var store = AppStore.shared
     let exerciseId: String
     var restSeconds: Double = 90
+    var hasNextExercise = false
+    var onFinishExercise: (() -> Void)? = nil
 
     @State private var selectedSetId: String?
     @State private var reps = 10.0
@@ -12,10 +14,9 @@ struct ActiveSetLog: View {
     @State private var mode: ResistanceMode = .externalLoad
     @State private var side: SetSide = .both
     @State private var stationContext: StationContext?
-    @State private var restUntil: Date?
-    @State private var phaseAnchor = Date()
     @State private var issue: String?
     @State private var modeMenuOpen = false
+    @State private var sideMenuOpen = false
 
     private var exercise: ExerciseSummary? { ExerciseCatalogue.byId[exerciseId] }
     private var draft: PersistedActiveExerciseDraft? {
@@ -41,6 +42,11 @@ struct ActiveSetLog: View {
     private var target: PersistedSetTarget? {
         draft?.sets.first { $0.setType == .working && $0.target != nil }?.target
             ?? draft?.sets.first { $0.target != nil }?.target
+    }
+
+    private var allSetsCompleted: Bool {
+        guard let sets = draft?.sets, !sets.isEmpty else { return false }
+        return sets.allSatisfy { $0.observation?.completed == true }
     }
 
     private var recommendation: ProgressionRecommendation? {
@@ -72,7 +78,6 @@ struct ActiveSetLog: View {
             }
         }
         .onAppear {
-            phaseAnchor = Date()
             loadCurrent()
         }
         .onChange(of: selectedSetId) { _, _ in loadCurrent() }
@@ -82,9 +87,18 @@ struct ActiveSetLog: View {
             guard duration > 0 else { return }
             try? await Task.sleep(for: .seconds(duration))
             guard !Task.isCancelled, self.restUntil == restUntil else { return }
-            Chimes.playRestAlarm()
             Haptics.trigger(.heavy)
         }
+    }
+
+    private var activeSession: ActiveWorkoutSession? { store.activeWorkout.session }
+    private var restUntil: Date? {
+        activeSession?.restUntil.map { Date(timeIntervalSince1970: $0 / 1_000) }
+    }
+    private var setPhaseStartedAt: Date? {
+        guard let session = activeSession else { return nil }
+        let epochMs = session.setPhaseStartedAt ?? session.startedAt
+        return Date(timeIntervalSince1970: epochMs / 1_000)
     }
 
     private var header: some View {
@@ -114,7 +128,7 @@ struct ActiveSetLog: View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let remaining = restUntil.map { $0.timeIntervalSince(context.date) } ?? -1
             let isResting = remaining > 0
-            let elapsedAnchor = restUntil ?? phaseAnchor
+            let elapsedAnchor = setPhaseStartedAt ?? context.date
             let seconds = isResting
                 ? Int(remaining.rounded(.up))
                 : max(0, Int(context.date.timeIntervalSince(elapsedAnchor).rounded(.down)))
@@ -153,36 +167,41 @@ struct ActiveSetLog: View {
                 Rectangle().fill(Theme.border.opacity(0.6)).frame(height: 1)
             }
 
-            ForEach(Array(draft.sets.enumerated()), id: \.element.id) { index, set in
-                Button {
-                    selectedSetId = set.id
-                } label: {
-                    HStack {
-                        Text("\(index + 1)").frame(width: 22, alignment: .leading)
-                        Text(set.observation?.resistance.map(Resistance.format) ?? "—")
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Text(set.observation?.reps.map(Num.trimmed) ?? "—")
-                            .frame(width: 44, alignment: .trailing)
-                        Text(set.observation?.rir.map(Num.trimmed) ?? "—")
-                            .frame(width: 44, alignment: .trailing)
+            ScrollView(.vertical, showsIndicators: false) {
+                LazyVStack(spacing: 4) {
+                    ForEach(Array(draft.sets.enumerated()), id: \.element.id) { index, set in
+                        Button {
+                            selectedSetId = set.id
+                        } label: {
+                            HStack {
+                                Text("\(index + 1)").frame(width: 22, alignment: .leading)
+                                Text(set.observation?.resistance.map(Resistance.format) ?? "—")
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Text(set.observation?.reps.map(Num.trimmed) ?? "—")
+                                    .frame(width: 44, alignment: .trailing)
+                                Text(set.observation?.rir.map(Num.trimmed) ?? "—")
+                                    .frame(width: 44, alignment: .trailing)
+                            }
+                            .font(Theme.sans(15, weight: .semibold))
+                            .foregroundStyle(set.observation?.completed == true ? Theme.foreground : Theme.mutedForeground)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 12)
+                            .background(
+                                (selectedSet?.id == set.id ? Theme.primary : Theme.muted).opacity(0.12),
+                                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .font(Theme.sans(15, weight: .semibold))
-                    .foregroundStyle(set.observation?.completed == true ? Theme.foreground : Theme.mutedForeground)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 12)
-                    .background(
-                        (selectedSet?.id == set.id ? Theme.primary : Theme.muted).opacity(0.12),
-                        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    )
                 }
-                .buttonStyle(.plain)
             }
+            .frame(height: min(CGFloat(draft.sets.count) * 48, 168))
         }
     }
 
     private var editor: some View {
         VStack(spacing: 8) {
-            if let exercise {
+            if exercise != nil {
                 if Resistance.isMeasuredInKg(mode) {
                     AppStepper(
                         label: mode == .assistance ? "Assistance" : "Load",
@@ -202,15 +221,6 @@ struct ActiveSetLog: View {
                     reps = min(100, max(1, reps + Double(direction)))
                 }
 
-                if Resistance.sideOptions(for: exercise).count > 1 {
-                    chipRow(label: "Side") {
-                        ForEach(Resistance.sideOptions(for: exercise), id: \.self) { option in
-                            SelectionChip(title: Wording.titleCase(option.rawValue), selected: side == option) {
-                                side = option
-                            }
-                        }
-                    }
-                }
             }
 
             HStack(spacing: 8) {
@@ -224,26 +234,84 @@ struct ActiveSetLog: View {
                         Image(systemName: "trash")
                     }
                 }
-                if selectedSet?.observation?.completed == true {
-                    AppButton("Cancel", variant: .ghost, expands: true) {
-                        closeEditor()
+                if allSetsCompleted, selectedSetId == nil {
+                    AppButton(
+                        variant: .secondary,
+                        size: .icon,
+                        accessibilityLabel: "Add another set",
+                        action: addExtraSet
+                    ) {
+                        Image(systemName: "plus")
                     }
-                    .frame(maxWidth: 100)
                 }
                 if let exercise {
                     let modes = Resistance.modes(for: exercise)
                     if modes.count > 1 {
                         modeMenu(modes)
                     }
+                    let sides = Resistance.sideOptions(for: exercise)
+                    if sides.count > 1 {
+                        sideMenu(sides)
+                    }
                 }
-                AppButton(
-                    resolvedSubmitLabel,
-                    variant: .ghost,
-                    isDisabled: Resistance.isMeasuredInKg(mode) && kilograms == nil,
-                    expands: true,
-                    action: save
-                )
+                if allSetsCompleted, selectedSetId == nil, let onFinishExercise {
+                    AppButton(
+                        hasNextExercise ? "Next exercise" : "Finish exercise",
+                        variant: .ghost,
+                        expands: true
+                    ) {
+                        Haptics.trigger(.success)
+                        onFinishExercise()
+                    }
+                } else {
+                    AppButton(
+                        resolvedSubmitLabel,
+                        variant: .ghost,
+                        isDisabled: Resistance.isMeasuredInKg(mode) && kilograms == nil,
+                        expands: true,
+                        action: save
+                    )
+                }
             }
+        }
+    }
+
+    private func sideMenu(_ options: [SetSide]) -> some View {
+        AppControlButton(
+            systemImage: sideIcon(side),
+            label: "Side: \(Wording.titleCase(side.rawValue))"
+        ) {
+            Haptics.trigger(.selection)
+            sideMenuOpen = true
+        }
+        .popover(isPresented: $sideMenuOpen, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
+            AppMenuSurface(dismiss: { sideMenuOpen = false }) {
+                ForEach(options, id: \.self) { option in
+                    Button {
+                        sideMenuOpen = false
+                        side = option
+                    } label: {
+                        HStack(spacing: 10) {
+                            Label(Wording.titleCase(option.rawValue), systemImage: sideIcon(option))
+                            Spacer(minLength: 12)
+                            if side == option {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(Theme.primary)
+                            }
+                        }
+                    }
+                }
+            }
+            .presentationCompactAdaptation(.popover)
+            .presentationBackground(.clear)
+        }
+    }
+
+    private func sideIcon(_ side: SetSide) -> String {
+        switch side {
+        case .both: return "person.2"
+        case .left: return "arrow.left"
+        case .right: return "arrow.right"
         }
     }
 
@@ -312,19 +380,6 @@ struct ActiveSetLog: View {
             ? " · \(Resistance.format(target.resistance))"
             : ""
         return "\(reps) reps · RIR \(Num.trimmed(target.rir))\(load)"
-    }
-
-    private func chipRow<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
-        HStack(spacing: 8) {
-            Text(label.uppercased())
-                .font(Theme.sans(10, weight: .black))
-                .kerning(1.4)
-                .foregroundStyle(Theme.mutedForeground)
-                .frame(width: 44, alignment: .leading)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) { content() }
-            }
-        }
     }
 
     private func loadCurrent() {
@@ -403,9 +458,23 @@ struct ActiveSetLog: View {
                 )
             }
             closeEditor()
-            restUntil = Date().addingTimeInterval(restSeconds.rounded())
+            store.activeWorkout.startRest(seconds: restSeconds, exerciseName: exercise?.name)
             issue = nil
             Haptics.trigger(.success)
+        } catch { capture(error) }
+    }
+
+    private func addExtraSet() {
+        guard let draft else { return }
+        do {
+            let setId = try store.trainingRecords.addUnplannedSet(
+                exerciseEntryId: draft.id,
+                setType: .working,
+                side: side
+            )
+            selectedSetId = setId
+            issue = nil
+            Haptics.trigger(.selection)
         } catch { capture(error) }
     }
 

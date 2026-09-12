@@ -1,11 +1,77 @@
 import SwiftUI
+import UIKit
+
+enum MainTab: String, CaseIterable, Identifiable {
+    case summary = "Summary"
+    case workout = "Workout"
+    case library = "Library"
+    case profile = "Profile"
+    case rauta = "Rauta"
+
+    var id: String { rawValue }
+
+    var systemImage: String {
+        switch self {
+        case .summary: return "chart.bar"
+        case .workout: return "figure.strengthtraining.traditional"
+        case .library: return "books.vertical"
+        case .profile: return "person.crop.circle"
+        case .rauta: return "circle.fill"
+        }
+    }
+}
+
+enum NativeTabIcons {
+    static let summary = make(MainTab.summary.systemImage)
+    static let workout = make(MainTab.workout.systemImage)
+    static let library = make(MainTab.library.systemImage)
+    static let profile = make(MainTab.profile.systemImage)
+    static let transparentPlaceholder = UIGraphicsImageRenderer(size: CGSize(width: 28, height: 28)).image { _ in }
+
+    static func image(for tab: MainTab) -> UIImage {
+        switch tab {
+        case .summary: return summary
+        case .workout: return workout
+        case .library: return library
+        case .profile: return profile
+        case .rauta: return UIImage()
+        }
+    }
+
+    private static func make(_ systemName: String) -> UIImage {
+        let canvasSize = CGSize(width: 28, height: 28)
+        let visibleSize = CGSize(width: 20, height: 20)
+        let configuration = UIImage.SymbolConfiguration(pointSize: 21, weight: .semibold)
+        guard let symbol = UIImage(systemName: systemName, withConfiguration: configuration) else {
+            return UIImage()
+        }
+
+        let scale = min(visibleSize.width / symbol.size.width, visibleSize.height / symbol.size.height)
+        let drawingSize = CGSize(width: symbol.size.width * scale, height: symbol.size.height * scale)
+        let drawingRect = CGRect(
+            x: (canvasSize.width - drawingSize.width) / 2,
+            y: (canvasSize.height - drawingSize.height) / 2,
+            width: drawingSize.width,
+            height: drawingSize.height
+        )
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 3
+        format.opaque = false
+        let rendered = UIGraphicsImageRenderer(size: canvasSize, format: format).image { _ in
+            symbol.withTintColor(.white, renderingMode: .alwaysOriginal).draw(in: drawingRect)
+        }
+        return rendered.withRenderingMode(.alwaysTemplate)
+    }
+}
 
 struct WorkoutsScreen: View {
     @ObservedObject private var store = AppStore.shared
-    @State private var tab = 0
-    @State private var issue: String?
-    @State private var upcomingLimit = 6
-    @State private var pastLimit = 6
+    @State private var mainTab: MainTab = .summary
+    @State private var nativeTabSelection: MainTab = .summary
+    @State private var rautaMenuPresented = false
+    @State private var rautaCompact = false
+    @State private var exercisePlayerOpen = false
+    @State private var liveWorkoutPresented = false
 
     private var visibleWorkouts: [Workout] {
         store.workouts.workouts.filter { workout in
@@ -25,81 +91,886 @@ struct WorkoutsScreen: View {
     }
 
     var body: some View {
-        RautaScreen(title: "My workouts", right: {
-            AppHeaderButton(systemImage: "gearshape", label: "Settings") {
-                store.navigation.push(.settings)
+        Group {
+            if #available(iOS 27.0, *) {
+                activeWorkoutPlayerShell(nativeProminentTabView)
+            } else if #available(iOS 26.0, *) {
+                activeWorkoutPlayerShell(nativeAccessoryTabView)
+            } else if #available(iOS 18.4, *) {
+                nativeTabView
+            } else {
+                legacyTabView
             }
-        }, content: {
-            ZStack(alignment: .bottom) {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        StreakStrip(workouts: past.filter { $0.completion != nil })
-
-                        WorkoutsModeSwitcher(selection: $tab)
-                            .padding(.top, 10)
-                            .padding(.bottom, 10)
-
-                        let items = tab == 0 ? upcoming : past
-                        let itemLimit = tab == 0 ? upcomingLimit : pastLimit
-                        let remaining = Swift.max(0, items.count - itemLimit)
-                        let showLess = itemLimit > 6
-
-                        if items.isEmpty {
-                            Text(tab == 0 ? "No upcoming workouts" : "No past workouts yet")
-                                .font(Theme.sans(13))
-                                .foregroundStyle(Theme.mutedForeground)
-                                .frame(maxWidth: .infinity)
-                                .padding(.top, 24)
-                        }
-
-                        LazyVStack(spacing: 14) {
-                            ForEach(items.prefix(itemLimit)) { workout in
-                                WorkoutRow(
-                                    workout: workout,
-                                    isPast: tab == 1,
-                                    isRunning: store.activeWorkout.session?.workoutId == workout.id,
-                                    onOpen: { open(workout) }
-                                )
-                            }
-
-                            sectionFooter(
-                                remaining: remaining,
-                                showLess: showLess,
-                                onMore: {
-                                    if tab == 0 { upcomingLimit += 6 }
-                                    else { pastLimit += 6 }
-                                },
-                                onLess: {
-                                    if tab == 0 { upcomingLimit = 6 }
-                                    else { pastLimit = 6 }
-                                }
-                            )
-                        }
-                        .id(tab)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.top, 20)
-                    .padding(.bottom, 144)
+        }
+        .fullScreenCover(isPresented: $exercisePlayerOpen) {
+            if let session = store.activeWorkout.session {
+                if let exercise = ActiveWorkout.currentExercise(session) {
+                    ActiveExerciseDrawer(
+                        exercise: exercise,
+                        session: session,
+                        restSeconds: restSeconds(for: exercise.id),
+                        onDetail: {
+                            closeExercisePlayer()
+                            store.navigation.push(.exerciseDetail(exerciseId: exercise.id))
+                        },
+                        hasNextExercise: session.exerciseIds.contains { id in
+                            id != session.currentExerciseId && !session.completedIds.contains(id)
+                        },
+                        onFinishExercise: {
+                            Haptics.trigger(.success)
+                            store.activeWorkout.completeCurrent()
+                        },
+                        onFinish: finishActiveWorkout,
+                        onDismiss: closeExercisePlayer
+                    )
+                    .interactiveDismissDisabled(false)
+                    .presentationBackground(.clear)
+                } else if ActiveWorkout.progress(session).isComplete {
+                    CompletedWorkoutDrawer(
+                        session: session,
+                        onFinish: finishActiveWorkout,
+                        onDismiss: closeExercisePlayer
+                    )
+                    .interactiveDismissDisabled(false)
+                    .presentationBackground(.clear)
+                } else {
+                    Color.clear
+                        .onAppear { exercisePlayerOpen = false }
                 }
-
-                RautaBottomDock(
-                    speech: companionLine,
-                    meta: "\(ProfileVocabulary.goalLabel(store.trainingProfile.profile.goal)) · \(Int(store.trainingProfile.profile.preferredSessionDurationMinutes)) min",
-                    mood: store.activeWorkout.session == nil ? .calm : .focused,
-                    actions: companionActions,
-                    characterSize: 100,
-                    floating: true,
-                    showsText: true,
-                    glassContainer: true
-                )
+            } else {
+                Color.clear
+                    .onAppear { exercisePlayerOpen = false }
             }
-        })
+        }
+        .onChange(of: store.activeWorkout.session?.workoutId) { _, workoutId in
+            if workoutId == nil {
+                exercisePlayerOpen = false
+                liveWorkoutPresented = false
+                rautaCompact = false
+            }
+        }
+        .onChange(of: mainTab) { _, tab in
+            if tab != .workout {
+                liveWorkoutPresented = false
+            }
+        }
         .task {
             // Restore any missing lightweight projection from its authoritative plan.
             for view in TrainingPlan.activePlannedSessions() where !TrainingPlan.isPlannedSessionRecorded(view.sessionId) {
                 TrainingPlan.ensurePlannedWorkout(view)
             }
         }
+    }
+
+    @available(iOS 26.0, *)
+    private func activeWorkoutPlayerShell<Content: View>(_ content: Content) -> some View {
+        content
+            // The compact tab-bar layout only has a job while a live workout
+            // can supply the exercise accessory. Returning to idle should also
+            // return the native tab bar to its normal, expanded presentation.
+            .tabBarMinimizeBehavior(store.activeWorkout.session == nil ? .never : .onScrollDown)
+            // UIKit can retain the previous bottom-accessory chrome after the
+            // accessory disappears. Rebuild the native tab host at the workout
+            // lifecycle boundary so an ended workout cannot leave an empty pill.
+            .id(store.activeWorkout.session?.workoutId ?? "idle-native-tabs")
+    }
+
+    @available(iOS 27.0, *)
+    private var nativeProminentTabView: some View {
+        TabView(selection: navigationSelection) {
+            Tab(value: MainTab.summary) {
+                page(for: .summary)
+            } label: {
+                tabLabel(.summary)
+            }
+            Tab(value: MainTab.workout) {
+                workoutTabContent
+            } label: {
+                tabLabel(.workout)
+            }
+            Tab(value: MainTab.library) {
+                page(for: .library)
+            } label: {
+                tabLabel(.library)
+            }
+            Tab(value: MainTab.profile) {
+                page(for: .profile)
+            } label: {
+                tabLabel(.profile)
+            }
+            Tab(value: MainTab.rauta, role: .prominent) {
+                Color.clear
+            } label: {
+                Image(uiImage: NativeTabIcons.transparentPlaceholder)
+            }
+        }
+        .tabViewStyle(.sidebarAdaptable)
+        .tint(Theme.primary)
+        .modifier(
+            ConditionalNativeBottomAccessory(isVisible: shouldShowNativeExerciseAccessory) {
+                nativeExerciseAccessory
+            }
+        )
+        .onChange(of: mainTab) { _, selection in
+            syncNativeSelection(to: selection)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            nativeRautaControl
+        }
+    }
+
+    @available(iOS 26.0, *)
+    private var nativeAccessoryTabView: some View {
+        TabView(selection: navigationSelection) {
+            Tab(value: MainTab.summary) {
+                page(for: .summary)
+            } label: {
+                tabLabel(.summary)
+            }
+            Tab(value: MainTab.workout) {
+                workoutTabContent
+            } label: {
+                tabLabel(.workout)
+            }
+            Tab(value: MainTab.library) {
+                page(for: .library)
+            } label: {
+                tabLabel(.library)
+            }
+            Tab(value: MainTab.profile) {
+                page(for: .profile)
+            } label: {
+                tabLabel(.profile)
+            }
+            Tab(value: MainTab.rauta, role: .search) {
+                Color.clear
+            } label: {
+                Image(uiImage: NativeTabIcons.transparentPlaceholder)
+            }
+        }
+        .tabViewStyle(.sidebarAdaptable)
+        .tint(Theme.primary)
+        .modifier(
+            ConditionalNativeBottomAccessory(isVisible: shouldShowNativeExerciseAccessory) {
+                nativeExerciseAccessory
+            }
+        )
+        .onChange(of: mainTab) { _, selection in
+            syncNativeSelection(to: selection)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            nativeRautaControl
+        }
+    }
+
+    @available(iOS 18.4, *)
+    private var nativeTabView: some View {
+        TabView(selection: navigationSelection) {
+            Tab(value: MainTab.summary) {
+                page(for: .summary)
+            } label: {
+                tabLabel(.summary)
+            }
+            Tab(value: MainTab.workout) {
+                workoutTabContent
+            } label: {
+                tabLabel(.workout)
+            }
+            Tab(value: MainTab.library) {
+                page(for: .library)
+            } label: {
+                tabLabel(.library)
+            }
+            Tab(value: MainTab.profile) {
+                page(for: .profile)
+            } label: {
+                tabLabel(.profile)
+            }
+            Tab(value: MainTab.rauta, role: .search) {
+                Color.clear
+            } label: {
+                Image(uiImage: NativeTabIcons.transparentPlaceholder)
+            }
+        }
+        .tabViewStyle(.sidebarAdaptable)
+        .tint(Theme.primary)
+        .onChange(of: mainTab) { _, selection in
+            syncNativeSelection(to: selection)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            nativeRautaControl
+        }
+    }
+
+    private var legacyTabView: some View {
+        TabView(selection: $mainTab) {
+            page(for: .summary)
+                .tabItem { Label("Summary", systemImage: MainTab.summary.systemImage) }
+                .tag(MainTab.summary)
+            page(for: .workout)
+                .tabItem { Label("Workout", systemImage: MainTab.workout.systemImage) }
+                .tag(MainTab.workout)
+            page(for: .library)
+                .tabItem { Label("Library", systemImage: MainTab.library.systemImage) }
+                .tag(MainTab.library)
+            page(for: .profile)
+                .tabItem { Label("Profile", systemImage: MainTab.profile.systemImage) }
+                .tag(MainTab.profile)
+        }
+        .tint(Theme.primary)
+    }
+
+    private var navigationSelection: Binding<MainTab> {
+        Binding(
+            get: { nativeTabSelection },
+            set: { selection in
+                if selection == .rauta {
+                    Haptics.trigger(.selection)
+                    rautaMenuPresented = true
+                    return
+                }
+                // A modal exercise sheet can cause UIKit's backing tab bar to
+                // briefly publish its default tab while presentation chrome is
+                // being rebuilt. A modal cannot be used to change tabs anyway,
+                // so keep the person's current tab stable until it closes.
+                guard !exercisePlayerOpen else { return }
+                nativeTabSelection = selection
+                mainTab = selection
+            }
+        )
+    }
+
+    private func syncNativeSelection(to selection: MainTab) {
+        guard nativeTabSelection != selection else { return }
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            nativeTabSelection = selection
+        }
+    }
+
+    private func tabLabel(_ tab: MainTab) -> some View {
+        Label {
+            Text(tab.rawValue)
+        } icon: {
+            Image(uiImage: NativeTabIcons.image(for: tab))
+                .renderingMode(.template)
+        }
+    }
+
+    private var nativeRautaControl: some View {
+        RautaNativeTabControl(
+            mood: store.activeWorkout.session == nil ? .calm : .focused,
+            activeTab: $mainTab,
+            actionsForTab: companionActions(for:),
+            compact: rautaCompact,
+            isPresented: $rautaMenuPresented
+        )
+        .padding(.trailing, 8)
+        .padding(.bottom, Swift.max(7, DeviceScreen.safeAreaInsets.bottom))
+        .offset(x: -3, y: rautaCompact ? 34 : 46)
+        .zIndex(1_000)
+    }
+
+    @available(iOS 26.0, *)
+    @ViewBuilder
+    private var nativeExerciseAccessory: some View {
+        if let session = store.activeWorkout.session {
+            if let exercise = ActiveWorkout.currentExercise(session) {
+                NativeExerciseBottomAccessory(
+                    exercise: exercise,
+                    isPresented: $exercisePlayerOpen,
+                    onCompactChange: updateRautaCompactState
+                )
+            } else if ActiveWorkout.progress(session).isComplete {
+                NativeWorkoutCompleteAccessory(
+                    session: session,
+                    isPresented: $exercisePlayerOpen,
+                    onCompactChange: updateRautaCompactState
+                )
+            }
+        }
+    }
+
+    private var shouldShowNativeExerciseAccessory: Bool {
+        guard let session = store.activeWorkout.session else { return false }
+        return ActiveWorkout.currentExercise(session) != nil
+            || ActiveWorkout.progress(session).isComplete
+    }
+
+    @ViewBuilder
+    private var workoutTabContent: some View {
+        WorkoutTabHost(
+            upcoming: upcoming,
+            past: past,
+            activeWorkoutId: store.activeWorkout.session?.workoutId,
+            liveWorkoutPresented: $liveWorkoutPresented,
+            onOpen: open,
+            onOpenExercisePlayer: exercisePlayerOpener
+        )
+    }
+
+    @ViewBuilder
+    private func page(for pageTab: MainTab) -> some View {
+        if pageTab == .workout,
+           let session = store.activeWorkout.session {
+            WorkoutDetailScreen(
+                workoutId: session.workoutId,
+                embeddedInMainTabs: true,
+                onOpenExercisePlayer: exercisePlayerOpener
+            )
+        } else {
+            AppShell(commandsVisible: false) {
+                ZStack(alignment: .top) {
+                    VStack(spacing: 0) {
+                        Color.clear
+                            .frame(height: Theme.Metrics.headerHeight + DeviceScreen.safeAreaInsets.top)
+
+                        if pageTab == .summary {
+                            summaryContent
+                        } else if pageTab == .workout {
+                            noActiveWorkout
+                        } else {
+                            Spacer(minLength: 0)
+                        }
+                    }
+
+                    AppTopScrim()
+                        .zIndex(20)
+
+                    AppShellHeader(
+                        title: pageTab.rawValue,
+                        left: { Color.clear.frame(width: 44, height: 44) },
+                        right: {
+                            if pageTab == .summary {
+                                AppHeaderButton(systemImage: "gearshape", label: "Settings") {
+                                    store.navigation.push(.settings)
+                                }
+                            } else {
+                                Color.clear.frame(width: 44, height: 44)
+                            }
+                        },
+                        above: { EmptyView() },
+                        below: { EmptyView() }
+                    )
+                    .zIndex(30)
+                }
+            } controls: {
+                EmptyView()
+            }
+        }
+    }
+
+    private var noActiveWorkout: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "figure.strengthtraining.traditional")
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(Theme.primary)
+            Text("No workout in progress")
+                .font(Theme.sans(17, weight: .bold))
+                .foregroundStyle(Theme.foreground)
+            Text("Start one from Summary to see the live workout here.")
+                .font(Theme.sans(13))
+                .foregroundStyle(Theme.mutedForeground)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 32)
+    }
+
+    private var summaryContent: some View {
+        SummaryWorkoutsContent(
+            completedWorkouts: past.filter { $0.completion != nil },
+            history: store.trainingRecords.trainingHistory()
+        )
+    }
+
+    private func companionActions(for tab: MainTab) -> [CompanionAction] {
+        switch tab {
+        case .workout:
+            return workoutCompanionActions
+        case .library:
+            return [
+                CompanionAction(title: "Choose exercises", systemImage: "list.bullet.rectangle", primary: true, action: startExerciseFlow)
+            ]
+        case .profile:
+            return [
+                CompanionAction(title: "Settings", systemImage: "gearshape", primary: true) {
+                    store.navigation.push(.settings)
+                }
+            ]
+        case .summary, .rauta:
+            return summaryCompanionActions
+        }
+    }
+
+    private var summaryCompanionActions: [CompanionAction] {
+        var actions: [CompanionAction] = []
+        if store.activeWorkout.session != nil {
+            actions.append(CompanionAction(title: "Continue workout", systemImage: "figure.strengthtraining.traditional", primary: true) {
+                withAnimation(Theme.Motion.smoothOut(0.28)) {
+                    liveWorkoutPresented = true
+                    selectMainTab(.workout)
+                }
+            })
+        }
+        if let source = TrainingPlan.activeProgramRecord(), store.activeWorkout.session == nil {
+            let remaining = TrainingWorkflow.remainingTrainingSlots(source, ISOTime.now())
+            if !remaining.sessions.isEmpty && store.trainingRecords.data.sessions.contains(where: { $0.plannedProgramId == source.id }) {
+                actions.append(CompanionAction(title: "Adjust remaining week", systemImage: "arrow.triangle.2.circlepath", primary: true) {
+                    do {
+                        let result = try TrainingWorkflow.generateAndSavePlan(source: source)
+                        if let program = result.result.program { TrainingPlan.projectPlannedWorkouts(TrainingPlan.sessionViews(program)) }
+                        Haptics.trigger(.success)
+                    } catch { Haptics.trigger(.warning) }
+                })
+            } else if remaining.sessions.isEmpty {
+                actions.append(CompanionAction(title: "Extend training plan", systemImage: "calendar.badge.plus", primary: true) {
+                    store.navigation.push(.planWeek(sourceProgramId: source.id))
+                })
+            }
+        }
+        actions.append(CompanionAction(title: store.trainingRecords.data.activeProgramId == nil ? "Create training plan" : "New training plan", systemImage: "calendar.badge.plus", primary: actions.isEmpty) {
+            store.navigation.push(.planWeek(sourceProgramId: nil))
+        })
+        actions.append(CompanionAction(title: "Choose exercises", systemImage: "list.bullet.rectangle", action: startExerciseFlow))
+        return actions
+    }
+
+    private var workoutCompanionActions: [CompanionAction] {
+        guard let session = store.activeWorkout.session else {
+            return [
+                CompanionAction(title: "Choose exercises", systemImage: "list.bullet.rectangle", primary: true, action: startExerciseFlow)
+            ]
+        }
+
+        var actions: [CompanionAction] = [
+            CompanionAction(
+                title: session.runningSince == nil ? "Resume workout" : "Pause workout",
+                systemImage: session.runningSince == nil ? "play.fill" : "pause.fill",
+                primary: true
+            ) {
+                if session.runningSince == nil {
+                    store.activeWorkout.resume()
+                } else {
+                    store.activeWorkout.pause()
+                }
+            }
+        ]
+        if ActiveWorkout.currentExercise(session) != nil {
+            actions.append(
+                CompanionAction(
+                    title: "Current exercise",
+                    systemImage: "figure.strengthtraining.traditional",
+                    action: exercisePlayerOpener
+                )
+            )
+        }
+        actions.append(CompanionAction(title: "Finish workout", systemImage: "flag.checkered") {
+            Haptics.trigger(.success)
+            closeExercisePlayer()
+            store.activeWorkout.finish()
+            selectMainTab(.summary)
+        })
+        return actions
+    }
+    private func startExerciseFlow() {
+        store.filters.reset(); store.filters.setEquipment(store.filters.gymEquipment)
+        store.navigation.selectMode = false; store.navigation.selectedIds = []
+        store.navigation.push(.muscles(preferredWorkoutId: nil))
+    }
+    private func open(_ workout: Workout) {
+        _ = EngineWorkout.ensureEngineWorkout(workout.id)
+        if store.activeWorkout.session?.workoutId == workout.id {
+            Haptics.trigger(.selection)
+            withAnimation(Theme.Motion.smoothOut(0.28)) {
+                liveWorkoutPresented = true
+                selectMainTab(.workout)
+            }
+        } else {
+            store.navigation.push(.workoutDetail(workoutId: workout.id))
+        }
+    }
+
+    private func selectMainTab(_ tab: MainTab) {
+        mainTab = tab
+        nativeTabSelection = tab
+    }
+
+    private var exercisePlayerOpener: () -> Void {
+        let appStore = store
+        return {
+            DispatchQueue.main.async {
+                guard let session = appStore.activeWorkout.session else { return }
+                if session.currentExerciseId == nil,
+                   let exercise = ActiveWorkout.currentExercise(session) {
+                    appStore.activeWorkout.setCurrentExercise(exercise.id)
+                }
+                Haptics.trigger(.selection)
+                withAnimation(.spring(response: 0.48, dampingFraction: 0.86)) {
+                    exercisePlayerOpen = true
+                }
+            }
+        }
+    }
+
+    private func closeExercisePlayer() {
+        DispatchQueue.main.async {
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.90)) {
+                exercisePlayerOpen = false
+            }
+        }
+    }
+
+    private func finishActiveWorkout() {
+        Haptics.trigger(.success)
+        closeExercisePlayer()
+        store.activeWorkout.finish()
+        selectMainTab(.summary)
+    }
+
+    private func updateRautaCompactState(_ compact: Bool) {
+        guard compact != rautaCompact else { return }
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
+            rautaCompact = compact
+        }
+    }
+
+    private func restSeconds(for exerciseId: String) -> Double {
+        guard let workoutId = store.activeWorkout.session?.workoutId,
+              let workout = store.workouts.workout(workoutId),
+              let reference = workout.planned,
+              let planned = TrainingPlan.plannedSessionView(reference.programId, reference.sessionId)
+        else { return 90 }
+        return planned.prescription.first { $0.exerciseId == exerciseId }?.restSeconds ?? 90
+    }
+}
+
+@available(iOS 26.0, *)
+private struct ConditionalNativeBottomAccessory<Accessory: View>: ViewModifier {
+    let isVisible: Bool
+    let accessory: () -> Accessory
+
+    init(
+        isVisible: Bool,
+        @ViewBuilder accessory: @escaping () -> Accessory
+    ) {
+        self.isVisible = isVisible
+        self.accessory = accessory
+    }
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isVisible {
+            content.tabViewBottomAccessory {
+                accessory()
+            }
+        } else {
+            content
+        }
+    }
+}
+
+@available(iOS 26.0, *)
+private struct NativeExerciseBottomAccessory: View {
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+    let exercise: ExerciseSummary
+    @Binding var isPresented: Bool
+    let onCompactChange: (Bool) -> Void
+
+    private var compact: Bool { placement == .inline }
+
+    var body: some View {
+        CurrentExerciseAccessory(
+            exercise: exercise,
+            onOpen: {
+                Haptics.trigger(.selection)
+                withAnimation(.spring(response: 0.48, dampingFraction: 0.86)) {
+                    isPresented = true
+                }
+            },
+            compact: compact
+        )
+        .padding(.horizontal, compact ? 4 : Theme.Metrics.contentInset)
+        .onAppear { onCompactChange(compact) }
+        .onChange(of: placement) { _, _ in onCompactChange(compact) }
+    }
+}
+
+@available(iOS 26.0, *)
+private struct NativeWorkoutCompleteAccessory: View {
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+    let session: ActiveWorkoutSession
+    @Binding var isPresented: Bool
+    let onCompactChange: (Bool) -> Void
+
+    private var compact: Bool { placement == .inline }
+
+    var body: some View {
+        Button {
+            Haptics.trigger(.selection)
+            withAnimation(.spring(response: 0.48, dampingFraction: 0.86)) {
+                isPresented = true
+            }
+        } label: {
+            HStack(spacing: compact ? 8 : 10) {
+                Image(systemName: "flag.checkered")
+                    .font(.system(size: compact ? 18 : 22, weight: .semibold))
+                    .foregroundStyle(Theme.primary)
+
+                VStack(alignment: .leading, spacing: compact ? 0 : 2) {
+                    Text(session.workoutName)
+                        .font(Theme.sans(compact ? 13 : 16, weight: .bold))
+                        .foregroundStyle(Theme.foreground)
+                        .lineLimit(1)
+                    Text("All exercises complete")
+                        .font(Theme.sans(compact ? 10 : 11, weight: .medium))
+                        .foregroundStyle(Theme.mutedForeground)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    Text(ActiveWorkout.formatDuration(ActiveWorkout.elapsedMs(session)))
+                        .font(Theme.sans(compact ? 11 : 13, weight: .bold))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.foreground)
+                }
+            }
+            .padding(.horizontal, compact ? 10 : 12)
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+        .frame(height: compact ? 50 : 62)
+        .padding(.horizontal, compact ? 4 : Theme.Metrics.contentInset)
+        .accessibilityLabel("Workout complete, open workout summary")
+        .onAppear { onCompactChange(compact) }
+        .onChange(of: placement) { _, _ in onCompactChange(compact) }
+    }
+}
+
+private struct WorkoutTabHost: View {
+    @ObservedObject private var store = AppStore.shared
+    let upcoming: [Workout]
+    let past: [Workout]
+    let activeWorkoutId: String?
+    @Binding var liveWorkoutPresented: Bool
+    let onOpen: (Workout) -> Void
+    let onOpenExercisePlayer: () -> Void
+
+    var body: some View {
+        Group {
+            if liveWorkoutPresented,
+               let session = store.activeWorkout.session {
+                WorkoutDetailScreen(
+                    workoutId: session.workoutId,
+                    embeddedInMainTabs: true,
+                    onOpenExercisePlayer: onOpenExercisePlayer,
+                    onBackToWorkouts: {
+                        withAnimation(Theme.Motion.smoothOut(0.28)) {
+                            liveWorkoutPresented = false
+                        }
+                    }
+                )
+            } else {
+                workoutListPage
+            }
+        }
+    }
+
+    private var workoutListPage: some View {
+        AppShell(commandsVisible: false) {
+            ZStack(alignment: .top) {
+                VStack(spacing: 0) {
+                    Color.clear
+                        .frame(height: Theme.Metrics.headerHeight + DeviceScreen.safeAreaInsets.top)
+
+                    WorkoutListContent(
+                        upcoming: upcoming,
+                        past: past,
+                        activeWorkoutId: activeWorkoutId,
+                        onOpen: onOpen
+                    )
+                }
+
+                AppTopScrim()
+                    .zIndex(20)
+
+                AppShellHeader(
+                    title: "Workout",
+                    left: { Color.clear.frame(width: 44, height: 44) },
+                    right: { Color.clear.frame(width: 44, height: 44) },
+                    above: { EmptyView() },
+                    below: { EmptyView() }
+                )
+                .zIndex(30)
+            }
+        } controls: {
+            EmptyView()
+        }
+    }
+}
+
+struct RautaNativeTabControl: View {
+    var mood: RautaMood
+    @Binding var activeTab: MainTab
+    var actionsForTab: (MainTab) -> [CompanionAction]
+    var compact = false
+    @Binding var isPresented: Bool
+    @State private var reactionKey = ""
+    // The native bottom accessory changes its placement when the tab bar wraps.
+    // Give the Rive view a genuinely different layout size in each state: a
+    // transform alone can leave the representable rendering at its old bounds.
+    private var controlSize: CGFloat { compact ? 88 : 80 }
+    private var characterSize: CGFloat { compact ? 74 : 62 }
+
+    var body: some View {
+        let actions = actionsForTab(activeTab)
+
+        ZStack {
+            RautaCharacter(
+                mood: mood,
+                reactionKey: reactionKey
+            )
+            .frame(width: characterSize, height: characterSize)
+            .offset(y: compact ? -1 : -2)
+            .allowsHitTesting(false)
+        }
+        .frame(width: controlSize, height: controlSize)
+        .contentShape(Circle())
+        .onTapGesture {
+            guard !actions.isEmpty else { return }
+            reactionKey = UUID().uuidString
+            Haptics.trigger(.selection)
+            isPresented = true
+        }
+        .popover(isPresented: $isPresented, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
+            AppMenuSurface(dismiss: { isPresented = false }) {
+                ForEach(actions) { action in
+                    Button {
+                        isPresented = false
+                        action.action()
+                    } label: {
+                        Label(action.title, systemImage: action.systemImage)
+                    }
+                }
+            }
+            .presentationCompactAdaptation(.popover)
+            .presentationBackground(.clear)
+        }
+        .accessibilityLabel("Rauta actions")
+        .animation(.spring(response: 0.38, dampingFraction: 0.88), value: compact)
+    }
+}
+
+private struct SummaryWorkoutsContent: View {
+    let completedWorkouts: [Workout]
+    let history: TrainingHistory
+
+    private var month: MonthlySummarySnapshot {
+        MonthlySummarySnapshot(workouts: completedWorkouts, history: history)
+    }
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                StreakStrip(workouts: completedWorkouts)
+                    .allowsHitTesting(false)
+
+                MonthlySummaryDashboard(snapshot: month)
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 220)
+        }
+        .scrollIndicators(.hidden)
+    }
+}
+
+private struct WorkoutListContent: View {
+    let upcoming: [Workout]
+    let past: [Workout]
+    let activeWorkoutId: String?
+    let onOpen: (Workout) -> Void
+
+    @State private var selection = 0
+    @State private var upcomingLimit = 6
+    @State private var pastLimit = 6
+
+    var body: some View {
+        VStack(spacing: 0) {
+            WorkoutsModeSwitcher(selection: $selection)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity)
+                .background(Theme.background)
+                .zIndex(2)
+
+            ScrollView {
+                LazyVStack(spacing: 10) {
+                    if selection == 0 {
+                        workoutList(
+                            items: upcoming,
+                            itemLimit: upcomingLimit,
+                            isPast: false,
+                            emptyMessage: "No upcoming workouts",
+                            onMore: { upcomingLimit += 6 },
+                            onLess: { upcomingLimit = 6 }
+                        )
+                        .id("upcoming-workouts")
+                    } else {
+                        workoutList(
+                            items: past,
+                            itemLimit: pastLimit,
+                            isPast: true,
+                            emptyMessage: "No past workouts yet",
+                            onMore: { pastLimit += 6 },
+                            onLess: { pastLimit = 6 }
+                        )
+                        .id("past-workouts")
+                    }
+                }
+                .padding(.bottom, 92)
+            }
+            .scrollIndicators(.hidden)
+        }
+        .animation(Theme.Motion.smoothOut(0.24), value: selection)
+    }
+
+    @ViewBuilder
+    private func workoutList(
+        items: [Workout],
+        itemLimit: Int,
+        isPast: Bool,
+        emptyMessage: String,
+        onMore: @escaping () -> Void,
+        onLess: @escaping () -> Void
+    ) -> some View {
+        let remaining = Swift.max(0, items.count - itemLimit)
+        let showLess = itemLimit > 6
+
+        if items.isEmpty {
+            Text(emptyMessage)
+                .font(Theme.sans(13))
+                .foregroundStyle(Theme.mutedForeground)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 24)
+        }
+
+        ForEach(items.prefix(itemLimit)) { workout in
+            WorkoutRow(
+                workout: workout,
+                isPast: isPast,
+                isRunning: activeWorkoutId == workout.id,
+                onOpen: { onOpen(workout) }
+            )
+        }
+
+        sectionFooter(
+            remaining: remaining,
+            showLess: showLess,
+            onMore: onMore,
+            onLess: onLess
+        )
     }
 
     @ViewBuilder
@@ -144,98 +1015,22 @@ struct WorkoutsScreen: View {
             }
         }
     }
-
-    private var companionLine: String {
-        if let issue { return issue }
-        if store.activeWorkout.session != nil { return "Your workout is waiting. Want to continue?" }
-        let ahead = TrainingPlan.activePlannedSessions().filter { $0.date >= CalendarDate.today && !TrainingPlan.isPlannedSessionRecorded($0.sessionId) }
-        if let today = ahead.first(where: { $0.date == CalendarDate.today }) { return "\(today.title) is ready." }
-        if ahead.count == 1 { return "One session left this week." }
-        if ahead.count > 1 { return "\(ahead.count) sessions fit this week." }
-        if store.trainingRecords.data.activeProgramId != nil { return "This week's plan is done. Ask me for the next one." }
-        let name = store.trainingProfile.profile.name
-        return name.isEmpty ? "Tell me what we're training today." : "Ready, \(name)? I can shape today's session."
-    }
-    private var companionActions: [CompanionAction] {
-        var actions: [CompanionAction] = []
-        if let source = TrainingPlan.activeProgramRecord(), store.activeWorkout.session == nil {
-            let remaining = TrainingWorkflow.remainingTrainingSlots(source, ISOTime.now())
-            if !remaining.sessions.isEmpty && store.trainingRecords.data.sessions.contains(where: { $0.plannedProgramId == source.id }) {
-                actions.append(CompanionAction(title: "Adjust remaining week", systemImage: "arrow.triangle.2.circlepath", primary: true) {
-                    do {
-                        let result = try TrainingWorkflow.generateAndSavePlan(source: source)
-                        if let program = result.result.program { TrainingPlan.projectPlannedWorkouts(TrainingPlan.sessionViews(program)) }
-                        Haptics.trigger(.success)
-                    } catch { issue = error.localizedDescription }
-                })
-            } else if remaining.sessions.isEmpty {
-                actions.append(CompanionAction(title: "Extend training plan", systemImage: "calendar.badge.plus", primary: true) {
-                    store.navigation.push(.planWeek(sourceProgramId: source.id))
-                })
-            }
-        }
-        actions.append(CompanionAction(title: store.trainingRecords.data.activeProgramId == nil ? "Create training plan" : "New training plan", systemImage: "calendar.badge.plus", primary: actions.isEmpty) {
-            store.navigation.push(.planWeek(sourceProgramId: nil))
-        })
-        actions.append(CompanionAction(title: "Choose exercises", systemImage: "list.bullet.rectangle", action: startExerciseFlow))
-        return actions
-    }
-    private func startExerciseFlow() {
-        store.filters.reset(); store.filters.setEquipment(store.filters.gymEquipment)
-        store.navigation.selectMode = false; store.navigation.selectedIds = []
-        store.navigation.push(.muscles(preferredWorkoutId: nil))
-    }
-    private func open(_ workout: Workout) {
-        _ = EngineWorkout.ensureEngineWorkout(workout.id)
-        store.navigation.push(.workoutDetail(workoutId: workout.id))
-    }
 }
 
 private struct WorkoutsModeSwitcher: View {
     @Binding var selection: Int
-    @Namespace private var indicator
 
     var body: some View {
-        HStack(spacing: 0) {
-            option(title: "Next", index: 0)
-            option(title: "Past", index: 1)
+        Picker("Workout list", selection: $selection) {
+            Text("Next").tag(0)
+            Text("Past").tag(1)
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: 44)
-    }
-
-    private func option(title: String, index: Int) -> some View {
-        let selected = selection == index
-
-        return VStack(spacing: 5) {
-            Text(title)
-                .font(Theme.sans(13, weight: selected ? .bold : .semibold))
-                .foregroundStyle(selected ? Theme.foreground : Theme.mutedForeground)
-
-            ZStack {
-                Capsule()
-                    .fill(.clear)
-                    .frame(width: 34, height: 2)
-
-                if selected {
-                    Capsule()
-                        .fill(Theme.primaryGradient)
-                        .frame(width: 34, height: 2)
-                        .matchedGeometryEffect(id: "workout-mode", in: indicator)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, minHeight: 44)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            guard selection != index else { return }
+        .pickerStyle(.segmented)
+        .frame(maxWidth: 214)
+        .tint(Theme.primary)
+        .onChange(of: selection) { _, _ in
             Haptics.trigger(.selection)
-            withAnimation(Theme.Motion.spring) { selection = index }
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(title)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 
@@ -253,7 +1048,7 @@ private struct StreakStrip: View {
                     Text("CURRENT STREAK")
                         .font(Theme.sans(9, weight: .black))
                         .kerning(1.45)
-                        .foregroundStyle(Theme.primary)
+                        .foregroundStyle(Theme.lime)
 
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text("\(streak.currentStreak)")
@@ -269,67 +1064,44 @@ private struct StreakStrip: View {
                 Spacer(minLength: 8)
 
                 HStack(spacing: 12) {
-                    streakMetric(value: streak.weekWorkouts, label: "THIS WEEK")
+                    streakMetric(value: streak.weekWorkouts, label: "THIS WEEK", color: Theme.lime)
 
                     Rectangle()
                         .fill(Theme.foreground.opacity(0.10))
                         .frame(width: 1, height: 30)
 
-                    streakMetric(value: streak.longestStreak, label: "BEST")
+                    streakMetric(value: streak.longestStreak, label: "BEST", color: Theme.gold)
                 }
                 .padding(.trailing, 4)
             }
 
-            GlassGroup(spacing: 6) {
-                HStack(spacing: 4) {
-                    ForEach(streak.week) { day in
-                        VStack(spacing: 6) {
-                            Flame(lit: day.workouts > 0)
-                                .frame(width: day.isToday ? 38.4 : 30.4, height: day.isToday ? 48 : 38)
-                                .frame(height: 48, alignment: .bottom).opacity(day.isFuture ? 0.6 : 1)
-                            Text(CalendarDate.weekdayShort(day.date)).font(Theme.sans(10, weight: .semibold))
-                                .foregroundStyle(day.isToday ? Theme.primaryForeground : Theme.mutedForeground)
-                                .padding(.horizontal, 6).padding(.vertical, 2)
-                                .background(day.isToday ? Theme.primary : .clear, in: Capsule())
-                        }.frame(maxWidth: .infinity)
-                    }
+            HStack(spacing: 4) {
+                ForEach(streak.week) { day in
+                    VStack(spacing: 6) {
+                        Flame(lit: day.workouts > 0)
+                            .frame(width: day.isToday ? 38.4 : 30.4, height: day.isToday ? 48 : 38)
+                            .frame(height: 48, alignment: .bottom).opacity(day.isFuture ? 0.6 : 1)
+                        Text(CalendarDate.weekdayShort(day.date)).font(Theme.sans(10, weight: .semibold))
+                            .foregroundStyle(day.isToday ? Theme.primaryForeground : Theme.mutedForeground)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(day.isToday ? Theme.primary : .clear, in: Capsule())
+                    }.frame(maxWidth: .infinity)
                 }
             }
         }
         .padding(14)
         .frame(maxWidth: .infinity)
         .background {
-            ZStack {
-                Color.clear
-                    .glassSurface(
-                        .regular,
-                        in: shape,
-                        border: Theme.Glassware.edge,
-                        legacyFill: Theme.card.opacity(0.64)
-                    )
-                RadialGradient(
-                    colors: [Theme.primary.opacity(0.14), .clear],
-                    center: UnitPoint(x: 0.52, y: 0.72),
-                    startRadius: 0,
-                    endRadius: 150
-                )
-                .clipShape(shape)
-                .allowsHitTesting(false)
-            }
-        }
-        .overlay(alignment: .top) {
-            Capsule()
-                .fill(.white.opacity(0.08))
-                .frame(width: 74, height: 1)
-                .padding(.top, 1)
+            shape
+                .fill(Theme.card)
         }
     }
 
-    private func streakMetric(value: Int, label: String) -> some View {
+    private func streakMetric(value: Int, label: String, color: Color) -> some View {
         VStack(spacing: 1) {
             Text("\(value)")
                 .font(Theme.readout(15))
-                .foregroundStyle(Theme.foreground)
+                .foregroundStyle(color)
             Text(label)
                 .font(Theme.sans(7, weight: .black))
                 .kerning(0.9)
@@ -344,12 +1116,14 @@ private struct Flame: View {
 
     var body: some View {
         ZStack {
-            Color.clear
-                .glassSurface(
-                    lit ? .tinted(Theme.primary.opacity(0.68)) : .regular,
-                    in: FlameShape(),
-                    border: lit ? Theme.primary.opacity(0.42) : .white.opacity(0.07),
-                    legacyFill: lit ? Theme.primary.opacity(0.68) : .white.opacity(0.055)
+            FlameShape()
+                .fill(lit ? Theme.rust : Theme.muted)
+                .overlay(
+                    FlameShape()
+                        .strokeBorder(
+                            lit ? Theme.ember.opacity(0.72) : Theme.border.opacity(0.55),
+                            lineWidth: 1
+                        )
                 )
 
             Canvas { context, size in
@@ -447,28 +1221,19 @@ private struct WorkoutRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 BodyPreview(selectedMuscles: muscles, width: 70, height: 60)
                     .opacity(isPast ? 0.9 : 1)
+                    .allowsHitTesting(false)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .frame(minHeight: 100)
+            .frame(maxWidth: .infinity, minHeight: 100)
             .background(
-                LinearGradient(
-                    colors: [
-                        Theme.mix(Theme.card, Theme.foreground, 0.05),
-                        Theme.card,
-                        Theme.mix(Theme.card, .black, 0.14)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                ),
-                in: RoundedRectangle(cornerRadius: 36, style: .continuous)
+                Theme.card.opacity(0.92),
+                in: RoundedRectangle(cornerRadius: 30, style: .continuous)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: 36, style: .continuous)
-                    .strokeBorder(isRunning ? Theme.primary.opacity(0.6) : Theme.border)
-            )
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
     }
 
     private var dateStamp: some View {

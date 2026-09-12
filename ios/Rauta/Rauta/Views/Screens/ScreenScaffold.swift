@@ -10,12 +10,13 @@ struct RautaScreen<Content: View, Controls: View, Right: View>: View {
     var progressStage: Int?
     var titleMultiline: Bool = false
     var hidden: Bool = false
+    var fullScreen: Bool = false
     @ViewBuilder var right: () -> Right
     @ViewBuilder var content: () -> Content
     @ViewBuilder var controls: () -> Controls
 
     var body: some View {
-        AppShell(commandsVisible: Controls.self != EmptyView.self) {
+        AppShell(commandsVisible: Controls.self != EmptyView.self, fullScreen: fullScreen) {
             ZStack(alignment: .top) {
                 content()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -77,6 +78,7 @@ extension RautaScreen where Right == EmptyView {
         progressStage: Int? = nil,
         titleMultiline: Bool = false,
         hidden: Bool = false,
+        fullScreen: Bool = false,
         @ViewBuilder content: @escaping () -> Content,
         @ViewBuilder controls: @escaping () -> Controls
     ) {
@@ -90,6 +92,7 @@ extension RautaScreen where Right == EmptyView {
             progressStage: progressStage,
             titleMultiline: titleMultiline,
             hidden: hidden,
+            fullScreen: fullScreen,
             right: { EmptyView() },
             content: content,
             controls: controls
@@ -108,6 +111,7 @@ extension RautaScreen where Controls == EmptyView {
         progressStage: Int? = nil,
         titleMultiline: Bool = false,
         hidden: Bool = false,
+        fullScreen: Bool = false,
         @ViewBuilder right: @escaping () -> Right,
         @ViewBuilder content: @escaping () -> Content
     ) {
@@ -121,6 +125,7 @@ extension RautaScreen where Controls == EmptyView {
             progressStage: progressStage,
             titleMultiline: titleMultiline,
             hidden: hidden,
+            fullScreen: fullScreen,
             right: right,
             content: content,
             controls: { EmptyView() }
@@ -139,6 +144,7 @@ extension RautaScreen where Controls == EmptyView, Right == EmptyView {
         progressStage: Int? = nil,
         titleMultiline: Bool = false,
         hidden: Bool = false,
+        fullScreen: Bool = false,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.init(
@@ -151,6 +157,7 @@ extension RautaScreen where Controls == EmptyView, Right == EmptyView {
             progressStage: progressStage,
             titleMultiline: titleMultiline,
             hidden: hidden,
+            fullScreen: fullScreen,
             right: { EmptyView() },
             content: content,
             controls: { EmptyView() }

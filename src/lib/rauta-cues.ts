@@ -71,7 +71,7 @@ const RESPONSES: Record<RautaCue, readonly RautaResponse[]> = {
 // for integrations that live outside React.
 export const RAUTA_CUE_EVENT = "rauta:cue"
 
-let previousChoice: Partial<Record<RautaCue, number>> = {}
+const previousChoice: Partial<Record<RautaCue, number>> = {}
 
 export function pickRautaResponse(
   cue: RautaCue,

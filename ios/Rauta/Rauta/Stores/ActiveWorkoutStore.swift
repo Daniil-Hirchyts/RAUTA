@@ -39,6 +39,8 @@ final class ActiveWorkoutStore: ObservableObject {
         let name = (object["workoutName"]?.stringValue ?? "Workout")
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
+        let now = ActiveWorkout.nowMillis()
+        let startedAt = validTimestamp(object["startedAt"]) ?? now
         return ActiveWorkoutSession(
             workoutId: workoutId,
             workoutName: name.isEmpty ? "Workout" : name,
@@ -48,7 +50,9 @@ final class ActiveWorkoutStore: ObservableObject {
             currentExerciseId: exerciseIds.contains(currentExerciseId) ? currentExerciseId : nil,
             runningSince: validTimestamp(object["runningSince"]),
             accumulatedMs: Swift.max(0, object["accumulatedMs"]?.numberValue ?? 0),
-            startedAt: validTimestamp(object["startedAt"]) ?? ActiveWorkout.nowMillis()
+            startedAt: startedAt,
+            setPhaseStartedAt: validTimestamp(object["setPhaseStartedAt"]) ?? now,
+            restUntil: validTimestamp(object["restUntil"])
         )
     }
 
@@ -59,7 +63,12 @@ final class ActiveWorkoutStore: ObservableObject {
 
     private func load() {
         guard let envelope = Storage.readEnvelope(Self.storageKey) else { return }
-        session = Self.sanitizeSession(envelope.state["session"])
+        let stored = envelope.state["session"]
+        session = Self.sanitizeSession(stored)
+        if session != nil,
+           Self.validTimestamp(stored?.objectValue?["setPhaseStartedAt"]) == nil {
+            persist()
+        }
     }
 
     func persist() {
@@ -132,7 +141,9 @@ final class ActiveWorkoutStore: ObservableObject {
                 currentExerciseId: exerciseIds.first,
                 runningSince: now,
                 accumulatedMs: 0,
-                startedAt: now
+                startedAt: now,
+                setPhaseStartedAt: now,
+                restUntil: nil
             ),
             outcome: nil
         )
@@ -155,6 +166,7 @@ final class ActiveWorkoutStore: ObservableObject {
         // session keeps the sets that were really performed.
         WorkoutTransition.recoverWorkoutTransition()
         setSession(nil, outcome: .finished)
+        RestTimerNotifications.shared.cancel()
         WorkoutTransition.settleWorkoutTransition()
     }
 
@@ -166,6 +178,7 @@ final class ActiveWorkoutStore: ObservableObject {
             WorkoutTransition.recoverWorkoutTransition()
         }
         setSession(nil, outcome: .cancelled)
+        RestTimerNotifications.shared.cancel()
         WorkoutTransition.settleWorkoutTransition()
     }
 
@@ -180,6 +193,22 @@ final class ActiveWorkoutStore: ObservableObject {
         guard var current = session, current.runningSince == nil else { return }
         current.runningSince = ActiveWorkout.nowMillis()
         mutate { session = current }
+    }
+
+    /// Starts a rest phase from the authoritative session clock. The same
+    /// deadline drives both the UI and the local notification, so reopening a
+    /// tab or sheet cannot restart the countdown.
+    func startRest(seconds: TimeInterval, exerciseName: String?) {
+        guard var current = session else { return }
+        let durationMs = Swift.max(1, seconds.rounded()) * 1_000
+        let deadlineMs = ActiveWorkout.nowMillis() + durationMs
+        current.restUntil = deadlineMs
+        current.setPhaseStartedAt = deadlineMs
+        mutate { session = current }
+        RestTimerNotifications.shared.schedule(
+            deadline: Date(timeIntervalSince1970: deadlineMs / 1_000),
+            exerciseName: exerciseName
+        )
     }
 
     func setCurrentExercise(_ exerciseId: String) {
@@ -305,7 +334,9 @@ final class ActiveWorkoutStore: ObservableObject {
                     currentExerciseId: restore.exerciseIds.first,
                     runningSince: restore.startedAtMs,
                     accumulatedMs: 0,
-                    startedAt: restore.startedAtMs
+                    startedAt: restore.startedAtMs,
+                    setPhaseStartedAt: restore.startedAtMs,
+                    restUntil: nil
                 ),
                 outcome: nil
             )

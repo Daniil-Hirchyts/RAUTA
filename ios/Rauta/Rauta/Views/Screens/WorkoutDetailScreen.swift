@@ -5,6 +5,9 @@ import UniformTypeIdentifiers
 struct WorkoutDetailScreen: View {
     @ObservedObject private var store = AppStore.shared
     let workoutId: String
+    var embeddedInMainTabs = false
+    var onOpenExercisePlayer: (() -> Void)? = nil
+    var onBackToWorkouts: (() -> Void)? = nil
 
     @State private var tab = 0
     @State private var confirmation: ConfirmationKind?
@@ -23,6 +26,10 @@ struct WorkoutDetailScreen: View {
         return TrainingPlan.plannedSessionView(reference.programId, reference.sessionId)
     }
     private var isPast: Bool { session == nil && workout?.completion != nil }
+    private var hasAnotherActiveWorkout: Bool {
+        guard let active = store.activeWorkout.session else { return false }
+        return active.workoutId != workoutId
+    }
     private var plannedUnavailable: Bool {
         guard let reference = workout?.planned else { return false }
         return planned == nil || !ProgramRecords.isStartablePlannedSession(
@@ -30,6 +37,14 @@ struct WorkoutDetailScreen: View {
             reference.programId,
             reference.sessionId
         )
+    }
+    private var canEditWorkout: Bool {
+        guard let workout, !isPast, !plannedUnavailable else { return false }
+        return workout.planned == nil || !hasAnotherActiveWorkout
+    }
+    private var canDeleteWorkout: Bool { canEditWorkout }
+    private var canStartWorkout: Bool {
+        !isPast && !plannedUnavailable && store.activeWorkout.session == nil
     }
     private var finishConfirmation: ConfirmationKind {
         TrainingSessionBridge.activePlannedCoverage()?.complete == false
@@ -40,19 +55,24 @@ struct WorkoutDetailScreen: View {
     var body: some View {
         ZStack {
             if let workout {
-                RautaScreen(
-                    title: CalendarDate.long(workout.date),
-                    subtitle: progressLabel,
-                    subtitleProgress: headerProgress,
-                    onTitleTap: session == nil && !isPast ? {
-                        Haptics.trigger(.light)
-                        showingDate = true
-                    } : nil,
-                    backLabel: "Back to workouts",
-                    onBack: store.navigation.pop,
-                    content: { content(workout) },
-                    controls: { controls(workout) }
-                )
+                if let session {
+                    if embeddedInMainTabs {
+                        activeWorkoutPage(workout, session: session, embedded: true)
+                    } else {
+                        standardWorkoutScreen(workout)
+                    }
+                } else if isPast {
+                    RautaScreen(
+                        title: CalendarDate.long(workout.date),
+                        backLabel: "Back to workouts",
+                        onBack: store.navigation.pop,
+                        fullScreen: true,
+                        right: { pastWorkoutMenu(workout) },
+                        content: { content(workout) }
+                    )
+                } else {
+                    standardWorkoutScreen(workout)
+                }
             } else {
                 Color.clear.onAppear(perform: store.navigation.pop)
             }
@@ -86,6 +106,90 @@ struct WorkoutDetailScreen: View {
                 .zIndex(9)
             }
         }
+    }
+
+    private func standardWorkoutScreen(_ workout: Workout) -> some View {
+        RautaScreen(
+            title: CalendarDate.long(workout.date),
+            subtitle: progressLabel,
+            subtitleProgress: headerProgress,
+            onTitleTap: canEditWorkout ? {
+                Haptics.trigger(.light)
+                showingDate = true
+            } : nil,
+            backLabel: "Back to workouts",
+            onBack: store.navigation.pop,
+            content: { content(workout) },
+            controls: { controls(workout) }
+        )
+    }
+
+    private func activeWorkoutPage(
+        _ workout: Workout,
+        session: ActiveWorkoutSession,
+        embedded: Bool = false
+    ) -> some View {
+        Group {
+            if embedded {
+                RautaScreen(
+                    title: CalendarDate.long(workout.date),
+                    subtitle: progressLabel,
+                    subtitleProgress: headerProgress,
+                    backLabel: onBackToWorkouts == nil ? nil : "Back to workouts",
+                    onBack: onBackToWorkouts
+                ) {
+                    activeWorkoutContent(workout, session: session)
+                }
+            } else {
+                RautaScreen(
+                    title: CalendarDate.long(workout.date),
+                    subtitle: progressLabel,
+                    subtitleProgress: headerProgress,
+                    backLabel: "Back to summary",
+                    onBack: store.navigation.pop
+                ) {
+                    activeWorkoutContent(workout, session: session)
+                }
+            }
+        }
+    }
+
+    private func activeWorkoutContent(_ workout: Workout, session: ActiveWorkoutSession) -> some View {
+        ScrollView {
+            LazyVStack(spacing: 18) {
+                RunningWorkoutOverview(workout: workout, session: session, planned: planned)
+
+                ForEach(Array(workout.exerciseIds.enumerated()), id: \.element) { index, id in
+                    if let exercise = ExerciseCatalogue.byId[id] {
+                        WorkoutExerciseRow(
+                            exercise: exercise,
+                            index: index,
+                            prescription: planned?.prescription.first { $0.exerciseId == id },
+                            status: ActiveWorkout.status(session, id),
+                            canFindAlternative: canEditWorkout,
+                            canRemove: canEditWorkout,
+                            canReorder: canEditWorkout,
+                            exerciseIds: workout.exerciseIds,
+                            reorder: reorder,
+                            onOpen: {
+                                if session.currentExerciseId != id {
+                                    store.activeWorkout.setCurrentExercise(id)
+                                }
+                                onOpenExercisePlayer?()
+                            },
+                            onAlternative: { openAlternative(id) },
+                            onToggle: { store.activeWorkout.toggleComplete(id) },
+                            onReorder: { ids, moved in updateExercises(ids, moved: moved) },
+                            onRemove: { remove(id) }
+                        )
+                    }
+                }
+            }
+            .padding(.top, 8)
+            .padding(.bottom, 188)
+        }
+        .scrollDisabled(reorder.active != nil)
+        .onDisappear { reorder.cancel() }
     }
 
     private var progressLabel: String? {
@@ -125,13 +229,6 @@ struct WorkoutDetailScreen: View {
                             WorkoutOverview(workout: workout, past: isPast, planned: planned)
                         }
 
-                        if plannedUnavailable || issue != nil {
-                            InlineNotice(
-                                message: issue ?? "This planned session is no longer available. Create a current plan from My workouts.",
-                                isError: true
-                            )
-                        }
-
                         if workout.exerciseIds.isEmpty {
                             Text("This workout is empty. Add an exercise to start building it.")
                                 .font(Theme.sans(16))
@@ -163,9 +260,9 @@ struct WorkoutDetailScreen: View {
                                         index: index,
                                         prescription: planned?.prescription.first { $0.exerciseId == id },
                                         status: session.map { ActiveWorkout.status($0, id) },
-                                        canFindAlternative: !isPast && !plannedUnavailable,
-                                        canRemove: !isPast,
-                                        canReorder: !isPast,
+                                        canFindAlternative: canEditWorkout,
+                                        canRemove: canEditWorkout,
+                                        canReorder: canEditWorkout,
                                         exerciseIds: workout.exerciseIds,
                                         reorder: reorder,
                                         onOpen: { store.navigation.push(.exerciseDetail(exerciseId: id)) },
@@ -234,22 +331,6 @@ struct WorkoutDetailScreen: View {
                     }
                 }
             }
-        } else if isPast {
-            HStack(spacing: 8) {
-                AppMenuButton(label: "Workout actions") {
-                    shareAction(workout)
-                    Button(action: duplicate) {
-                        Label("Copy to today", systemImage: "doc.on.doc")
-                    }
-                    Button(role: .destructive) {
-                        Haptics.trigger(.warning)
-                        confirmation = .deleteWorkout
-                    } label: {
-                        Label("Delete workout", systemImage: "trash")
-                    }
-                }
-                Spacer(minLength: 0)
-            }
         } else {
             HStack(spacing: 8) {
                 AppMenuButton(label: "Workout actions") {
@@ -257,35 +338,45 @@ struct WorkoutDetailScreen: View {
                     Button(action: duplicate) {
                         Label("Copy to today", systemImage: "doc.on.doc")
                     }
-                    if !workout.exerciseIds.isEmpty {
+                    if !workout.exerciseIds.isEmpty, canEditWorkout {
                         Button {
                             beginExerciseFlow(preferredWorkoutId: workout.id)
                         } label: {
                             Label("Add exercise", systemImage: "plus")
                         }
                     }
-                    Button(role: .destructive) {
-                        Haptics.trigger(.warning)
-                        confirmation = .deleteWorkout
-                    } label: {
-                        Label("Delete workout", systemImage: "trash")
+                    if canDeleteWorkout {
+                        Button(role: .destructive) {
+                            Haptics.trigger(.warning)
+                            confirmation = .deleteWorkout
+                        } label: {
+                            Label("Delete workout", systemImage: "trash")
+                        }
                     }
                 }
-                AppButton(
-                    plannedUnavailable
-                        ? "Plan unavailable"
-                        : (workout.exerciseIds.isEmpty ? "Add exercise" : "Start workout"),
-                    size: .cta,
-                    isDisabled: plannedUnavailable,
-                    expands: true
-                ) {
-                    if workout.exerciseIds.isEmpty {
-                        beginExerciseFlow(preferredWorkoutId: workout.id)
-                    } else {
-                        Haptics.trigger(.heavy)
-                        countingDown = true
+                if canStartWorkout {
+                    AppButton(
+                        workout.exerciseIds.isEmpty ? "Add exercise" : "Start workout",
+                        size: .cta,
+                        expands: true
+                    ) {
+                        if workout.exerciseIds.isEmpty {
+                            beginExerciseFlow(preferredWorkoutId: workout.id)
+                        } else {
+                            Haptics.trigger(.heavy)
+                            countingDown = true
+                        }
                     }
                 }
+            }
+        }
+    }
+
+    private func pastWorkoutMenu(_ workout: Workout) -> some View {
+        AppMenuButton(label: "Workout actions", arrowEdge: .top, compact: true) {
+            shareAction(workout)
+            Button(action: duplicate) {
+                Label("Copy to today", systemImage: "doc.on.doc")
             }
         }
     }
@@ -457,6 +548,461 @@ private struct WorkoutStartCountdown: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Starting workout")
+    }
+}
+
+@available(iOS 26.0, *)
+struct CurrentExerciseAccessory: View {
+    @ObservedObject private var store = AppStore.shared
+    let exercise: ExerciseSummary
+    let onOpen: () -> Void
+    let compact: Bool
+
+    private var draft: PersistedActiveExerciseDraft? {
+        TrainingSessionBridge.draftExercise(store.trainingRecords.data.activeWorkout, exercise.id)
+    }
+
+    private var repsText: String {
+        if let set = draft?.sets.first(where: { $0.observation?.completed != true }) {
+            if let reps = set.observation?.reps {
+                return "\(Num.trimmed(reps)) reps"
+            }
+            if let target = set.target?.reps {
+                return repRangeText(target)
+            }
+        }
+        if let reps = draft?.sets.reversed().compactMap({ $0.observation?.reps }).first {
+            return "\(Num.trimmed(reps)) reps"
+        }
+        if let target = draft?.sets.compactMap({ $0.target?.reps }).first {
+            return repRangeText(target)
+        }
+        return "— reps"
+    }
+
+    var body: some View {
+        Button(action: onOpen) {
+            HStack(spacing: compact ? 8 : 10) {
+                ExerciseMediaView(exerciseId: exercise.id, animated: true)
+                    .frame(width: compact ? 30 : 42, height: compact ? 30 : 42)
+                    .clipShape(RoundedRectangle(cornerRadius: compact ? 7 : 10, style: .continuous))
+
+                VStack(alignment: .leading, spacing: compact ? 0 : 2) {
+                    Text(exercise.name.capitalized)
+                        .font(Theme.sans(compact ? 13 : 16, weight: .bold))
+                        .foregroundStyle(Theme.foreground)
+                        .lineLimit(1)
+                    Text(repsText)
+                        .font(Theme.sans(compact ? 10 : 11, weight: .medium))
+                        .foregroundStyle(Theme.mutedForeground)
+                        .lineLimit(1)
+                }
+                .minimumScaleFactor(0.72)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                setTimer
+            }
+            .padding(.horizontal, compact ? 10 : 12)
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+        .frame(height: compact ? 50 : 62)
+        .frame(maxWidth: .infinity)
+        .accessibilityLabel("\(exercise.name.capitalized), Current exercise")
+        .accessibilityHint("Opens the current exercise")
+        .animation(.spring(response: 0.42, dampingFraction: 0.86), value: compact)
+    }
+
+    private var setTimer: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let session = store.activeWorkout.session
+            let restUntil = session?.restUntil.map { Date(timeIntervalSince1970: $0 / 1_000) }
+            let remaining = restUntil.map { $0.timeIntervalSince(context.date) } ?? -1
+            let isResting = remaining > 0
+            let anchor = session.map {
+                Date(timeIntervalSince1970: ($0.setPhaseStartedAt ?? $0.startedAt) / 1_000)
+            } ?? context.date
+            let seconds = isResting
+                ? Int(remaining.rounded(.up))
+                : Swift.max(0, Int(context.date.timeIntervalSince(anchor).rounded(.down)))
+
+            VStack(alignment: .trailing, spacing: compact ? 0 : 1) {
+                Text(isResting ? "REST" : "SET")
+                    .font(Theme.sans(compact ? 7 : 8, weight: .black))
+                    .kerning(0.8)
+                    .foregroundStyle(isResting ? Theme.primary : Theme.mutedForeground)
+                Text(clock(seconds))
+                    .font(Theme.sans(compact ? 11 : 13, weight: .bold))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.foreground)
+            }
+            .frame(width: compact ? 42 : 52, alignment: .trailing)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(isResting ? "Rest timer, \(clock(seconds))" : "Set timer, \(clock(seconds))")
+        }
+    }
+
+    private func repRangeText(_ range: RepRange) -> String {
+        if range.min == range.max {
+            return "\(Num.trimmed(range.max)) reps"
+        }
+        return "\(Num.trimmed(range.min))–\(Num.trimmed(range.max)) reps"
+    }
+
+    private func clock(_ seconds: Int) -> String {
+        "\(seconds / 60):\(String(format: "%02d", seconds % 60))"
+    }
+}
+
+struct ActiveExerciseDrawer: View {
+    @ObservedObject private var store = AppStore.shared
+    @ObservedObject private var activeWorkout = ActiveWorkoutStore.shared
+    let exercise: ExerciseSummary
+    let session: ActiveWorkoutSession
+    let restSeconds: Double
+    let onDetail: () -> Void
+    let hasNextExercise: Bool
+    let onFinishExercise: () -> Void
+    let onFinish: () -> Void
+    let onDismiss: () -> Void
+    @State private var revealDetails = false
+    @GestureState private var dismissalOffset: CGFloat = 0
+
+    var body: some View {
+        Group {
+            if let liveSession = activeWorkout.session,
+               ActiveWorkout.progress(liveSession).isComplete {
+                CompletedWorkoutDrawer(
+                    session: liveSession,
+                    onFinish: onFinish,
+                    onDismiss: onDismiss
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.985)))
+            } else {
+                GeometryReader { proxy in
+                    playerSurface(proxy)
+                        .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
+                        .offset(y: dismissalOffset)
+                        .simultaneousGesture(dismissGesture(in: proxy))
+                }
+                .transition(.opacity)
+            }
+        }
+        .ignoresSafeArea()
+        .animation(.easeInOut(duration: 0.24), value: store.activeWorkout.session.map { ActiveWorkout.progress($0).isComplete } ?? false)
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.22).delay(0.12)) {
+                revealDetails = true
+            }
+        }
+        .accessibilityAddTraits(.isModal)
+    }
+
+    private func dismissGesture(in proxy: GeometryProxy) -> some Gesture {
+        DragGesture(minimumDistance: 12, coordinateSpace: .local)
+            .updating($dismissalOffset) { value, offset, _ in
+                guard value.startLocation.y < proxy.size.height * 0.62,
+                      value.translation.height > 0
+                else { return }
+                offset = value.translation.height
+            }
+            .onEnded { value in
+                guard value.startLocation.y < proxy.size.height * 0.62 else { return }
+                if value.translation.height > 110 || value.predictedEndTranslation.height > 180 {
+                    Haptics.trigger(.light)
+                    onDismiss()
+                }
+            }
+    }
+
+    private func playerSurface(_ proxy: GeometryProxy) -> some View {
+        VStack(spacing: 0) {
+            VStack(spacing: 18) {
+                Button(action: onDetail) {
+                    let mediaSize = min(300, proxy.size.width - 56)
+                    ExerciseMediaView(exerciseId: exercise.id, animated: true)
+                        .frame(width: mediaSize, height: mediaSize)
+                }
+                .buttonStyle(.plain)
+
+                HStack(alignment: .center, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(exercise.name.capitalized)
+                            .font(Theme.sans(24, weight: .bold))
+                            .foregroundStyle(Theme.foreground)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.72)
+                        Text(trainedMusclesText)
+                            .font(Theme.sans(13, weight: .medium))
+                            .foregroundStyle(Theme.mutedForeground)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.78)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    LikeButton(
+                        liked: store.favorites.isFavorite(exercise.id),
+                        label: store.favorites.isFavorite(exercise.id)
+                            ? "Remove \(exercise.name) from favorites"
+                            : "Add \(exercise.name) to favorites",
+                        size: 36,
+                        iconSize: 18,
+                        chromeless: true
+                    ) {
+                        store.favorites.toggleFavorite(exercise.id)
+                    }
+
+                    Menu {
+                        Button {
+                            Haptics.trigger(.selection)
+                            if store.activeWorkout.session?.runningSince == nil {
+                                store.activeWorkout.resume()
+                            } else {
+                                store.activeWorkout.pause()
+                            }
+                        } label: {
+                            Label(
+                                store.activeWorkout.session?.runningSince == nil ? "Resume workout" : "Pause workout",
+                                systemImage: store.activeWorkout.session?.runningSince == nil ? "play.fill" : "pause.fill"
+                            )
+                        }
+                        Button {
+                            onFinishExercise()
+                        } label: {
+                            Label("Finish exercise", systemImage: "flag.checkered")
+                        }
+                        Button {
+                            onFinish()
+                        } label: {
+                            Label("Finish workout", systemImage: "flag.checkered")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 19, weight: .bold))
+                            .foregroundStyle(Theme.foreground)
+                            .frame(width: 36, height: 36)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Workout actions")
+                }
+            }
+            .padding(.horizontal, Theme.Metrics.contentInset)
+            .padding(.top, Swift.max(proxy.safeAreaInsets.top, 18) + 104)
+
+            Spacer(minLength: 10)
+
+            ActiveSetLog(
+                exerciseId: exercise.id,
+                restSeconds: restSeconds,
+                hasNextExercise: hasNextExercise,
+                onFinishExercise: onFinishExercise
+            )
+                .opacity(revealDetails ? 1 : 0)
+                .offset(y: revealDetails ? 0 : 18)
+                .padding(.horizontal, Theme.Metrics.contentInset)
+                .padding(.bottom, Swift.max(proxy.safeAreaInsets.bottom, 14))
+        }
+        .background {
+            ZStack {
+                Theme.background
+                LinearGradient(
+                    colors: [Theme.primary.opacity(0.34), Theme.oxblood.opacity(0.38), .clear],
+                    startPoint: .topTrailing,
+                    endPoint: .bottomLeading
+                )
+                AppGrain()
+            }
+            .ignoresSafeArea()
+        }
+    }
+
+    private var trainedMusclesText: String {
+        let labels = exercise.muscles.map(\.label)
+        return labels.isEmpty ? "Full body" : labels.joined(separator: " · ")
+    }
+}
+
+struct CompletedWorkoutDrawer: View {
+    @ObservedObject private var store = AppStore.shared
+    let session: ActiveWorkoutSession
+    let onFinish: () -> Void
+    let onDismiss: () -> Void
+    @GestureState private var dismissalOffset: CGFloat = 0
+
+    private var liveSession: ActiveWorkoutSession {
+        store.activeWorkout.session ?? session
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            VStack(spacing: 0) {
+                Spacer(minLength: Swift.max(proxy.safeAreaInsets.top, 18) + 48)
+
+                RautaCharacter(mood: .focused)
+                    .frame(width: 118, height: 118)
+                    .accessibilityHidden(true)
+
+                VStack(spacing: 12) {
+                    Text(liveSession.workoutName)
+                        .font(Theme.sans(30, weight: .bold))
+                        .foregroundStyle(Theme.foreground)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+
+                    Text("All exercises complete")
+                        .font(Theme.sans(14, weight: .semibold))
+                        .foregroundStyle(Theme.mutedForeground)
+
+                    AppButton("Finish workout", size: .cta, expands: true, action: onFinish)
+                        .frame(maxWidth: 280)
+                        .padding(.top, 8)
+                }
+                .padding(.horizontal, 28)
+
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    Text(ActiveWorkout.formatDuration(ActiveWorkout.elapsedMs(liveSession)))
+                        .font(Theme.readout(72))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.foreground)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.64)
+                }
+                .padding(.top, 34)
+
+                HStack(spacing: 28) {
+                    workoutMetric(
+                        value: "\(ActiveWorkout.progress(liveSession).completed)",
+                        label: "Exercises"
+                    )
+                    workoutMetric(
+                        value: liveSession.runningSince == nil ? "Paused" : "Running",
+                        label: "Workout"
+                    )
+                }
+                .padding(.top, 16)
+                .padding(.horizontal, 28)
+
+                Spacer(minLength: Swift.max(proxy.safeAreaInsets.bottom, 24))
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .background {
+                ZStack {
+                    Theme.background
+                    LinearGradient(
+                        colors: [Theme.primary.opacity(0.34), Theme.oxblood.opacity(0.38), .clear],
+                        startPoint: .topTrailing,
+                        endPoint: .bottomLeading
+                    )
+                    AppGrain()
+                }
+                .ignoresSafeArea()
+            }
+            .offset(y: dismissalOffset)
+            .simultaneousGesture(dismissGesture(in: proxy))
+        }
+        .ignoresSafeArea()
+        .accessibilityAddTraits(.isModal)
+    }
+
+    private func dismissGesture(in proxy: GeometryProxy) -> some Gesture {
+        DragGesture(minimumDistance: 12, coordinateSpace: .local)
+            .updating($dismissalOffset) { value, offset, _ in
+                guard value.startLocation.y < proxy.size.height * 0.62,
+                      value.translation.height > 0
+                else { return }
+                offset = value.translation.height
+            }
+            .onEnded { value in
+                guard value.startLocation.y < proxy.size.height * 0.62 else { return }
+                if value.translation.height > 110 || value.predictedEndTranslation.height > 180 {
+                    Haptics.trigger(.light)
+                    onDismiss()
+                }
+            }
+    }
+
+    private func workoutMetric(value: String, label: String) -> some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(Theme.sans(20, weight: .bold))
+                .foregroundStyle(Theme.foreground)
+            Text(label.uppercased())
+                .font(Theme.sans(9, weight: .black))
+                .kerning(1.5)
+                .foregroundStyle(Theme.mutedForeground)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+private struct RunningWorkoutOverview: View {
+    let workout: Workout
+    let session: ActiveWorkoutSession
+    let planned: PlannedSessionView?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .bottom, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(session.runningSince == nil ? "PAUSED" : "IN PROGRESS")
+                        .font(Theme.sans(11, weight: .black))
+                        .kerning(1.8)
+                        .foregroundStyle(Theme.primary)
+                    TimelineView(.periodic(from: .now, by: 1)) { _ in
+                        Text(ActiveWorkout.formatDuration(ActiveWorkout.elapsedMs(session)))
+                            .font(Theme.readout(58))
+                            .foregroundStyle(Theme.foreground)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.68)
+                    }
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "checklist")
+                    .font(.system(size: 25, weight: .regular))
+                    .foregroundStyle(Theme.primary)
+                    .frame(width: 58, height: 58)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 24)
+            .padding(.bottom, 18)
+
+            HStack(spacing: 0) {
+                metric("square.stack.3d.up", value: String(planned?.workingSets ?? workout.exerciseIds.count), label: "Sets")
+                Rectangle().fill(Theme.foreground.opacity(0.16)).frame(width: 1).padding(.vertical, 4)
+                metric("clock", value: elapsedMinutes, label: "Minutes")
+            }
+            .padding(16)
+            .background(
+                LinearGradient(
+                    colors: [Theme.primary.opacity(0.24), Theme.oxblood.opacity(0.86)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .padding(.horizontal, Theme.Metrics.contentInset)
+            .padding(.bottom, 8)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var elapsedMinutes: String {
+        String(max(0, Int(ActiveWorkout.elapsedMs(session) / 60_000)))
+    }
+
+    private func metric(_ icon: String, value: String, label: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Image(systemName: icon).font(.system(size: 15)).foregroundStyle(Theme.primary)
+            Text(value).font(Theme.readout(22)).foregroundStyle(Theme.foreground)
+            Text(label.uppercased())
+                .font(Theme.sans(9, weight: .black))
+                .kerning(1.6)
+                .foregroundStyle(Theme.foreground.opacity(0.62))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
     }
 }
 
@@ -673,7 +1219,7 @@ private struct WorkoutExerciseRow: View {
     @State private var isOpen = false
     @State private var swipeDrag: CGFloat?
 
-    private var revealWidth: CGFloat { canFindAlternative && canRemove ? 148 : 92 }
+    private var revealWidth: CGFloat { canFindAlternative && canRemove ? 218 : 116 }
     private var settledX: CGFloat { isOpen ? -revealWidth : 0 }
     private var swipeOffset: CGFloat { swipeDrag ?? settledX }
 
@@ -715,15 +1261,10 @@ private struct WorkoutExerciseRow: View {
                 }
                 .frame(width: 48)
                 .frame(maxHeight: .infinity)
-                .background(Theme.card)
-                .overlay(alignment: .trailing) {
-                    Rectangle().fill(Theme.border).frame(width: 1)
-                }
 
                 Button(action: onOpen) {
                     ExerciseMediaView(exerciseId: exercise.id, animated: true)
                         .frame(width: 144, height: 144)
-                        .background(Theme.mix(Theme.card, .black, 0.12))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Open \(exercise.name) demonstration")
@@ -765,28 +1306,7 @@ private struct WorkoutExerciseRow: View {
                     }
             }
         }
-        .background(Theme.card.opacity(0.84))
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .strokeBorder(
-                    reorder.active == exercise.id
-                        ? Theme.primary.opacity(0.70)
-                        : Theme.mix(Theme.border, Theme.primary, 0.38),
-                    lineWidth: 1
-                )
-        )
-        .opacity(1)
-        .shadow(
-            color: .black.opacity(reorder.active == exercise.id ? 0.30 : 0.12),
-            radius: reorder.active == exercise.id ? 20 : 13,
-            y: reorder.active == exercise.id ? 10 : 6
-        )
-        .overlay {
-            if reorder.active == exercise.id {
-                AppGrain().clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-            }
-        }
+        .contentShape(Rectangle())
         .overlay {
             if canFindAlternative || canRemove {
                 WorkoutCardSwipeObserver(
@@ -818,20 +1338,50 @@ private struct WorkoutExerciseRow: View {
     }
 
     private var swipeActions: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             if canFindAlternative {
-                AppControlButton(systemImage: "arrow.triangle.2.circlepath", label: "Find alternative") {
+                flatSwipeAction(
+                    "Replace",
+                    systemImage: "arrow.triangle.2.circlepath",
+                    foreground: Theme.primary
+                ) {
                     isOpen = false
                     onAlternative()
                 }
             }
             if canRemove {
-                AppControlButton(systemImage: "trash", label: "Remove exercise") {
+                flatSwipeAction(
+                    "Remove",
+                    systemImage: "trash",
+                    foreground: Theme.destructive
+                ) {
                     isOpen = false
                     onRemove()
                 }
             }
         }
+        .padding(.trailing, 8)
+    }
+
+    private func flatSwipeAction(
+        _ title: String,
+        systemImage: String,
+        foreground: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            Haptics.trigger(.selection)
+            action()
+        } label: {
+            Label(title, systemImage: systemImage)
+                .font(Theme.sans(12, weight: .bold))
+                .foregroundStyle(foreground)
+                .padding(.horizontal, 11)
+                .frame(height: 40)
+                .background(Theme.card.opacity(0.92), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
     }
 }
 

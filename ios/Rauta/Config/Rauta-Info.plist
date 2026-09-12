@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Gym Lib</string>
+	<string>Rauta</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -27,9 +27,9 @@
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Gym Lib reads your body weight and workout access status so it can tailor training loads and keep your workout sync connected.</string>
+	<string>Rauta reads your body weight and workout access status so it can tailor training loads and keep your workout sync connected.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Gym Lib saves completed workouts, duration, and active calories to Apple Health when you choose to sync them.</string>
+	<string>Rauta saves completed workouts, duration, and active calories to Apple Health when you choose to sync them.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Geist-Variable.ttf</string>
@@ -54,6 +54,9 @@
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UIUserInterfaceStyle</key>
 	<string>Dark</string>

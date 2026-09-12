@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# One-shot TestFlight release: build the web app, pick the next free build
-# number from App Store Connect, archive, export, validate, upload, and wait
-# for processing to finish.
+# One-shot TestFlight release for the native Rauta iOS app and its embedded
+# watchOS companion: pick the next free build number from App Store Connect,
+# archive, export, validate, upload, and wait for processing to finish.
 #
 #   ASC_KEY_ID=... ASC_ISSUER=... ./scripts/release-testflight.sh
 #
@@ -16,10 +16,17 @@ set -euo pipefail
 
 BUNDLE_ID="${BUNDLE_ID:-com.hirchyts.gymlib}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PBXPROJ="$ROOT/ios/App/App.xcodeproj/project.pbxproj"
+PROJECT="$ROOT/ios/Rauta/Rauta.xcodeproj"
+PBXPROJ="$PROJECT/project.pbxproj"
 EXPORT_OPTIONS="$ROOT/ios/ExportOptions.plist"
 EXPORT_DIR="$ROOT/build/ios/export"
 ASC_KEY_PATH="${ASC_KEY_PATH:-$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID:-}.p8}"
+
+# Rauta currently requires the iOS/watchOS 27 SDKs bundled with Xcode Beta.
+# Keep the caller's explicit choice, otherwise prefer Xcode Beta when present.
+if [[ -z "${DEVELOPER_DIR:-}" && -d "/Applications/Xcode Beta.app/Contents/Developer" ]]; then
+  export DEVELOPER_DIR="/Applications/Xcode Beta.app/Contents/Developer"
+fi
 
 DRY_RUN=false
 RUN_CHECKS=false
@@ -54,12 +61,6 @@ if [[ "$RUN_CHECKS" == true ]]; then
   bun run test
 fi
 
-step "Web build"
-bun run build
-
-step "Capacitor sync"
-npx cap sync ios
-
 step "Build number"
 if [[ -n "$FORCED_BUILD" ]]; then
   NEXT="$FORCED_BUILD"
@@ -78,7 +79,7 @@ perl -pi -e "s/CURRENT_PROJECT_VERSION = [0-9]+;/CURRENT_PROJECT_VERSION = $NEXT
 MARKETING="$(grep -m1 -o 'MARKETING_VERSION = [^;]*' "$PBXPROJ" | cut -d' ' -f3)"
 echo "app $APP_ID — version $MARKETING build $NEXT"
 
-ARCHIVE="$HOME/Library/Developer/Xcode/Archives/$(date +%Y-%m-%d)/GymLib-b${NEXT}.xcarchive"
+ARCHIVE="$HOME/Library/Developer/Xcode/Archives/$(date +%Y-%m-%d)/Rauta-b${NEXT}.xcarchive"
 SIGNING=(
   -allowProvisioningUpdates
   -authenticationKeyPath "$ASC_KEY_PATH"
@@ -88,17 +89,22 @@ SIGNING=(
 
 step "Archive"
 rm -rf "$ARCHIVE"
-xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+xcodebuild -project "$PROJECT" -scheme Rauta -configuration Release \
   -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" \
-  "${SIGNING[@]}" archive 2>&1 | grep -E '^\*\* ARCHIVE|error:' || true
+  "${SIGNING[@]}" archive
 [[ -d "$ARCHIVE" ]] || fail "archive was not produced"
+WATCH_APP="$ARCHIVE/Products/Applications/Rauta.app/Watch/RautaWatch.app"
+[[ -d "$WATCH_APP" ]] || fail "archive does not contain the Rauta watch app"
 
 step "Export"
 rm -rf "$EXPORT_DIR"
 xcodebuild -exportArchive -archivePath "$ARCHIVE" \
   -exportOptionsPlist "$EXPORT_OPTIONS" -exportPath "$EXPORT_DIR" \
-  "${SIGNING[@]}" 2>&1 | grep -E '^\*\* EXPORT|error:' || true
-IPA="$EXPORT_DIR/App.ipa"
+  "${SIGNING[@]}"
+IPA="$EXPORT_DIR/Rauta.ipa"
+if [[ ! -f "$IPA" ]]; then
+  IPA="$(find "$EXPORT_DIR" -maxdepth 1 -type f -name '*.ipa' -print -quit)"
+fi
 [[ -f "$IPA" ]] || fail "no .ipa was exported"
 
 step "Validate"

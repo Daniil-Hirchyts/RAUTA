@@ -278,28 +278,21 @@ struct AppHeaderButton: View {
 /// compete with the screen's primary command.
 struct AppMenuButton<MenuContent: View>: View {
     var label: String
+    var arrowEdge: Edge = .bottom
+    var compact = false
     @ViewBuilder var menu: () -> MenuContent
     @State private var isPresented = false
 
     var body: some View {
-        Button {
+        RautaCharacter(mood: .focused, onActivate: {
             Haptics.trigger(.selection)
             isPresented = true
-        } label: {
-            ZStack {
-                Color.clear
-                RautaCharacter(mood: .focused)
-                    .frame(width: 72, height: 72)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-            }
-            .frame(width: 60, height: 52)
-            .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .frame(minWidth: 60, minHeight: 52)
+        })
+        .frame(width: compact ? 54 : 72, height: compact ? 54 : 72)
+        .frame(width: compact ? 44 : 60, height: compact ? 44 : 52)
+        .contentShape(Circle())
         .accessibilityLabel(label)
-        .popover(isPresented: $isPresented, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
+        .popover(isPresented: $isPresented, attachmentAnchor: .rect(.bounds), arrowEdge: arrowEdge) {
             AppMenuSurface(dismiss: { isPresented = false }) {
                 menu()
             }

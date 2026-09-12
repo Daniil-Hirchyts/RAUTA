@@ -57,6 +57,7 @@ final class AppStore: ObservableObject {
 
         LiveActivitySync.start()
         HealthService.shared.startAutoSync()
+        WatchConnectivityService.shared.start()
         iCloud.start()
 
         applyKeepAwake()

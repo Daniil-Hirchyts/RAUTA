@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		A100000000000000000000E1 /* RautaWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A100000000000000000000D2 /* RautaWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A100000000000000000000E2 /* Media in Resources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000D7 /* Media */; };
+		A100000000000000000000E3 /* RautaWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = A100000000000000000000D8 /* RautaWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B20000000000000000000001 /* RiveRuntime in Frameworks */ = {isa = PBXBuildFile; productRef = B20000000000000000000002 /* RiveRuntime */; };
 /* End PBXBuildFile section */
 
@@ -19,6 +20,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = A100000000000000000000C2;
 			remoteInfo = RautaWidgetsExtension;
+		};
+		A100000000000000000000F3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A10000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A100000000000000000000C3;
+			remoteInfo = RautaWatch;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -34,16 +42,29 @@
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A100000000000000000000E4 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				A100000000000000000000E3 /* RautaWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		A100000000000000000000D1 /* Rauta.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = Rauta.app; path = "Gym Lib.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A100000000000000000000D1 /* Rauta.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rauta.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A100000000000000000000D2 /* RautaWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RautaWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A100000000000000000000D3 /* Rauta-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Rauta-Info.plist"; sourceTree = "<group>"; };
 		A100000000000000000000D4 /* RautaWidgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "RautaWidgets-Info.plist"; sourceTree = "<group>"; };
 		A100000000000000000000D5 /* Rauta.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Rauta.entitlements; sourceTree = "<group>"; };
 		A100000000000000000000D6 /* RautaWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RautaWidgets.entitlements; sourceTree = "<group>"; };
 		A100000000000000000000D7 /* Media */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Media; sourceTree = "<group>"; };
+		A100000000000000000000D8 /* RautaWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RautaWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A100000000000000000000D9 /* RautaWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RautaWatch.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -60,6 +81,16 @@
 		A100000000000000000000A3 /* Shared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		A100000000000000000000A4 /* RautaWatch */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = RautaWatch;
+			sourceTree = "<group>";
+		};
+		A100000000000000000000A5 /* WatchShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = WatchShared;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -80,6 +111,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A100000000000000000000B8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -89,6 +127,8 @@
 				A100000000000000000000A1 /* Rauta */,
 				A100000000000000000000A2 /* RautaWidgets */,
 				A100000000000000000000A3 /* Shared */,
+				A100000000000000000000A4 /* RautaWatch */,
+				A100000000000000000000A5 /* WatchShared */,
 				A100000000000000000000D7 /* Media */,
 				A10000000000000000000004 /* Config */,
 				A10000000000000000000003 /* Products */,
@@ -100,6 +140,7 @@
 			children = (
 				A100000000000000000000D1 /* Rauta.app */,
 				A100000000000000000000D2 /* RautaWidgetsExtension.appex */,
+				A100000000000000000000D8 /* RautaWatch.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -111,6 +152,7 @@
 				A100000000000000000000D5 /* Rauta.entitlements */,
 				A100000000000000000000D4 /* RautaWidgets-Info.plist */,
 				A100000000000000000000D6 /* RautaWidgets.entitlements */,
+				A100000000000000000000D9 /* RautaWatch.entitlements */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -126,15 +168,18 @@
 				A100000000000000000000B1 /* Frameworks */,
 				A100000000000000000000B5 /* Resources */,
 				A100000000000000000000E0 /* Embed Foundation Extensions */,
+				A100000000000000000000E4 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				A100000000000000000000F2 /* PBXTargetDependency */,
+				A100000000000000000000F4 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				A100000000000000000000A1 /* Rauta */,
 				A100000000000000000000A3 /* Shared */,
+				A100000000000000000000A5 /* WatchShared */,
 			);
 			name = Rauta;
 			packageProductDependencies = (
@@ -165,6 +210,29 @@
 			productReference = A100000000000000000000D2 /* RautaWidgetsExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		A100000000000000000000C3 /* RautaWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000023 /* Build configuration list for PBXNativeTarget "RautaWatch" */;
+			buildPhases = (
+				A100000000000000000000B7 /* Sources */,
+				A100000000000000000000B8 /* Frameworks */,
+				A100000000000000000000B9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A100000000000000000000A4 /* RautaWatch */,
+				A100000000000000000000A5 /* WatchShared */,
+			);
+			name = RautaWatch;
+			packageProductDependencies = (
+			);
+			productName = RautaWatch;
+			productReference = A100000000000000000000D8 /* RautaWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -180,6 +248,9 @@
 					};
 					A100000000000000000000C2 = {
 						CreatedOnToolsVersion = 26.0;
+					};
+					A100000000000000000000C3 = {
+						CreatedOnToolsVersion = 27.0;
 					};
 				};
 			};
@@ -202,6 +273,7 @@
 			targets = (
 				A100000000000000000000C1 /* Rauta */,
 				A100000000000000000000C2 /* RautaWidgetsExtension */,
+				A100000000000000000000C3 /* RautaWatch */,
 			);
 		};
 /* End PBXProject section */
@@ -216,6 +288,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		A100000000000000000000B6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A100000000000000000000B9 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -239,6 +318,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A100000000000000000000B7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -246,6 +332,11 @@
 			isa = PBXTargetDependency;
 			target = A100000000000000000000C2 /* RautaWidgetsExtension */;
 			targetProxy = A100000000000000000000F1 /* PBXContainerItemProxy */;
+		};
+		A100000000000000000000F4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A100000000000000000000C3 /* RautaWatch */;
+			targetProxy = A100000000000000000000F3 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -260,7 +351,7 @@
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 26;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -295,7 +386,7 @@
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 26;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -320,7 +411,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Config/Rauta.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 26;
 				DEVELOPMENT_TEAM = 89NA3C53R8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -331,7 +422,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hirchyts.gymlib;
-				PRODUCT_NAME = "Gym Lib";
+				PRODUCT_NAME = Rauta;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -344,7 +435,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Config/Rauta.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 26;
 				DEVELOPMENT_TEAM = 89NA3C53R8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -355,7 +446,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hirchyts.gymlib;
-				PRODUCT_NAME = "Gym Lib";
+				PRODUCT_NAME = Rauta;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -368,11 +459,11 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = Config/RautaWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 26;
 				DEVELOPMENT_TEAM = 89NA3C53R8;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/RautaWidgets-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Gym Lib";
+				INFOPLIST_KEY_CFBundleDisplayName = Rauta;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -394,11 +485,11 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = Config/RautaWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 26;
 				DEVELOPMENT_TEAM = 89NA3C53R8;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Config/RautaWidgets-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Gym Lib";
+				INFOPLIST_KEY_CFBundleDisplayName = Rauta;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -410,6 +501,70 @@
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		A10000000000000000000036 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/RautaWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 26;
+				DEVELOPMENT_TEAM = 89NA3C53R8;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Rauta;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Rauta reads workout metrics such as heart rate, energy, and distance while you train.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Rauta saves your Apple Watch workout to Health.";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.hirchyts.gymlib;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hirchyts.gymlib.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		A10000000000000000000037 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/RautaWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 26;
+				DEVELOPMENT_TEAM = 89NA3C53R8;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Rauta;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Rauta reads workout metrics such as heart rate, energy, and distance while you train.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Rauta saves your Apple Watch workout to Health.";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.hirchyts.gymlib;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hirchyts.gymlib.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
 			};
 			name = Release;
 		};
@@ -439,6 +594,15 @@
 			buildConfigurations = (
 				A10000000000000000000034 /* Debug */,
 				A10000000000000000000035 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A10000000000000000000023 /* Build configuration list for PBXNativeTarget "RautaWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000036 /* Debug */,
+				A10000000000000000000037 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
