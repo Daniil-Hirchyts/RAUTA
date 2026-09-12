@@ -72,6 +72,10 @@ struct WorkoutsScreen: View {
     @State private var rautaCompact = false
     @State private var exercisePlayerOpen = false
     @State private var liveWorkoutPresented = false
+    @State private var workoutDetailActionState = WorkoutDetailActionState.none
+    @State private var workoutDetailActionRequest: WorkoutDetailExternalAction?
+    @State private var workoutListSelection = 0
+    @State private var selectedWorkoutId: String?
 
     private var visibleWorkouts: [Workout] {
         store.workouts.workouts.filter { workout in
@@ -154,6 +158,11 @@ struct WorkoutsScreen: View {
                 liveWorkoutPresented = false
             }
         }
+        .onChange(of: rautaMenuPresented) { _, presented in
+            if !presented {
+                syncNativeSelection(to: mainTab)
+            }
+        }
         .task {
             // Restore any missing lightweight projection from its authoritative plan.
             for view in TrainingPlan.activePlannedSessions() where !TrainingPlan.isPlannedSessionRecorded(view.sessionId) {
@@ -199,7 +208,7 @@ struct WorkoutsScreen: View {
                 tabLabel(.profile)
             }
             Tab(value: MainTab.rauta, role: .prominent) {
-                Color.clear
+                rautaCurrentPage
             } label: {
                 Image(uiImage: NativeTabIcons.transparentPlaceholder)
             }
@@ -215,7 +224,12 @@ struct WorkoutsScreen: View {
             syncNativeSelection(to: selection)
         }
         .overlay(alignment: .bottomTrailing) {
-            nativeRautaControl
+            ZStack(alignment: .bottomTrailing) {
+                NativeRautaTabTapInterceptor(onTap: presentRautaMenu)
+                    .frame(width: 1, height: 1)
+                    .allowsHitTesting(false)
+                nativeRautaControl
+            }
         }
     }
 
@@ -243,7 +257,7 @@ struct WorkoutsScreen: View {
                 tabLabel(.profile)
             }
             Tab(value: MainTab.rauta, role: .search) {
-                Color.clear
+                rautaCurrentPage
             } label: {
                 Image(uiImage: NativeTabIcons.transparentPlaceholder)
             }
@@ -259,7 +273,12 @@ struct WorkoutsScreen: View {
             syncNativeSelection(to: selection)
         }
         .overlay(alignment: .bottomTrailing) {
-            nativeRautaControl
+            ZStack(alignment: .bottomTrailing) {
+                NativeRautaTabTapInterceptor(onTap: presentRautaMenu)
+                    .frame(width: 1, height: 1)
+                    .allowsHitTesting(false)
+                nativeRautaControl
+            }
         }
     }
 
@@ -287,7 +306,7 @@ struct WorkoutsScreen: View {
                 tabLabel(.profile)
             }
             Tab(value: MainTab.rauta, role: .search) {
-                Color.clear
+                rautaCurrentPage
             } label: {
                 Image(uiImage: NativeTabIcons.transparentPlaceholder)
             }
@@ -298,7 +317,12 @@ struct WorkoutsScreen: View {
             syncNativeSelection(to: selection)
         }
         .overlay(alignment: .bottomTrailing) {
-            nativeRautaControl
+            ZStack(alignment: .bottomTrailing) {
+                NativeRautaTabTapInterceptor(onTap: presentRautaMenu)
+                    .frame(width: 1, height: 1)
+                    .allowsHitTesting(false)
+                nativeRautaControl
+            }
         }
     }
 
@@ -325,8 +349,20 @@ struct WorkoutsScreen: View {
             get: { nativeTabSelection },
             set: { selection in
                 if selection == .rauta {
-                    Haptics.trigger(.selection)
-                    rautaMenuPresented = true
+                    // Let UIKit enter its auxiliary slot long enough for the
+                    // Rauta popover to attach. `rautaCurrentPage` mirrors the
+                    // page the person was already viewing.
+                    nativeTabSelection = .rauta
+                    presentRautaMenu()
+                    return
+                }
+                // iOS 27 can publish the first regular tab immediately after
+                // selecting a prominent auxiliary tab. That is an internal
+                // fallback, not a navigation request. Keep `mainTab` stable
+                // and drive the native host back to the page underneath the
+                // open Rauta menu.
+                if rautaMenuPresented {
+                    syncNativeSelection(to: mainTab)
                     return
                 }
                 // A modal exercise sheet can cause UIKit's backing tab bar to
@@ -364,12 +400,18 @@ struct WorkoutsScreen: View {
             activeTab: $mainTab,
             actionsForTab: companionActions(for:),
             compact: rautaCompact,
-            isPresented: $rautaMenuPresented
+            isPresented: $rautaMenuPresented,
+            onPresent: presentRautaMenu
         )
         .padding(.trailing, 8)
         .padding(.bottom, Swift.max(7, DeviceScreen.safeAreaInsets.bottom))
         .offset(x: -3, y: rautaCompact ? 34 : 46)
         .zIndex(1_000)
+    }
+
+    private func presentRautaMenu() {
+        Haptics.trigger(.selection)
+        rautaMenuPresented = true
     }
 
     @available(iOS 26.0, *)
@@ -405,9 +447,21 @@ struct WorkoutsScreen: View {
             past: past,
             activeWorkoutId: store.activeWorkout.session?.workoutId,
             liveWorkoutPresented: $liveWorkoutPresented,
-            onOpen: open,
+            detailActionState: $workoutDetailActionState,
+            detailActionRequest: $workoutDetailActionRequest,
+            listSelection: $workoutListSelection,
+            selectedWorkoutId: $selectedWorkoutId,
             onOpenExercisePlayer: exercisePlayerOpener
         )
+    }
+
+    @ViewBuilder
+    private var rautaCurrentPage: some View {
+        if mainTab == .workout {
+            workoutTabContent
+        } else {
+            page(for: mainTab)
+        }
     }
 
     @ViewBuilder
@@ -422,14 +476,12 @@ struct WorkoutsScreen: View {
         } else {
             AppShell(commandsVisible: false) {
                 ZStack(alignment: .top) {
-                    VStack(spacing: 0) {
-                        Color.clear
-                            .frame(height: Theme.Metrics.headerHeight + DeviceScreen.safeAreaInsets.top)
-
+                    Group {
                         if pageTab == .summary {
                             summaryContent
                         } else if pageTab == .workout {
                             noActiveWorkout
+                                .padding(.top, DeviceScreen.safeAreaInsets.top + 56)
                         } else {
                             Spacer(minLength: 0)
                         }
@@ -538,6 +590,55 @@ struct WorkoutsScreen: View {
     }
 
     private var workoutCompanionActions: [CompanionAction] {
+        if workoutDetailActionState.workoutId != nil {
+            var actions: [CompanionAction] = []
+
+            if workoutDetailActionState.canStart {
+                actions.append(
+                    CompanionAction(
+                        title: workoutDetailActionState.isEmpty ? "Add exercise" : "Start workout",
+                        systemImage: workoutDetailActionState.isEmpty ? "plus" : "play.fill",
+                        primary: true
+                    ) {
+                        workoutDetailActionRequest = workoutDetailActionState.isEmpty ? .addExercise : .start
+                    }
+                )
+            }
+
+            actions.append(
+                CompanionAction(
+                    title: "Share workout",
+                    systemImage: "square.and.arrow.up",
+                    primary: actions.isEmpty
+                ) {
+                    workoutDetailActionRequest = .share
+                }
+            )
+            actions.append(
+                CompanionAction(title: "Copy to today", systemImage: "doc.on.doc") {
+                    workoutDetailActionRequest = .duplicate
+                }
+            )
+
+            if !workoutDetailActionState.isEmpty, workoutDetailActionState.canEdit {
+                actions.append(
+                    CompanionAction(title: "Add exercise", systemImage: "plus") {
+                        workoutDetailActionRequest = .addExercise
+                    }
+                )
+            }
+
+            if workoutDetailActionState.canDelete {
+                actions.append(
+                    CompanionAction(title: "Delete workout", systemImage: "trash") {
+                        workoutDetailActionRequest = .delete
+                    }
+                )
+            }
+
+            return actions
+        }
+
         guard let session = store.activeWorkout.session else {
             return [
                 CompanionAction(title: "Choose exercises", systemImage: "list.bullet.rectangle", primary: true, action: startExerciseFlow)
@@ -579,19 +680,6 @@ struct WorkoutsScreen: View {
         store.navigation.selectMode = false; store.navigation.selectedIds = []
         store.navigation.push(.muscles(preferredWorkoutId: nil))
     }
-    private func open(_ workout: Workout) {
-        _ = EngineWorkout.ensureEngineWorkout(workout.id)
-        if store.activeWorkout.session?.workoutId == workout.id {
-            Haptics.trigger(.selection)
-            withAnimation(Theme.Motion.smoothOut(0.28)) {
-                liveWorkoutPresented = true
-                selectMainTab(.workout)
-            }
-        } else {
-            store.navigation.push(.workoutDetail(workoutId: workout.id))
-        }
-    }
-
     private func selectMainTab(_ tab: MainTab) {
         mainTab = tab
         nativeTabSelection = tab
@@ -755,22 +843,31 @@ private struct WorkoutTabHost: View {
     let past: [Workout]
     let activeWorkoutId: String?
     @Binding var liveWorkoutPresented: Bool
-    let onOpen: (Workout) -> Void
+    @Binding var detailActionState: WorkoutDetailActionState
+    @Binding var detailActionRequest: WorkoutDetailExternalAction?
+    @Binding var listSelection: Int
+    @Binding var selectedWorkoutId: String?
     let onOpenExercisePlayer: () -> Void
 
     var body: some View {
         Group {
-            if liveWorkoutPresented,
+            if let selectedId = selectedWorkoutId {
+                WorkoutDetailScreen(
+                    workoutId: selectedId,
+                    embeddedInMainTabs: true,
+                    onOpenExercisePlayer: onOpenExercisePlayer,
+                    onBackToWorkouts: closeWorkout,
+                    onReplaceWorkout: { self.selectedWorkoutId = $0 },
+                    externalActionRequest: $detailActionRequest,
+                    onActionStateChange: { detailActionState = $0 }
+                )
+            } else if liveWorkoutPresented,
                let session = store.activeWorkout.session {
                 WorkoutDetailScreen(
                     workoutId: session.workoutId,
                     embeddedInMainTabs: true,
                     onOpenExercisePlayer: onOpenExercisePlayer,
-                    onBackToWorkouts: {
-                        withAnimation(Theme.Motion.smoothOut(0.28)) {
-                            liveWorkoutPresented = false
-                        }
-                    }
+                    onBackToWorkouts: closeWorkout
                 )
             } else {
                 workoutListPage
@@ -781,32 +878,51 @@ private struct WorkoutTabHost: View {
     private var workoutListPage: some View {
         AppShell(commandsVisible: false) {
             ZStack(alignment: .top) {
-                VStack(spacing: 0) {
-                    Color.clear
-                        .frame(height: Theme.Metrics.headerHeight + DeviceScreen.safeAreaInsets.top)
-
-                    WorkoutListContent(
-                        upcoming: upcoming,
-                        past: past,
-                        activeWorkoutId: activeWorkoutId,
-                        onOpen: onOpen
-                    )
-                }
+                WorkoutListContent(
+                    upcoming: upcoming,
+                    past: past,
+                    activeWorkoutId: activeWorkoutId,
+                    selection: $listSelection,
+                    onOpen: openWorkout
+                )
 
                 AppTopScrim()
                     .zIndex(20)
 
-                AppShellHeader(
-                    title: "Workout",
-                    left: { Color.clear.frame(width: 44, height: 44) },
-                    right: { Color.clear.frame(width: 44, height: 44) },
-                    above: { EmptyView() },
-                    below: { EmptyView() }
-                )
-                .zIndex(30)
+                WorkoutsModeSwitcher(selection: $listSelection)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .padding(.horizontal, Theme.Metrics.contentInset)
+                    .padding(.top, 12 + DeviceScreen.safeAreaInsets.top)
+                    .zIndex(30)
             }
         } controls: {
             EmptyView()
+        }
+    }
+
+    private func openWorkout(_ workout: Workout) {
+        _ = EngineWorkout.ensureEngineWorkout(workout.id)
+        Haptics.trigger(.selection)
+        withAnimation(Theme.Motion.smoothOut(0.28)) {
+            detailActionState = .none
+            detailActionRequest = nil
+            if activeWorkoutId == workout.id {
+                selectedWorkoutId = nil
+                liveWorkoutPresented = true
+            } else {
+                liveWorkoutPresented = false
+                selectedWorkoutId = workout.id
+            }
+        }
+    }
+
+    private func closeWorkout() {
+        withAnimation(Theme.Motion.smoothOut(0.28)) {
+            detailActionState = .none
+            detailActionRequest = nil
+            selectedWorkoutId = nil
+            liveWorkoutPresented = false
         }
     }
 }
@@ -817,6 +933,7 @@ struct RautaNativeTabControl: View {
     var actionsForTab: (MainTab) -> [CompanionAction]
     var compact = false
     @Binding var isPresented: Bool
+    var onPresent: () -> Void
     @State private var reactionKey = ""
     // The native bottom accessory changes its placement when the tab bar wraps.
     // Give the Rive view a genuinely different layout size in each state: a
@@ -833,17 +950,11 @@ struct RautaNativeTabControl: View {
                 reactionKey: reactionKey
             )
             .frame(width: characterSize, height: characterSize)
-            .offset(y: compact ? -1 : -2)
+            .offset(y: 7)
             .allowsHitTesting(false)
         }
         .frame(width: controlSize, height: controlSize)
-        .contentShape(Circle())
-        .onTapGesture {
-            guard !actions.isEmpty else { return }
-            reactionKey = UUID().uuidString
-            Haptics.trigger(.selection)
-            isPresented = true
-        }
+        .allowsHitTesting(false)
         .popover(isPresented: $isPresented, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
             AppMenuSurface(dismiss: { isPresented = false }) {
                 ForEach(actions) { action in
@@ -858,8 +969,133 @@ struct RautaNativeTabControl: View {
             .presentationCompactAdaptation(.popover)
             .presentationBackground(.clear)
         }
-        .accessibilityLabel("Rauta actions")
+        .onChange(of: isPresented) { _, presented in
+            if presented, !actions.isEmpty {
+                reactionKey = UUID().uuidString
+            }
+        }
+        .accessibilityHidden(true)
         .animation(.spring(response: 0.38, dampingFraction: 0.88), value: compact)
+    }
+}
+
+private struct NativeRautaTabTapInterceptor: UIViewRepresentable {
+    let onTap: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onTap: onTap)
+    }
+
+    func makeUIView(context: Context) -> ProbeView {
+        let view = ProbeView()
+        view.coordinator = context.coordinator
+        return view
+    }
+
+    func updateUIView(_ uiView: ProbeView, context: Context) {
+        context.coordinator.onTap = onTap
+        uiView.coordinator = context.coordinator
+        uiView.scheduleInstall()
+    }
+
+    static func dismantleUIView(_ uiView: ProbeView, coordinator: Coordinator) {
+        coordinator.removeButton()
+    }
+
+    final class ProbeView: UIView {
+        weak var coordinator: Coordinator?
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            scheduleInstall()
+        }
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            scheduleInstall()
+        }
+
+        func scheduleInstall() {
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                coordinator?.install(from: self)
+            }
+        }
+    }
+
+    final class Coordinator: NSObject {
+        var onTap: () -> Void
+        weak var tabBar: UITabBar?
+        weak var hostWindow: UIWindow?
+        weak var button: UIButton?
+
+        init(onTap: @escaping () -> Void) {
+            self.onTap = onTap
+        }
+
+        func install(from probe: UIView) {
+            guard let window = probe.window,
+                  let tabBar = findTabBar(in: window)
+            else { return }
+
+            if self.tabBar !== tabBar || hostWindow !== window || button == nil {
+                removeButton()
+                let button = UIButton(type: .custom)
+                button.backgroundColor = .clear
+                button.accessibilityLabel = "Rauta actions"
+                button.accessibilityTraits = .button
+                button.addTarget(self, action: #selector(tapped), for: .touchUpInside)
+                window.addSubview(button)
+                self.tabBar = tabBar
+                hostWindow = window
+                self.button = button
+            }
+
+            guard let button else { return }
+            button.frame = tabBar.convert(auxiliarySlotFrame(in: tabBar), to: window)
+            window.bringSubviewToFront(button)
+        }
+
+        func removeButton() {
+            button?.removeFromSuperview()
+            button = nil
+            tabBar = nil
+            hostWindow = nil
+        }
+
+        @objc private func tapped() {
+            onTap()
+        }
+
+        private func findTabBar(in view: UIView) -> UITabBar? {
+            if let tabBar = view as? UITabBar { return tabBar }
+            for subview in view.subviews {
+                if let tabBar = findTabBar(in: subview) { return tabBar }
+            }
+            return nil
+        }
+
+        private func auxiliarySlotFrame(in tabBar: UITabBar) -> CGRect {
+            let candidates = tabBar.subviews.filter { subview in
+                let frame = subview.frame
+                return frame.minX > tabBar.bounds.midX
+                    && frame.width >= 56
+                    && frame.width <= 72
+                    && frame.height >= 56
+                    && frame.height <= 72
+            }
+            if let slot = candidates.max(by: { $0.frame.minX < $1.frame.minX }) {
+                return slot.frame
+            }
+            let size: CGFloat = 62
+            let trailingInset: CGFloat = 21
+            return CGRect(
+                x: tabBar.bounds.width - trailingInset - size,
+                y: 0,
+                width: size,
+                height: size
+            )
+        }
     }
 }
 
@@ -880,9 +1116,13 @@ private struct SummaryWorkoutsContent: View {
                 MonthlySummaryDashboard(snapshot: month)
             }
             .padding(.horizontal, 12)
-            .padding(.top, 8)
             .padding(.bottom, 220)
         }
+        .contentMargins(
+            .top,
+            Theme.Metrics.headerHeight + DeviceScreen.safeAreaInsets.top + 36,
+            for: .scrollContent
+        )
         .scrollIndicators(.hidden)
     }
 }
@@ -891,22 +1131,16 @@ private struct WorkoutListContent: View {
     let upcoming: [Workout]
     let past: [Workout]
     let activeWorkoutId: String?
+    @Binding var selection: Int
     let onOpen: (Workout) -> Void
 
-    @State private var selection = 0
     @State private var upcomingLimit = 6
     @State private var pastLimit = 6
 
     var body: some View {
-        VStack(spacing: 0) {
-            WorkoutsModeSwitcher(selection: $selection)
-                .padding(.vertical, 10)
-                .frame(maxWidth: .infinity)
-                .background(Theme.background)
-                .zIndex(2)
-
-            ScrollView {
-                LazyVStack(spacing: 10) {
+        ScrollView {
+            LazyVStack(spacing: 10) {
+                Group {
                     if selection == 0 {
                         workoutList(
                             items: upcoming,
@@ -929,10 +1163,16 @@ private struct WorkoutListContent: View {
                         .id("past-workouts")
                     }
                 }
-                .padding(.bottom, 92)
             }
-            .scrollIndicators(.hidden)
+            .padding(.horizontal, 12)
+            .padding(.bottom, 92)
         }
+        .contentMargins(
+            .top,
+            Theme.Metrics.headerHeight + DeviceScreen.safeAreaInsets.top + 36,
+            for: .scrollContent
+        )
+        .scrollIndicators(.hidden)
         .animation(Theme.Motion.smoothOut(0.24), value: selection)
     }
 
@@ -1028,6 +1268,12 @@ private struct WorkoutsModeSwitcher: View {
         .pickerStyle(.segmented)
         .frame(maxWidth: 214)
         .tint(Theme.primary)
+        .glassSurface(
+            .tinted(Theme.primary.opacity(0.30)),
+            in: Capsule(),
+            border: Theme.primary.opacity(0.34),
+            legacyFill: Theme.primary.opacity(0.16)
+        )
         .onChange(of: selection) { _, _ in
             Haptics.trigger(.selection)
         }

@@ -277,7 +277,6 @@ struct BodyPreview: View {
 
     private static let restingFill = Color(hex: 0x3D322B)
     private static let silhouetteFill = Color(hex: 0x2D241F)
-    private static let outline = Color(hex: 0x100D0B)
 
     var body: some View {
         Canvas(rendersAsynchronously: true) { context, size in
@@ -323,20 +322,8 @@ struct BodyPreview: View {
                         path,
                         with: .color(selected ? Theme.primary : Self.restingFill)
                     )
-                    if !selected {
-                        context.stroke(
-                            path,
-                            with: .color(Self.outline),
-                            lineWidth: max(0.45, 2.2 * scale)
-                        )
-                    }
                 } else {
                     context.fill(path, with: .color(Self.silhouetteFill))
-                    context.stroke(
-                        path,
-                        with: .color(Self.outline),
-                        lineWidth: max(0.45, 2.2 * scale)
-                    )
                 }
             }
         }

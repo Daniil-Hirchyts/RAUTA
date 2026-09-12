@@ -2,18 +2,40 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
+enum WorkoutDetailExternalAction: Hashable {
+    case start
+    case share
+    case duplicate
+    case addExercise
+    case delete
+}
+
+struct WorkoutDetailActionState: Equatable {
+    var workoutId: String?
+    var canStart = false
+    var isEmpty = false
+    var canEdit = false
+    var canDelete = false
+
+    static let none = WorkoutDetailActionState(workoutId: nil)
+}
+
 struct WorkoutDetailScreen: View {
     @ObservedObject private var store = AppStore.shared
     let workoutId: String
     var embeddedInMainTabs = false
     var onOpenExercisePlayer: (() -> Void)? = nil
     var onBackToWorkouts: (() -> Void)? = nil
+    var onReplaceWorkout: ((String) -> Void)? = nil
+    var externalActionRequest: Binding<WorkoutDetailExternalAction?>? = nil
+    var onActionStateChange: ((WorkoutDetailActionState) -> Void)? = nil
 
     @State private var tab = 0
     @State private var confirmation: ConfirmationKind?
     @State private var issue: String?
     @State private var showingDate = false
     @State private var countingDown = false
+    @State private var sharePayload: WorkoutSharePayload?
     @StateObject private var reorder = CardReorder()
 
     private var workout: Workout? { store.workouts.workout(workoutId) }
@@ -62,19 +84,28 @@ struct WorkoutDetailScreen: View {
                         standardWorkoutScreen(workout)
                     }
                 } else if isPast {
-                    RautaScreen(
-                        title: CalendarDate.long(workout.date),
-                        backLabel: "Back to workouts",
-                        onBack: store.navigation.pop,
-                        fullScreen: true,
-                        right: { pastWorkoutMenu(workout) },
-                        content: { content(workout) }
-                    )
+                    if embeddedInMainTabs {
+                        RautaScreen(
+                            title: CalendarDate.long(workout.date),
+                            backLabel: "Back to workouts",
+                            onBack: backToWorkouts,
+                            content: { content(workout) }
+                        )
+                    } else {
+                        RautaScreen(
+                            title: CalendarDate.long(workout.date),
+                            backLabel: "Back to workouts",
+                            onBack: backToWorkouts,
+                            fullScreen: true,
+                            right: { pastWorkoutMenu(workout) },
+                            content: { content(workout) }
+                        )
+                    }
                 } else {
                     standardWorkoutScreen(workout)
                 }
             } else {
-                Color.clear.onAppear(perform: store.navigation.pop)
+                Color.clear.onAppear(perform: backToWorkouts)
             }
 
             ConfirmModal(
@@ -106,22 +137,58 @@ struct WorkoutDetailScreen: View {
                 .zIndex(9)
             }
         }
+        .sheet(item: $sharePayload) { payload in
+            WorkoutActivityShareView(text: payload.text)
+        }
+        .onAppear(perform: publishCompanionActions)
+        .onChange(of: companionActionSignature) { _, _ in
+            publishCompanionActions()
+        }
+        .onChange(of: externalActionRequest?.wrappedValue) { _, action in
+            guard let action else { return }
+            handleExternalAction(action)
+            externalActionRequest?.wrappedValue = nil
+        }
     }
 
+    @ViewBuilder
     private func standardWorkoutScreen(_ workout: Workout) -> some View {
-        RautaScreen(
-            title: CalendarDate.long(workout.date),
-            subtitle: progressLabel,
-            subtitleProgress: headerProgress,
-            onTitleTap: canEditWorkout ? {
-                Haptics.trigger(.light)
-                showingDate = true
-            } : nil,
-            backLabel: "Back to workouts",
-            onBack: store.navigation.pop,
-            content: { content(workout) },
-            controls: { controls(workout) }
-        )
+        if embeddedInMainTabs {
+            RautaScreen(
+                title: CalendarDate.long(workout.date),
+                subtitle: progressLabel,
+                subtitleProgress: headerProgress,
+                onTitleTap: canEditWorkout ? {
+                    Haptics.trigger(.light)
+                    showingDate = true
+                } : nil,
+                backLabel: "Back to workouts",
+                onBack: backToWorkouts,
+                content: { content(workout) }
+            )
+        } else {
+            RautaScreen(
+                title: CalendarDate.long(workout.date),
+                subtitle: progressLabel,
+                subtitleProgress: headerProgress,
+                onTitleTap: canEditWorkout ? {
+                    Haptics.trigger(.light)
+                    showingDate = true
+                } : nil,
+                backLabel: "Back to workouts",
+                onBack: backToWorkouts,
+                content: { content(workout) },
+                controls: { controls(workout) }
+            )
+        }
+    }
+
+    private func backToWorkouts() {
+        if embeddedInMainTabs {
+            onBackToWorkouts?()
+        } else {
+            store.navigation.pop()
+        }
     }
 
     private func activeWorkoutPage(
@@ -275,9 +342,9 @@ struct WorkoutDetailScreen: View {
                             }
                         }
                 }
-                .padding(Theme.Metrics.contentInset)
-                .padding(.top, session == nil ? 0 : 8)
-                .padding(.bottom, session == nil ? 24 : 144)
+                .padding(.horizontal, embeddedInMainTabs ? 0 : Theme.Metrics.contentInset)
+                .padding(.top, embeddedInMainTabs ? 8 : Theme.Metrics.contentInset)
+                .padding(.bottom, embeddedInMainTabs ? 188 : (session == nil ? 24 : 144))
             }
             .scrollDisabled(reorder.active != nil)
             .onDisappear { reorder.cancel() }
@@ -408,7 +475,11 @@ struct WorkoutDetailScreen: View {
     private func duplicate() {
         do {
             let id = try EngineWorkout.duplicateWithEngine(workoutId, date: CalendarDate.today)
-            store.navigation.replace(.workoutDetail(workoutId: id))
+            if embeddedInMainTabs, let onReplaceWorkout {
+                onReplaceWorkout(id)
+            } else {
+                store.navigation.replace(.workoutDetail(workoutId: id))
+            }
             Haptics.trigger(.success)
         } catch { capture(error) }
     }
@@ -474,7 +545,11 @@ struct WorkoutDetailScreen: View {
             case .deleteWorkout:
                 try TrainingEdits.deleteScheduledWorkout(workoutId)
                 confirmation = nil
-                store.navigation.reset([.workouts])
+                if embeddedInMainTabs {
+                    backToWorkouts()
+                } else {
+                    store.navigation.reset([.workouts])
+                }
             case .discardSession:
                 store.activeWorkout.cancel()
                 confirmation = nil
@@ -492,6 +567,72 @@ struct WorkoutDetailScreen: View {
         issue = (error as? TrainingPersistenceError)?.message ?? error.localizedDescription
         Haptics.trigger(.warning)
     }
+
+    private var companionActionSignature: String {
+        guard let workout else { return "missing" }
+        return [
+            workout.id,
+            session == nil ? "idle" : "active",
+            isPast ? "past" : "future",
+            canEditWorkout ? "editable" : "locked",
+            canStartWorkout ? "startable" : "blocked",
+            String(workout.exerciseIds.count),
+        ].joined(separator: "|")
+    }
+
+    private func publishCompanionActions() {
+        guard embeddedInMainTabs,
+              let workout,
+              session == nil
+        else {
+            onActionStateChange?(.none)
+            return
+        }
+        onActionStateChange?(
+            WorkoutDetailActionState(
+                workoutId: workout.id,
+                canStart: canStartWorkout,
+                isEmpty: workout.exerciseIds.isEmpty,
+                canEdit: canEditWorkout,
+                canDelete: canDeleteWorkout
+            )
+        )
+    }
+
+    private func handleExternalAction(_ action: WorkoutDetailExternalAction) {
+        guard let workout else { return }
+        switch action {
+        case .start:
+            guard canStartWorkout, !workout.exerciseIds.isEmpty else { return }
+            Haptics.trigger(.heavy)
+            countingDown = true
+        case .share:
+            sharePayload = WorkoutSharePayload(text: WorkoutSharing.text(workout))
+        case .duplicate:
+            duplicate()
+        case .addExercise:
+            beginExerciseFlow(preferredWorkoutId: workout.id)
+        case .delete:
+            guard canDeleteWorkout else { return }
+            Haptics.trigger(.warning)
+            confirmation = .deleteWorkout
+        }
+    }
+}
+
+private struct WorkoutSharePayload: Identifiable {
+    let id = UUID()
+    let text: String
+}
+
+private struct WorkoutActivityShareView: UIViewControllerRepresentable {
+    let text: String
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: [text], applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 private struct WorkoutStartCountdown: View {
@@ -666,6 +807,7 @@ struct ActiveExerciseDrawer: View {
     let onFinish: () -> Void
     let onDismiss: () -> Void
     @State private var revealDetails = false
+    @State private var setLogHeight: CGFloat = 0
     @GestureState private var dismissalOffset: CGFloat = 0
 
     var body: some View {
@@ -719,7 +861,7 @@ struct ActiveExerciseDrawer: View {
         VStack(spacing: 0) {
             VStack(spacing: 18) {
                 Button(action: onDetail) {
-                    let mediaSize = min(300, proxy.size.width - 56)
+                    let mediaSize = exerciseMediaSize(in: proxy)
                     ExerciseMediaView(exerciseId: exercise.id, animated: true)
                         .frame(width: mediaSize, height: mediaSize)
                 }
@@ -798,6 +940,19 @@ struct ActiveExerciseDrawer: View {
                 hasNextExercise: hasNextExercise,
                 onFinishExercise: onFinishExercise
             )
+                .fixedSize(horizontal: false, vertical: true)
+                .background {
+                    GeometryReader { logProxy in
+                        Color.clear.preference(
+                            key: ActiveSetLogHeightPreferenceKey.self,
+                            value: logProxy.size.height
+                        )
+                    }
+                }
+                .onPreferenceChange(ActiveSetLogHeightPreferenceKey.self) { height in
+                    guard abs(setLogHeight - height) > 0.5 else { return }
+                    setLogHeight = height
+                }
                 .opacity(revealDetails ? 1 : 0)
                 .offset(y: revealDetails ? 0 : 18)
                 .padding(.horizontal, Theme.Metrics.contentInset)
@@ -817,9 +972,37 @@ struct ActiveExerciseDrawer: View {
         }
     }
 
+    private func exerciseMediaSize(in proxy: GeometryProxy) -> CGFloat {
+        let maximum = min(250, proxy.size.width - 72)
+        guard setLogHeight > 0 else { return maximum }
+
+        let topInset = Swift.max(proxy.safeAreaInsets.top, 18) + 104
+        let titleBlock: CGFloat = 60
+        let spacingAroundMedia: CGFloat = 38
+        let breathingRoom: CGFloat = 36
+        let bottomInset = Swift.max(proxy.safeAreaInsets.bottom, 14)
+        let available = proxy.size.height
+            - topInset
+            - titleBlock
+            - spacingAroundMedia
+            - breathingRoom
+            - setLogHeight
+            - bottomInset
+
+        return min(maximum, max(128, available))
+    }
+
     private var trainedMusclesText: String {
         let labels = exercise.muscles.map(\.label)
         return labels.isEmpty ? "Full body" : labels.joined(separator: " · ")
+    }
+}
+
+private struct ActiveSetLogHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 
@@ -1015,30 +1198,26 @@ private struct WorkoutOverview: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .bottom, spacing: 16) {
-                VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .bottom, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(past ? "COMPLETED" : "EXERCISES")
-                        .font(Theme.sans(10, weight: .black))
+                        .font(Theme.sans(11, weight: .black))
                         .kerning(1.8)
-                        .foregroundStyle(Theme.foreground.opacity(0.62))
+                        .foregroundStyle(signal)
                     Text(primaryValue)
-                        .font(Theme.readout(72))
-                        .tracking(1.8)
+                        .font(Theme.readout(58))
                         .foregroundStyle(Theme.foreground)
-                        .shadow(color: signal.opacity(0.45), radius: 22)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.75)
+                        .minimumScaleFactor(0.68)
                 }
-                Spacer(minLength: 8)
+                Spacer(minLength: 4)
                 Image(systemName: past ? "checkmark.circle" : "checklist")
                     .font(.system(size: 25, weight: .regular))
                     .foregroundStyle(signal)
-                    .shadow(color: signal.opacity(0.45), radius: 8)
-                .frame(width: 88, height: 88)
+                    .frame(width: 58, height: 58)
             }
-            .frame(maxWidth: .infinity, minHeight: 152, alignment: .bottom)
             .padding(.horizontal, 20)
-            .padding(.top, 20)
+            .padding(.top, 24)
             .padding(.bottom, 18)
 
             HStack(spacing: 0) {
@@ -1058,47 +1237,18 @@ private struct WorkoutOverview: View {
                 )
             }
             .padding(16)
-            .background {
-                ZStack {
-                    Theme.obsidian
-                    LinearGradient(
-                        colors: [signal.opacity(0.28), Theme.oxblood.opacity(0.88)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .strokeBorder(signal.opacity(0.42), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.18), radius: 12, y: 6)
-            .padding(.horizontal, 12)
-            .padding(.bottom, 12)
-        }
-        .background {
-            ZStack {
+            .background(
                 LinearGradient(
-                    colors: [Theme.mix(Theme.card, .black, 0.14), Theme.obsidian],
+                    colors: [signal.opacity(0.24), Theme.oxblood.opacity(0.86)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
-                RadialGradient(
-                    colors: [signal.opacity(0.18), .clear],
-                    center: UnitPoint(x: 0.82, y: 0.10),
-                    startRadius: 0,
-                    endRadius: 170
-                )
-                DotPattern(spacing: 12, radius: 1, color: Theme.foreground, opacity: 0.10)
-            }
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .padding(.horizontal, Theme.Metrics.contentInset)
+            .padding(.bottom, 8)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .strokeBorder(Theme.mix(Theme.border, signal, 0.48), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.22), radius: 21, y: 9)
+        .frame(maxWidth: .infinity)
     }
 
     private var primaryValue: String {
@@ -1219,16 +1369,24 @@ private struct WorkoutExerciseRow: View {
     @State private var isOpen = false
     @State private var swipeDrag: CGFloat?
 
-    private var revealWidth: CGFloat { canFindAlternative && canRemove ? 218 : 116 }
+    private var actionCount: CGFloat { CGFloat((canFindAlternative ? 1 : 0) + (canRemove ? 1 : 0)) }
+    private var actionsWidth: CGFloat { actionCount * 54 + max(0, actionCount - 1) * 8 }
+    private var revealWidth: CGFloat { actionsWidth + 22 }
     private var settledX: CGFloat { isOpen ? -revealWidth : 0 }
     private var swipeOffset: CGFloat { swipeDrag ?? settledX }
+    private var revealProgress: CGFloat {
+        guard revealWidth > 0 else { return 0 }
+        return min(1, max(0, -swipeOffset / revealWidth))
+    }
 
     var body: some View {
         ZStack(alignment: .trailing) {
             if canFindAlternative || canRemove {
                 swipeActions
-                    .frame(width: revealWidth + Theme.Metrics.contentInset)
-                    .opacity(swipeOffset < -8 ? 1 : 0)
+                    .frame(width: actionsWidth)
+                    .padding(.trailing, 8)
+                    .opacity(revealProgress)
+                    .offset(x: (1 - revealProgress) * 18)
             }
 
             card
@@ -1342,8 +1500,7 @@ private struct WorkoutExerciseRow: View {
             if canFindAlternative {
                 flatSwipeAction(
                     "Replace",
-                    systemImage: "arrow.triangle.2.circlepath",
-                    foreground: Theme.primary
+                    systemImage: "arrow.triangle.2.circlepath"
                 ) {
                     isOpen = false
                     onAlternative()
@@ -1352,33 +1509,29 @@ private struct WorkoutExerciseRow: View {
             if canRemove {
                 flatSwipeAction(
                     "Remove",
-                    systemImage: "trash",
-                    foreground: Theme.destructive
+                    systemImage: "trash"
                 ) {
                     isOpen = false
                     onRemove()
                 }
             }
         }
-        .padding(.trailing, 8)
     }
 
     private func flatSwipeAction(
         _ title: String,
         systemImage: String,
-        foreground: Color,
         action: @escaping () -> Void
     ) -> some View {
         Button {
             Haptics.trigger(.selection)
             action()
         } label: {
-            Label(title, systemImage: systemImage)
-                .font(Theme.sans(12, weight: .bold))
-                .foregroundStyle(foreground)
-                .padding(.horizontal, 11)
-                .frame(height: 40)
-                .background(Theme.card.opacity(0.92), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            Image(systemName: systemImage)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(Theme.primaryForeground)
+                .frame(width: 54, height: 54)
+                .background(Theme.primary, in: Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)

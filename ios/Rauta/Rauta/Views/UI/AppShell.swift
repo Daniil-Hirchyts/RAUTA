@@ -112,23 +112,8 @@ struct AppGrain: View {
 /// sharper than the one above it, and detail dissolves on the way up.
 struct AppTopScrim: View {
     var body: some View {
-        ZStack(alignment: .top) {
-            AppGradientBlur(edge: .top)
-
-            // Match the web scrim: the page remains visible through the blur,
-            // with only a warm background-colour fade at the very top. The
-            // blur view itself is deliberately colourless below.
-            LinearGradient(
-                stops: [
-                    .init(color: Theme.background.opacity(0.55), location: 0),
-                    .init(color: Theme.background.opacity(0.25), location: 0.5),
-                    .init(color: .clear, location: 1),
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
-        .frame(height: 72 + DeviceScreen.safeAreaInsets.top)
+        AppGradientBlur(edge: .top, radiusScale: 1.05)
+        .frame(height: Theme.Metrics.headerHeight + DeviceScreen.safeAreaInsets.top + 4)
         .frame(maxWidth: .infinity, alignment: .top)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
@@ -175,45 +160,75 @@ struct AppGradientBlur: View {
 }
 
 /// A variable blur of the content behind, in the one radius a band asks for.
-struct ProgressiveBlur: UIViewRepresentable {
-    var radius: CGFloat
-
-    func makeUIView(context: Context) -> UIVisualEffectView {
-        let view = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
-        view.isUserInteractionEnabled = false
-        applyRadius(to: view)
-        return view
+final class PureBackdropBlurView: UIVisualEffectView {
+    var blurRadius: CGFloat = 0 {
+        didSet { scheduleRetune() }
     }
 
-    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
-        applyRadius(to: uiView)
+    private var retuneScheduled = false
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        scheduleRetune()
     }
 
-    /// `UIBlurEffect` has no radius of its own, so the backdrop layer's own
-    /// Gaussian filter is retuned instead. Failing to find it leaves the system
-    /// blur, which is still the right kind of treatment.
-    private func applyRadius(to view: UIVisualEffectView) {
-        guard let backdrop = view.subviews.first else { return }
-        view.backgroundColor = .clear
-        view.contentView.backgroundColor = .clear
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        scheduleRetune()
+    }
+
+    private func scheduleRetune() {
+        guard !retuneScheduled else { return }
+        retuneScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.retuneScheduled = false
+            self.retuneBackdrop()
+        }
+    }
+
+    private func retuneBackdrop() {
+        backgroundColor = .clear
+        contentView.backgroundColor = .clear
+
+        guard let backdrop = subviews.first(where: {
+            String(describing: type(of: $0)).contains("Backdrop")
+        }) ?? subviews.first else { return }
+
         backdrop.backgroundColor = .clear
+        backdrop.layer.backgroundColor = UIColor.clear.cgColor
+
         guard let filters = backdrop.layer.filters else { return }
-        // UIBlurEffect material styles normally add colour/saturation filters
-        // around the Gaussian backdrop. React's backdrop-filter is only a
-        // Gaussian blur, so retain that filter alone and let AppTopScrim's
-        // explicit gradient provide the opacity treatment.
         var gaussianFilters: [Any] = []
         for filter in filters {
             let object = filter as AnyObject
-            if let name = object.value(forKey: "name") as? String,
-               name == "gaussianBlur" {
-                object.setValue(radius, forKey: "inputRadius")
-                gaussianFilters.append(filter)
-            }
+            guard let name = object.value(forKey: "name") as? String,
+                  name == "gaussianBlur"
+            else { continue }
+            object.setValue(blurRadius, forKey: "inputRadius")
+            gaussianFilters.append(filter)
         }
         if !gaussianFilters.isEmpty {
+            // Removing the material colour/saturation filters leaves only the
+            // backdrop Gaussian blur, so the header no longer paints a dark
+            // slab over the page.
             backdrop.layer.filters = gaussianFilters
         }
+    }
+}
+
+struct ProgressiveBlur: UIViewRepresentable {
+    var radius: CGFloat
+
+    func makeUIView(context: Context) -> PureBackdropBlurView {
+        let view = PureBackdropBlurView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
+        view.isUserInteractionEnabled = false
+        view.blurRadius = radius
+        return view
+    }
+
+    func updateUIView(_ uiView: PureBackdropBlurView, context: Context) {
+        uiView.blurRadius = radius
     }
 }
 
