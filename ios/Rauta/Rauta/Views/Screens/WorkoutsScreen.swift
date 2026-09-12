@@ -207,7 +207,7 @@ struct WorkoutsScreen: View {
             } label: {
                 tabLabel(.profile)
             }
-            Tab(value: MainTab.rauta, role: .prominent) {
+            Tab(value: MainTab.rauta, role: .search) {
                 rautaCurrentPage
             } label: {
                 Image(uiImage: NativeTabIcons.transparentPlaceholder)
@@ -482,30 +482,34 @@ struct WorkoutsScreen: View {
                         } else if pageTab == .workout {
                             noActiveWorkout
                                 .padding(.top, DeviceScreen.safeAreaInsets.top + 56)
+                        } else if pageTab == .library {
+                            LibraryScreen()
                         } else {
                             Spacer(minLength: 0)
                         }
                     }
 
-                    AppTopScrim()
-                        .zIndex(20)
+                    if pageTab != .library {
+                        AppTopScrim()
+                            .zIndex(20)
 
-                    AppShellHeader(
-                        title: pageTab.rawValue,
-                        left: { Color.clear.frame(width: 44, height: 44) },
-                        right: {
-                            if pageTab == .summary {
-                                AppHeaderButton(systemImage: "gearshape", label: "Settings") {
-                                    store.navigation.push(.settings)
+                        AppShellHeader(
+                            title: pageTab.rawValue,
+                            left: { Color.clear.frame(width: 44, height: 44) },
+                            right: {
+                                if pageTab == .summary {
+                                    AppHeaderButton(systemImage: "gearshape", label: "Settings") {
+                                        store.navigation.push(.settings)
+                                    }
+                                } else {
+                                    Color.clear.frame(width: 44, height: 44)
                                 }
-                            } else {
-                                Color.clear.frame(width: 44, height: 44)
-                            }
-                        },
-                        above: { EmptyView() },
-                        below: { EmptyView() }
-                    )
-                    .zIndex(30)
+                            },
+                            above: { EmptyView() },
+                            below: { EmptyView() }
+                        )
+                        .zIndex(30)
+                    }
                 }
             } controls: {
                 EmptyView()

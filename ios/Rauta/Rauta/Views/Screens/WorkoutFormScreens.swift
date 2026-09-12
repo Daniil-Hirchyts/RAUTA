@@ -384,16 +384,11 @@ private struct EditableExerciseRow: View {
                     .font(Theme.sans(16, weight: .bold))
                     .kerning(0.65)
                     .foregroundStyle(Theme.primary)
-                    .frame(width: 48)
+                    .frame(width: 50)
                     .frame(maxHeight: .infinity)
-                    .background(Theme.card)
-                    .overlay(alignment: .trailing) {
-                        Rectangle().fill(Theme.border).frame(width: 1)
-                    }
 
                 ExerciseMediaView(exerciseId: exercise.id)
                     .frame(width: 128, height: 128)
-                    .background(Theme.mix(Theme.card, .black, 0.12))
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(exercise.name.capitalized)
@@ -406,30 +401,26 @@ private struct EditableExerciseRow: View {
                         .foregroundStyle(Theme.mutedForeground)
                         .lineLimit(1)
                 }
-                .padding(.horizontal, 12)
+                .padding(.leading, 16)
+                .padding(.trailing, 8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
 
                 CardReorderHandle(reorder: reorder, id: exercise.id,
-                    order: exerciseIds, name: exercise.name, height: 128, commit: onReorder)
+                    order: exerciseIds, name: exercise.name, height: 124, commit: onReorder)
             }
-            .frame(height: 128)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .frame(height: 136)
             .background(Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl3, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.xl3, style: .continuous)
-                    .strokeBorder(
-                        isDragging ? Theme.primary.opacity(0.70) : Theme.border,
-                        lineWidth: 1
-                    )
-            )
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous))
             .opacity(1)
             .shadow(
-                color: .black.opacity(isDragging ? 0.30 : 0.10),
-                radius: isDragging ? 20 : 2,
-                y: isDragging ? 10 : 1
+                color: .black.opacity(isDragging ? 0.30 : 0.08),
+                radius: isDragging ? 20 : 3,
+                y: isDragging ? 10 : 2
             )
             .overlay {
-                if isDragging { AppGrain().clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl3)) }
+                if isDragging { AppGrain().clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl2)) }
             }
         }
     }

@@ -1392,6 +1392,7 @@ private struct WorkoutExerciseRow: View {
             card
                 .offset(x: canFindAlternative || canRemove ? swipeOffset : 0)
         }
+        .padding(.horizontal, Theme.Metrics.contentInset)
         .modifier(CardReorderPlacement(reorder: reorder, id: exercise.id, spacing: 20))
     }
 
@@ -1417,12 +1418,12 @@ private struct WorkoutExerciseRow: View {
                             .foregroundStyle(Theme.primary)
                     }
                 }
-                .frame(width: 48)
+                .frame(width: 50)
                 .frame(maxHeight: .infinity)
 
                 Button(action: onOpen) {
                     ExerciseMediaView(exerciseId: exercise.id, animated: true)
-                        .frame(width: 144, height: 144)
+                        .frame(width: 136, height: 136)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Open \(exercise.name) demonstration")
@@ -1438,7 +1439,8 @@ private struct WorkoutExerciseRow: View {
                         .lineLimit(1)
                         .padding(.top, 2)
                 }
-                .padding(.horizontal, 10)
+                .padding(.leading, 14)
+                .padding(.trailing, 8)
                 .padding(.vertical, 8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
@@ -1450,21 +1452,25 @@ private struct WorkoutExerciseRow: View {
                         id: exercise.id,
                         order: exerciseIds,
                         name: exercise.name,
-                        height: 144,
+                        height: 132,
                         commit: onReorder
                     )
                 }
             }
-            .frame(height: 144)
+            .padding(.horizontal, 8)
+            .padding(.top, 6)
+            .padding(.bottom, 4)
+            .frame(height: 148)
 
             if let prescription {
                 WorkoutPrescriptionStrip(prescription: prescription)
-                    .overlay(alignment: .top) {
-                        Rectangle().fill(Theme.mix(Theme.border, Theme.primary, 0.28)).frame(height: 1)
-                    }
             }
         }
         .contentShape(Rectangle())
+        .background(Theme.card)
+        .clipShape(
+            RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
+        )
         .overlay {
             if canFindAlternative || canRemove {
                 WorkoutCardSwipeObserver(
@@ -1656,7 +1662,7 @@ private struct WorkoutPrescriptionStrip: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 22) {
+            HStack(spacing: 24) {
                 metric("Sets", String(prescription.sets), accent: true)
                 metric("Reps", reps)
                 metric("RIR", Num.trimmed(prescription.rir))
@@ -1666,9 +1672,9 @@ private struct WorkoutPrescriptionStrip: View {
                 }
                 metric("Rest", "\(Int(prescription.restSeconds.rounded()))s")
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 11)
-            .padding(.bottom, 13)
+            .padding(.horizontal, 22)
+            .padding(.top, 12)
+            .padding(.bottom, 15)
         }
         .background {
             LinearGradient(

@@ -28,12 +28,7 @@ struct ExerciseDetailScreen: View {
                         ExerciseMediaView(exerciseId: exercise.id, animated: true)
                             .aspectRatio(1, contentMode: .fit)
                             .frame(maxWidth: .infinity)
-                            .background(Theme.popover)
                             .clipShape(RoundedRectangle(cornerRadius: Theme.Metrics.cardRadius))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: Theme.Metrics.cardRadius)
-                                    .strokeBorder(Theme.border)
-                            )
                         if !exercise.instructions.isEmpty {
                             VStack(alignment: .leading, spacing: 10) {
                                 ForEach(Array(exercise.instructions.enumerated()), id: \.offset) { index, instruction in

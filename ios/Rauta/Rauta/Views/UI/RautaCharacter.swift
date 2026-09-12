@@ -90,6 +90,37 @@ struct CompanionAction: Identifiable {
     var id: String { title }
 }
 
+/// A compact header-sized RAUTA on a static glass circle. The character owns
+/// any interaction; the glass behind it never flexes like a button.
+struct RautaHeaderBadge: View {
+    var mood: RautaMood = .focused
+    var reactionKey = ""
+    var onActivate: (() -> Void)?
+
+    var body: some View {
+        ZStack {
+            Color.clear
+                .frame(width: 44, height: 44)
+                .glassSurface(
+                    .regular,
+                    in: Circle(),
+                    border: Theme.Glassware.edge,
+                    legacyFill: .clear
+                )
+                .allowsHitTesting(false)
+
+            RautaCharacter(
+                mood: mood,
+                reactionKey: reactionKey,
+                onActivate: onActivate
+            )
+            .frame(width: 48, height: 48)
+            .frame(width: 44, height: 44)
+        }
+        .frame(width: 44, height: 44)
+    }
+}
+
 struct RautaBottomDock: View {
     var speech: String
     var meta: String?

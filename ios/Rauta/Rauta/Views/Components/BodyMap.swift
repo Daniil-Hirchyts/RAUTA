@@ -67,7 +67,6 @@ struct BodyFigure: View {
 
     private static let restingFill = Color(hex: 0x3D322B)
     private static let silhouetteFill = Color(hex: 0x2D241F)
-    private static let outline = Color(hex: 0x100D0B)
 
     var body: some View {
         GeometryReader { proxy in
@@ -114,11 +113,6 @@ struct BodyFigure: View {
 
                     path
                         .fill(fill)
-                        .overlay {
-                            if !selected {
-                                path.stroke(Self.outline, lineWidth: 3 * scale)
-                            }
-                        }
                         .shadow(
                             color: selected
                                 ? (showsSelectionGlow
@@ -132,7 +126,6 @@ struct BodyFigure: View {
                 } else {
                     path
                         .fill(Self.silhouetteFill)
-                        .overlay(path.stroke(Self.outline, lineWidth: 3 * scale))
                 }
             }
         }
@@ -140,11 +133,9 @@ struct BodyFigure: View {
 
     private func hitTest(_ point: CGPoint, scale: CGFloat) -> MuscleId? {
         // Front to back, so a region drawn last wins the tap the way the SVG
-        // stacking order did. Browser SVG hit testing includes the painted
-        // outline as well as the fill, so include the source 3-unit stroke too.
-        // Do that exact pass first so adjacent muscles keep the browser's
-        // behavior. If the finger lands just outside a narrow painted region,
-        // make a second pass with roughly 10 pt of screen-space tolerance.
+        // stacking order did. Keep the former outline area in the hit target
+        // even though the visual border is gone, then add roughly 10 pt of
+        // screen-space tolerance for narrow regions.
         for part in view.parts.reversed() {
             guard let muscle = part.muscle else { continue }
             if part.paths.contains(where: {

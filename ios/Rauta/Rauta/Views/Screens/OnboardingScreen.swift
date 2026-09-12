@@ -56,18 +56,6 @@ struct ProfileStepFlow: View {
                             EquipmentPresets(value: store.filters.gymEquipment, onChange: store.filters.setGymEquipment)
                                 .padding(.bottom, 12)
                                 .padding(.top, 28)
-                                .background(
-                                    LinearGradient(
-                                        stops: [
-                                            .init(color: .clear, location: 0),
-                                            .init(color: Theme.background.opacity(0.65), location: 0.45),
-                                            .init(color: Theme.background, location: 1),
-                                        ],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
-                                    .allowsHitTesting(false)
-                                )
                         }
                     }
                 }

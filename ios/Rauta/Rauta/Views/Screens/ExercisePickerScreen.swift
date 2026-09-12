@@ -12,11 +12,10 @@ struct ExercisePickerScreen: View {
     @State private var searchOpen = false
     @State private var favoritesOnly = false
     @State private var presetEditorOpen = false
+    @State private var destinationMenuOpen = false
     @State private var visibleExerciseCount = ExerciseCatalogue.pageSize
-    @State private var showBackToTop = false
     @StateObject private var scrollTracker = ScrollHideTracker()
-
-    private let exercisesTopAnchor = "exercises-top"
+    @Namespace private var destinationMenuNamespace
 
     private var selectedMuscles: [MuscleId] { store.filters.selectedMuscles }
     private var selectedEquipment: [String] { store.filters.selectedEquipment }
@@ -32,6 +31,19 @@ struct ExercisePickerScreen: View {
         }
     }
 
+    private var destinationWorkouts: [Workout] {
+        Array(
+            store.workouts.workouts
+                .filter { $0.completion == nil }
+                .sorted {
+                    if $0.id == preferredWorkoutId { return true }
+                    if $1.id == preferredWorkoutId { return false }
+                    return $0.date > $1.date
+                }
+                .prefix(3)
+        )
+    }
+
     var body: some View {
         RautaScreen(
             title: title,
@@ -40,6 +52,7 @@ struct ExercisePickerScreen: View {
             onBack: store.navigation.pop,
             progressStage: stage.rawValue,
             hidden: (stage == .equipment || stage == .exercises) && scrollTracker.hidden,
+            right: { headerRautaMenu },
             content: { content },
             controls: { controls }
         )
@@ -48,7 +61,6 @@ struct ExercisePickerScreen: View {
         }
         .onChange(of: matchingExercises.count) { _, _ in
             visibleExerciseCount = ExerciseCatalogue.pageSize
-            showBackToTop = false
         }
     }
 
@@ -133,89 +145,51 @@ struct ExercisePickerScreen: View {
             .padding(24)
         } else {
             GeometryReader { viewport in
-                ScrollViewReader { scrollProxy in
-                    ZStack(alignment: .bottom) {
-                        ScrollView {
-                            ScrollOffsetObserver { offset, isScrollable in
-                                scrollTracker.update(offset: offset, isScrollable: isScrollable)
-                                let shouldShow = offset > Swift.max(480, viewport.size.height)
-                                if shouldShow != showBackToTop {
-                                    withAnimation(Theme.Motion.smoothOut(0.52)) {
-                                        showBackToTop = shouldShow
-                                    }
-                                }
-                            }
-                                .frame(height: 0)
-                                .id(exercisesTopAnchor)
-
-                            LazyVGrid(
-                                columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible())],
-                                spacing: 14
-                            ) {
-                                ForEach(
-                                    Array(matchingExercises.prefix(visibleExerciseCount).enumerated()),
-                                    id: \.element.id
-                                ) { index, exercise in
-                                    ExerciseCard(
-                                        exercise: exercise,
-                                        index: index,
-                                        selectMode: store.navigation.selectMode,
-                                        selected: store.navigation.selectedIds.contains(exercise.id),
-                                        onOpenDetail: {
-                                            store.navigation.push(.exerciseDetail(exerciseId: $0.id))
-                                        },
-                                        onToggleSelect: toggleSelected
-                                    )
-                                }
-                            }
-                            .padding(.horizontal, Theme.Metrics.contentInset)
-                            .padding(.top, Theme.Metrics.contentInset)
-
-                            if visibleExerciseCount < matchingExercises.count {
-                                MatrixLoader(
-                                    variant: .scan,
-                                    label: "Loading more exercises",
-                                    dot: 3,
-                                    gap: 3
-                                )
-                                .padding(.vertical, 24)
-
-                                loadMoreTrigger(viewportHeight: viewport.size.height)
-                            }
-
-                            Color.clear
-                                .frame(height: searchOpen || store.navigation.selectMode ? 112 : 24)
-                        }
-                        .coordinateSpace(name: "exercisesScroll")
-
-                        Button {
-                            Haptics.trigger(.light)
-                            withAnimation(Theme.Motion.smoothOut(0.52)) {
-                                scrollProxy.scrollTo(exercisesTopAnchor, anchor: .top)
-                            }
-                        } label: {
-                            Image(systemName: "arrow.up")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundStyle(Theme.primary)
-                                .frame(width: 48, height: 48)
-                                .glassSurface(
-                                    .regular,
-                                    in: Circle(),
-                                    interactive: true,
-                                    border: Theme.mix(Theme.border, Theme.primary, 0.55),
-                                    legacyFill: Theme.card.opacity(0.78)
-                                )
-                                .shadow(color: .black.opacity(0.4), radius: 14, y: 12)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Back to top")
-                        .opacity(showBackToTop ? 1 : 0)
-                        .offset(y: showBackToTop ? 0 : 8)
-                        .scaleEffect(showBackToTop ? 1 : 0.9)
-                        .padding(.bottom, Swift.max(0, Theme.Metrics.surfaceRadius - 24))
-                        .allowsHitTesting(showBackToTop)
+                ScrollView {
+                    ScrollOffsetObserver { offset, isScrollable in
+                        scrollTracker.update(offset: offset, isScrollable: isScrollable)
                     }
+                    .frame(height: 0)
+
+                    LazyVGrid(
+                        columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible())],
+                        spacing: 14
+                    ) {
+                        ForEach(
+                            Array(matchingExercises.prefix(visibleExerciseCount).enumerated()),
+                            id: \.element.id
+                        ) { index, exercise in
+                            ExerciseCard(
+                                exercise: exercise,
+                                index: index,
+                                selectMode: store.navigation.selectMode,
+                                selected: store.navigation.selectedIds.contains(exercise.id),
+                                onOpenDetail: {
+                                    store.navigation.push(.exerciseDetail(exerciseId: $0.id))
+                                },
+                                onToggleSelect: toggleSelected
+                            )
+                        }
+                    }
+                    .padding(.horizontal, Theme.Metrics.contentInset)
+                    .padding(.top, Theme.Metrics.contentInset)
+
+                    if visibleExerciseCount < matchingExercises.count {
+                        MatrixLoader(
+                            variant: .scan,
+                            label: "Loading more exercises",
+                            dot: 3,
+                            gap: 3
+                        )
+                        .padding(.vertical, 24)
+
+                        loadMoreTrigger(viewportHeight: viewport.size.height)
+                    }
+
+                    Color.clear
+                        .frame(height: searchOpen || store.navigation.selectMode ? 112 : 24)
                 }
+                .coordinateSpace(name: "exercisesScroll")
             }
         }
     }
@@ -249,20 +223,6 @@ struct ExercisePickerScreen: View {
                 .padding(.bottom, 10)
         }
         .padding(.top, 28)
-        .background(
-            LinearGradient(
-                stops: [
-                    .init(color: .clear, location: 0),
-                    .init(color: Theme.background.opacity(0.75), location: 0.35),
-                    .init(color: Theme.background.opacity(0.96), location: 0.65),
-                    .init(color: Theme.background, location: 0.85),
-                    .init(color: Theme.background, location: 1.0),
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .allowsHitTesting(false)
-        )
     }
 
     private var emptyExercisesMessage: String {
@@ -271,44 +231,120 @@ struct ExercisePickerScreen: View {
             return "Nothing matches \"\(query)\". Try a shorter word — the search reads exercise names only."
         }
         if favoritesOnly {
-            return "No favorites yet. Tap the heart on an exercise to keep it here."
+            return "No favorites yet. Add favorites from an exercise's detail page."
         }
         return "Nothing uses every muscle and every piece of equipment you picked. Go back and drop one of them."
+    }
+
+    @ViewBuilder private var rautaOptions: some View {
+        switch stage {
+        case .muscles:
+            Button {
+                Haptics.trigger(.selection)
+                side = side == .front ? .back : .front
+            } label: {
+                Label(
+                    "Show \(side == .front ? "back" : "front")",
+                    systemImage: "arrow.left.arrow.right"
+                )
+            }
+
+            if !selectedMuscles.isEmpty {
+                Button {
+                    Haptics.trigger(.selection)
+                    store.filters.setMuscles([])
+                } label: {
+                    Label("Clear muscle selection", systemImage: "xmark")
+                }
+            }
+
+        case .equipment:
+            if presetEditorOpen {
+                Button {
+                    presetEditorOpen = false
+                } label: {
+                    Label("Close preset editor", systemImage: "xmark")
+                }
+            } else {
+                if !selectedEquipment.isEmpty {
+                    Button {
+                        Haptics.trigger(.selection)
+                        store.filters.setEquipment([])
+                    } label: {
+                        Label("Clear equipment selection", systemImage: "xmark")
+                    }
+                }
+
+                Button {
+                    presetEditorOpen = true
+                } label: {
+                    Label("Save equipment preset", systemImage: "plus")
+                }
+                .disabled(selectedEquipment.isEmpty)
+            }
+
+        case .exercises:
+            if store.navigation.selectMode {
+                Button {
+                    cancelSelectMode()
+                } label: {
+                    Label("Cancel selection", systemImage: "xmark")
+                }
+            } else if preferredWorkoutId == nil {
+                Button {
+                    buildWorkoutWithRauta()
+                } label: {
+                    Label("Build workout with RAUTA", systemImage: "sparkles")
+                }
+            }
+
+            Button {
+                Haptics.trigger(.medium)
+                if searchOpen {
+                    search = ""
+                    searchOpen = false
+                } else {
+                    searchOpen = true
+                }
+            } label: {
+                Label(
+                    searchOpen ? "Close search" : "Search exercises",
+                    systemImage: searchOpen ? "xmark" : "magnifyingglass"
+                )
+            }
+
+            Button {
+                Haptics.trigger(.selection)
+                favoritesOnly.toggle()
+            } label: {
+                Label(
+                    favoritesOnly ? "Show all exercises" : "Show favorites only",
+                    systemImage: favoritesOnly ? "heart.slash" : "heart"
+                )
+            }
+        }
+    }
+
+    private var headerRautaMenu: some View {
+        AppMenuButton(
+            label: "\(title) actions",
+            arrowEdge: .top,
+            compact: true
+        ) {
+            rautaOptions
+        }
     }
 
     @ViewBuilder private var controls: some View {
         switch stage {
         case .muscles:
-            HStack(spacing: 8) {
-                AppMenuButton(label: "Muscle actions") {
-                    Button {
-                        Haptics.trigger(.selection)
-                        side = side == .front ? .back : .front
-                    } label: {
-                        Label(
-                            "Show \(side == .front ? "back" : "front")",
-                            systemImage: "arrow.left.arrow.right"
-                        )
-                    }
-
-                    if !selectedMuscles.isEmpty {
-                        Button {
-                            Haptics.trigger(.selection)
-                            store.filters.setMuscles([])
-                        } label: {
-                            Label("Clear muscle selection", systemImage: "xmark")
-                        }
-                    }
-                }
-
-                AppButton(
-                    "Choose equipment",
-                    size: .cta,
-                    isDisabled: selectedMuscles.isEmpty,
-                    expands: true
-                ) {
-                    store.navigation.push(.equipment(preferredWorkoutId: preferredWorkoutId))
-                }
+            AppButton(
+                "Choose equipment",
+                size: .cta,
+                isDisabled: selectedMuscles.isEmpty,
+                expands: true
+            ) {
+                store.navigation.push(.equipment(preferredWorkoutId: preferredWorkoutId))
             }
 
         case .equipment:
@@ -320,35 +356,15 @@ struct ExercisePickerScreen: View {
                     }
                 }
             } else {
-                HStack(spacing: 8) {
-                    AppMenuButton(label: "Equipment actions") {
-                        if !selectedEquipment.isEmpty {
-                            Button {
-                                Haptics.trigger(.selection)
-                                store.filters.setEquipment([])
-                            } label: {
-                                Label("Clear equipment selection", systemImage: "xmark")
-                            }
-                        }
-
-                        Button {
-                            presetEditorOpen = true
-                        } label: {
-                            Label("Save equipment preset", systemImage: "plus")
-                        }
-                        .disabled(selectedEquipment.isEmpty)
-                    }
-
-                    AppButton(
-                        "Show exercises",
-                        size: .cta,
-                        isDisabled: selectedEquipment.isEmpty || matchingExercises.isEmpty,
-                        expands: true
-                    ) {
-                        store.navigation.selectMode = preferredWorkoutId != nil
-                        store.navigation.persist()
-                        store.navigation.push(.exercises(preferredWorkoutId: preferredWorkoutId))
-                    }
+                AppButton(
+                    "Show exercises",
+                    size: .cta,
+                    isDisabled: selectedEquipment.isEmpty || matchingExercises.isEmpty,
+                    expands: true
+                ) {
+                    store.navigation.selectMode = preferredWorkoutId != nil
+                    store.navigation.persist()
+                    store.navigation.push(.exercises(preferredWorkoutId: preferredWorkoutId))
                 }
             }
 
@@ -360,57 +376,108 @@ struct ExercisePickerScreen: View {
                     searchOpen = false
                 }
             } else {
-                HStack(spacing: 8) {
-                    AppMenuButton(label: "Exercise actions") {
-                        if store.navigation.selectMode {
-                            Button {
-                                cancelSelectMode()
-                            } label: {
-                                Label("Cancel selection", systemImage: "xmark")
+                GlassGroup(spacing: 12) {
+                    ZStack(alignment: .bottom) {
+                        if destinationMenuOpen {
+                            destinationMenu
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity)
+                                .glassMorph("destination-control", in: destinationMenuNamespace)
+                                .transition(.opacity)
+                        } else {
+                            AppButton(
+                                store.navigation.selectMode ? "Add to workout" : "Select",
+                                size: .cta,
+                                isDisabled: store.navigation.selectMode && store.navigation.selectedIds.isEmpty,
+                                expands: true
+                            ) {
+                                if store.navigation.selectMode {
+                                    Haptics.trigger(.selection)
+                                    withAnimation(Theme.Motion.smoothOut(0.28)) {
+                                        destinationMenuOpen = true
+                                    }
+                                } else {
+                                    store.navigation.selectMode = true
+                                    store.navigation.persist()
+                                }
                             }
-                        } else if preferredWorkoutId == nil {
-                            Button {
-                                buildWorkoutWithRauta()
-                            } label: {
-                                Label("Build workout with RAUTA", systemImage: "sparkles")
-                            }
-                        }
-
-                        Button {
-                            Haptics.trigger(.medium)
-                            searchOpen = true
-                        } label: {
-                            Label("Search exercises", systemImage: "magnifyingglass")
-                        }
-
-                        Button {
-                            Haptics.trigger(.selection)
-                            favoritesOnly.toggle()
-                        } label: {
-                            Label(
-                                favoritesOnly ? "Show all exercises" : "Show favorites only",
-                                systemImage: favoritesOnly ? "heart.slash" : "heart"
-                            )
+                            .glassMorph("destination-control", in: destinationMenuNamespace)
                         }
                     }
+                    .animation(Theme.Motion.smoothOut(0.28), value: destinationMenuOpen)
+                }
+            }
+        }
+    }
 
-                    AppButton(
-                        store.navigation.selectMode ? "Add to workout" : "Select",
-                        size: .cta,
-                        isDisabled: store.navigation.selectMode && store.navigation.selectedIds.isEmpty,
-                        expands: true
-                    ) {
-                        if store.navigation.selectMode {
-                            store.navigation.push(
-                                .workoutDestination(preferredWorkoutId: preferredWorkoutId)
-                            )
-                        } else {
-                            store.navigation.selectMode = true
-                            store.navigation.persist()
-                        }
+    private var destinationMenu: some View {
+        AppMenuSurface(dismiss: { destinationMenuOpen = false }) {
+            Button(action: createNewWorkout) {
+                Label("New workout", systemImage: "plus")
+            }
+
+            Divider()
+                .overlay(Theme.border)
+                .padding(.vertical, 4)
+
+            Text("PLANNED WORKOUTS")
+                .font(Theme.sans(10, weight: .black))
+                .kerning(1.5)
+                .foregroundStyle(Theme.mutedForeground)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+
+            if destinationWorkouts.isEmpty {
+                Text("No planned workouts")
+                    .font(Theme.sans(14))
+                    .foregroundStyle(Theme.mutedForeground)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 8)
+            } else {
+                ForEach(destinationWorkouts) { workout in
+                    Button {
+                        addSelectedExercises(to: workout)
+                    } label: {
+                        Label(
+                            "\(CalendarDate.short(workout.date)) · \(Wording.countLabel(workout.exerciseIds.count, "exercise"))",
+                            systemImage: "calendar"
+                        )
                     }
                 }
             }
+        }
+    }
+
+    private func createNewWorkout() {
+        destinationMenuOpen = false
+        store.navigation.push(
+            .workoutForm(
+                exerciseIds: store.navigation.selectedIds,
+                workoutId: nil,
+                engineFocusMuscles: nil
+            )
+        )
+    }
+
+    private func addSelectedExercises(to workout: Workout) {
+        destinationMenuOpen = false
+        var seen = Set<String>()
+        let ids = (workout.exerciseIds + store.navigation.selectedIds)
+            .filter { seen.insert($0).inserted }
+
+        do {
+            if store.activeWorkout.session?.workoutId == workout.id {
+                store.workouts.updateWorkout(workout.id, .init(exerciseIds: ids))
+                store.activeWorkout.syncExercises(ids)
+            } else {
+                try TrainingEdits.updateScheduledWorkoutExercises(workout.id, ids)
+            }
+            store.navigation.selectMode = false
+            store.navigation.selectedIds = []
+            store.navigation.reset([.workouts, .workoutDetail(workoutId: workout.id)])
+            Haptics.trigger(.success)
+        } catch {
+            Haptics.trigger(.warning)
         }
     }
 

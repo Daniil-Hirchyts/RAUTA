@@ -245,19 +245,9 @@ struct ProfileTopPanel: View {
             Text(speech).font(Theme.sans(15, weight: .semibold)).tracking(-0.3).lineSpacing(2)
                 .foregroundStyle(Theme.foreground).multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity).padding(.horizontal, 52).padding(.top, 16).padding(.bottom, 16)
-        }.background {
-            ZStack {
-                Theme.card.opacity(0.85)
-                RadialGradient(colors: [Theme.primary.opacity(0.24), .clear], center: UnitPoint(x: 0.8, y: 1.25), startRadius: 0, endRadius: 230)
-            }.clipShape(RoundedRectangle(cornerRadius: Theme.Metrics.surfaceRadius))
-                .overlay(RoundedRectangle(cornerRadius: Theme.Metrics.surfaceRadius).strokeBorder(Theme.border))
         }.overlay(alignment: .topTrailing) {
-            RautaCharacter(mood: mood, reactionKey: speech)
-                .frame(width: 72, height: 72)
-                // Centre the 72pt character on the same header row as the
-                // 44pt back/skip buttons instead of pinning it to the surface
-                // edge above the Dynamic Island.
-                .offset(y: Swift.max(0, DeviceScreen.safeAreaInsets.top - 2))
+            RautaHeaderBadge(mood: mood, reactionKey: speech)
+                .padding(.top, 12 + DeviceScreen.safeAreaInsets.top)
                 .padding(.trailing, hasRightControl ? 58 : 6)
         }
     }

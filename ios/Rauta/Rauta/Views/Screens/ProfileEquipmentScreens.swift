@@ -17,7 +17,8 @@ struct ProfileEquipmentScreen: View {
         RautaScreen(
             title: "Available equipment",
             subtitle: subtitle,
-            onBack: store.navigation.pop
+            onBack: store.navigation.pop,
+            right: { equipmentRautaMenu }
         ) {
             ZStack(alignment: .bottom) {
                 ScrollView {
@@ -36,20 +37,6 @@ struct ProfileEquipmentScreen: View {
                 )
                 .padding(.bottom, 10)
                 .padding(.top, 28)
-                .background(
-                    LinearGradient(
-                        stops: [
-                            .init(color: .clear, location: 0),
-                            .init(color: Theme.background.opacity(0.75), location: 0.35),
-                            .init(color: Theme.background.opacity(0.96), location: 0.65),
-                            .init(color: Theme.background, location: 0.85),
-                            .init(color: Theme.background, location: 1),
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .allowsHitTesting(false)
-                )
             }
         } controls: {
             if presetEditorOpen {
@@ -62,34 +49,42 @@ struct ProfileEquipmentScreen: View {
                     }
                 }
             } else {
-                HStack(spacing: 8) {
-                    AppMenuButton(label: "Equipment actions") {
-                        if !store.filters.gymEquipment.isEmpty {
-                            Button {
-                                Haptics.trigger(.selection)
-                                store.filters.setGymEquipment([])
-                            } label: {
-                                Label("Clear selection", systemImage: "xmark")
-                            }
-                        }
+                AppButton("Done", size: .cta, expands: true, action: store.navigation.pop)
+            }
+        }
+    }
 
-                        Button {
-                            store.navigation.push(.profileLoadSteps)
-                        } label: {
-                            Label("Set load steps", systemImage: "scalemass")
-                        }
-                        .disabled(loadEquipment.isEmpty)
-
-                        Button {
-                            presetEditorOpen = true
-                        } label: {
-                            Label("Create equipment preset", systemImage: "plus")
-                        }
-                        .disabled(store.filters.gymEquipment.isEmpty)
-                    }
-
-                    AppButton("Done", size: .cta, expands: true, action: store.navigation.pop)
+    private var equipmentRautaMenu: some View {
+        AppMenuButton(label: "Equipment actions", arrowEdge: .top, compact: true) {
+            if presetEditorOpen {
+                Button {
+                    presetEditorOpen = false
+                } label: {
+                    Label("Close preset editor", systemImage: "xmark")
                 }
+            } else {
+                if !store.filters.gymEquipment.isEmpty {
+                    Button {
+                        Haptics.trigger(.selection)
+                        store.filters.setGymEquipment([])
+                    } label: {
+                        Label("Clear selection", systemImage: "xmark")
+                    }
+                }
+
+                Button {
+                    store.navigation.push(.profileLoadSteps)
+                } label: {
+                    Label("Set load steps", systemImage: "scalemass")
+                }
+                .disabled(loadEquipment.isEmpty)
+
+                Button {
+                    presetEditorOpen = true
+                } label: {
+                    Label("Create equipment preset", systemImage: "plus")
+                }
+                .disabled(store.filters.gymEquipment.isEmpty)
             }
         }
     }

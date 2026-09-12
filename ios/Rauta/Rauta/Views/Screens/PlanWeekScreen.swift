@@ -14,40 +14,34 @@ struct PlanWeekScreen: View {
         RautaScreen(
             title: continuing ? "Extend training plan" : "Create training plan",
             backLabel: "Back to workouts",
-            onBack: store.navigation.pop
-        ) {
-            ZStack(alignment: .bottom) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        planIntro
-
-                        PlanDatePicker(
-                            selectedDates: $selectedDates,
-                            onSelectionChange: { block = nil }
-                        )
-                        .padding(.top, 18)
-
-                        if let block {
-                            blockNotice(block)
-                                .padding(.top, 20)
-                        }
-                    }
-                    .padding(.horizontal, Theme.Metrics.contentInset)
-                    .padding(.top, 20)
-                    .padding(.bottom, 142)
-                }
-
-                RautaBottomDock(
-                    speech: continuing
-                        ? "Pick the next dates. I'll adapt from your logged work."
-                        : "Pick your dates. I'll build the plan from your preferences.",
-                    meta: selectionSummary,
+            onBack: store.navigation.pop,
+            right: {
+                RautaHeaderBadge(
                     mood: .focused,
-                    characterSize: 100,
-                    floating: true,
-                    showsText: true,
-                    glassContainer: true
+                    reactionKey: continuing
+                        ? "Pick the next dates. I'll adapt from your logged work."
+                        : "Pick your dates. I'll build the plan from your preferences."
                 )
+            }
+        ) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    planIntro
+
+                    PlanDatePicker(
+                        selectedDates: $selectedDates,
+                        onSelectionChange: { block = nil }
+                    )
+                    .padding(.top, 18)
+
+                    if let block {
+                        blockNotice(block)
+                            .padding(.top, 20)
+                    }
+                }
+                .padding(.horizontal, Theme.Metrics.contentInset)
+                .padding(.top, 20)
+                .padding(.bottom, 24)
             }
         } controls: {
             AppButton(
@@ -98,12 +92,6 @@ struct PlanWeekScreen: View {
     private var profileLine: String {
         let profile = store.trainingProfile.profile
         return "\(ProfileVocabulary.goalLabel(profile.goal)) · \(Int(profile.preferredSessionDurationMinutes)) min · \(ProfileVocabulary.experienceLabel(profile.trainingExperience))"
-    }
-
-    private var selectionSummary: String {
-        selectedDates.isEmpty
-            ? "Select at least one training day"
-            : "\(Wording.countLabel(selectedDates.count, "training day")) selected"
     }
 
     private func blockNotice(_ block: PlanBlock) -> some View {
@@ -238,11 +226,9 @@ private struct PlanDatePicker: View {
         .tint(Theme.primary)
         .padding(12)
         .frame(maxWidth: .infinity)
-        .glassSurface(
-            .clear,
-            in: RoundedRectangle(cornerRadius: Theme.Radius.xl3, style: .continuous),
-            border: Theme.Glassware.edge,
-            legacyFill: Theme.card.opacity(0.74)
+        .background(
+            Theme.card,
+            in: RoundedRectangle(cornerRadius: Theme.Radius.xl3, style: .continuous)
         )
     }
 }

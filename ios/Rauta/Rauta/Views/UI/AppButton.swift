@@ -284,21 +284,31 @@ struct AppMenuButton<MenuContent: View>: View {
     @State private var isPresented = false
 
     var body: some View {
-        RautaCharacter(mood: .focused, onActivate: {
-            Haptics.trigger(.selection)
-            isPresented = true
-        })
-        .frame(width: compact ? 54 : 72, height: compact ? 54 : 72)
-        .frame(width: compact ? 44 : 60, height: compact ? 44 : 52)
-        .contentShape(Circle())
-        .accessibilityLabel(label)
-        .popover(isPresented: $isPresented, attachmentAnchor: .rect(.bounds), arrowEdge: arrowEdge) {
+        trigger
+            .accessibilityLabel(label)
+            .popover(isPresented: $isPresented, attachmentAnchor: .rect(.bounds), arrowEdge: arrowEdge) {
             AppMenuSurface(dismiss: { isPresented = false }) {
                 menu()
             }
                 .presentationCompactAdaptation(.popover)
                 .presentationBackground(.clear)
         }
+    }
+
+    @ViewBuilder private var trigger: some View {
+        if compact {
+            RautaHeaderBadge(mood: .focused, onActivate: openMenu)
+        } else {
+            RautaCharacter(mood: .focused, onActivate: openMenu)
+                .frame(width: 72, height: 72)
+                .frame(width: 60, height: 52)
+                .contentShape(Circle())
+        }
+    }
+
+    private func openMenu() {
+        Haptics.trigger(.selection)
+        isPresented = true
     }
 }
 

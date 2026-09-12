@@ -31,7 +31,11 @@ struct AppShell<Content: View, Controls: View>: View {
 
                 if commandsVisible {
                     controls()
-                        .frame(height: Theme.Metrics.controlsHeight)
+                        // A command may morph from the compact CTA into a taller
+                        // chooser. Keep both anchored to the same bottom edge so
+                        // the expanded surface grows into the page, never below
+                        // the device safe area.
+                        .frame(height: Theme.Metrics.controlsHeight, alignment: .bottom)
                         .padding(.horizontal, Theme.Metrics.controlsInset)
                         .padding(.bottom, controlsGap)
                         .transition(.opacity.combined(with: .move(edge: .bottom)))
@@ -54,19 +58,29 @@ struct AppShell<Content: View, Controls: View>: View {
                 .overlay(AppGrain())
         } else {
             base
-            .clipShape(
-                RoundedRectangle(
-                    cornerRadius: Theme.Metrics.surfaceRadius, style: .continuous
+                .clipShape(surfaceShape)
+                .overlay(
+                    surfaceShape
+                        .strokeBorder(Theme.border, lineWidth: 1)
                 )
-            )
-            .overlay(
-                RoundedRectangle(
-                    cornerRadius: Theme.Metrics.surfaceRadius, style: .continuous
-                )
-                .strokeBorder(Theme.border, lineWidth: 1)
-            )
-            .overlay(AppGrain())
+                .overlay(AppGrain())
         }
+    }
+
+    private var surfaceShape: UnevenRoundedRectangle {
+        let bottomRadius = commandsVisible
+            ? Theme.Metrics.cardRadius
+            : Theme.Metrics.surfaceRadius
+
+        return UnevenRoundedRectangle(
+            cornerRadii: RectangleCornerRadii(
+                topLeading: Theme.Metrics.surfaceRadius,
+                bottomLeading: bottomRadius,
+                bottomTrailing: bottomRadius,
+                topTrailing: Theme.Metrics.surfaceRadius
+            ),
+            style: .continuous
+        )
     }
 
     private var surfaceBackground: some View {

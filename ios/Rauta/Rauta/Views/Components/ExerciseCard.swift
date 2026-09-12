@@ -23,10 +23,6 @@ struct ExerciseCard: View {
     var onOpenDetail: (ExerciseSummary) -> Void
     var onToggleSelect: (String) -> Void
 
-    @ObservedObject private var store = AppStore.shared
-
-    private var isFavorite: Bool { store.favorites.isFavorite(exercise.id) }
-
     var body: some View {
         Group {
             if selectMode {
@@ -41,19 +37,6 @@ struct ExerciseCard: View {
             } else {
                 cardButton
             }
-        }
-        .overlay(alignment: .topLeading) {
-            LikeButton(
-                liked: isFavorite,
-                label: isFavorite
-                    ? "Remove \(exercise.name) from favorites"
-                    : "Add \(exercise.name) to favorites",
-                size: 32,
-                iconSize: 16
-            ) {
-                store.favorites.toggleFavorite(exercise.id)
-            }
-            .padding(20)
         }
         .overlay(alignment: .topTrailing) {
             AnimatedCheck(checked: selected)
@@ -91,7 +74,6 @@ struct ExerciseCard: View {
                         ExerciseMediaView(exerciseId: exercise.id, animated: true)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .background(Theme.card)
 
                 // Fixed height, not content-driven, so every card is identical
                 // regardless of grid row or one- versus two-line names.
@@ -112,7 +94,7 @@ struct ExerciseCard: View {
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.Metrics.cardRadius, style: .continuous)
                     .strokeBorder(
-                        selectMode && selected ? Theme.primary.opacity(0.75) : Theme.border,
+                        selectMode && selected ? Theme.primary.opacity(0.75) : .clear,
                         lineWidth: 1
                     )
             )
@@ -177,7 +159,7 @@ struct EquipmentGrid: View {
                     .overlay(
                         RoundedRectangle(cornerRadius: Theme.Metrics.cardRadius, style: .continuous)
                             .strokeBorder(
-                                checked ? Theme.primary.opacity(0.75) : Theme.border, lineWidth: 1
+                                checked ? Theme.primary.opacity(0.75) : .clear, lineWidth: 1
                             )
                     )
                     .shadow(color: .black.opacity(0.1), radius: 3, y: 2)
