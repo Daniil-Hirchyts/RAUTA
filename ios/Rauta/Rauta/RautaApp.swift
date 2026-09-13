@@ -32,6 +32,23 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     func applicationWillTerminate(_ application: UIApplication) {
         AppStore.shared.persistNow()
     }
+
+    // Navigation, selected tabs, open sheets, search and filters are runtime UI
+    // state. Domain stores persist their own data; UIKit must not restore the
+    // previous interface hierarchy on the next launch.
+    func application(
+        _ application: UIApplication,
+        shouldSaveSecureApplicationState coder: NSCoder
+    ) -> Bool {
+        false
+    }
+
+    func application(
+        _ application: UIApplication,
+        shouldRestoreSecureApplicationState coder: NSCoder
+    ) -> Bool {
+        false
+    }
 }
 
 extension AppDelegate: UNUserNotificationCenterDelegate {

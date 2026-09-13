@@ -2,40 +2,31 @@ import SwiftUI
 
 @MainActor
 struct RootView: View {
-    @ObservedObject private var store = AppStore.shared
     @ObservedObject private var navigation = AppSessionStore.shared
-    @State private var renderedEntry: AppPageEntry?
 
     var body: some View {
-        ZStack {
-            if let rootEntry = navigation.pages.first {
-                page(for: rootEntry.page)
-                    .id(rootEntry.id)
-            } else {
-                WorkoutsScreen()
-            }
+        GeometryReader { proxy in
+            ZStack {
+                if let rootEntry = navigation.pages.first {
+                    page(for: rootEntry.page)
+                        .id(rootEntry.id)
+                } else {
+                    WorkoutsScreen()
+                }
 
-            if let renderedEntry,
-               renderedEntry.id != navigation.pages.first?.id {
-                page(for: renderedEntry.page)
-                    .id(renderedEntry.id)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Theme.shell.ignoresSafeArea())
-                    .zIndex(100)
+                if let activeEntry = navigation.activeEntry,
+                   activeEntry.id != navigation.pages.first?.id {
+                    page(for: activeEntry.page)
+                        .id(activeEntry.id)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Theme.shell.ignoresSafeArea())
+                        .zIndex(100)
+                }
             }
+            .environment(\.appSafeAreaInsets, proxy.safeAreaInsets)
         }
-        .environment(\.appStore, store)
         .simultaneousGesture(edgeBackGesture)
         .preferredColorScheme(.dark)
-        .onAppear {
-            renderedEntry = navigation.activeEntry
-        }
-        .onReceive(navigation.$pages) { pages in
-            renderedEntry = pages.last ?? pages.first
-#if DEBUG
-            UserDefaults.standard.set(renderedEntry?.page.key ?? "nil", forKey: "rautaDebugRenderedRoute")
-#endif
-        }
     }
 
     @ViewBuilder

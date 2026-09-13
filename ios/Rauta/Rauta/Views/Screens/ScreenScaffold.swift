@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct RautaScreen<Content: View, Controls: View, Right: View>: View {
+    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
+
     let title: String
     var subtitle: String?
     var subtitleProgress: [HeaderProgressState]? = nil
@@ -26,7 +28,7 @@ struct RautaScreen<Content: View, Controls: View, Right: View>: View {
                     // the fixed translucent title treatment.
                     .contentMargins(
                         .top,
-                        Theme.Metrics.headerHeight + DeviceScreen.safeAreaInsets.top,
+                        Theme.Metrics.headerHeight + safeAreaInsets.top,
                         for: .scrollContent
                     )
 

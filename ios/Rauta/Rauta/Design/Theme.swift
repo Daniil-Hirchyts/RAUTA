@@ -177,12 +177,16 @@ enum DeviceScreen {
         return 55
     }()
 
-    static var safeAreaInsets: UIEdgeInsets {
-        UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-            .first { $0.isKeyWindow }?
-            .safeAreaInsets ?? .zero
+}
+
+private struct AppSafeAreaInsetsKey: EnvironmentKey {
+    static let defaultValue = EdgeInsets()
+}
+
+extension EnvironmentValues {
+    var appSafeAreaInsets: EdgeInsets {
+        get { self[AppSafeAreaInsetsKey.self] }
+        set { self[AppSafeAreaInsetsKey.self] = newValue }
     }
 }
 

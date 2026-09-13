@@ -1,28 +1,35 @@
 import SwiftUI
 
-/// Browse the complete exercise catalogue without borrowing the workout-builder
-/// filters. Library state is deliberately local so a casual lookup cannot change
-/// the next RAUTA exercise-selection flow.
-struct LibraryScreen: View {
-    @ObservedObject private var store = AppStore.shared
+private struct LibraryBrowseState {
+    var search = ""
+    var selectedMuscles: [MuscleId] = []
+    var selectedEquipment: [String] = []
+    var favoritesOnly = false
+    var presentedFilter: LibraryFilterKind?
+    var visibleExerciseCount = ExerciseCatalogue.pageSize
+    var searchOpen = false
+}
 
-    @State private var search = ""
-    @State private var selectedMuscles: [MuscleId] = []
-    @State private var selectedEquipment: [String] = []
-    @State private var favoritesOnly = false
-    @State private var presentedFilter: LibraryFilterKind?
-    @State private var visibleExerciseCount = ExerciseCatalogue.pageSize
+/// Browse the complete exercise catalogue without borrowing the workout-builder
+/// filters. Browse state is isolated from the app shell so typing and filtering
+/// cannot invalidate the native tab host.
+struct LibraryScreen: View {
+    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
+    @ObservedObject private var favorites = FavoritesStore.shared
+    private let navigation = AppSessionStore.shared
+    @State private var browse = LibraryBrowseState()
+    @FocusState private var searchFocused: Bool
 
     private var filteredExercises: [ExerciseSummary] {
-        let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
-        let muscleSet = Set(selectedMuscles)
-        let equipmentSet = Set(selectedEquipment)
+        let query = browse.search.trimmingCharacters(in: .whitespacesAndNewlines)
+        let muscleSet = Set(browse.selectedMuscles)
+        let equipmentSet = Set(browse.selectedEquipment)
 
         let matches = ExerciseCatalogue.all.filter { exercise in
             (query.isEmpty || exercise.name.localizedCaseInsensitiveContains(query))
                 && (muscleSet.isEmpty || exercise.muscles.contains(where: muscleSet.contains))
                 && (equipmentSet.isEmpty || equipmentSet.contains(exercise.equipment))
-                && (!favoritesOnly || store.favorites.isFavorite(exercise.id))
+                && (!browse.favoritesOnly || favorites.isFavorite(exercise.id))
         }
 
         guard !muscleSet.isEmpty else {
@@ -39,32 +46,32 @@ struct LibraryScreen: View {
         }
     }
 
-    private var visibleExercises: ArraySlice<ExerciseSummary> {
-        filteredExercises.prefix(visibleExerciseCount)
+    private var hasActiveFilters: Bool {
+        !browse.search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || !browse.selectedMuscles.isEmpty
+            || !browse.selectedEquipment.isEmpty
+            || browse.favoritesOnly
     }
 
-    private var hasActiveFilters: Bool {
-        !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            || !selectedMuscles.isEmpty
-            || !selectedEquipment.isEmpty
-            || favoritesOnly
+    private var visibleExercises: ArraySlice<ExerciseSummary> {
+        filteredExercises.prefix(browse.visibleExerciseCount)
     }
 
     var body: some View {
         ZStack(alignment: .top) {
-            results
+            VStack(spacing: 0) {
+                libraryHeader
+                results
+            }
 
-            filterBar
-                .zIndex(20)
-
-            if let presentedFilter {
+            if let presentedFilter = browse.presentedFilter {
                 LibraryFilterOverlay(
                     filter: presentedFilter,
-                    selectedMuscles: $selectedMuscles,
-                    selectedEquipment: $selectedEquipment,
+                    selectedMuscles: $browse.selectedMuscles,
+                    selectedEquipment: $browse.selectedEquipment,
                     onClose: {
                         withAnimation(Theme.Motion.smoothOut(0.2)) {
-                            self.presentedFilter = nil
+                            browse.presentedFilter = nil
                         }
                     }
                 )
@@ -72,80 +79,30 @@ struct LibraryScreen: View {
                 .zIndex(50)
             }
         }
-        .onChange(of: search) { _, _ in resetPagination() }
-        .onChange(of: selectedMuscles) { _, _ in resetPagination() }
-        .onChange(of: selectedEquipment) { _, _ in resetPagination() }
-        .onChange(of: favoritesOnly) { _, _ in resetPagination() }
-        .onChange(of: store.favorites.favoriteIds) { _, _ in resetPagination() }
+        .onChange(of: browse.search) { _, _ in resetPagination() }
+        .onChange(of: browse.selectedMuscles) { _, _ in resetPagination() }
+        .onChange(of: browse.selectedEquipment) { _, _ in resetPagination() }
+        .onChange(of: browse.favoritesOnly) { _, _ in resetPagination() }
+        .onChange(of: favorites.favoriteIds) { _, _ in resetPagination() }
     }
 
-    private var filterBar: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(Theme.mutedForeground)
-
-                TextField("Search exercises", text: $search)
-                    .font(Theme.sans(16))
+    private var libraryHeader: some View {
+        VStack(alignment: .leading, spacing: browse.searchOpen ? 10 : 12) {
+            if !browse.searchOpen {
+                Text("Library")
+                    .font(Theme.sans(31, weight: .black))
+                    .kerning(-0.8)
                     .foregroundStyle(Theme.foreground)
-                    .tint(Theme.primary)
-                    .submitLabel(.search)
-                    .accessibilityLabel("Search exercises by name")
-
-                if !search.isEmpty {
-                    Button {
-                        Haptics.trigger(.selection)
-                        search = ""
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Theme.primary)
-                            .frame(width: 28, height: 28)
-                            .contentShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Clear search")
-                    .transition(.scale.combined(with: .opacity))
-                }
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
-            .padding(.horizontal, 16)
-            .frame(height: 44)
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay(Capsule().strokeBorder(Theme.Glassware.edge, lineWidth: 1))
-            .shadow(color: .black.opacity(0.16), radius: 14, y: 8)
 
-            ScrollView(.horizontal) {
-                HStack(spacing: 8) {
-                    LibraryFilterChip(
-                        title: selectedMuscles.isEmpty ? "Muscles" : "Muscles · \(selectedMuscles.count)",
-                        selected: !selectedMuscles.isEmpty
-                    ) {
-                        Haptics.trigger(.selection)
-                        presentedFilter = .muscles
-                    }
-
-                    LibraryFilterChip(
-                        title: selectedEquipment.isEmpty ? "Equipment" : "Equipment · \(selectedEquipment.count)",
-                        selected: !selectedEquipment.isEmpty
-                    ) {
-                        Haptics.trigger(.selection)
-                        presentedFilter = .equipment
-                    }
-
-                    LibraryFilterChip(title: "Favorites", selected: favoritesOnly) {
-                        Haptics.trigger(.selection)
-                        favoritesOnly.toggle()
-                    }
-
-                    if hasActiveFilters {
-                        LibraryFilterChip(title: "Clear") {
-                            clearFilters()
-                        }
-                    }
-                }
+            if browse.searchOpen {
+                expandedSearchBar
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            } else {
+                compactFilterBar
+                    .transition(.opacity)
             }
-            .scrollIndicators(.hidden)
 
             Text(Wording.countLabel(filteredExercises.count, "exercise"))
                 .font(Theme.sans(12, weight: .medium))
@@ -153,7 +110,180 @@ struct LibraryScreen: View {
                 .padding(.leading, 2)
         }
         .padding(.horizontal, Theme.Metrics.contentInset)
-        .padding(.top, DeviceScreen.safeAreaInsets.top + 8)
+        .padding(.top, safeAreaInsets.top + (browse.searchOpen ? 8 : 10))
+        .padding(.bottom, 8)
+    }
+
+    private var compactFilterBar: some View {
+        GlassGroup(spacing: 8) {
+            HStack(spacing: 8) {
+                LibraryFilterChip(
+                    title: browse.selectedMuscles.isEmpty ? "Muscles" : "Muscles · \(browse.selectedMuscles.count)",
+                    selected: !browse.selectedMuscles.isEmpty
+                ) {
+                    Haptics.trigger(.selection)
+                    browse.presentedFilter = .muscles
+                }
+
+                LibraryFilterChip(
+                    title: browse.selectedEquipment.isEmpty ? "Equipment" : "Equipment · \(browse.selectedEquipment.count)",
+                    selected: !browse.selectedEquipment.isEmpty
+                ) {
+                    Haptics.trigger(.selection)
+                    browse.presentedFilter = .equipment
+                }
+
+                LibraryFilterChip(title: "Favorites", selected: browse.favoritesOnly) {
+                    Haptics.trigger(.selection)
+                    browse.favoritesOnly.toggle()
+                }
+
+                Spacer(minLength: 0)
+
+                LibraryRoundButton(systemImage: "magnifyingglass", label: "Search exercises") {
+                    openSearch()
+                }
+            }
+        }
+    }
+
+    private var expandedSearchBar: some View {
+        GlassGroup(spacing: 8) {
+            HStack(spacing: 8) {
+                filterMenu
+
+                HStack(spacing: 9) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(Theme.secondaryForeground)
+
+                    TextField("Search exercises", text: $browse.search)
+                        .focused($searchFocused)
+                        .font(Theme.sans(16))
+                        .foregroundStyle(Theme.foreground)
+                        .tint(Theme.primary)
+                        .submitLabel(.search)
+                        .accessibilityLabel("Search exercises by name")
+
+                    if !browse.search.isEmpty {
+                        Button {
+                            Haptics.trigger(.selection)
+                            browse.search = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(Theme.mutedForeground)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Clear search")
+                    }
+                }
+                .padding(.horizontal, 14)
+                .frame(height: 46)
+                .glassSurface(
+                    .regular,
+                    in: Capsule(),
+                    border: searchFocused ? Theme.ring : Theme.Glassware.edge,
+                    legacyFill: Theme.card.opacity(0.74)
+                )
+
+                LibraryRoundButton(systemImage: "xmark", label: "Cancel search") {
+                    closeSearch()
+                }
+            }
+        }
+    }
+
+    private var filterMenu: some View {
+        Menu {
+            Button {
+                searchFocused = false
+                browse.presentedFilter = .muscles
+            } label: {
+                Label(
+                    browse.selectedMuscles.isEmpty ? "Muscles" : "Muscles (\(browse.selectedMuscles.count))",
+                    systemImage: "figure.strengthtraining.traditional"
+                )
+            }
+
+            Button {
+                searchFocused = false
+                browse.presentedFilter = .equipment
+            } label: {
+                Label(
+                    browse.selectedEquipment.isEmpty ? "Equipment" : "Equipment (\(browse.selectedEquipment.count))",
+                    systemImage: "dumbbell"
+                )
+            }
+
+            Button {
+                Haptics.trigger(.selection)
+                browse.favoritesOnly.toggle()
+            } label: {
+                Label(
+                    browse.favoritesOnly ? "Show all exercises" : "Favorites only",
+                    systemImage: browse.favoritesOnly ? "heart.slash" : "heart"
+                )
+            }
+
+            if hasActiveFilters {
+                Divider()
+                Button(role: .destructive) {
+                    clearFilters()
+                } label: {
+                    Label("Clear filters", systemImage: "xmark")
+                }
+            }
+        } label: {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: "circle.grid.2x2.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Theme.foreground)
+                    .frame(width: 46, height: 46)
+
+                if activeFilterCount > 0 {
+                    Text("\(activeFilterCount)")
+                        .font(Theme.sans(9, weight: .black))
+                        .foregroundStyle(Theme.primaryForeground)
+                        .frame(minWidth: 16, minHeight: 16)
+                        .background(Theme.primary, in: Circle())
+                        .offset(x: 3, y: -3)
+                }
+            }
+            .glassSurface(
+                activeFilterCount > 0 ? .tinted(Theme.primary.opacity(0.34)) : .regular,
+                in: Circle(),
+                border: activeFilterCount > 0 ? Theme.Glassware.brightEdge : Theme.Glassware.edge,
+                legacyFill: Theme.card.opacity(0.74)
+            )
+        }
+        .accessibilityLabel("Filters")
+    }
+
+    private var activeFilterCount: Int {
+        browse.selectedMuscles.count
+            + browse.selectedEquipment.count
+            + (browse.favoritesOnly ? 1 : 0)
+    }
+
+    private func openSearch() {
+        Haptics.trigger(.selection)
+        withAnimation(Theme.Motion.smoothOut(0.28)) {
+            browse.searchOpen = true
+        }
+        Task { @MainActor in
+            await Task.yield()
+            searchFocused = true
+        }
+    }
+
+    private func closeSearch() {
+        Haptics.trigger(.selection)
+        searchFocused = false
+        browse.search = ""
+        withAnimation(Theme.Motion.smoothOut(0.28)) {
+            browse.searchOpen = false
+        }
     }
 
     @ViewBuilder
@@ -174,7 +304,7 @@ struct LibraryScreen: View {
                             exercise: exercise,
                             index: index,
                             onOpenDetail: {
-                                store.navigation.push(.exerciseDetail(exerciseId: $0.id))
+                                navigation.push(.exerciseDetail(exerciseId: $0.id))
                             },
                             onToggleSelect: { _ in }
                         )
@@ -185,10 +315,10 @@ struct LibraryScreen: View {
                     }
                 }
                 .padding(.horizontal, Theme.Metrics.contentInset)
-                .padding(.top, DeviceScreen.safeAreaInsets.top + 154)
+                .padding(.top, 8)
                 .padding(.bottom, 28)
 
-                if visibleExerciseCount < filteredExercises.count {
+                if browse.visibleExerciseCount < filteredExercises.count {
                     MatrixLoader(
                         variant: .scan,
                         label: "Loading more exercises",
@@ -203,7 +333,7 @@ struct LibraryScreen: View {
 
     private var emptyState: some View {
         VStack(spacing: 12) {
-            Image(systemName: favoritesOnly ? "heart" : "magnifyingglass")
+            Image(systemName: browse.favoritesOnly ? "heart" : "magnifyingglass")
                 .font(.system(size: 28, weight: .medium))
                 .foregroundStyle(Theme.primary)
 
@@ -225,16 +355,15 @@ struct LibraryScreen: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.top, DeviceScreen.safeAreaInsets.top + 120)
         .padding(32)
     }
 
     private var emptyTitle: String {
-        favoritesOnly && store.favorites.favoriteIds.isEmpty ? "No favorites yet" : "No exercises found"
+        browse.favoritesOnly && favorites.favoriteIds.isEmpty ? "No favorites yet" : "No exercises found"
     }
 
     private var emptyMessage: String {
-        if favoritesOnly && store.favorites.favoriteIds.isEmpty {
+        if browse.favoritesOnly && favorites.favoriteIds.isEmpty {
             return "Favorite an exercise from its detail page and it will appear here."
         }
         return "Try another name, muscle, or equipment combination."
@@ -242,23 +371,24 @@ struct LibraryScreen: View {
 
     private func clearFilters() {
         Haptics.trigger(.selection)
-        search = ""
-        selectedMuscles = []
-        selectedEquipment = []
-        favoritesOnly = false
+        browse.search = ""
+        browse.selectedMuscles = []
+        browse.selectedEquipment = []
+        browse.favoritesOnly = false
     }
 
     private func resetPagination() {
-        visibleExerciseCount = ExerciseCatalogue.pageSize
+        browse.visibleExerciseCount = ExerciseCatalogue.pageSize
     }
 
     private func loadMoreExercises() {
-        guard visibleExerciseCount < filteredExercises.count else { return }
-        visibleExerciseCount = min(
-            visibleExerciseCount + ExerciseCatalogue.pageSize,
+        guard browse.visibleExerciseCount < filteredExercises.count else { return }
+        browse.visibleExerciseCount = min(
+            browse.visibleExerciseCount + ExerciseCatalogue.pageSize,
             filteredExercises.count
         )
     }
+
 }
 
 private struct LibraryFilterChip: View {
@@ -267,35 +397,38 @@ private struct LibraryFilterChip: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        AppButton(
+            variant: selected ? .primary : .secondary,
+            size: .standard,
+            accessibilityLabel: title,
+            action: action
+        ) {
             Text(title)
                 .font(Theme.sans(13, weight: .semibold))
-                .foregroundStyle(selected ? Theme.primaryForeground : Theme.secondaryForeground)
-                .padding(.horizontal, 13)
-                .frame(height: 34)
-                .background(.ultraThinMaterial, in: Capsule())
-                .overlay {
-                    if selected {
-                        Capsule()
-                            .fill(Theme.primaryGradient)
-                            .opacity(0.76)
-                            .allowsHitTesting(false)
-                    }
-                }
-                .overlay(
-                    Capsule().strokeBorder(
-                        selected ? Theme.Glassware.brightEdge : Theme.Glassware.edge,
-                        lineWidth: 1
-                    )
-                )
-                .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 
-private enum LibraryFilterKind: String, Identifiable {
+private struct LibraryRoundButton: View {
+    let systemImage: String
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        AppButton(
+            variant: .ghost,
+            size: .iconCTA,
+            accessibilityLabel: label,
+            action: action
+        ) {
+            Image(systemName: systemImage)
+                .font(.system(size: 18, weight: .semibold))
+        }
+    }
+}
+
+enum LibraryFilterKind: String, Identifiable {
     case muscles
     case equipment
 
@@ -304,6 +437,7 @@ private enum LibraryFilterKind: String, Identifiable {
 }
 
 private struct LibraryFilterOverlay: View {
+    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     let filter: LibraryFilterKind
     @Binding var selectedMuscles: [MuscleId]
     @Binding var selectedEquipment: [String]
@@ -338,7 +472,7 @@ private struct LibraryFilterOverlay: View {
                         )
                     }
                     .padding(.horizontal, 16)
-                    .padding(.top, DeviceScreen.safeAreaInsets.top + 72)
+                    .padding(.top, safeAreaInsets.top + 72)
                     .padding(.bottom, 76)
 
                 case .equipment:
@@ -349,7 +483,7 @@ private struct LibraryFilterOverlay: View {
                             onToggle: toggleEquipment
                         )
                         .padding(.horizontal, Theme.Metrics.contentInset)
-                        .padding(.top, DeviceScreen.safeAreaInsets.top + 82)
+                        .padding(.top, safeAreaInsets.top + 82)
                         .padding(.bottom, 92)
                     }
                 }
@@ -392,7 +526,7 @@ private struct LibraryFilterOverlay: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.top, DeviceScreen.safeAreaInsets.top)
+        .padding(.top, safeAreaInsets.top)
         .padding(.vertical, 10)
         .background(.ultraThinMaterial)
     }

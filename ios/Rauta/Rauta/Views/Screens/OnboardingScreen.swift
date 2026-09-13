@@ -17,6 +17,7 @@ enum ProfileStep: String {
 
 /// Mirrors ProfileStepFlow in profile-pages.tsx; settings reuses these steps.
 struct ProfileStepFlow: View {
+    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     @ObservedObject private var store = AppStore.shared
     let steps: [ProfileStep]
     var onboarding = false
@@ -29,7 +30,7 @@ struct ProfileStepFlow: View {
             GeometryReader { proxy in
                 ZStack(alignment: .top) {
                     VStack(spacing: 0) {
-                        Color.clear.frame(height: 68 + DeviceScreen.safeAreaInsets.top)
+                        Color.clear.frame(height: 68 + safeAreaInsets.top)
                         if step == .about || step == .duration {
                             Spacer(minLength: 20)
                             if step == .about {
@@ -102,7 +103,7 @@ struct ProfileStepFlow: View {
         .frame(minHeight: 44)
         .foregroundStyle(Theme.foreground)
         .padding(.horizontal, 12)
-        .padding(.top, 12 + DeviceScreen.safeAreaInsets.top)
+        .padding(.top, 12 + safeAreaInsets.top)
         .padding(.bottom, 12)
     }
 

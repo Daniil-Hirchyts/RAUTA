@@ -61,8 +61,6 @@ enum AppBackup {
             || !training.programs.isEmpty
             || !training.settings.loadConfigurations.isEmpty
             || !favorites.favoriteIds.isEmpty
-            || !filters.selectedMuscles.isEmpty
-            || !filters.selectedEquipment.isEmpty
             || !filters.gymEquipment.isEmpty
             || !filters.equipmentPresets.isEmpty
             || !filters.equipmentLoadIncrements.isEmpty

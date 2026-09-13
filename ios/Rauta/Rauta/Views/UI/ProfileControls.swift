@@ -215,6 +215,7 @@ struct ProfileGoalControl: View {
 }
 
 struct ProfileTopPanel: View {
+    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     @ObservedObject private var store = AppStore.shared
     var step: ProfileStep
     var hasRightControl: Bool
@@ -241,13 +242,13 @@ struct ProfileTopPanel: View {
     }
     var body: some View {
         VStack(spacing: 0) {
-            Color.clear.frame(height: 68 + DeviceScreen.safeAreaInsets.top)
+            Color.clear.frame(height: 68 + safeAreaInsets.top)
             Text(speech).font(Theme.sans(15, weight: .semibold)).tracking(-0.3).lineSpacing(2)
                 .foregroundStyle(Theme.foreground).multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity).padding(.horizontal, 52).padding(.top, 16).padding(.bottom, 16)
         }.overlay(alignment: .topTrailing) {
             RautaHeaderBadge(mood: mood, reactionKey: speech)
-                .padding(.top, 12 + DeviceScreen.safeAreaInsets.top)
+                .padding(.top, 12 + safeAreaInsets.top)
                 .padding(.trailing, hasRightControl ? 58 : 6)
         }
     }

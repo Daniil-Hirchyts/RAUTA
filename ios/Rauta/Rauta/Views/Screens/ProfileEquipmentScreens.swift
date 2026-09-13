@@ -91,6 +91,7 @@ struct ProfileEquipmentScreen: View {
 }
 
 struct EquipmentLoadScreen: View {
+    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     @ObservedObject private var store = AppStore.shared
     @State private var selectedEquipment = ""
 
@@ -121,7 +122,7 @@ struct EquipmentLoadScreen: View {
                 } else {
                     VStack(spacing: 0) {
                         loadDeck
-                            .padding(.top, 88 + DeviceScreen.safeAreaInsets.top)
+                            .padding(.top, 88 + safeAreaInsets.top)
 
                         Spacer(minLength: 12)
 

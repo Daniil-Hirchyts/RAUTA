@@ -34,13 +34,6 @@ enum ButtonSize {
     }
 }
 
-/// How long a button ignores a press that repeats the one before it.
-///
-/// A tap that starts a workout, saves a preset or deletes something is meant
-/// once. Hammering it runs the action twice: two identical workouts, a page
-/// pushed twice, a delete that outlives the row it removed.
-private let repeatGuardMilliseconds: Double = 350
-
 /// The app's one button.
 ///
 /// A disabled button that cannot be pressed also cannot say why: the tap lands
@@ -55,15 +48,13 @@ struct AppButton<Label: View>: View {
     var action: () -> Void
     @ViewBuilder var label: () -> Label
 
-    @State private var isPressed = false
     @State private var shakePhase = 0
-    @State private var lastAction: (label: String, at: Date)?
 
     private var tone: GlassTone {
         if isDisabled { return .inert }
         switch variant {
         case .primary:
-            return .tinted(isPressed ? Theme.primaryGradientActiveStart : Theme.primary)
+            return .tinted(Theme.primary)
         case .secondary:
             return .regular
         case .ghost:
@@ -77,7 +68,7 @@ struct AppButton<Label: View>: View {
         if isDisabled { return Theme.mutedForeground }
         switch variant {
         case .primary: return Theme.primaryForeground
-        case .secondary: return isPressed ? .white : Theme.secondaryForeground
+        case .secondary: return Theme.secondaryForeground
         case .ghost: return size == .icon || size == .iconCTA ? Theme.primary : Theme.foreground
         case .destructive: return Theme.primary
         }
@@ -86,7 +77,7 @@ struct AppButton<Label: View>: View {
     private var borderColor: Color {
         if isDisabled { return Theme.border }
         switch variant {
-        case .primary: return isPressed ? Theme.primarySofter.opacity(0.62) : Theme.Glassware.brightEdge
+        case .primary: return Theme.Glassware.brightEdge
         case .secondary, .ghost: return Theme.Glassware.edge
         case .destructive: return Theme.primary
         }
@@ -122,8 +113,7 @@ struct AppButton<Label: View>: View {
                 minHeight: size.hitHeight
             )
         }
-        .buttonStyle(PressReporting(isPressed: $isPressed))
-        .animation(Theme.Motion.spring, value: isPressed)
+        .buttonStyle(PressReporting())
         .modifier(ShakeEffect(phase: shakePhase))
         .accessibilityLabel(accessibilityLabel ?? "")
         .accessibilityAddTraits(isDisabled ? [] : [])
@@ -144,11 +134,11 @@ struct AppButton<Label: View>: View {
     @ViewBuilder
     private func buttonSurface<Content: View>(_ content: Content) -> some View {
         content
-            .glassSurface(tone, in: shape, interactive: !isDisabled, border: borderColor)
+            .glassSurface(tone, in: shape, interactive: false, border: borderColor)
             .overlay {
                 if !isDisabled, variant == .primary {
                     shape
-                        .fill(isPressed ? Theme.primaryGradientActive : Theme.primaryGradient)
+                        .fill(Theme.primaryGradient)
                         .opacity(Theme.Glassware.primaryWash)
                         .allowsHitTesting(false)
                 }
@@ -164,15 +154,6 @@ struct AppButton<Label: View>: View {
             Haptics.trigger(.warning)
             return
         }
-        // The guard has to tell a hammered repeat from a button that now does
-        // something else: most of them are reused in place. The label is what
-        // the user was answering, so that is what the press is keyed on.
-        let key = accessibilityLabel ?? "\(Label.self)"
-        if let lastAction, lastAction.label == key,
-           Date().timeIntervalSince(lastAction.at) * 1000 < repeatGuardMilliseconds {
-            return
-        }
-        lastAction = (key, Date())
         action()
     }
 }
@@ -199,13 +180,11 @@ extension AppButton where Label == Text {
 }
 
 private struct PressReporting: ButtonStyle {
-    @Binding var isPressed: Bool
-
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .onChange(of: configuration.isPressed) { _, pressed in
-                isPressed = pressed
-            }
+            .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            .opacity(configuration.isPressed ? 0.90 : 1)
+            .animation(Theme.Motion.spring, value: configuration.isPressed)
     }
 }
 

@@ -40,6 +40,11 @@ final class AppStore: ObservableObject {
             iCloud.objectWillChange,
         ] {
             store
+                // Child ObservableObjects emit before their @Published value is
+                // assigned. Forward on the next run-loop turn so screens that
+                // observe this aggregate read the new value, and so a child
+                // mutation never re-enters SwiftUI's current AttributeGraph pass.
+                .receive(on: RunLoop.main)
                 .sink { [weak self] in self?.objectWillChange.send() }
                 .store(in: &cancellables)
         }
@@ -77,7 +82,6 @@ final class AppStore: ObservableObject {
     }
 
     func persistNow() {
-        navigation.persist()
         filters.persist()
         favorites.persist()
         settings.persist()

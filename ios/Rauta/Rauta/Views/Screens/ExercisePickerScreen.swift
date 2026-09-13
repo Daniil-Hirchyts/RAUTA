@@ -3,6 +3,7 @@ import SwiftUI
 struct ExercisePickerScreen: View {
     enum Stage: Int { case muscles = 1, equipment, exercises }
 
+    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     @ObservedObject private var store = AppStore.shared
     let stage: Stage
     let preferredWorkoutId: String?
@@ -101,7 +102,7 @@ struct ExercisePickerScreen: View {
                 )
             }
             .padding(.horizontal, 16)
-            .padding(.top, Theme.Metrics.headerHeight + DeviceScreen.safeAreaInsets.top)
+            .padding(.top, Theme.Metrics.headerHeight + safeAreaInsets.top)
             .padding(.bottom, 12)
 
         case .equipment:
@@ -363,7 +364,6 @@ struct ExercisePickerScreen: View {
                     expands: true
                 ) {
                     store.navigation.selectMode = preferredWorkoutId != nil
-                    store.navigation.persist()
                     store.navigation.push(.exercises(preferredWorkoutId: preferredWorkoutId))
                 }
             }
@@ -398,7 +398,6 @@ struct ExercisePickerScreen: View {
                                     }
                                 } else {
                                     store.navigation.selectMode = true
-                                    store.navigation.persist()
                                 }
                             }
                             .glassMorph("destination-control", in: destinationMenuNamespace)
@@ -484,7 +483,6 @@ struct ExercisePickerScreen: View {
     private func cancelSelectMode() {
         store.navigation.selectMode = false
         store.navigation.selectedIds = []
-        store.navigation.persist()
         Haptics.trigger(.selection)
     }
 
@@ -514,6 +512,5 @@ struct ExercisePickerScreen: View {
 
     private func toggleSelected(_ id: String) {
         store.navigation.selectedIds = Sanitize.toggle(store.navigation.selectedIds, id)
-        store.navigation.persist()
     }
 }

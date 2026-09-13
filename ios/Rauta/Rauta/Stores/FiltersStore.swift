@@ -64,13 +64,11 @@ final class FiltersStore: ObservableObject {
             increments[equipment] = (number * 100).rounded() / 100
         }
 
-        let muscles = Sanitize.uniqueStrings(value?["selectedMuscles"]) {
-            MuscleId(rawValue: $0) != nil
-        }.compactMap(MuscleId.init(rawValue:))
-
         return PersistedFilters(
-            selectedMuscles: muscles,
-            selectedEquipment: Sanitize.uniqueStrings(value?["selectedEquipment"], isValid: validEquipment),
+            // Browse/workflow selections are transient UI state. Older backups
+            // may contain them, but a restore must still open with a clean flow.
+            selectedMuscles: [],
+            selectedEquipment: [],
             gymEquipment: Sanitize.uniqueStrings(value?["gymEquipment"], isValid: validEquipment),
             equipmentPresets: presets,
             equipmentLoadIncrements: increments
@@ -98,8 +96,10 @@ final class FiltersStore: ObservableObject {
 
     var snapshotTree: JSONValue {
         .object([
-            "selectedMuscles": .array(selectedMuscles.map { .string($0.rawValue) }),
-            "selectedEquipment": .array(selectedEquipment.map(JSONValue.string)),
+            // Keep the portable schema compatible while explicitly serializing
+            // transient selections as empty.
+            "selectedMuscles": .array([]),
+            "selectedEquipment": .array([]),
             "gymEquipment": .array(gymEquipment.map(JSONValue.string)),
             "equipmentPresets": .array(equipmentPresets.map { $0.jsonTree }),
             "equipmentLoadIncrements": .object(
@@ -108,37 +108,42 @@ final class FiltersStore: ObservableObject {
         ])
     }
 
-    private func mutate(_ body: () -> Void) {
+    private func mutatePersistent(_ body: () -> Void) {
         body()
         persist()
+        changed.send()
+    }
+
+    private func mutateTransient(_ body: () -> Void) {
+        body()
         changed.send()
     }
 
     // MARK: Mutations
 
     func toggleMuscle(_ muscle: MuscleId) {
-        mutate { selectedMuscles = Sanitize.toggle(selectedMuscles, muscle) }
+        mutateTransient { selectedMuscles = Sanitize.toggle(selectedMuscles, muscle) }
     }
 
     func toggleEquipment(_ equipment: String) {
         guard Self.validEquipment(equipment) else { return }
-        mutate { selectedEquipment = Sanitize.toggle(selectedEquipment, equipment) }
+        mutateTransient { selectedEquipment = Sanitize.toggle(selectedEquipment, equipment) }
     }
 
     func toggleGymEquipment(_ equipment: String) {
         guard Self.validEquipment(equipment) else { return }
-        mutate { gymEquipment = Sanitize.toggle(gymEquipment, equipment) }
+        mutatePersistent { gymEquipment = Sanitize.toggle(gymEquipment, equipment) }
     }
 
     func setMuscles(_ muscles: [MuscleId]) {
-        mutate {
+        mutateTransient {
             var seen = Set<MuscleId>()
             selectedMuscles = muscles.filter { seen.insert($0).inserted }
         }
     }
 
     func setEquipment(_ equipment: [String]) {
-        mutate {
+        mutateTransient {
             var seen = Set<String>()
             selectedEquipment = equipment.filter {
                 Self.validEquipment($0) && seen.insert($0).inserted
@@ -147,7 +152,7 @@ final class FiltersStore: ObservableObject {
     }
 
     func setGymEquipment(_ equipment: [String]) {
-        mutate {
+        mutatePersistent {
             var seen = Set<String>()
             gymEquipment = equipment.filter {
                 Self.validEquipment($0) && seen.insert($0).inserted
@@ -159,12 +164,12 @@ final class FiltersStore: ObservableObject {
         guard Self.validEquipment(equipment), incrementKg.isFinite,
               incrementKg >= 0.25, incrementKg <= 50
         else { return }
-        mutate { equipmentLoadIncrements[equipment] = (incrementKg * 100).rounded() / 100 }
+        mutatePersistent { equipmentLoadIncrements[equipment] = (incrementKg * 100).rounded() / 100 }
     }
 
     func clearEquipmentLoadIncrement(_ equipment: String) {
         guard equipmentLoadIncrements[equipment] != nil else { return }
-        mutate { equipmentLoadIncrements.removeValue(forKey: equipment) }
+        mutatePersistent { equipmentLoadIncrements.removeValue(forKey: equipment) }
     }
 
     /// Saving takes an explicit selection so the same preset list can be filled
@@ -178,7 +183,7 @@ final class FiltersStore: ObservableObject {
         }
         guard !normalizedName.isEmpty, !selection.isEmpty else { return }
 
-        mutate {
+        mutatePersistent {
             if let index = equipmentPresets.firstIndex(where: {
                 $0.name.lowercased() == normalizedName.lowercased()
             }) {
@@ -196,15 +201,15 @@ final class FiltersStore: ObservableObject {
 
     func applyEquipmentPreset(_ id: String) {
         guard let preset = equipmentPresets.first(where: { $0.id == id }) else { return }
-        mutate { selectedEquipment = preset.equipment }
+        mutateTransient { selectedEquipment = preset.equipment }
     }
 
     func deleteEquipmentPreset(_ id: String) {
-        mutate { equipmentPresets.removeAll { $0.id == id } }
+        mutatePersistent { equipmentPresets.removeAll { $0.id == id } }
     }
 
     func reset() {
-        mutate {
+        mutateTransient {
             selectedMuscles = []
             selectedEquipment = []
         }

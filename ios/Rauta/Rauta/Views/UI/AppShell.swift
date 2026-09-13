@@ -125,9 +125,11 @@ struct AppGrain: View {
 /// seam. Stepping the radius down band by band means each band is only slightly
 /// sharper than the one above it, and detail dissolves on the way up.
 struct AppTopScrim: View {
+    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
+
     var body: some View {
         AppGradientBlur(edge: .top, radiusScale: 1.05)
-        .frame(height: Theme.Metrics.headerHeight + DeviceScreen.safeAreaInsets.top + 4)
+        .frame(height: Theme.Metrics.headerHeight + safeAreaInsets.top + 4)
         .frame(maxWidth: .infinity, alignment: .top)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
@@ -253,6 +255,8 @@ enum HeaderProgressState: Hashable {
 }
 
 struct AppShellHeader<Left: View, Right: View, Above: View, Below: View>: View {
+    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
+
     enum TitleSize { case standard, medium, small, extraSmall }
 
     var title: String
@@ -343,7 +347,7 @@ struct AppShellHeader<Left: View, Right: View, Above: View, Below: View>: View {
             below()
         }
         .padding(.horizontal, Theme.Metrics.contentInset)
-        .padding(.top, 12 + DeviceScreen.safeAreaInsets.top)
+        .padding(.top, 12 + safeAreaInsets.top)
         .padding(.bottom, 12)
         .opacity(hidden ? 0 : 1)
         .offset(y: hidden ? -80 : 0)

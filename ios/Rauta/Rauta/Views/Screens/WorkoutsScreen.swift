@@ -6,7 +6,6 @@ enum MainTab: String, CaseIterable, Identifiable {
     case workout = "Workout"
     case library = "Library"
     case profile = "Profile"
-    case rauta = "Rauta"
 
     var id: String { rawValue }
 
@@ -16,9 +15,16 @@ enum MainTab: String, CaseIterable, Identifiable {
         case .workout: return "figure.strengthtraining.traditional"
         case .library: return "books.vertical"
         case .profile: return "person.crop.circle"
-        case .rauta: return "circle.fill"
         }
     }
+}
+
+/// The native tab shell has one auxiliary slot that is a control rather than a
+/// destination. Keeping that slot out of `MainTab` means RAUTA can never replace
+/// the current page or become restorable navigation state.
+private enum NativeTabSelection: Hashable {
+    case page(MainTab)
+    case rauta
 }
 
 enum NativeTabIcons {
@@ -26,7 +32,9 @@ enum NativeTabIcons {
     static let workout = make(MainTab.workout.systemImage)
     static let library = make(MainTab.library.systemImage)
     static let profile = make(MainTab.profile.systemImage)
-    static let transparentPlaceholder = UIGraphicsImageRenderer(size: CGSize(width: 28, height: 28)).image { _ in }
+    static let transparentPlaceholder = UIGraphicsImageRenderer(
+        size: CGSize(width: 28, height: 28)
+    ).image { _ in }
 
     static func image(for tab: MainTab) -> UIImage {
         switch tab {
@@ -34,7 +42,6 @@ enum NativeTabIcons {
         case .workout: return workout
         case .library: return library
         case .profile: return profile
-        case .rauta: return UIImage()
         }
     }
 
@@ -65,9 +72,13 @@ enum NativeTabIcons {
 }
 
 struct WorkoutsScreen: View {
-    @ObservedObject private var store = AppStore.shared
+    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
+    @ObservedObject private var workouts = WorkoutsStore.shared
+    @ObservedObject private var trainingRecords = TrainingRecordsStore.shared
+    @ObservedObject private var activeWorkout = ActiveWorkoutStore.shared
+    private let navigation = AppSessionStore.shared
+    private let filters = FiltersStore.shared
     @State private var mainTab: MainTab = .summary
-    @State private var nativeTabSelection: MainTab = .summary
     @State private var rautaMenuPresented = false
     @State private var rautaCompact = false
     @State private var exercisePlayerOpen = false
@@ -76,17 +87,18 @@ struct WorkoutsScreen: View {
     @State private var workoutDetailActionRequest: WorkoutDetailExternalAction?
     @State private var workoutListSelection = 0
     @State private var selectedWorkoutId: String?
+    @State private var tabHostIdentity = UUID()
 
     private var visibleWorkouts: [Workout] {
-        store.workouts.workouts.filter { workout in
+        workouts.workouts.filter { workout in
             guard let p = workout.planned, workout.completion == nil,
-                  store.activeWorkout.session?.workoutId != workout.id else { return true }
-            return !ProgramRecords.isSupersededPlannedSession(store.trainingRecords.data, p.programId, p.sessionId)
+                  activeWorkout.session?.workoutId != workout.id else { return true }
+            return !ProgramRecords.isSupersededPlannedSession(trainingRecords.data, p.programId, p.sessionId)
         }
     }
     private var upcoming: [Workout] {
         visibleWorkouts.filter {
-            store.activeWorkout.session?.workoutId == $0.id ||
+            activeWorkout.session?.workoutId == $0.id ||
             ($0.completion == nil && !($0.planned.map { TrainingPlan.isPlannedSessionRecorded($0.sessionId) } ?? false))
         }.sorted { $0.date < $1.date }
     }
@@ -107,7 +119,7 @@ struct WorkoutsScreen: View {
             }
         }
         .fullScreenCover(isPresented: $exercisePlayerOpen) {
-            if let session = store.activeWorkout.session {
+            if let session = activeWorkout.session {
                 if let exercise = ActiveWorkout.currentExercise(session) {
                     ActiveExerciseDrawer(
                         exercise: exercise,
@@ -115,14 +127,14 @@ struct WorkoutsScreen: View {
                         restSeconds: restSeconds(for: exercise.id),
                         onDetail: {
                             closeExercisePlayer()
-                            store.navigation.push(.exerciseDetail(exerciseId: exercise.id))
+                            navigation.push(.exerciseDetail(exerciseId: exercise.id))
                         },
                         hasNextExercise: session.exerciseIds.contains { id in
                             id != session.currentExerciseId && !session.completedIds.contains(id)
                         },
                         onFinishExercise: {
                             Haptics.trigger(.success)
-                            store.activeWorkout.completeCurrent()
+                            activeWorkout.completeCurrent()
                         },
                         onFinish: finishActiveWorkout,
                         onDismiss: closeExercisePlayer
@@ -146,7 +158,7 @@ struct WorkoutsScreen: View {
                     .onAppear { exercisePlayerOpen = false }
             }
         }
-        .onChange(of: store.activeWorkout.session?.workoutId) { _, workoutId in
+        .onChange(of: activeWorkout.session?.workoutId) { _, workoutId in
             if workoutId == nil {
                 exercisePlayerOpen = false
                 liveWorkoutPresented = false
@@ -156,11 +168,6 @@ struct WorkoutsScreen: View {
         .onChange(of: mainTab) { _, tab in
             if tab != .workout {
                 liveWorkoutPresented = false
-            }
-        }
-        .onChange(of: rautaMenuPresented) { _, presented in
-            if !presented {
-                syncNativeSelection(to: mainTab)
             }
         }
         .task {
@@ -177,38 +184,40 @@ struct WorkoutsScreen: View {
             // The compact tab-bar layout only has a job while a live workout
             // can supply the exercise accessory. Returning to idle should also
             // return the native tab bar to its normal, expanded presentation.
-            .tabBarMinimizeBehavior(store.activeWorkout.session == nil ? .never : .onScrollDown)
+            .tabBarMinimizeBehavior(activeWorkout.session == nil ? .never : .onScrollDown)
             // UIKit can retain the previous bottom-accessory chrome after the
             // accessory disappears. Rebuild the native tab host at the workout
             // lifecycle boundary so an ended workout cannot leave an empty pill.
-            .id(store.activeWorkout.session?.workoutId ?? "idle-native-tabs")
+            .id(
+                "\(tabHostIdentity.uuidString)-\(activeWorkout.session?.workoutId ?? "idle-native-tabs")"
+            )
     }
 
     @available(iOS 27.0, *)
     private var nativeProminentTabView: some View {
-        TabView(selection: navigationSelection) {
-            Tab(value: MainTab.summary) {
+        TabView(selection: nativeTabSelection) {
+            Tab(value: NativeTabSelection.page(.summary)) {
                 page(for: .summary)
             } label: {
                 tabLabel(.summary)
             }
-            Tab(value: MainTab.workout) {
+            Tab(value: NativeTabSelection.page(.workout)) {
                 workoutTabContent
             } label: {
                 tabLabel(.workout)
             }
-            Tab(value: MainTab.library) {
+            Tab(value: NativeTabSelection.page(.library)) {
                 page(for: .library)
             } label: {
                 tabLabel(.library)
             }
-            Tab(value: MainTab.profile) {
+            Tab(value: NativeTabSelection.page(.profile)) {
                 page(for: .profile)
             } label: {
                 tabLabel(.profile)
             }
-            Tab(value: MainTab.rauta, role: .search) {
-                rautaCurrentPage
+            Tab(value: NativeTabSelection.rauta, role: .search) {
+                Color.clear
             } label: {
                 Image(uiImage: NativeTabIcons.transparentPlaceholder)
             }
@@ -220,44 +229,34 @@ struct WorkoutsScreen: View {
                 nativeExerciseAccessory
             }
         )
-        .onChange(of: mainTab) { _, selection in
-            syncNativeSelection(to: selection)
-        }
-        .overlay(alignment: .bottomTrailing) {
-            ZStack(alignment: .bottomTrailing) {
-                NativeRautaTabTapInterceptor(onTap: presentRautaMenu)
-                    .frame(width: 1, height: 1)
-                    .allowsHitTesting(false)
-                nativeRautaControl
-            }
-        }
+        .overlay(alignment: .bottomTrailing) { nativeRautaControl }
     }
 
     @available(iOS 26.0, *)
     private var nativeAccessoryTabView: some View {
-        TabView(selection: navigationSelection) {
-            Tab(value: MainTab.summary) {
+        TabView(selection: nativeTabSelection) {
+            Tab(value: NativeTabSelection.page(.summary)) {
                 page(for: .summary)
             } label: {
                 tabLabel(.summary)
             }
-            Tab(value: MainTab.workout) {
+            Tab(value: NativeTabSelection.page(.workout)) {
                 workoutTabContent
             } label: {
                 tabLabel(.workout)
             }
-            Tab(value: MainTab.library) {
+            Tab(value: NativeTabSelection.page(.library)) {
                 page(for: .library)
             } label: {
                 tabLabel(.library)
             }
-            Tab(value: MainTab.profile) {
+            Tab(value: NativeTabSelection.page(.profile)) {
                 page(for: .profile)
             } label: {
                 tabLabel(.profile)
             }
-            Tab(value: MainTab.rauta, role: .search) {
-                rautaCurrentPage
+            Tab(value: NativeTabSelection.rauta, role: .search) {
+                Color.clear
             } label: {
                 Image(uiImage: NativeTabIcons.transparentPlaceholder)
             }
@@ -269,61 +268,41 @@ struct WorkoutsScreen: View {
                 nativeExerciseAccessory
             }
         )
-        .onChange(of: mainTab) { _, selection in
-            syncNativeSelection(to: selection)
-        }
-        .overlay(alignment: .bottomTrailing) {
-            ZStack(alignment: .bottomTrailing) {
-                NativeRautaTabTapInterceptor(onTap: presentRautaMenu)
-                    .frame(width: 1, height: 1)
-                    .allowsHitTesting(false)
-                nativeRautaControl
-            }
-        }
+        .overlay(alignment: .bottomTrailing) { nativeRautaControl }
     }
 
     @available(iOS 18.4, *)
     private var nativeTabView: some View {
-        TabView(selection: navigationSelection) {
-            Tab(value: MainTab.summary) {
+        TabView(selection: nativeTabSelection) {
+            Tab(value: NativeTabSelection.page(.summary)) {
                 page(for: .summary)
             } label: {
                 tabLabel(.summary)
             }
-            Tab(value: MainTab.workout) {
+            Tab(value: NativeTabSelection.page(.workout)) {
                 workoutTabContent
             } label: {
                 tabLabel(.workout)
             }
-            Tab(value: MainTab.library) {
+            Tab(value: NativeTabSelection.page(.library)) {
                 page(for: .library)
             } label: {
                 tabLabel(.library)
             }
-            Tab(value: MainTab.profile) {
+            Tab(value: NativeTabSelection.page(.profile)) {
                 page(for: .profile)
             } label: {
                 tabLabel(.profile)
             }
-            Tab(value: MainTab.rauta, role: .search) {
-                rautaCurrentPage
+            Tab(value: NativeTabSelection.rauta, role: .search) {
+                Color.clear
             } label: {
                 Image(uiImage: NativeTabIcons.transparentPlaceholder)
             }
         }
         .tabViewStyle(.sidebarAdaptable)
         .tint(Theme.primary)
-        .onChange(of: mainTab) { _, selection in
-            syncNativeSelection(to: selection)
-        }
-        .overlay(alignment: .bottomTrailing) {
-            ZStack(alignment: .bottomTrailing) {
-                NativeRautaTabTapInterceptor(onTap: presentRautaMenu)
-                    .frame(width: 1, height: 1)
-                    .allowsHitTesting(false)
-                nativeRautaControl
-            }
-        }
+        .overlay(alignment: .bottomTrailing) { nativeRautaControl }
     }
 
     private var legacyTabView: some View {
@@ -344,45 +323,18 @@ struct WorkoutsScreen: View {
         .tint(Theme.primary)
     }
 
-    private var navigationSelection: Binding<MainTab> {
+    private var nativeTabSelection: Binding<NativeTabSelection> {
         Binding(
-            get: { nativeTabSelection },
+            get: { .page(mainTab) },
             set: { selection in
-                if selection == .rauta {
-                    // Let UIKit enter its auxiliary slot long enough for the
-                    // Rauta popover to attach. `rautaCurrentPage` mirrors the
-                    // page the person was already viewing.
-                    nativeTabSelection = .rauta
+                switch selection {
+                case .page(let tab):
+                    mainTab = tab
+                case .rauta:
                     presentRautaMenu()
-                    return
                 }
-                // iOS 27 can publish the first regular tab immediately after
-                // selecting a prominent auxiliary tab. That is an internal
-                // fallback, not a navigation request. Keep `mainTab` stable
-                // and drive the native host back to the page underneath the
-                // open Rauta menu.
-                if rautaMenuPresented {
-                    syncNativeSelection(to: mainTab)
-                    return
-                }
-                // A modal exercise sheet can cause UIKit's backing tab bar to
-                // briefly publish its default tab while presentation chrome is
-                // being rebuilt. A modal cannot be used to change tabs anyway,
-                // so keep the person's current tab stable until it closes.
-                guard !exercisePlayerOpen else { return }
-                nativeTabSelection = selection
-                mainTab = selection
             }
         )
-    }
-
-    private func syncNativeSelection(to selection: MainTab) {
-        guard nativeTabSelection != selection else { return }
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            nativeTabSelection = selection
-        }
     }
 
     private func tabLabel(_ tab: MainTab) -> some View {
@@ -396,7 +348,7 @@ struct WorkoutsScreen: View {
 
     private var nativeRautaControl: some View {
         RautaNativeTabControl(
-            mood: store.activeWorkout.session == nil ? .calm : .focused,
+            mood: activeWorkout.session == nil ? .calm : .focused,
             activeTab: $mainTab,
             actionsForTab: companionActions(for:),
             compact: rautaCompact,
@@ -404,7 +356,7 @@ struct WorkoutsScreen: View {
             onPresent: presentRautaMenu
         )
         .padding(.trailing, 8)
-        .padding(.bottom, Swift.max(7, DeviceScreen.safeAreaInsets.bottom))
+        .padding(.bottom, Swift.max(7, safeAreaInsets.bottom))
         .offset(x: -3, y: rautaCompact ? 34 : 46)
         .zIndex(1_000)
     }
@@ -417,7 +369,7 @@ struct WorkoutsScreen: View {
     @available(iOS 26.0, *)
     @ViewBuilder
     private var nativeExerciseAccessory: some View {
-        if let session = store.activeWorkout.session {
+        if let session = activeWorkout.session {
             if let exercise = ActiveWorkout.currentExercise(session) {
                 NativeExerciseBottomAccessory(
                     exercise: exercise,
@@ -435,7 +387,7 @@ struct WorkoutsScreen: View {
     }
 
     private var shouldShowNativeExerciseAccessory: Bool {
-        guard let session = store.activeWorkout.session else { return false }
+        guard let session = activeWorkout.session else { return false }
         return ActiveWorkout.currentExercise(session) != nil
             || ActiveWorkout.progress(session).isComplete
     }
@@ -445,7 +397,7 @@ struct WorkoutsScreen: View {
         WorkoutTabHost(
             upcoming: upcoming,
             past: past,
-            activeWorkoutId: store.activeWorkout.session?.workoutId,
+            activeWorkoutId: activeWorkout.session?.workoutId,
             liveWorkoutPresented: $liveWorkoutPresented,
             detailActionState: $workoutDetailActionState,
             detailActionRequest: $workoutDetailActionRequest,
@@ -456,18 +408,9 @@ struct WorkoutsScreen: View {
     }
 
     @ViewBuilder
-    private var rautaCurrentPage: some View {
-        if mainTab == .workout {
-            workoutTabContent
-        } else {
-            page(for: mainTab)
-        }
-    }
-
-    @ViewBuilder
     private func page(for pageTab: MainTab) -> some View {
         if pageTab == .workout,
-           let session = store.activeWorkout.session {
+           let session = activeWorkout.session {
             WorkoutDetailScreen(
                 workoutId: session.workoutId,
                 embeddedInMainTabs: true,
@@ -481,7 +424,7 @@ struct WorkoutsScreen: View {
                             summaryContent
                         } else if pageTab == .workout {
                             noActiveWorkout
-                                .padding(.top, DeviceScreen.safeAreaInsets.top + 56)
+                                .padding(.top, safeAreaInsets.top + 56)
                         } else if pageTab == .library {
                             LibraryScreen()
                         } else {
@@ -499,7 +442,7 @@ struct WorkoutsScreen: View {
                             right: {
                                 if pageTab == .summary {
                                     AppHeaderButton(systemImage: "gearshape", label: "Settings") {
-                                        store.navigation.push(.settings)
+                                        navigation.push(.settings)
                                     }
                                 } else {
                                     Color.clear.frame(width: 44, height: 44)
@@ -537,7 +480,7 @@ struct WorkoutsScreen: View {
     private var summaryContent: some View {
         SummaryWorkoutsContent(
             completedWorkouts: past.filter { $0.completion != nil },
-            history: store.trainingRecords.trainingHistory()
+            history: trainingRecords.trainingHistory()
         )
     }
 
@@ -552,17 +495,17 @@ struct WorkoutsScreen: View {
         case .profile:
             return [
                 CompanionAction(title: "Settings", systemImage: "gearshape", primary: true) {
-                    store.navigation.push(.settings)
+                    navigation.push(.settings)
                 }
             ]
-        case .summary, .rauta:
+        case .summary:
             return summaryCompanionActions
         }
     }
 
     private var summaryCompanionActions: [CompanionAction] {
         var actions: [CompanionAction] = []
-        if store.activeWorkout.session != nil {
+        if activeWorkout.session != nil {
             actions.append(CompanionAction(title: "Continue workout", systemImage: "figure.strengthtraining.traditional", primary: true) {
                 withAnimation(Theme.Motion.smoothOut(0.28)) {
                     liveWorkoutPresented = true
@@ -570,9 +513,9 @@ struct WorkoutsScreen: View {
                 }
             })
         }
-        if let source = TrainingPlan.activeProgramRecord(), store.activeWorkout.session == nil {
+        if let source = TrainingPlan.activeProgramRecord(), activeWorkout.session == nil {
             let remaining = TrainingWorkflow.remainingTrainingSlots(source, ISOTime.now())
-            if !remaining.sessions.isEmpty && store.trainingRecords.data.sessions.contains(where: { $0.plannedProgramId == source.id }) {
+            if !remaining.sessions.isEmpty && trainingRecords.data.sessions.contains(where: { $0.plannedProgramId == source.id }) {
                 actions.append(CompanionAction(title: "Adjust remaining week", systemImage: "arrow.triangle.2.circlepath", primary: true) {
                     do {
                         let result = try TrainingWorkflow.generateAndSavePlan(source: source)
@@ -582,12 +525,12 @@ struct WorkoutsScreen: View {
                 })
             } else if remaining.sessions.isEmpty {
                 actions.append(CompanionAction(title: "Extend training plan", systemImage: "calendar.badge.plus", primary: true) {
-                    store.navigation.push(.planWeek(sourceProgramId: source.id))
+                    navigation.push(.planWeek(sourceProgramId: source.id))
                 })
             }
         }
-        actions.append(CompanionAction(title: store.trainingRecords.data.activeProgramId == nil ? "Create training plan" : "New training plan", systemImage: "calendar.badge.plus", primary: actions.isEmpty) {
-            store.navigation.push(.planWeek(sourceProgramId: nil))
+        actions.append(CompanionAction(title: trainingRecords.data.activeProgramId == nil ? "Create training plan" : "New training plan", systemImage: "calendar.badge.plus", primary: actions.isEmpty) {
+            navigation.push(.planWeek(sourceProgramId: nil))
         })
         actions.append(CompanionAction(title: "Choose exercises", systemImage: "list.bullet.rectangle", action: startExerciseFlow))
         return actions
@@ -643,7 +586,7 @@ struct WorkoutsScreen: View {
             return actions
         }
 
-        guard let session = store.activeWorkout.session else {
+        guard let session = activeWorkout.session else {
             return [
                 CompanionAction(title: "Choose exercises", systemImage: "list.bullet.rectangle", primary: true, action: startExerciseFlow)
             ]
@@ -656,9 +599,9 @@ struct WorkoutsScreen: View {
                 primary: true
             ) {
                 if session.runningSince == nil {
-                    store.activeWorkout.resume()
+                    activeWorkout.resume()
                 } else {
-                    store.activeWorkout.pause()
+                    activeWorkout.pause()
                 }
             }
         ]
@@ -674,29 +617,28 @@ struct WorkoutsScreen: View {
         actions.append(CompanionAction(title: "Finish workout", systemImage: "flag.checkered") {
             Haptics.trigger(.success)
             closeExercisePlayer()
-            store.activeWorkout.finish()
+            activeWorkout.finish()
             selectMainTab(.summary)
         })
         return actions
     }
     private func startExerciseFlow() {
-        store.filters.reset(); store.filters.setEquipment(store.filters.gymEquipment)
-        store.navigation.selectMode = false; store.navigation.selectedIds = []
-        store.navigation.push(.muscles(preferredWorkoutId: nil))
+        filters.reset(); filters.setEquipment(filters.gymEquipment)
+        navigation.selectMode = false; navigation.selectedIds = []
+        navigation.push(.muscles(preferredWorkoutId: nil))
     }
     private func selectMainTab(_ tab: MainTab) {
         mainTab = tab
-        nativeTabSelection = tab
     }
 
     private var exercisePlayerOpener: () -> Void {
-        let appStore = store
+        let activeWorkout = activeWorkout
         return {
             DispatchQueue.main.async {
-                guard let session = appStore.activeWorkout.session else { return }
+                guard let session = activeWorkout.session else { return }
                 if session.currentExerciseId == nil,
                    let exercise = ActiveWorkout.currentExercise(session) {
-                    appStore.activeWorkout.setCurrentExercise(exercise.id)
+                    activeWorkout.setCurrentExercise(exercise.id)
                 }
                 Haptics.trigger(.selection)
                 withAnimation(.spring(response: 0.48, dampingFraction: 0.86)) {
@@ -717,7 +659,7 @@ struct WorkoutsScreen: View {
     private func finishActiveWorkout() {
         Haptics.trigger(.success)
         closeExercisePlayer()
-        store.activeWorkout.finish()
+        activeWorkout.finish()
         selectMainTab(.summary)
     }
 
@@ -729,8 +671,8 @@ struct WorkoutsScreen: View {
     }
 
     private func restSeconds(for exerciseId: String) -> Double {
-        guard let workoutId = store.activeWorkout.session?.workoutId,
-              let workout = store.workouts.workout(workoutId),
+        guard let workoutId = activeWorkout.session?.workoutId,
+              let workout = workouts.workout(workoutId),
               let reference = workout.planned,
               let planned = TrainingPlan.plannedSessionView(reference.programId, reference.sessionId)
         else { return 90 }
@@ -842,7 +784,8 @@ private struct NativeWorkoutCompleteAccessory: View {
 }
 
 private struct WorkoutTabHost: View {
-    @ObservedObject private var store = AppStore.shared
+    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
+    @ObservedObject private var activeWorkout = ActiveWorkoutStore.shared
     let upcoming: [Workout]
     let past: [Workout]
     let activeWorkoutId: String?
@@ -866,7 +809,7 @@ private struct WorkoutTabHost: View {
                     onActionStateChange: { detailActionState = $0 }
                 )
             } else if liveWorkoutPresented,
-               let session = store.activeWorkout.session {
+               let session = activeWorkout.session {
                 WorkoutDetailScreen(
                     workoutId: session.workoutId,
                     embeddedInMainTabs: true,
@@ -897,7 +840,7 @@ private struct WorkoutTabHost: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 44)
                     .padding(.horizontal, Theme.Metrics.contentInset)
-                    .padding(.top, 12 + DeviceScreen.safeAreaInsets.top)
+                    .padding(.top, 12 + safeAreaInsets.top)
                     .zIndex(30)
             }
         } controls: {
@@ -948,17 +891,21 @@ struct RautaNativeTabControl: View {
     var body: some View {
         let actions = actionsForTab(activeTab)
 
-        ZStack {
-            RautaCharacter(
-                mood: mood,
-                reactionKey: reactionKey
-            )
-            .frame(width: characterSize, height: characterSize)
-            .offset(y: 7)
-            .allowsHitTesting(false)
+        Button(action: onPresent) {
+            ZStack {
+                RautaCharacter(
+                    mood: mood,
+                    reactionKey: reactionKey
+                )
+                .frame(width: characterSize, height: characterSize)
+                .offset(y: 7)
+                .allowsHitTesting(false)
+            }
+            .frame(width: controlSize, height: controlSize)
+            .contentShape(Circle())
         }
-        .frame(width: controlSize, height: controlSize)
-        .allowsHitTesting(false)
+        .buttonStyle(.plain)
+        .accessibilityLabel("Rauta actions")
         .popover(isPresented: $isPresented, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
             AppMenuSurface(dismiss: { isPresented = false }) {
                 ForEach(actions) { action in
@@ -983,127 +930,8 @@ struct RautaNativeTabControl: View {
     }
 }
 
-private struct NativeRautaTabTapInterceptor: UIViewRepresentable {
-    let onTap: () -> Void
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(onTap: onTap)
-    }
-
-    func makeUIView(context: Context) -> ProbeView {
-        let view = ProbeView()
-        view.coordinator = context.coordinator
-        return view
-    }
-
-    func updateUIView(_ uiView: ProbeView, context: Context) {
-        context.coordinator.onTap = onTap
-        uiView.coordinator = context.coordinator
-        uiView.scheduleInstall()
-    }
-
-    static func dismantleUIView(_ uiView: ProbeView, coordinator: Coordinator) {
-        coordinator.removeButton()
-    }
-
-    final class ProbeView: UIView {
-        weak var coordinator: Coordinator?
-
-        override func didMoveToWindow() {
-            super.didMoveToWindow()
-            scheduleInstall()
-        }
-
-        override func layoutSubviews() {
-            super.layoutSubviews()
-            scheduleInstall()
-        }
-
-        func scheduleInstall() {
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                coordinator?.install(from: self)
-            }
-        }
-    }
-
-    final class Coordinator: NSObject {
-        var onTap: () -> Void
-        weak var tabBar: UITabBar?
-        weak var hostWindow: UIWindow?
-        weak var button: UIButton?
-
-        init(onTap: @escaping () -> Void) {
-            self.onTap = onTap
-        }
-
-        func install(from probe: UIView) {
-            guard let window = probe.window,
-                  let tabBar = findTabBar(in: window)
-            else { return }
-
-            if self.tabBar !== tabBar || hostWindow !== window || button == nil {
-                removeButton()
-                let button = UIButton(type: .custom)
-                button.backgroundColor = .clear
-                button.accessibilityLabel = "Rauta actions"
-                button.accessibilityTraits = .button
-                button.addTarget(self, action: #selector(tapped), for: .touchUpInside)
-                window.addSubview(button)
-                self.tabBar = tabBar
-                hostWindow = window
-                self.button = button
-            }
-
-            guard let button else { return }
-            button.frame = tabBar.convert(auxiliarySlotFrame(in: tabBar), to: window)
-            window.bringSubviewToFront(button)
-        }
-
-        func removeButton() {
-            button?.removeFromSuperview()
-            button = nil
-            tabBar = nil
-            hostWindow = nil
-        }
-
-        @objc private func tapped() {
-            onTap()
-        }
-
-        private func findTabBar(in view: UIView) -> UITabBar? {
-            if let tabBar = view as? UITabBar { return tabBar }
-            for subview in view.subviews {
-                if let tabBar = findTabBar(in: subview) { return tabBar }
-            }
-            return nil
-        }
-
-        private func auxiliarySlotFrame(in tabBar: UITabBar) -> CGRect {
-            let candidates = tabBar.subviews.filter { subview in
-                let frame = subview.frame
-                return frame.minX > tabBar.bounds.midX
-                    && frame.width >= 56
-                    && frame.width <= 72
-                    && frame.height >= 56
-                    && frame.height <= 72
-            }
-            if let slot = candidates.max(by: { $0.frame.minX < $1.frame.minX }) {
-                return slot.frame
-            }
-            let size: CGFloat = 62
-            let trailingInset: CGFloat = 21
-            return CGRect(
-                x: tabBar.bounds.width - trailingInset - size,
-                y: 0,
-                width: size,
-                height: size
-            )
-        }
-    }
-}
-
 private struct SummaryWorkoutsContent: View {
+    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     let completedWorkouts: [Workout]
     let history: TrainingHistory
 
@@ -1124,7 +952,7 @@ private struct SummaryWorkoutsContent: View {
         }
         .contentMargins(
             .top,
-            Theme.Metrics.headerHeight + DeviceScreen.safeAreaInsets.top + 36,
+            Theme.Metrics.headerHeight + safeAreaInsets.top + 36,
             for: .scrollContent
         )
         .scrollIndicators(.hidden)
@@ -1132,6 +960,7 @@ private struct SummaryWorkoutsContent: View {
 }
 
 private struct WorkoutListContent: View {
+    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     let upcoming: [Workout]
     let past: [Workout]
     let activeWorkoutId: String?
@@ -1173,7 +1002,7 @@ private struct WorkoutListContent: View {
         }
         .contentMargins(
             .top,
-            Theme.Metrics.headerHeight + DeviceScreen.safeAreaInsets.top + 36,
+            Theme.Metrics.headerHeight + safeAreaInsets.top + 36,
             for: .scrollContent
         )
         .scrollIndicators(.hidden)

@@ -200,7 +200,11 @@ struct AppPageEntry: Identifiable, Hashable {
 
 enum NavigationDirection { case forward, back }
 
-/// The page stack plus the ephemeral browse state persisted with it.
+/// Runtime-only page stack and transient selection state.
+///
+/// Navigation is deliberately never restored across launches. Durable domain
+/// data belongs to its own stores; a fresh process always starts from the app
+/// root (or first-run onboarding) and builds a new navigation stack.
 @MainActor
 final class AppSessionStore: ObservableObject {
     static let shared = AppSessionStore()
@@ -212,17 +216,13 @@ final class AppSessionStore: ObservableObject {
     @Published private(set) var direction: NavigationDirection = .forward
     @Published var selectMode = false
     @Published var selectedIds: [String] = []
-    @Published var detailExerciseId: String?
 
     private var sequence = 0
 
     private init() {
-        let restored = Self.readSession()
-        selectMode = restored.selectMode
-        selectedIds = restored.selectedIds
-        detailExerciseId = restored.detailExerciseId
-        // The native shell always opens on the workout list; a restored deep page
-        // would be an ambush after the app was closed.
+        // Remove legacy session snapshots written by older builds. UI state is
+        // process-local now, so reopening the app always starts cleanly.
+        Storage.remove(Self.storageKey)
         pages = Self.initialPages().map(makeEntry)
     }
 
@@ -250,14 +250,12 @@ final class AppSessionStore: ObservableObject {
         guard page.isValid else { return }
         direction = .forward
         pages = pages + [makeEntry(page)]
-        persist()
     }
 
     func pop() {
         guard pages.count > 1 else { return }
         direction = .back
         pages = Array(pages.dropLast())
-        persist()
     }
 
     func replace(_ page: AppPage) {
@@ -266,65 +264,12 @@ final class AppSessionStore: ObservableObject {
         var nextPages = pages
         nextPages[nextPages.count - 1] = makeEntry(page)
         pages = nextPages
-        persist()
     }
 
     func reset(_ nextPages: [AppPage]) {
         guard !nextPages.isEmpty, nextPages.allSatisfy(\.isValid) else { return }
         direction = .back
         pages = nextPages.map(makeEntry)
-        persist()
     }
 
-    // MARK: Persistence
-
-    struct RestoredSession {
-        var detailExerciseId: String?
-        var pages: [AppPage]
-        var selectedIds: [String]
-        var selectMode: Bool
-    }
-
-    static func readSession() -> RestoredSession {
-        guard let envelope = Storage.readEnvelope(storageKey), envelope.version == version else {
-            return RestoredSession(
-                detailExerciseId: nil, pages: [.workouts], selectedIds: [], selectMode: false
-            )
-        }
-        let state = envelope.state
-        let detailExerciseId = state["detailExerciseId"]?.stringValue
-        var parsed = (state["pages"]?.arrayValue ?? [])
-            .prefix(12)
-            .compactMap(AppPage.parse)
-        if parsed.isEmpty { parsed = [.workouts] }
-        if parsed.first?.typeName != "workouts" { parsed.insert(.workouts, at: 0) }
-
-        return RestoredSession(
-            detailExerciseId: detailExerciseId.flatMap {
-                ExerciseCatalogue.has($0) ? $0 : nil
-            },
-            pages: Array(parsed),
-            selectedIds: Sanitize.uniqueStrings(state["selectedIds"]) {
-                ExerciseCatalogue.has($0)
-            },
-            selectMode: state["selectMode"]?.boolValue == true
-        )
-    }
-
-    func persist() {
-        let detail: String? = {
-            if case .exerciseDetail(let exerciseId) = activePage { return exerciseId }
-            return nil
-        }()
-        Storage.writeEnvelope(
-            Self.storageKey,
-            state: .object([
-                "detailExerciseId": detail.map(JSONValue.string) ?? .null,
-                "pages": .array(pages.map { $0.page.tree }),
-                "selectedIds": .array(selectedIds.map(JSONValue.string)),
-                "selectMode": .bool(selectMode),
-            ]),
-            version: Self.version
-        )
-    }
 }
