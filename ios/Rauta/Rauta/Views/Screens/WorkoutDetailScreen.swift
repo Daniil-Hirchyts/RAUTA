@@ -807,7 +807,6 @@ struct ActiveExerciseDrawer: View {
     let onFinish: () -> Void
     let onDismiss: () -> Void
     @State private var revealDetails = false
-    @State private var setLogHeight: CGFloat = 0
     @GestureState private var dismissalOffset: CGFloat = 0
 
     var body: some View {
@@ -859,80 +858,86 @@ struct ActiveExerciseDrawer: View {
 
     private func playerSurface(_ proxy: GeometryProxy) -> some View {
         VStack(spacing: 0) {
-            VStack(spacing: 18) {
+            GeometryReader { mediaProxy in
+                let mediaSize = max(
+                    0,
+                    min(336, min(proxy.size.width - 32, mediaProxy.size.height))
+                )
+
                 Button(action: onDetail) {
-                    let mediaSize = exerciseMediaSize(in: proxy)
                     ExerciseMediaView(exerciseId: exercise.id, animated: true)
                         .frame(width: mediaSize, height: mediaSize)
                 }
                 .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            }
+            .padding(.top, Swift.max(proxy.safeAreaInsets.top, 18) + 24)
+            .frame(maxWidth: .infinity)
+            .layoutPriority(-1)
 
-                HStack(alignment: .center, spacing: 10) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(exercise.name.capitalized)
-                            .font(Theme.sans(24, weight: .bold))
-                            .foregroundStyle(Theme.foreground)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.72)
-                        Text(trainedMusclesText)
-                            .font(Theme.sans(13, weight: .medium))
-                            .foregroundStyle(Theme.mutedForeground)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.78)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(exercise.name.capitalized)
+                        .font(Theme.sans(24, weight: .bold))
+                        .foregroundStyle(Theme.foreground)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                    Text(trainedMusclesText)
+                        .font(Theme.sans(13, weight: .medium))
+                        .foregroundStyle(Theme.mutedForeground)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                    LikeButton(
-                        liked: store.favorites.isFavorite(exercise.id),
-                        label: store.favorites.isFavorite(exercise.id)
-                            ? "Remove \(exercise.name) from favorites"
-                            : "Add \(exercise.name) to favorites",
-                        size: 36,
-                        iconSize: 18,
-                        chromeless: true
-                    ) {
-                        store.favorites.toggleFavorite(exercise.id)
-                    }
+                LikeButton(
+                    liked: store.favorites.isFavorite(exercise.id),
+                    label: store.favorites.isFavorite(exercise.id)
+                        ? "Remove \(exercise.name) from favorites"
+                        : "Add \(exercise.name) to favorites",
+                    size: 36,
+                    iconSize: 18,
+                    chromeless: true
+                ) {
+                    store.favorites.toggleFavorite(exercise.id)
+                }
 
-                    Menu {
-                        Button {
-                            Haptics.trigger(.selection)
-                            if store.activeWorkout.session?.runningSince == nil {
-                                store.activeWorkout.resume()
-                            } else {
-                                store.activeWorkout.pause()
-                            }
-                        } label: {
-                            Label(
-                                store.activeWorkout.session?.runningSince == nil ? "Resume workout" : "Pause workout",
-                                systemImage: store.activeWorkout.session?.runningSince == nil ? "play.fill" : "pause.fill"
-                            )
-                        }
-                        Button {
-                            onFinishExercise()
-                        } label: {
-                            Label("Finish exercise", systemImage: "flag.checkered")
-                        }
-                        Button {
-                            onFinish()
-                        } label: {
-                            Label("Finish workout", systemImage: "flag.checkered")
+                Menu {
+                    Button {
+                        Haptics.trigger(.selection)
+                        if store.activeWorkout.session?.runningSince == nil {
+                            store.activeWorkout.resume()
+                        } else {
+                            store.activeWorkout.pause()
                         }
                     } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 19, weight: .bold))
-                            .foregroundStyle(Theme.foreground)
-                            .frame(width: 36, height: 36)
-                            .contentShape(Rectangle())
+                        Label(
+                            store.activeWorkout.session?.runningSince == nil ? "Resume workout" : "Pause workout",
+                            systemImage: store.activeWorkout.session?.runningSince == nil ? "play.fill" : "pause.fill"
+                        )
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Workout actions")
+                    Button {
+                        onFinishExercise()
+                    } label: {
+                        Label("Finish exercise", systemImage: "flag.checkered")
+                    }
+                    Button {
+                        onFinish()
+                    } label: {
+                        Label("Finish workout", systemImage: "flag.checkered")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 19, weight: .bold))
+                        .foregroundStyle(Theme.foreground)
+                        .frame(width: 36, height: 36)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Workout actions")
             }
             .padding(.horizontal, Theme.Metrics.contentInset)
-            .padding(.top, Swift.max(proxy.safeAreaInsets.top, 18) + 104)
-
-            Spacer(minLength: 10)
+            .padding(.top, 18)
 
             ActiveSetLog(
                 exerciseId: exercise.id,
@@ -941,20 +946,9 @@ struct ActiveExerciseDrawer: View {
                 onFinishExercise: onFinishExercise
             )
                 .fixedSize(horizontal: false, vertical: true)
-                .background {
-                    GeometryReader { logProxy in
-                        Color.clear.preference(
-                            key: ActiveSetLogHeightPreferenceKey.self,
-                            value: logProxy.size.height
-                        )
-                    }
-                }
-                .onPreferenceChange(ActiveSetLogHeightPreferenceKey.self) { height in
-                    guard abs(setLogHeight - height) > 0.5 else { return }
-                    setLogHeight = height
-                }
                 .opacity(revealDetails ? 1 : 0)
                 .offset(y: revealDetails ? 0 : 18)
+                .padding(.top, 12)
                 .padding(.horizontal, Theme.Metrics.contentInset)
                 .padding(.bottom, Swift.max(proxy.safeAreaInsets.bottom, 14))
         }
@@ -972,37 +966,9 @@ struct ActiveExerciseDrawer: View {
         }
     }
 
-    private func exerciseMediaSize(in proxy: GeometryProxy) -> CGFloat {
-        let maximum = min(250, proxy.size.width - 72)
-        guard setLogHeight > 0 else { return maximum }
-
-        let topInset = Swift.max(proxy.safeAreaInsets.top, 18) + 104
-        let titleBlock: CGFloat = 60
-        let spacingAroundMedia: CGFloat = 38
-        let breathingRoom: CGFloat = 36
-        let bottomInset = Swift.max(proxy.safeAreaInsets.bottom, 14)
-        let available = proxy.size.height
-            - topInset
-            - titleBlock
-            - spacingAroundMedia
-            - breathingRoom
-            - setLogHeight
-            - bottomInset
-
-        return min(maximum, max(128, available))
-    }
-
     private var trainedMusclesText: String {
         let labels = exercise.muscles.map(\.label)
         return labels.isEmpty ? "Full body" : labels.joined(separator: " · ")
-    }
-}
-
-private struct ActiveSetLogHeightPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 }
 

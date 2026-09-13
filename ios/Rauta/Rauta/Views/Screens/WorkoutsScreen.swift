@@ -31,6 +31,12 @@ private enum WorkoutListFilter: Int, CaseIterable, Identifiable {
     case all
     case planned
     case past
+    case fullBody
+    case upper
+    case lower
+    case push
+    case pull
+    case legs
 
     var id: Int { rawValue }
 
@@ -39,6 +45,32 @@ private enum WorkoutListFilter: Int, CaseIterable, Identifiable {
         case .all: return "All"
         case .planned: return "Planned"
         case .past: return "Past"
+        case .fullBody: return "Full body"
+        case .upper: return "Upper"
+        case .lower: return "Lower"
+        case .push: return "Push"
+        case .pull: return "Pull"
+        case .legs: return "Legs"
+        }
+    }
+
+    var isWorkoutType: Bool {
+        switch self {
+        case .all, .planned, .past: return false
+        case .fullBody, .upper, .lower, .push, .pull, .legs: return true
+        }
+    }
+
+    func matchesWorkoutType(_ workout: Workout) -> Bool {
+        let name = workout.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        switch self {
+        case .fullBody: return name.hasPrefix("full body")
+        case .upper: return name.hasPrefix("upper")
+        case .lower: return name.hasPrefix("lower")
+        case .push: return name.hasPrefix("push")
+        case .pull: return name.hasPrefix("pull")
+        case .legs: return name.hasPrefix("legs") || name.hasPrefix("leg day")
+        case .all, .planned, .past: return false
         }
     }
 }
@@ -894,7 +926,10 @@ private struct WorkoutTabHost: View {
                     right: { Color.clear.frame(width: 44, height: 44) },
                     above: { EmptyView() },
                     below: {
-                        WorkoutsModeSwitcher(selection: $listSelection)
+                        WorkoutsModeSwitcher(
+                            selection: $listSelection,
+                            workouts: upcoming + past
+                        )
                     }
                 )
                     .zIndex(30)
@@ -942,7 +977,7 @@ struct RautaNativeTabControl: View {
     // Give the Rive view a genuinely different layout size in each state: a
     // transform alone can leave the representable rendering at its old bounds.
     private var controlSize: CGFloat { compact ? 88 : 80 }
-    private var characterSize: CGFloat { compact ? 74 : 62 }
+    private var characterSize: CGFloat { compact ? 48 : 62 }
 
     var body: some View {
         let actions = actionsForTab(activeTab)
@@ -954,7 +989,7 @@ struct RautaNativeTabControl: View {
                     reactionKey: reactionKey
                 )
                 .frame(width: characterSize, height: characterSize)
-                .offset(y: 7)
+                .offset(y: compact ? 0 : 7)
                 .allowsHitTesting(false)
             }
             .frame(width: controlSize, height: controlSize)
@@ -1050,7 +1085,17 @@ private struct WorkoutListContent: View {
             return upcoming
         case .past:
             return past
+        case .fullBody, .upper, .lower, .push, .pull, .legs:
+            return allWorkouts.filter(filter.matchesWorkoutType)
         }
+    }
+
+    private var availableFilters: [WorkoutListFilter] {
+        let base: [WorkoutListFilter] = [.all, .planned, .past]
+        let workoutTypes = WorkoutListFilter.allCases.filter { candidate in
+            candidate.isWorkoutType && allWorkouts.contains(where: candidate.matchesWorkoutType)
+        }
+        return base + workoutTypes
     }
 
     private var visibleWorkouts: [Workout] {
@@ -1085,6 +1130,8 @@ private struct WorkoutListContent: View {
         case .all: return "No workouts yet"
         case .planned: return "No planned workouts"
         case .past: return "No past workouts yet"
+        case .fullBody, .upper, .lower, .push, .pull, .legs:
+            return "No \(filter.title.lowercased()) workouts"
         }
     }
 
@@ -1135,6 +1182,12 @@ private struct WorkoutListContent: View {
         .animation(Theme.Motion.smoothOut(0.24), value: selection)
         .onChange(of: selection) { _, _ in
             visibleLimit = 12
+        }
+        .onChange(of: availableFilters.map(\.rawValue)) { _, filters in
+            guard filters.contains(selection) else {
+                selection = WorkoutListFilter.all.rawValue
+                return
+            }
         }
     }
 
@@ -1192,27 +1245,38 @@ private struct WorkoutListContent: View {
 
 private struct WorkoutsModeSwitcher: View {
     @Binding var selection: Int
+    let workouts: [Workout]
+
+    private var availableFilters: [WorkoutListFilter] {
+        let base: [WorkoutListFilter] = [.all, .planned, .past]
+        let workoutTypes = WorkoutListFilter.allCases.filter { candidate in
+            candidate.isWorkoutType && workouts.contains(where: candidate.matchesWorkoutType)
+        }
+        return base + workoutTypes
+    }
 
     var body: some View {
-        GlassGroup(spacing: 8) {
-            HStack(spacing: 8) {
-                ForEach(WorkoutListFilter.allCases) { filter in
-                    WorkoutFilterChip(
-                        title: filter.title,
-                        selected: selection == filter.rawValue
-                    ) {
-                        guard selection != filter.rawValue else { return }
-                        Haptics.trigger(.selection)
-                        withAnimation(Theme.Motion.smoothOut(0.24)) {
-                            selection = filter.rawValue
+        ScrollView(.horizontal) {
+            GlassGroup(spacing: 8) {
+                HStack(spacing: 8) {
+                    ForEach(availableFilters) { filter in
+                        WorkoutFilterChip(
+                            title: filter.title,
+                            selected: selection == filter.rawValue
+                        ) {
+                            guard selection != filter.rawValue else { return }
+                            Haptics.trigger(.selection)
+                            withAnimation(Theme.Motion.smoothOut(0.24)) {
+                                selection = filter.rawValue
+                            }
                         }
                     }
                 }
-
-                Spacer(minLength: 0)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .scrollIndicators(.hidden)
+        .scrollClipDisabled()
+        .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 44, alignment: .leading)
     }
 }
 
