@@ -35,6 +35,9 @@ enum Haptics {
     }
 
     static func trigger(_ input: HapticInput) {
+        // Every haptic is the app saying "the person just did something", which
+        // is exactly what RAUTA reacts to — whether or not haptics are on.
+        RautaDirector.shared.feedback(input)
         let settings = SettingsStore.shared
         if settings.soundChimesEnabled, input == .success || input == .warning {
             Chimes.play(input == .success ? 740 : 420)

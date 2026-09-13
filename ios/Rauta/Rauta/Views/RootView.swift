@@ -10,6 +10,9 @@ struct RootView: View {
                 if let rootEntry = navigation.pages.first {
                     page(for: rootEntry.page)
                         .id(rootEntry.id)
+                        // The root page stays mounted under whatever is pushed
+                        // over it; its RAUTA must not keep performing unseen.
+                        .environment(\.rautaOnStage, navigation.activeEntry?.id == rootEntry.id)
                 } else {
                     WorkoutsScreen()
                 }
