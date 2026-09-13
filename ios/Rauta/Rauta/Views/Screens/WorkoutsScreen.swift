@@ -169,6 +169,9 @@ struct WorkoutsScreen: View {
             if tab != .workout {
                 liveWorkoutPresented = false
             }
+            if tab == .profile {
+                rautaMenuPresented = false
+            }
         }
         .task {
             // Restore any missing lightweight projection from its authoritative plan.
@@ -216,10 +219,12 @@ struct WorkoutsScreen: View {
             } label: {
                 tabLabel(.profile)
             }
-            Tab(value: NativeTabSelection.rauta, role: .search) {
-                Color.clear
-            } label: {
-                Image(uiImage: NativeTabIcons.transparentPlaceholder)
+            if mainTab != .profile {
+                Tab(value: NativeTabSelection.rauta, role: .search) {
+                    Color.clear
+                } label: {
+                    Image(uiImage: NativeTabIcons.transparentPlaceholder)
+                }
             }
         }
         .tabViewStyle(.sidebarAdaptable)
@@ -255,10 +260,12 @@ struct WorkoutsScreen: View {
             } label: {
                 tabLabel(.profile)
             }
-            Tab(value: NativeTabSelection.rauta, role: .search) {
-                Color.clear
-            } label: {
-                Image(uiImage: NativeTabIcons.transparentPlaceholder)
+            if mainTab != .profile {
+                Tab(value: NativeTabSelection.rauta, role: .search) {
+                    Color.clear
+                } label: {
+                    Image(uiImage: NativeTabIcons.transparentPlaceholder)
+                }
             }
         }
         .tabViewStyle(.sidebarAdaptable)
@@ -294,10 +301,12 @@ struct WorkoutsScreen: View {
             } label: {
                 tabLabel(.profile)
             }
-            Tab(value: NativeTabSelection.rauta, role: .search) {
-                Color.clear
-            } label: {
-                Image(uiImage: NativeTabIcons.transparentPlaceholder)
+            if mainTab != .profile {
+                Tab(value: NativeTabSelection.rauta, role: .search) {
+                    Color.clear
+                } label: {
+                    Image(uiImage: NativeTabIcons.transparentPlaceholder)
+                }
             }
         }
         .tabViewStyle(.sidebarAdaptable)
@@ -346,19 +355,23 @@ struct WorkoutsScreen: View {
         }
     }
 
+    @ViewBuilder
     private var nativeRautaControl: some View {
-        RautaNativeTabControl(
-            mood: activeWorkout.session == nil ? .calm : .focused,
-            activeTab: $mainTab,
-            actionsForTab: companionActions(for:),
-            compact: rautaCompact,
-            isPresented: $rautaMenuPresented,
-            onPresent: presentRautaMenu
-        )
-        .padding(.trailing, 8)
-        .padding(.bottom, Swift.max(7, safeAreaInsets.bottom))
-        .offset(x: -3, y: rautaCompact ? 34 : 46)
-        .zIndex(1_000)
+        if mainTab != .profile {
+            RautaNativeTabControl(
+                mood: activeWorkout.session == nil ? .calm : .focused,
+                activeTab: $mainTab,
+                actionsForTab: companionActions(for:),
+                compact: rautaCompact,
+                isPresented: $rautaMenuPresented,
+                onPresent: presentRautaMenu
+            )
+            .padding(.trailing, 8)
+            .padding(.bottom, Swift.max(7, safeAreaInsets.bottom))
+            .offset(x: -3, y: rautaCompact ? 34 : 46)
+            .transition(.scale(scale: 0.78, anchor: .bottomTrailing).combined(with: .opacity))
+            .zIndex(1_000)
+        }
     }
 
     private func presentRautaMenu() {
@@ -427,6 +440,8 @@ struct WorkoutsScreen: View {
                                 .padding(.top, safeAreaInsets.top + 56)
                         } else if pageTab == .library {
                             LibraryScreen()
+                        } else if pageTab == .profile {
+                            ProfileDashboard()
                         } else {
                             Spacer(minLength: 0)
                         }
@@ -440,7 +455,7 @@ struct WorkoutsScreen: View {
                             title: pageTab.rawValue,
                             left: { Color.clear.frame(width: 44, height: 44) },
                             right: {
-                                if pageTab == .summary {
+                                if pageTab == .profile {
                                     AppHeaderButton(systemImage: "gearshape", label: "Settings") {
                                         navigation.push(.settings)
                                     }
