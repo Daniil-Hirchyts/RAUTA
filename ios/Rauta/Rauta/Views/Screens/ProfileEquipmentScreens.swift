@@ -27,9 +27,9 @@ struct ProfileEquipmentScreen: View {
                         onToggle: store.filters.toggleGymEquipment
                     )
                     .padding(.horizontal, Theme.Metrics.contentInset)
-                    .padding(.top, 20)
                     .padding(.bottom, 112)
                 }
+                .pageScroll()
 
                 EquipmentPresets(
                     value: store.filters.gymEquipment,
@@ -91,7 +91,6 @@ struct ProfileEquipmentScreen: View {
 }
 
 struct EquipmentLoadScreen: View {
-    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     @ObservedObject private var store = AppStore.shared
     @State private var selectedEquipment = ""
 
@@ -122,7 +121,7 @@ struct EquipmentLoadScreen: View {
                 } else {
                     VStack(spacing: 0) {
                         loadDeck
-                            .padding(.top, 88 + safeAreaInsets.top)
+                            .belowPageHeader()
 
                         Spacer(minLength: 12)
 
@@ -275,8 +274,7 @@ struct MusclePrioritiesScreen: View {
                         onSideChange: { side = $0 },
                         showCornerCount: false,
                         showFlipButton: false,
-                        side: side,
-                        figureOffsetY: 48
+                        side: side
                     )
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -286,7 +284,7 @@ struct MusclePrioritiesScreen: View {
                     .padding(.bottom, 4)
             }
             .padding(.horizontal, Theme.Metrics.contentInset)
-            .padding(.top, 12)
+            .belowPageHeader()
             .padding(.bottom, 12)
         } controls: {
             HStack(spacing: 10) {

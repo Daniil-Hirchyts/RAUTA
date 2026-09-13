@@ -107,6 +107,152 @@ struct GlassSurface<S: InsettableShape>: ViewModifier {
     }
 }
 
+// MARK: - Glass buttons
+
+/// The cut of a glass button, and how big its pane is.
+enum GlassButtonShape: Equatable {
+    /// A round tool, `diameter` points across.
+    case circle(diameter: CGFloat)
+    /// A pill `height` points tall, as wide as its label and the label's own
+    /// horizontal padding.
+    case capsule(height: CGFloat)
+}
+
+extension PrimitiveButtonStyle where Self == GlassControlStyle {
+    /// A button made of the system's own Liquid Glass.
+    ///
+    /// On iOS 26 this is the platform's glass button: it flexes under a finger,
+    /// shimmers where it is touched, and carries its own rim and shadow — so
+    /// nothing is laid over it, and nothing clips it to its shape. Before iOS 26
+    /// the same button is drawn on the blurred pane `glassSurface` falls back to.
+    static func glassControl(
+        _ tone: GlassTone,
+        _ shape: GlassButtonShape,
+        legacyFill: Color? = nil
+    ) -> GlassControlStyle {
+        GlassControlStyle(tone: tone, shape: shape, legacyFill: legacyFill)
+    }
+}
+
+struct GlassControlStyle: PrimitiveButtonStyle {
+    var tone: GlassTone
+    var shape: GlassButtonShape
+    var legacyFill: Color?
+
+    /// What the system glass style pads its label with at the regular control
+    /// size. The label is laid out at the pane's full size and hands this back,
+    /// so a pane is the same size on either side of iOS 26.
+    private static let systemVerticalInset: CGFloat = 7
+    private static let systemCircleInset: CGFloat = 7
+    private static let systemCapsuleInset: CGFloat = 14
+
+    func makeBody(configuration: Configuration) -> some View {
+        if #available(iOS 26.0, *) {
+            Button(role: configuration.role, action: configuration.trigger) {
+                sized(configuration.label)
+                    .padding(.vertical, -Self.systemVerticalInset)
+                    .padding(.horizontal, -horizontalInset)
+            }
+            .modifier(SystemGlassButton(tone: tone))
+            .buttonBorderShape(borderShape)
+            .controlSize(.regular)
+        } else {
+            Button(role: configuration.role, action: configuration.trigger) {
+                sized(configuration.label)
+            }
+            .buttonStyle(LegacyGlassButton(tone: tone, shape: shape, legacyFill: legacyFill))
+        }
+    }
+
+    private func sized(_ label: Configuration.Label) -> some View {
+        switch shape {
+        case .circle(let diameter):
+            return label.frame(width: diameter, height: diameter)
+        case .capsule(let height):
+            return label.frame(width: nil, height: height)
+        }
+    }
+
+    private var horizontalInset: CGFloat {
+        switch shape {
+        case .circle: return Self.systemCircleInset
+        case .capsule: return Self.systemCapsuleInset
+        }
+    }
+
+    @available(iOS 26.0, *)
+    private var borderShape: ButtonBorderShape {
+        switch shape {
+        case .circle: return .circle
+        case .capsule: return .capsule
+        }
+    }
+}
+
+@available(iOS 26.0, *)
+private struct SystemGlassButton: ViewModifier {
+    var tone: GlassTone
+
+    func body(content: Content) -> some View {
+        switch tone {
+        case .regular, .inert:
+            content.buttonStyle(.glass)
+        case .clear:
+            if #available(iOS 26.1, *) {
+                content.buttonStyle(.glass(.clear))
+            } else {
+                content.buttonStyle(.glass)
+            }
+        case .tinted(let color):
+            content
+                .buttonStyle(.glassProminent)
+                .tint(color)
+        }
+    }
+}
+
+/// The pre-glass floor: the blurred pane, the warm outline, and the brand
+/// gradient under a primary label.
+private struct LegacyGlassButton: ButtonStyle {
+    var tone: GlassTone
+    var shape: GlassButtonShape
+    var legacyFill: Color?
+
+    func makeBody(configuration: Configuration) -> some View {
+        Group {
+            switch shape {
+            case .circle: pane(configuration.label, in: Circle())
+            case .capsule: pane(configuration.label, in: Capsule())
+            }
+        }
+        .scaleEffect(configuration.isPressed ? 0.985 : 1)
+        .opacity(configuration.isPressed ? 0.90 : 1)
+        .animation(Theme.Motion.spring, value: configuration.isPressed)
+    }
+
+    private func pane<S: InsettableShape>(_ label: Configuration.Label, in shape: S) -> some View {
+        label
+            .background {
+                if case .tinted = tone {
+                    shape.fill(Theme.primaryGradient)
+                }
+            }
+            .glassSurface(
+                tone,
+                in: shape,
+                border: isTinted ? Theme.Glassware.brightEdge : Theme.Glassware.edge,
+                legacyFill: legacyFill
+            )
+            .clipShape(shape)
+            .contentShape(shape)
+    }
+
+    private var isTinted: Bool {
+        if case .tinted = tone { return true }
+        return false
+    }
+}
+
 extension Theme {
     /// The glass palette: how much of the warm outline survives on top of a
     /// pane, and how strongly the brand colour is allowed to soak through one.
@@ -114,6 +260,10 @@ extension Theme {
         /// Real glass draws its own bright edge, so ours only has to hint.
         static var edge: Color { Theme.border.opacity(supportsLiquidGlass ? 0.55 : 1) }
         static var brightEdge: Color { Theme.primary.opacity(supportsLiquidGlass ? 0.45 : 0.8) }
+        /// The outline for a glass control that is not a button. System glass
+        /// draws its own rim, so a stroke on top of it only reads as a frame the
+        /// glass has been pushed into.
+        static var controlEdge: Color? { supportsLiquidGlass ? nil : Theme.border }
         /// The vertical warm gradient the primary control is known by, kept as
         /// a wash over the tint so glass never flattens the brand into one flat
         /// orange.

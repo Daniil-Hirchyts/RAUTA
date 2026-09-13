@@ -127,9 +127,13 @@ extension Theme {
         static var cardRadius: CGFloat { max(0, surfaceRadius - contentInset) }
         static let controlsHeight: CGFloat = 52
         static var controlsInset: CGFloat { max(0, deviceRadius - controlsHeight / 2) }
-        /// The header block reserves this much above scrolling content.
-        static let headerHeight: CGFloat = 76
-        static let headerContentTop: CGFloat = 12
+        /// A title bar under the safe area with nothing below its title row:
+        /// the 44pt row and 12pt above and below it.
+        static let headerHeight: CGFloat = 68
+        /// From the bottom of a page's title bar to the page's first row.
+        static let headerContentGap: CGFloat = 20
+        /// How far the progressive blur reaches past the bottom of the title bar.
+        static let headerScrimOverhang: CGFloat = 12
     }
 
     enum Duration {

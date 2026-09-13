@@ -3,7 +3,6 @@ import SwiftUI
 struct ExercisePickerScreen: View {
     enum Stage: Int { case muscles = 1, equipment, exercises }
 
-    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     @ObservedObject private var store = AppStore.shared
     let stage: Stage
     let preferredWorkoutId: String?
@@ -15,7 +14,6 @@ struct ExercisePickerScreen: View {
     @State private var presetEditorOpen = false
     @State private var destinationMenuOpen = false
     @State private var visibleExerciseCount = ExerciseCatalogue.pageSize
-    @StateObject private var scrollTracker = ScrollHideTracker()
 
     private var selectedMuscles: [MuscleId] { store.filters.selectedMuscles }
     private var selectedEquipment: [String] { store.filters.selectedEquipment }
@@ -51,14 +49,10 @@ struct ExercisePickerScreen: View {
             backLabel: "Previous page",
             onBack: store.navigation.pop,
             progressStage: stage.rawValue,
-            hidden: (stage == .equipment || stage == .exercises) && scrollTracker.hidden,
             right: { headerRautaMenu },
             content: { content },
             controls: { controls }
         )
-        .onChange(of: stage) { _, _ in
-            scrollTracker.reset()
-        }
         .onChange(of: matchingExercises.count) { _, _ in
             visibleExerciseCount = ExerciseCatalogue.pageSize
         }
@@ -101,25 +95,21 @@ struct ExercisePickerScreen: View {
                 )
             }
             .padding(.horizontal, 16)
-            .padding(.top, Theme.Metrics.headerHeight + safeAreaInsets.top)
+            .belowPageHeader()
             .padding(.bottom, 12)
 
         case .equipment:
             ZStack(alignment: .bottom) {
                 ScrollView {
-                    ScrollOffsetObserver { offset, isScrollable in
-                        scrollTracker.update(offset: offset, isScrollable: isScrollable)
-                    }
-                    .frame(height: 0)
-
                     EquipmentGrid(
                         options: ExerciseCatalogue.equipmentForMuscles(selectedMuscles),
                         selected: selectedEquipment,
                         onToggle: store.filters.toggleEquipment
                     )
-                    .padding(Theme.Metrics.contentInset)
-                    .padding(.bottom, 96)
+                    .padding(.horizontal, Theme.Metrics.contentInset)
+                    .padding(.bottom, Theme.Metrics.contentInset + 96)
                 }
+                .pageScroll()
 
                 equipmentPresetsDock
             }
@@ -146,11 +136,6 @@ struct ExercisePickerScreen: View {
         } else {
             GeometryReader { viewport in
                 ScrollView {
-                    ScrollOffsetObserver { offset, isScrollable in
-                        scrollTracker.update(offset: offset, isScrollable: isScrollable)
-                    }
-                    .frame(height: 0)
-
                     LazyVGrid(
                         columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible())],
                         spacing: 14
@@ -172,7 +157,6 @@ struct ExercisePickerScreen: View {
                         }
                     }
                     .padding(.horizontal, Theme.Metrics.contentInset)
-                    .padding(.top, Theme.Metrics.contentInset)
 
                     if visibleExerciseCount < matchingExercises.count {
                         MatrixLoader(
@@ -190,6 +174,7 @@ struct ExercisePickerScreen: View {
                         .frame(height: searchOpen || store.navigation.selectMode ? 112 : 24)
                 }
                 .coordinateSpace(name: "exercisesScroll")
+                .pageScroll()
             }
         }
     }

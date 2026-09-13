@@ -14,7 +14,6 @@ private struct LibraryBrowseState {
 /// filters. Browse state is isolated from the app shell so typing and filtering
 /// cannot invalidate the native tab host.
 struct LibraryScreen: View {
-    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     @ObservedObject private var favorites = FavoritesStore.shared
     private let navigation = AppSessionStore.shared
     @State private var browse = LibraryBrowseState()
@@ -51,14 +50,10 @@ struct LibraryScreen: View {
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
+        AppTitledPage {
+            libraryHeader
+        } content: {
             results
-
-            libraryTopScrim
-                .zIndex(20)
-
-            libraryChrome
-                .zIndex(30)
         }
         .fullScreenCover(item: $browse.presentedFilter) { filter in
             LibraryFilterPage(
@@ -76,40 +71,25 @@ struct LibraryScreen: View {
         .onChange(of: favorites.favoriteIds) { _, _ in resetPagination() }
     }
 
-    private var libraryTopScrim: some View {
-        AppGradientBlur(edge: .top, radiusScale: 1.05)
-            .frame(height: chromeClearance)
-            .frame(maxWidth: .infinity, alignment: .top)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-            .ignoresSafeArea(edges: .top)
-    }
+    private var libraryHeader: some View {
+        AppShellHeader(
+            title: "Library",
+            left: { Color.clear.frame(width: 44, height: 44) },
+            right: { Color.clear.frame(width: 44, height: 44) },
+            above: { EmptyView() },
+            below: {
+                VStack(alignment: .leading, spacing: 10) {
+                    if browse.searchOpen {
+                        expandedSearchBar
+                    } else {
+                        compactFilterBar
+                    }
 
-    private var libraryChrome: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if !browse.searchOpen {
-                Text("Library")
-                    .font(Theme.sans(20, weight: .heavy))
-                    .kerning(-0.5)
-                    .foregroundStyle(Theme.foreground)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .transition(.opacity)
+                    resultCountLabel
+                }
+                .animation(Theme.Motion.smoothOut(0.28), value: browse.searchOpen)
             }
-
-            if browse.searchOpen {
-                expandedSearchBar
-            } else {
-                compactFilterBar
-            }
-
-            resultCountLabel
-        }
-        .padding(.horizontal, Theme.Metrics.contentInset)
-        .padding(.top, safeAreaInsets.top + 12)
-        .padding(.bottom, 12)
-        .animation(Theme.Motion.smoothOut(0.28), value: browse.searchOpen)
+        )
     }
 
     private var resultCountLabel: some View {
@@ -132,10 +112,6 @@ struct LibraryScreen: View {
         }
 
         return parts.joined(separator: " · ")
-    }
-
-    private var chromeClearance: CGFloat {
-        safeAreaInsets.top + (browse.searchOpen ? 104 : 158)
     }
 
     private var compactFilterBar: some View {
@@ -169,17 +145,10 @@ struct LibraryScreen: View {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Theme.primary)
-                    .frame(width: 42, height: 42)
-                    .contentShape(Circle())
-                    .glassSurface(
-                        .clear,
-                        in: Circle(),
-                        interactive: true,
-                        border: Theme.Glassware.edge,
-                        legacyFill: Theme.card.opacity(0.24)
-                    )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(
+                .glassControl(.clear, .circle(diameter: 42), legacyFill: Theme.card.opacity(0.24))
+            )
             .frame(minWidth: 48, minHeight: 48)
             .accessibilityLabel("Search exercises")
         }
@@ -286,7 +255,6 @@ struct LibraryScreen: View {
                     }
                 }
                 .padding(.horizontal, Theme.Metrics.contentInset)
-                .padding(.top, chromeClearance + 8)
                 .padding(.bottom, 28)
                 .animation(Theme.Motion.smoothOut(0.28), value: browse.searchOpen)
 
@@ -300,6 +268,7 @@ struct LibraryScreen: View {
                     .padding(.bottom, 28)
                 }
             }
+            .pageScroll()
         }
     }
 
@@ -312,7 +281,7 @@ struct LibraryScreen: View {
             action: emptyAction
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.top, chromeClearance)
+        .belowPageHeader()
         .padding(32)
         .offset(y: -30)
         .animation(Theme.Motion.smoothOut(0.28), value: browse.searchOpen)
@@ -382,26 +351,14 @@ private struct LibraryFilterChip: View {
                 .font(Theme.sans(13, weight: .semibold))
                 .foregroundStyle(selected ? Theme.primaryForeground : Theme.secondaryForeground)
                 .padding(.horizontal, 16)
-                .frame(height: 40)
-                .contentShape(Capsule())
-                .glassSurface(
-                    selected ? .tinted(Theme.primary) : .clear,
-                    in: Capsule(),
-                    interactive: true,
-                    border: selected ? Theme.Glassware.brightEdge : Theme.Glassware.edge,
-                    legacyFill: selected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.24)
-                )
-                .overlay {
-                    if selected {
-                        Capsule()
-                            .fill(Theme.primaryGradient)
-                            .opacity(Theme.Glassware.primaryWash)
-                            .allowsHitTesting(false)
-                    }
-                }
-                .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(
+            .glassControl(
+                selected ? .tinted(Theme.primary) : .clear,
+                .capsule(height: 40),
+                legacyFill: selected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.24)
+            )
+        )
         .frame(minHeight: 44)
         .accessibilityLabel(title)
         .accessibilityAddTraits(selected ? .isSelected : [])
@@ -419,17 +376,10 @@ private struct LibraryRoundButton: View {
             Image(systemName: systemImage)
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(roundButtonForeground)
-                .frame(width: 42, height: 42)
-                .contentShape(Circle())
-                .glassSurface(
-                    roundButtonTone,
-                    in: Circle(),
-                    interactive: true,
-                    border: Theme.Glassware.edge,
-                    legacyFill: Theme.card.opacity(0.24)
-                )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(
+            .glassControl(roundButtonTone, .circle(diameter: 42), legacyFill: Theme.card.opacity(0.24))
+        )
         .frame(minWidth: 48, minHeight: 48)
         .accessibilityLabel(label)
     }
@@ -496,7 +446,6 @@ private struct LibraryEmptyState: View {
 }
 
 private struct LibraryFilterPage: View {
-    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     let filter: LibraryFilterKind
     @Binding var selectedMuscles: [MuscleId]
     @Binding var selectedEquipment: [String]
@@ -562,7 +511,7 @@ private struct LibraryFilterPage: View {
                 )
             }
             .padding(.horizontal, Theme.Metrics.contentInset)
-            .padding(.top, Theme.Metrics.headerHeight + safeAreaInsets.top)
+            .belowPageHeader()
             .padding(.bottom, 8)
 
         case .equipment:
@@ -573,9 +522,9 @@ private struct LibraryFilterPage: View {
                     onToggle: toggleEquipment
                 )
                 .padding(.horizontal, Theme.Metrics.contentInset)
-                .padding(.top, 18)
                 .padding(.bottom, 24)
             }
+            .pageScroll()
         }
     }
 

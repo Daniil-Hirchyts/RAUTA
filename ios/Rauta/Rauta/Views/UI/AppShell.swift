@@ -117,6 +117,156 @@ struct AppGrain: View {
     }
 }
 
+// MARK: - Titled page
+
+/// Every page with a title is laid out by this one view, so the four things a
+/// title brings are the same on all of them:
+///
+/// - the title bar itself, an ``AppShellHeader`` floating over the page;
+/// - where the page starts: its first row sits a fixed gap under the bar,
+///   however many rows this page's bar carries;
+/// - the progressive blur that dissolves content scrolling up behind the bar;
+/// - getting out of the way: scrolling down the page's ``View/pageScroll()``
+///   scroller slides the bar away, scrolling back brings it in.
+struct AppTitledPage<Header: View, Content: View>: View {
+    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
+    @ViewBuilder var header: () -> Header
+    @ViewBuilder var content: () -> Content
+
+    @StateObject private var scroll = ScrollHideTracker()
+    @State private var measuredHeaderHeight: CGFloat?
+
+    /// A bar with nothing under its title row, for the frames before this
+    /// page's own bar has been measured.
+    private var standardHeaderHeight: CGFloat {
+        safeAreaInsets.top + Theme.Metrics.headerHeight
+    }
+
+    private var headerHeight: CGFloat {
+        measuredHeaderHeight ?? standardHeaderHeight
+    }
+
+    private var contentTop: CGFloat {
+        headerHeight + Theme.Metrics.headerContentGap
+    }
+
+    /// Once the bar has gone, a tall one leaves no more blur behind than a
+    /// plain title would.
+    private var scrimHeight: CGFloat {
+        (scroll.hidden ? standardHeaderHeight : headerHeight) + Theme.Metrics.headerScrimOverhang
+    }
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            content()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // The margin sits inside the scroller, so content starts clear
+                // of the bar at rest and still passes behind it on the way up.
+                .contentMargins(.top, contentTop, for: .scrollContent)
+                .environment(\.appPageContentTop, contentTop)
+                .environment(\.appPageScrollTracker, scroll)
+
+            AppTopScrim(height: scrimHeight)
+                .animation(Theme.Motion.smoothOut(0.52), value: scroll.hidden)
+                .zIndex(20)
+
+            header()
+                .environment(\.appPageHeaderHidden, scroll.hidden)
+                .onGeometryChange(for: CGFloat.self) { proxy in
+                    proxy.size.height
+                } action: { height in
+                    measuredHeaderHeight = height
+                }
+                .zIndex(30)
+        }
+    }
+}
+
+extension View {
+    /// Marks the scroller that moves a titled page.
+    ///
+    /// Put it on the page's main vertical `ScrollView`, never on a carousel
+    /// inside it: scrolling this one down slides the page's title bar away and
+    /// scrolling back brings it in. When the scroller leaves — a stage without
+    /// one, an empty state — the bar comes back.
+    func pageScroll() -> some View {
+        modifier(PageScrollReporting())
+    }
+
+    /// Holds the content of a page that does not scroll where a scrolling page's
+    /// first row would start, just under the title bar.
+    func belowPageHeader() -> some View {
+        modifier(BelowPageHeader())
+    }
+}
+
+private struct PageScrollState: Equatable {
+    var offset: CGFloat
+    var isScrollable: Bool
+}
+
+private struct PageScrollReporting: ViewModifier {
+    @Environment(\.appPageScrollTracker) private var tracker
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content
+                .onScrollGeometryChange(for: PageScrollState.self) { geometry in
+                    let insets = geometry.contentInsets
+                    return PageScrollState(
+                        offset: Swift.max(0, geometry.contentOffset.y + insets.top),
+                        isScrollable: geometry.contentSize.height + insets.top + insets.bottom
+                            > geometry.containerSize.height + 1
+                    )
+                } action: { _, state in
+                    tracker?.update(offset: state.offset, isScrollable: state.isScrollable)
+                }
+                .onDisappear { tracker?.reset() }
+        } else {
+            // Scroll geometry arrives with iOS 18; before it the bar stays put.
+            content
+        }
+    }
+}
+
+private struct BelowPageHeader: ViewModifier {
+    @Environment(\.appPageContentTop) private var contentTop
+
+    func body(content: Content) -> some View {
+        content.padding(.top, contentTop)
+    }
+}
+
+private struct AppPageContentTopKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 0
+}
+
+private struct AppPageHeaderHiddenKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+private struct AppPageScrollTrackerKey: EnvironmentKey {
+    static let defaultValue: ScrollHideTracker? = nil
+}
+
+extension EnvironmentValues {
+    /// How far down a titled page its content starts.
+    var appPageContentTop: CGFloat {
+        get { self[AppPageContentTopKey.self] }
+        set { self[AppPageContentTopKey.self] = newValue }
+    }
+
+    fileprivate var appPageHeaderHidden: Bool {
+        get { self[AppPageHeaderHiddenKey.self] }
+        set { self[AppPageHeaderHiddenKey.self] = newValue }
+    }
+
+    fileprivate var appPageScrollTracker: ScrollHideTracker? {
+        get { self[AppPageScrollTrackerKey.self] }
+        set { self[AppPageScrollTrackerKey.self] = newValue }
+    }
+}
+
 /// The top edge fade belongs to the page, not to the title. It stays put when
 /// the title slides away.
 ///
@@ -124,12 +274,12 @@ struct AppGrain: View {
 /// every pixel by the same amount, so the boundary where it stops is a visible
 /// seam. Stepping the radius down band by band means each band is only slightly
 /// sharper than the one above it, and detail dissolves on the way up.
-struct AppTopScrim: View {
-    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
+private struct AppTopScrim: View {
+    var height: CGFloat
 
     var body: some View {
         AppGradientBlur(edge: .top, radiusScale: 1.05)
-        .frame(height: Theme.Metrics.headerHeight + safeAreaInsets.top + 4)
+        .frame(height: height)
         .frame(maxWidth: .infinity, alignment: .top)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
@@ -248,14 +398,16 @@ struct ProgressiveBlur: UIViewRepresentable {
     }
 }
 
-/// The title floats independently above the page scroller. Only its controls
-/// animate away; the compact edge fade is owned by ``AppTopScrim``.
 enum HeaderProgressState: Hashable {
     case completed, current, pending
 }
 
+/// The title bar of a titled page. It floats above the page's scroller and is
+/// only ever placed by ``AppTitledPage``, which decides when it slides away; the
+/// edge fade under it stays with the page.
 struct AppShellHeader<Left: View, Right: View, Above: View, Below: View>: View {
     @Environment(\.appSafeAreaInsets) private var safeAreaInsets
+    @Environment(\.appPageHeaderHidden) private var hidden
 
     enum TitleSize { case standard, medium, small, extraSmall }
 
@@ -265,8 +417,6 @@ struct AppShellHeader<Left: View, Right: View, Above: View, Below: View>: View {
     var onTitleTap: (() -> Void)? = nil
     var titleMultiline: Bool = false
     var titleSize: TitleSize?
-    /// Driven by the page's own scroll offset; see ``ScrollHideTracker``.
-    var hidden: Bool = false
     @ViewBuilder var left: () -> Left
     @ViewBuilder var right: () -> Right
     @ViewBuilder var above: () -> Above
@@ -384,7 +534,6 @@ extension AppShellHeader where Above == EmptyView, Below == EmptyView {
         subtitleProgress: [HeaderProgressState]? = nil,
         titleMultiline: Bool = false,
         titleSize: TitleSize? = nil,
-        hidden: Bool = false,
         @ViewBuilder left: @escaping () -> Left,
         @ViewBuilder right: @escaping () -> Right
     ) {
@@ -394,7 +543,6 @@ extension AppShellHeader where Above == EmptyView, Below == EmptyView {
             subtitleProgress: subtitleProgress,
             titleMultiline: titleMultiline,
             titleSize: titleSize,
-            hidden: hidden,
             left: left,
             right: right,
             above: { EmptyView() },
@@ -435,101 +583,6 @@ final class ScrollHideTracker: ObservableObject {
         travel = 0
         lastOffset = 0
         hidden = false
-    }
-}
-
-/// Reports a scroll view's content offset upward.
-struct ScrollOffsetKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
-extension View {
-    /// Marks the top of a scroll view's content so its offset can be read.
-    func tracksScrollOffset(in space: String) -> some View {
-        background(
-            GeometryReader { proxy in
-                Color.clear.preference(
-                    key: ScrollOffsetKey.self,
-                    value: -proxy.frame(in: .named(space)).minY
-                )
-            }
-        )
-    }
-}
-
-/// Reads the enclosing SwiftUI `ScrollView` through its backing `UIScrollView`.
-/// Geometry preferences are unreliable for zero-sized sentinels inside lazy
-/// content on iOS 17; the backing scroll view gives us the same `scrollTop`
-/// semantics the React shell uses.
-struct ScrollOffsetObserver: UIViewRepresentable {
-    var onChange: (CGFloat, Bool) -> Void
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(onChange: onChange)
-    }
-
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView(frame: .zero)
-        view.isUserInteractionEnabled = false
-        DispatchQueue.main.async { context.coordinator.attach(from: view) }
-        return view
-    }
-
-    func updateUIView(_ uiView: UIView, context: Context) {
-        context.coordinator.onChange = onChange
-        DispatchQueue.main.async {
-            context.coordinator.attach(from: uiView)
-            context.coordinator.publish()
-        }
-    }
-
-    final class Coordinator: NSObject {
-        var onChange: (CGFloat, Bool) -> Void
-        private weak var scrollView: UIScrollView?
-        private var offsetObservation: NSKeyValueObservation?
-        private var sizeObservation: NSKeyValueObservation?
-
-        init(onChange: @escaping (CGFloat, Bool) -> Void) {
-            self.onChange = onChange
-        }
-
-        deinit {
-            offsetObservation?.invalidate()
-            sizeObservation?.invalidate()
-        }
-
-        func attach(from view: UIView) {
-            var ancestor = view.superview
-            while let current = ancestor, !(current is UIScrollView) {
-                ancestor = current.superview
-            }
-            guard let candidate = ancestor as? UIScrollView,
-                  candidate !== scrollView else { return }
-
-            offsetObservation?.invalidate()
-            sizeObservation?.invalidate()
-            scrollView = candidate
-            offsetObservation = candidate.observe(\.contentOffset, options: [.initial, .new]) {
-                [weak self] _, _ in self?.publish()
-            }
-            sizeObservation = candidate.observe(\.contentSize, options: [.new]) {
-                [weak self] _, _ in self?.publish()
-            }
-            publish()
-        }
-
-        func publish() {
-            guard let scrollView else { return }
-            let offset = Swift.max(
-                0,
-                scrollView.contentOffset.y + scrollView.adjustedContentInset.top
-            )
-            let isScrollable = scrollView.contentSize.height > scrollView.bounds.height + 1
-            onChange(offset, isScrollable)
-        }
     }
 }
 

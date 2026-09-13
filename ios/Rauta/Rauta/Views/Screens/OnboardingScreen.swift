@@ -28,8 +28,10 @@ struct ProfileStepFlow: View {
     var onboarding = false
     let onFinish: () -> Void
     @State private var index = 0
+    @State private var nameEntryFocused = false
     private var step: ProfileStep { steps[index] }
     private var isStoryStep: Bool { step == .welcome || step == .ready }
+    private var isEnteringName: Bool { step == .about && nameEntryFocused }
     private var actionTitle: String {
         if step == .welcome { return "Set up RAUTA" }
         if index == steps.count - 1 { return onboarding ? "Start training" : "Done" }
@@ -37,48 +39,53 @@ struct ProfileStepFlow: View {
     }
 
     var body: some View {
-        AppShell(commandsVisible: true) {
+        AppShell(commandsVisible: !isEnteringName) {
             GeometryReader { proxy in
-                ZStack(alignment: .top) {
-                    VStack(spacing: 0) {
-                        Color.clear.frame(height: 68 + safeAreaInsets.top)
-                        if isStoryStep {
-                            profileContent
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                                .padding(.horizontal, 12)
-                                .padding(.top, 12)
-                                .padding(.bottom, 12)
-                        } else if step == .about || step == .duration {
-                            Spacer(minLength: 20)
-                            if step == .about {
-                                ProfileNameControl().padding(.horizontal, 12)
-                                Spacer(minLength: 20)
-                            }
-                            ProfileDial(duration: step == .duration)
-                        } else {
-                            ScrollView {
+                AppTitledPage {
+                    header
+                } content: {
+                    ZStack(alignment: .top) {
+                        VStack(spacing: 0) {
+                            if isStoryStep {
                                 profileContent
-                                    .frame(maxWidth: .infinity)
-                                    .frame(minHeight: max(0, proxy.size.height - 88 - (step == .gym ? 112 : 56)))
-                                    .padding(.top, 20)
-                                    .padding(.bottom, step == .gym ? 112 : 56)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                                     .padding(.horizontal, 12)
+                                    .belowPageHeader()
+                                    .padding(.bottom, 12)
+                            } else if step == .about || step == .duration {
+                                VStack(spacing: 0) {
+                                    Spacer(minLength: 20)
+                                    if step == .about {
+                                        ProfileNameControl { nameEntryFocused = $0 }
+                                            .padding(.horizontal, 12)
+                                        Spacer(minLength: 20)
+                                    }
+                                    if step == .duration || !nameEntryFocused {
+                                        ProfileDial(duration: step == .duration)
+                                    }
+                                }
+                                .belowPageHeader()
+                            } else {
+                                ScrollView {
+                                    profileContent
+                                        .frame(maxWidth: .infinity)
+                                        .frame(minHeight: max(0, proxy.size.height - standardContentTop - bottomClearance))
+                                        .padding(.bottom, bottomClearance)
+                                        .padding(.horizontal, 12)
+                                }
+                                .pageScroll()
                             }
                         }
-                    }
-                    .id(step)
-                    .transition(.opacity.combined(with: .scale(scale: 0.985)))
-                    ProfileTopPanel(
-                        step: step,
-                        showsSpeech: !isStoryStep
-                    )
-                    header
-                    if step == .gym {
-                        VStack {
-                            Spacer()
-                            EquipmentPresets(value: store.filters.gymEquipment, onChange: store.filters.setGymEquipment)
-                                .padding(.bottom, 12)
-                                .padding(.top, 28)
+                        .id(step)
+                        .transition(.opacity.combined(with: .scale(scale: 0.985)))
+
+                        if step == .gym {
+                            VStack {
+                                Spacer()
+                                EquipmentPresets(value: store.filters.gymEquipment, onChange: store.filters.setGymEquipment)
+                                    .padding(.bottom, 12)
+                                    .padding(.top, 28)
+                            }
                         }
                     }
                 }
@@ -92,20 +99,20 @@ struct ProfileStepFlow: View {
                 }
             }.id(index)
         }
+        .onChange(of: index) { _, _ in nameEntryFocused = false }
     }
 
-    private var header: some View {
-        ZStack {
-            Text(step.rawValue)
-                .font(Theme.sans(20, weight: .heavy))
-                .tracking(-0.5)
-                .frame(maxWidth: .infinity)
-                .overlay(alignment: .top) {
-                    if steps.count > 1 { FlowProgress(stage: index + 1, steps: steps.count).offset(y: -7) }
-                }
-                .padding(.horizontal, 56)
+    /// Where a scrolling step's content starts under a plain title bar.
+    private var standardContentTop: CGFloat {
+        safeAreaInsets.top + Theme.Metrics.headerHeight + Theme.Metrics.headerContentGap
+    }
 
-            HStack(spacing: 0) {
+    private var bottomClearance: CGFloat { step == .gym ? 112 : 56 }
+
+    private var header: some View {
+        AppShellHeader(
+            title: step.rawValue,
+            left: {
                 if index > 0 || !onboarding {
                     AppHeaderButton(
                         systemImage: "chevron.left",
@@ -118,25 +125,29 @@ struct ProfileStepFlow: View {
                             onFinish()
                         }
                     }
-                    .frame(width: 44, height: 44, alignment: .leading)
                 } else {
                     Color.clear.frame(width: 44, height: 44)
                 }
-                Spacer(minLength: 0)
+            },
+            right: {
                 if isStoryStep {
                     Color.clear.frame(width: 44, height: 44)
                 } else {
                     ProfileTopPanel(step: step)
                         .headerBadge
-                        .frame(width: 44, height: 44, alignment: .trailing)
+                }
+            },
+            above: {
+                if steps.count > 1 {
+                    FlowProgress(stage: index + 1, steps: steps.count)
+                }
+            },
+            below: {
+                if !isStoryStep {
+                    ProfileTopPanel(step: step)
                 }
             }
-        }
-        .frame(minHeight: 44)
-        .foregroundStyle(Theme.foreground)
-        .padding(.horizontal, 12)
-        .padding(.top, 12 + safeAreaInsets.top)
-        .padding(.bottom, 12)
+        )
     }
 
     @ViewBuilder private var profileContent: some View {

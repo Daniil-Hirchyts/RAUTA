@@ -57,9 +57,9 @@ struct WorkoutDestinationScreen: View {
                     }
                 }
                 .padding(.horizontal, Theme.Metrics.contentInset)
-                .padding(.top, 20)
                 .padding(.bottom, 24)
             }
+            .pageScroll()
         }
     }
 
@@ -133,9 +133,9 @@ struct WorkoutFormScreen: View {
                             if let issue { InlineNotice(message: issue, isError: true) }
                         }
                         .padding(.horizontal, Theme.Metrics.contentInset)
-                        .padding(.top, 20)
                         .padding(.bottom, 24)
                 }
+                .pageScroll()
                 .scrollDisabled(reorder.active != nil)
                 .onDisappear { reorder.cancel() }
             } controls: {
@@ -378,17 +378,14 @@ private struct EditableExerciseRow: View {
                 Image(systemName: "trash")
                     .font(.system(size: 19, weight: .semibold))
                     .foregroundStyle(Theme.primary)
-                    .frame(width: 56, height: 56)
-                    .glassSurface(
-                        .tinted(Theme.primary.opacity(0.5)),
-                        in: Circle(),
-                        interactive: true,
-                        border: Theme.Glassware.brightEdge,
-                        legacyFill: Theme.card
-                    )
-                    .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(
+                .glassControl(
+                    .tinted(Theme.primary.opacity(0.5)),
+                    .circle(diameter: 56),
+                    legacyFill: Theme.card
+                )
+            )
             .accessibilityLabel("Remove \(exercise.name)")
         }) {
             HStack(spacing: 0) {

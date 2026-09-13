@@ -503,29 +503,10 @@ struct WorkoutsScreen: View {
             )
         } else {
             AppShell(commandsVisible: false) {
-                ZStack(alignment: .top) {
-                    Group {
-                        if pageTab == .summary {
-                            summaryContent
-                        } else if pageTab == .workout {
-                            noActiveWorkout
-                                .padding(.top, safeAreaInsets.top + 56)
-                        } else if pageTab == .library {
-                            LibraryScreen()
-                        } else if pageTab == .profile {
-                            ProfileDashboard(
-                                rautaNamespace: rautaProfileNamespace,
-                                isActive: mainTab == .profile
-                            )
-                        } else {
-                            Spacer(minLength: 0)
-                        }
-                    }
-
-                    if pageTab != .library {
-                        AppTopScrim()
-                            .zIndex(20)
-
+                if pageTab == .library {
+                    LibraryScreen()
+                } else {
+                    AppTitledPage {
                         AppShellHeader(
                             title: pageTab.rawValue,
                             left: { Color.clear.frame(width: 44, height: 44) },
@@ -541,7 +522,20 @@ struct WorkoutsScreen: View {
                             above: { EmptyView() },
                             below: { EmptyView() }
                         )
-                        .zIndex(30)
+                    } content: {
+                        if pageTab == .summary {
+                            summaryContent
+                        } else if pageTab == .workout {
+                            noActiveWorkout
+                                .belowPageHeader()
+                        } else if pageTab == .profile {
+                            ProfileDashboard(
+                                rautaNamespace: rautaProfileNamespace,
+                                isActive: mainTab == .profile
+                            )
+                        } else {
+                            Spacer(minLength: 0)
+                        }
                     }
                 }
             } controls: {
@@ -885,7 +879,6 @@ private struct NativeWorkoutCompleteAccessory: View {
 }
 
 private struct WorkoutTabHost: View {
-    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     @ObservedObject private var activeWorkout = ActiveWorkoutStore.shared
     let upcoming: [Workout]
     let past: [Workout]
@@ -896,6 +889,10 @@ private struct WorkoutTabHost: View {
     @Binding var listSelection: Int
     @Binding var selectedWorkoutId: String?
     let onOpenExercisePlayer: () -> Void
+
+    private var hasWorkouts: Bool {
+        !upcoming.isEmpty || !past.isEmpty
+    }
 
     var body: some View {
         Group {
@@ -925,7 +922,22 @@ private struct WorkoutTabHost: View {
 
     private var workoutListPage: some View {
         AppShell(commandsVisible: false) {
-            ZStack(alignment: .top) {
+            AppTitledPage {
+                AppShellHeader(
+                    title: "Workout",
+                    left: { Color.clear.frame(width: 44, height: 44) },
+                    right: { Color.clear.frame(width: 44, height: 44) },
+                    above: { EmptyView() },
+                    below: {
+                        if hasWorkouts {
+                            WorkoutsModeSwitcher(
+                                selection: $listSelection,
+                                workouts: upcoming + past
+                            )
+                        }
+                    }
+                )
+            } content: {
                 WorkoutListContent(
                     upcoming: upcoming,
                     past: past,
@@ -933,28 +945,6 @@ private struct WorkoutTabHost: View {
                     selection: $listSelection,
                     onOpen: openWorkout
                 )
-
-                AppGradientBlur(edge: .top, radiusScale: 1.05)
-                    .frame(height: safeAreaInsets.top + 134)
-                    .frame(maxWidth: .infinity, alignment: .top)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-                    .ignoresSafeArea(edges: .top)
-                    .zIndex(20)
-
-                AppShellHeader(
-                    title: "Workout",
-                    left: { Color.clear.frame(width: 44, height: 44) },
-                    right: { Color.clear.frame(width: 44, height: 44) },
-                    above: { EmptyView() },
-                    below: {
-                        WorkoutsModeSwitcher(
-                            selection: $listSelection,
-                            workouts: upcoming + past
-                        )
-                    }
-                )
-                    .zIndex(30)
             }
         } controls: {
             EmptyView()
@@ -1050,6 +1040,7 @@ struct RautaNativeTabControl: View {
                 reactionKey: reactionKey
             )
             .frame(width: characterSize, height: characterSize)
+            .offset(y: -3)
             .allowsHitTesting(false)
         }
         .frame(width: controlSize, height: controlSize)
@@ -1058,7 +1049,6 @@ struct RautaNativeTabControl: View {
 }
 
 private struct SummaryWorkoutsContent: View {
-    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     let completedWorkouts: [Workout]
     let history: TrainingHistory
 
@@ -1077,17 +1067,12 @@ private struct SummaryWorkoutsContent: View {
             .padding(.horizontal, 12)
             .padding(.bottom, 220)
         }
-        .contentMargins(
-            .top,
-            Theme.Metrics.headerHeight + safeAreaInsets.top + 36,
-            for: .scrollContent
-        )
+        .pageScroll()
         .scrollIndicators(.hidden)
     }
 }
 
 private struct WorkoutListContent: View {
-    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     let upcoming: [Workout]
     let past: [Workout]
     let activeWorkoutId: String?
@@ -1172,49 +1157,62 @@ private struct WorkoutListContent: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 10) {
-                if filteredWorkouts.isEmpty {
-                    Text(emptyMessage)
-                        .font(Theme.sans(13))
-                        .foregroundStyle(Theme.mutedForeground)
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 24)
-                } else {
-                    ForEach(monthSections) { section in
-                        Text(section.title)
-                            .font(Theme.sans(17, weight: .heavy))
-                            .foregroundStyle(Theme.foreground)
-                            .padding(.horizontal, 4)
-                            .padding(.top, 8)
+        Group {
+            if allWorkouts.isEmpty {
+                VStack(spacing: 14) {
+                    Image(systemName: "figure.strengthtraining.traditional")
+                        .font(.system(size: 34, weight: .semibold))
+                        .foregroundStyle(Theme.primary)
 
-                        ForEach(section.workouts) { workout in
-                            WorkoutRow(
-                                workout: workout,
-                                isPast: pastIds.contains(workout.id),
-                                isRunning: activeWorkoutId == workout.id,
-                                onOpen: { onOpen(workout) }
+                    Text("No workouts yet")
+                        .font(Theme.sans(20, weight: .heavy))
+                        .foregroundStyle(Theme.foreground)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, 32)
+                .accessibilityElement(children: .combine)
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 10) {
+                        if filteredWorkouts.isEmpty {
+                            Text(emptyMessage)
+                                .font(Theme.sans(13))
+                                .foregroundStyle(Theme.mutedForeground)
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, 24)
+                        } else {
+                            ForEach(monthSections) { section in
+                                Text(section.title)
+                                    .font(Theme.sans(17, weight: .heavy))
+                                    .foregroundStyle(Theme.foreground)
+                                    .padding(.horizontal, 4)
+                                    .padding(.top, 8)
+
+                                ForEach(section.workouts) { workout in
+                                    WorkoutRow(
+                                        workout: workout,
+                                        isPast: pastIds.contains(workout.id),
+                                        isRunning: activeWorkoutId == workout.id,
+                                        onOpen: { onOpen(workout) }
+                                    )
+                                }
+                            }
+
+                            sectionFooter(
+                                remaining: Swift.max(0, filteredWorkouts.count - visibleLimit),
+                                showLess: visibleLimit > 12,
+                                onMore: { visibleLimit += 12 },
+                                onLess: { visibleLimit = 12 }
                             )
                         }
                     }
-
-                    sectionFooter(
-                        remaining: Swift.max(0, filteredWorkouts.count - visibleLimit),
-                        showLess: visibleLimit > 12,
-                        onMore: { visibleLimit += 12 },
-                        onLess: { visibleLimit = 12 }
-                    )
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 92)
                 }
+                .pageScroll()
+                .scrollIndicators(.hidden)
             }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 92)
         }
-        .contentMargins(
-            .top,
-            safeAreaInsets.top + 138,
-            for: .scrollContent
-        )
-        .scrollIndicators(.hidden)
         .animation(Theme.Motion.smoothOut(0.24), value: selection)
         .onChange(of: selection) { _, _ in
             visibleLimit = 12
@@ -1325,26 +1323,14 @@ private struct WorkoutFilterChip: View {
                 .font(Theme.sans(13, weight: .semibold))
                 .foregroundStyle(selected ? Theme.primaryForeground : Theme.secondaryForeground)
                 .padding(.horizontal, 16)
-                .frame(height: 40)
-                .contentShape(Capsule())
-                .glassSurface(
-                    selected ? .tinted(Theme.primary) : .clear,
-                    in: Capsule(),
-                    interactive: true,
-                    border: selected ? Theme.Glassware.brightEdge : Theme.Glassware.edge,
-                    legacyFill: selected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.24)
-                )
-                .overlay {
-                    if selected {
-                        Capsule()
-                            .fill(Theme.primaryGradient)
-                            .opacity(Theme.Glassware.primaryWash)
-                            .allowsHitTesting(false)
-                    }
-                }
-                .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(
+            .glassControl(
+                selected ? .tinted(Theme.primary) : .clear,
+                .capsule(height: 40),
+                legacyFill: selected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.24)
+            )
+        )
         .frame(minHeight: 44)
         .accessibilityLabel(title)
         .accessibilityAddTraits(selected ? .isSelected : [])

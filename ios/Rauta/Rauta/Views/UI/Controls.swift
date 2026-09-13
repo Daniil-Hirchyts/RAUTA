@@ -2,57 +2,28 @@ import SwiftUI
 
 // MARK: - Switch
 
+/// The system switch, in the brand's colour.
+///
+/// On iOS 26 its thumb is Liquid Glass: it lifts into a lens under a finger and
+/// can be dragged across. A drawn imitation can only fake the resting state.
 struct AppSwitch: View {
     @Binding var isOn: Bool
     var isDisabled: Bool = false
     var label: String = ""
 
     var body: some View {
-        Button {
-            guard !isDisabled else { return }
-            Haptics.trigger(.selection)
-            withAnimation(Theme.Motion.smoothOut(0.2)) { isOn.toggle() }
-        } label: {
-            switchTrack
-        }
-        .buttonStyle(.plain)
-        .opacity(isDisabled ? 0.45 : 1)
-        .accessibilityLabel(label)
-        .accessibilityValue(isOn ? "On" : "Off")
-    }
-
-    @ViewBuilder
-    private var switchTrack: some View {
-        let track = ZStack(alignment: isOn ? .trailing : .leading) {
-            Capsule()
-                .fill(isOn ? Theme.primary.opacity(0.16) : Color.clear)
-
-            Circle()
-                .fill(.white)
-                .frame(width: 22, height: 22)
-                .shadow(color: .black.opacity(0.18), radius: 2, y: 1)
-                .padding(2)
-        }
-        .frame(width: 48, height: 28)
-        .contentShape(Capsule())
-
-        if #available(iOS 26.0, *) {
-            track
-                .glassEffect(
-                    isOn
-                        ? .regular.tint(Theme.primary).interactive(!isDisabled)
-                        : .regular.interactive(!isDisabled),
-                    in: .capsule
-                )
-        } else {
-            track
-                .background(.ultraThinMaterial, in: Capsule())
-                .overlay {
-                    Capsule()
-                        .fill(isOn ? Theme.primary.opacity(0.72) : Theme.muted.opacity(0.72))
-                }
-                .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
-        }
+        Toggle(label, isOn: Binding(
+            get: { isOn },
+            set: { value in
+                guard !isDisabled, value != isOn else { return }
+                Haptics.trigger(.selection)
+                withAnimation(Theme.Motion.smoothOut(0.2)) { isOn = value }
+            }
+        ))
+        .toggleStyle(.switch)
+        .labelsHidden()
+        .tint(Theme.primary)
+        .disabled(isDisabled)
     }
 }
 
@@ -114,7 +85,7 @@ private struct StepButton: View {
                 isDisabled ? .inert : .regular,
                 in: shape,
                 interactive: !isDisabled,
-                border: Theme.Glassware.edge,
+                border: Theme.Glassware.controlEdge,
                 legacyFill: Theme.card
             )
             .opacity(isDisabled ? 0.35 : 1)

@@ -1,8 +1,6 @@
 import SwiftUI
 
 struct RautaScreen<Content: View, Controls: View, Right: View>: View {
-    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
-
     let title: String
     var subtitle: String?
     var subtitleProgress: [HeaderProgressState]? = nil
@@ -11,7 +9,6 @@ struct RautaScreen<Content: View, Controls: View, Right: View>: View {
     var onBack: (() -> Void)?
     var progressStage: Int?
     var titleMultiline: Bool = false
-    var hidden: Bool = false
     var fullScreen: Bool = false
     @ViewBuilder var right: () -> Right
     @ViewBuilder var content: () -> Content
@@ -19,29 +16,13 @@ struct RautaScreen<Content: View, Controls: View, Right: View>: View {
 
     var body: some View {
         AppShell(commandsVisible: Controls.self != EmptyView.self, fullScreen: fullScreen) {
-            ZStack(alignment: .top) {
-                content()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    // React's `.app-shell-header + .app-scroll-region` puts
-                    // this space inside the scroller. That keeps the first
-                    // item clear at rest while later content can pass behind
-                    // the fixed translucent title treatment.
-                    .contentMargins(
-                        .top,
-                        Theme.Metrics.headerHeight + safeAreaInsets.top,
-                        for: .scrollContent
-                    )
-
-                AppTopScrim()
-                    .zIndex(20)
-
+            AppTitledPage {
                 AppShellHeader(
                     title: title,
                     subtitle: subtitle,
                     subtitleProgress: subtitleProgress,
                     onTitleTap: onTitleTap,
                     titleMultiline: titleMultiline,
-                    hidden: hidden,
                     left: {
                         if let onBack {
                             AppHeaderButton(
@@ -61,7 +42,8 @@ struct RautaScreen<Content: View, Controls: View, Right: View>: View {
                     },
                     below: { EmptyView() }
                 )
-                .zIndex(30)
+            } content: {
+                content()
             }
         } controls: {
             controls()
@@ -79,7 +61,6 @@ extension RautaScreen where Right == EmptyView {
         onBack: (() -> Void)? = nil,
         progressStage: Int? = nil,
         titleMultiline: Bool = false,
-        hidden: Bool = false,
         fullScreen: Bool = false,
         @ViewBuilder content: @escaping () -> Content,
         @ViewBuilder controls: @escaping () -> Controls
@@ -93,7 +74,6 @@ extension RautaScreen where Right == EmptyView {
             onBack: onBack,
             progressStage: progressStage,
             titleMultiline: titleMultiline,
-            hidden: hidden,
             fullScreen: fullScreen,
             right: { EmptyView() },
             content: content,
@@ -112,7 +92,6 @@ extension RautaScreen where Controls == EmptyView {
         onBack: (() -> Void)? = nil,
         progressStage: Int? = nil,
         titleMultiline: Bool = false,
-        hidden: Bool = false,
         fullScreen: Bool = false,
         @ViewBuilder right: @escaping () -> Right,
         @ViewBuilder content: @escaping () -> Content
@@ -126,7 +105,6 @@ extension RautaScreen where Controls == EmptyView {
             onBack: onBack,
             progressStage: progressStage,
             titleMultiline: titleMultiline,
-            hidden: hidden,
             fullScreen: fullScreen,
             right: right,
             content: content,
@@ -145,7 +123,6 @@ extension RautaScreen where Controls == EmptyView, Right == EmptyView {
         onBack: (() -> Void)? = nil,
         progressStage: Int? = nil,
         titleMultiline: Bool = false,
-        hidden: Bool = false,
         fullScreen: Bool = false,
         @ViewBuilder content: @escaping () -> Content
     ) {
@@ -158,7 +135,6 @@ extension RautaScreen where Controls == EmptyView, Right == EmptyView {
             onBack: onBack,
             progressStage: progressStage,
             titleMultiline: titleMultiline,
-            hidden: hidden,
             fullScreen: fullScreen,
             right: { EmptyView() },
             content: content,
@@ -237,25 +213,14 @@ struct SelectionChip: View {
                 .font(Theme.sans(13, weight: .semibold))
                 .foregroundStyle(selected ? Theme.primaryForeground : Theme.secondaryForeground)
                 .padding(.horizontal, 13)
-                .frame(height: 34)
-                .glassSurface(
-                    selected ? .tinted(Theme.primary) : .clear,
-                    in: Capsule(),
-                    interactive: true,
-                    border: selected ? Theme.Glassware.brightEdge : Theme.Glassware.edge,
-                    legacyFill: selected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.72)
-                )
-                .overlay {
-                    if selected {
-                        Capsule()
-                            .fill(Theme.primaryGradient)
-                            .opacity(Theme.Glassware.primaryWash)
-                            .allowsHitTesting(false)
-                    }
-                }
-                .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(
+            .glassControl(
+                selected ? .tinted(Theme.primary) : .clear,
+                .capsule(height: 34),
+                legacyFill: selected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.72)
+            )
+        )
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

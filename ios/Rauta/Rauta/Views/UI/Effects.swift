@@ -131,14 +131,29 @@ struct LikeButton: View {
     ]
 
     var body: some View {
-        Button {
+        let button = Button {
             if !liked && animated { burst() }
             Haptics.trigger(.selection)
             action()
         } label: {
             heartContent
         }
-        .buttonStyle(.plain)
+
+        Group {
+            if chromeless {
+                button
+                    .buttonStyle(.plain)
+            } else {
+                button
+                    .buttonStyle(
+                        .glassControl(
+                            liked ? .tinted(Theme.primary.opacity(0.28)) : .clear,
+                            .circle(diameter: size),
+                            legacyFill: Theme.card.opacity(0.78)
+                        )
+                    )
+            }
+        }
         .accessibilityLabel(label)
         .accessibilityAddTraits(liked ? [.isSelected] : [])
     }
@@ -167,20 +182,14 @@ struct LikeButton: View {
                     }
                 }
             }
-            .frame(width: size, height: size)
-            .contentShape(Circle())
 
         if chromeless {
             content
+                .frame(width: size, height: size)
+                .contentShape(Circle())
         } else {
+            // The glass style cuts the pane to `size` itself.
             content
-                .glassSurface(
-                    liked ? .tinted(Theme.primary.opacity(0.28)) : .clear,
-                    in: Circle(),
-                    interactive: true,
-                    border: liked ? Theme.Glassware.brightEdge : Theme.Glassware.edge,
-                    legacyFill: Theme.card.opacity(0.78)
-                )
         }
     }
 

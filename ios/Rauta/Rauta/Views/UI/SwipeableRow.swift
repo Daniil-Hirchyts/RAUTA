@@ -80,16 +80,14 @@ struct SwipeDeleteAction: View {
             Image(systemName: "trash")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(Theme.primary)
-                .frame(width: 42, height: 42)
-                .glassSurface(
-                    .tinted(Theme.primary.opacity(0.36)),
-                    in: Circle(),
-                    interactive: true,
-                    border: Theme.Glassware.brightEdge,
-                    legacyFill: Theme.card.opacity(0.78)
-                )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(
+            .glassControl(
+                .tinted(Theme.primary.opacity(0.36)),
+                .circle(diameter: 42),
+                legacyFill: Theme.card.opacity(0.78)
+            )
+        )
         .accessibilityLabel(label)
     }
 }

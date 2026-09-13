@@ -49,18 +49,14 @@ struct StationPicker: View {
                     Button { edit(active) } label: {
                         Image(systemName: "slider.horizontal.3")
                             .foregroundStyle(Theme.primary)
-                            .frame(width: 34, height: 34)
-                            .glassSurface(.clear, in: Circle(), interactive: true, border: Theme.Glassware.edge, legacyFill: Theme.card)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.glassControl(.clear, .circle(diameter: 34), legacyFill: Theme.card))
                     .accessibilityLabel("Edit station")
                     Button(action: add) {
                         Image(systemName: "plus")
                             .foregroundStyle(Theme.primary)
-                            .frame(width: 34, height: 34)
-                            .glassSurface(.clear, in: Circle(), interactive: true, border: Theme.Glassware.edge, legacyFill: Theme.card)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.glassControl(.clear, .circle(diameter: 34), legacyFill: Theme.card))
                     .accessibilityLabel("Add station")
                 }
             }
@@ -231,10 +227,9 @@ private struct StationEditorSheet: View {
                                     Text("\(Resistance.formatKg(load)) kg  ×")
                                         .font(Theme.sans(12, weight: .semibold))
                                         .foregroundStyle(Theme.foreground)
-                                        .padding(8)
-                                        .glassSurface(.clear, in: Capsule(), interactive: true, border: Theme.Glassware.edge, legacyFill: Theme.card)
+                                        .padding(.horizontal, 8)
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(.glassControl(.clear, .capsule(height: 30), legacyFill: Theme.card))
                                 .accessibilityLabel("Remove \(Resistance.formatKg(load)) kilograms")
                             }
                         }

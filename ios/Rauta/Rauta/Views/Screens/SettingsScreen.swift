@@ -33,7 +33,9 @@ struct SettingsScreen: View {
                                         .frame(width: 20, height: 20)
                                 }
                                 AppSwitch(
-                                    isOn: Binding(get: { store.settings.appleHealthEnabled }, set: connectHealth),
+                                    // Holds on while the permission sheet is up, so the
+                                    // system switch does not flick back off under it.
+                                    isOn: Binding(get: { store.settings.appleHealthEnabled || connectingHealth }, set: connectHealth),
                                     isDisabled: connectingHealth,
                                     label: "Apple Health integration"
                                 )
@@ -122,17 +124,8 @@ struct SettingsScreen: View {
                                         Image(systemName: "arrow.clockwise")
                                             .font(.system(size: 17, weight: .semibold))
                                             .foregroundStyle(Theme.primary)
-                                            .frame(width: 40, height: 40)
-                                            .contentShape(Circle())
-                                            .glassSurface(
-                                                .clear,
-                                                in: Circle(),
-                                                interactive: true,
-                                                border: Theme.Glassware.edge,
-                                                legacyFill: Theme.card
-                                            )
                                     }
-                                    .buttonStyle(.plain)
+                                    .buttonStyle(.glassControl(.clear, .circle(diameter: 40), legacyFill: Theme.card))
                                     .accessibilityLabel("Sync iCloud backup now")
                                 }
                             }
@@ -193,9 +186,9 @@ struct SettingsScreen: View {
                         }
                     }
                     .padding(.horizontal, Theme.Metrics.contentInset)
-                    .padding(.top, 20)
                     .padding(.bottom, 24)
                 }
+                .pageScroll()
             }
 
             ConfirmModal(kind: clearing ? .clearData : nil, onCancel: { clearing = false }, onConfirm: clearData)

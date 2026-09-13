@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct ProfileDashboard: View {
-    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     @ObservedObject private var store = AppStore.shared
     let rautaNamespace: Namespace.ID
     let isActive: Bool
@@ -114,11 +113,7 @@ struct ProfileDashboard: View {
             .padding(.horizontal, 12)
             .padding(.bottom, 120)
         }
-        .contentMargins(
-            .top,
-            Theme.Metrics.headerHeight + safeAreaInsets.top + 18,
-            for: .scrollContent
-        )
+        .pageScroll()
         .scrollIndicators(.hidden)
     }
 

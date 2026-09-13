@@ -40,9 +40,9 @@ struct PlanWeekScreen: View {
                     }
                 }
                 .padding(.horizontal, Theme.Metrics.contentInset)
-                .padding(.top, 20)
                 .padding(.bottom, 24)
             }
+            .pageScroll()
         } controls: {
             AppButton(
                 variant: .primary,

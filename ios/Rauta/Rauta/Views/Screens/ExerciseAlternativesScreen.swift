@@ -139,9 +139,9 @@ struct ExerciseAlternativesScreen: View {
                         }
                     }
                     .padding(.horizontal, Theme.Metrics.contentInset)
-                    .padding(.top, 20)
                     .padding(.bottom, 24)
                 }
+                .pageScroll()
             }
         } else {
             Color.clear.onAppear(perform: store.navigation.pop)

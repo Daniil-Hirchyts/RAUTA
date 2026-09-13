@@ -252,9 +252,9 @@ struct WorkoutDetailScreen: View {
                     }
                 }
             }
-            .padding(.top, 8)
             .padding(.bottom, 188)
         }
+        .pageScroll()
         .scrollDisabled(reorder.active != nil)
         .onDisappear { reorder.cancel() }
     }
@@ -343,9 +343,9 @@ struct WorkoutDetailScreen: View {
                         }
                 }
                 .padding(.horizontal, embeddedInMainTabs ? 0 : Theme.Metrics.contentInset)
-                .padding(.top, embeddedInMainTabs ? 8 : Theme.Metrics.contentInset)
                 .padding(.bottom, embeddedInMainTabs ? 188 : (session == nil ? 24 : 144))
             }
+            .pageScroll()
             .scrollDisabled(reorder.active != nil)
             .onDisappear { reorder.cancel() }
 
@@ -1502,23 +1502,8 @@ private struct WorkoutExerciseRow: View {
             Image(systemName: systemImage)
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(Theme.primaryForeground)
-                .frame(width: 54, height: 54)
-                .glassSurface(
-                    .tinted(Theme.primary),
-                    in: Circle(),
-                    interactive: true,
-                    border: Theme.Glassware.brightEdge,
-                    legacyFill: Theme.primary
-                )
-                .overlay {
-                    Circle()
-                        .fill(Theme.primaryGradient)
-                        .opacity(Theme.Glassware.primaryWash)
-                        .allowsHitTesting(false)
-                }
-                .clipShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassControl(.tinted(Theme.primary), .circle(diameter: 54)))
         .accessibilityLabel(title)
     }
 }
@@ -1712,10 +1697,8 @@ private struct WorkoutSessionDock: View {
                     Image(systemName: session.runningSince == nil ? "play.fill" : "pause.fill")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Theme.foreground)
-                        .frame(width: 38, height: 38)
-                        .glassSurface(.clear, in: Circle(), interactive: true, border: Theme.Glassware.edge, legacyFill: .clear)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.glassControl(.clear, .circle(diameter: 38), legacyFill: .clear))
                 .accessibilityLabel(session.runningSince == nil ? "Resume workout" : "Pause workout")
 
                 Button {
@@ -1725,16 +1708,14 @@ private struct WorkoutSessionDock: View {
                     Image(systemName: "forward.end.fill")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(onNext == nil ? Theme.mutedForeground : Theme.foreground)
-                        .frame(width: 38, height: 38)
-                        .glassSurface(
-                            onNext == nil ? .inert : .clear,
-                            in: Circle(),
-                            interactive: onNext != nil,
-                            border: Theme.Glassware.edge,
-                            legacyFill: .clear
-                        )
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(
+                    .glassControl(
+                        onNext == nil ? .inert : .clear,
+                        .circle(diameter: 38),
+                        legacyFill: .clear
+                    )
+                )
                 .disabled(onNext == nil)
                 .accessibilityLabel(exercise.map { "Skip \($0.name)" } ?? "Next exercise")
             }

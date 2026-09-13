@@ -186,7 +186,6 @@ struct BodyMap: View {
     var showCornerCount: Bool = false
     var showFlipButton: Bool = true
     var side: BodySide?
-    var figureOffsetY: CGFloat = 0
 
     @State private var internalSide: BodySide = .front
 
@@ -219,7 +218,6 @@ struct BodyMap: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .offset(y: figureOffsetY)
             .overlay(alignment: .bottomTrailing) {
                 if showFlipButton {
                     Button(action: flip) {

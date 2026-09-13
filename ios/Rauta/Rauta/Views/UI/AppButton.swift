@@ -7,8 +7,8 @@ enum ButtonVariant {
 enum ButtonSize {
     case standard, icon, cta, iconCTA
 
-    /// The visible pane stays compact while the surrounding Button keeps a
-    /// comfortable hit target.
+    /// The visible pane stays compact while the row keeps `hitHeight` of room
+    /// around it. A glass button answers touches on its pane.
     var visualHeight: CGFloat {
         switch self {
         case .standard: return 40
@@ -22,14 +22,6 @@ enum ButtonSize {
         switch self {
         case .standard, .icon: return 44
         case .cta, .iconCTA: return 48
-        }
-    }
-
-    var cornerRadius: CGFloat {
-        switch self {
-        case .standard: return visualHeight / 2
-        case .icon, .iconCTA: return visualHeight / 2
-        case .cta: return visualHeight / 2
         }
     }
 }
@@ -74,15 +66,6 @@ struct AppButton<Label: View>: View {
         }
     }
 
-    private var borderColor: Color {
-        if isDisabled { return Theme.border }
-        switch variant {
-        case .primary: return Theme.Glassware.brightEdge
-        case .secondary, .ghost: return Theme.Glassware.edge
-        case .destructive: return Theme.primary
-        }
-    }
-
     private var font: Font {
         switch size {
         case .standard: return Theme.sans(16, weight: .semibold)
@@ -95,25 +78,18 @@ struct AppButton<Label: View>: View {
         Button {
             press()
         } label: {
-            buttonSurface(
-                label()
+            label()
                 .font(font)
                 .lineLimit(1)
                 .frame(maxWidth: expands ? .infinity : nil)
-                .frame(
-                    width: (size == .icon || size == .iconCTA) ? size.visualHeight : nil,
-                    height: size.visualHeight
-                )
                 .padding(.horizontal, horizontalPadding)
                 .foregroundStyle(foreground)
-                .contentShape(shape)
-            )
-            .frame(
-                minWidth: (size == .icon || size == .iconCTA) ? size.hitHeight : nil,
-                minHeight: size.hitHeight
-            )
         }
-        .buttonStyle(PressReporting())
+        .buttonStyle(.glassControl(tone, shape))
+        .frame(
+            minWidth: (size == .icon || size == .iconCTA) ? size.hitHeight : nil,
+            minHeight: size.hitHeight
+        )
         .modifier(ShakeEffect(phase: shakePhase))
         .accessibilityLabel(accessibilityLabel ?? "")
         .accessibilityAddTraits(isDisabled ? [] : [])
@@ -127,28 +103,11 @@ struct AppButton<Label: View>: View {
         }
     }
 
-    private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: size.cornerRadius, style: .continuous)
-    }
-
-    @ViewBuilder
-    private func buttonSurface<Content: View>(_ content: Content) -> some View {
-        content
-            .glassSurface(
-                tone,
-                in: shape,
-                interactive: !isDisabled,
-                border: borderColor
-            )
-            .overlay {
-                if !isDisabled, variant == .primary {
-                    shape
-                        .fill(Theme.primaryGradient)
-                        .opacity(Theme.Glassware.primaryWash)
-                        .allowsHitTesting(false)
-                }
-            }
-            .clipShape(shape)
+    private var shape: GlassButtonShape {
+        switch size {
+        case .icon, .iconCTA: return .circle(diameter: size.visualHeight)
+        case .standard, .cta: return .capsule(height: size.visualHeight)
+        }
     }
 
     private func press() {
@@ -181,17 +140,6 @@ extension AppButton where Label == Text {
             action: action,
             label: { Text(title) }
         )
-    }
-}
-
-private struct PressReporting: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        let usesLegacyPressFeedback = !Theme.Glassware.supportsLiquidGlass
-
-        configuration.label
-            .scaleEffect(usesLegacyPressFeedback && configuration.isPressed ? 0.985 : 1)
-            .opacity(usesLegacyPressFeedback && configuration.isPressed ? 0.90 : 1)
-            .animation(Theme.Motion.spring, value: configuration.isPressed)
     }
 }
 

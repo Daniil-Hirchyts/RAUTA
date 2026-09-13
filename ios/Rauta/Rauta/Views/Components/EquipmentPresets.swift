@@ -90,42 +90,25 @@ private struct PresetChip: View {
                     .font(Theme.sans(13, weight: .semibold))
                     .lineLimit(1)
                     .padding(.horizontal, 13)
-                    .frame(height: 34)
                     .foregroundStyle(selected ? Theme.primaryForeground : Theme.secondaryForeground)
-                    .glassSurface(
-                        selected ? .tinted(Theme.primary) : .clear,
-                        in: Capsule(),
-                        interactive: true,
-                        border: selected ? Theme.Glassware.brightEdge : Theme.Glassware.edge,
-                        legacyFill: selected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.72)
-                    )
-                    .overlay {
-                        if selected {
-                            Capsule()
-                                .fill(Theme.primaryGradient)
-                                .opacity(Theme.Glassware.primaryWash)
-                                .allowsHitTesting(false)
-                        }
-                    }
-                    .clipShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(
+                .glassControl(
+                    selected ? .tinted(Theme.primary) : .clear,
+                    .capsule(height: 34),
+                    legacyFill: selected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.72)
+                )
+            )
             .accessibilityAddTraits(selected ? [.isSelected] : [])
             if let onDelete {
                 Button(action: onDelete) {
                     Image(systemName: "trash")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(Theme.primary)
-                        .frame(width: 34, height: 34)
-                        .glassSurface(
-                            .clear,
-                            in: Circle(),
-                            interactive: true,
-                            border: Theme.Glassware.edge,
-                            legacyFill: Theme.card.opacity(0.72)
-                        )
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(
+                    .glassControl(.clear, .circle(diameter: 34), legacyFill: Theme.card.opacity(0.72))
+                )
                 .accessibilityLabel("Delete \(name) preset")
             }
         }

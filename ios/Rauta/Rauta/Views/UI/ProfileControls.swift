@@ -4,6 +4,8 @@ struct ProfileNameControl: View {
     @ObservedObject private var store = AppStore.shared
     @State private var draft = ""
     @FocusState private var focused: Bool
+    var onFocusChange: (Bool) -> Void = { _ in }
+
     var body: some View {
         TextField("", text: $draft, prompt: Text("Your name").foregroundColor(Theme.mutedForeground.opacity(0.3)))
             .font(Theme.sans(36, weight: .black)).tracking(-1.08)
@@ -20,13 +22,14 @@ struct ProfileNameControl: View {
                 if !draft.isEmpty {
                     Button { draft = "" } label: {
                         Image(systemName: "xmark").font(.system(size: 14)).foregroundStyle(Theme.mutedForeground)
-                            .frame(width: 32, height: 32)
-                            .glassSurface(.clear, in: Circle(), interactive: true, border: Theme.Glassware.edge, legacyFill: Theme.card)
-                    }.accessibilityLabel("Clear name").padding(.bottom, 12)
+                    }
+                    .buttonStyle(.glassControl(.clear, .circle(diameter: 32), legacyFill: Theme.card))
+                    .accessibilityLabel("Clear name").padding(.bottom, 12)
                 }
             }
             .onAppear { draft = store.trainingProfile.profile.name }
             .onChange(of: draft) { _, value in store.trainingProfile.updateProfile(.init(name: String(value.prefix(60)))) }
+            .onChange(of: focused) { _, value in onFocusChange(value) }
             .onSubmit { focused = false }
             .accessibilityLabel("Your name")
     }
@@ -34,7 +37,6 @@ struct ProfileNameControl: View {
 
 struct ProfileExperienceControl: View {
     @ObservedObject private var store = AppStore.shared
-    @State private var healthOpen = false
     private var healthLimited: Bool { store.trainingProfile.profile.health.status != .healthy }
     private var healthSummary: String {
         guard healthLimited else { return "Nothing to train around" }
@@ -67,70 +69,53 @@ struct ProfileExperienceControl: View {
                     }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
                 }
             }
-            Button {
-                Haptics.trigger(.light)
-                healthOpen = true
+            // Native menu so it morphs out of the row on iOS 26+ instead of
+            // floating in as an arrowed popover.
+            Menu {
+                Section("Anything to train around?") {
+                    healthToggle(
+                        "Nothing to train around",
+                        isOn: store.trainingProfile.profile.health.status == .healthy,
+                        action: store.trainingProfile.setHealthy
+                    )
+
+                    ForEach(ProfileVocabulary.healthLimitations, id: \.self) { limitation in
+                        healthToggle(
+                            ProfileVocabulary.label(for: limitation),
+                            isOn: (store.trainingProfile.profile.health.reasons ?? []).contains(limitation)
+                        ) {
+                            store.trainingProfile.toggleHealthLimitation(limitation)
+                        }
+                        // Limitations stack, so keep the menu open while picking.
+                        .menuActionDismissBehavior(.disabled)
+                    }
+                }
             } label: {
                 HStack(spacing: 12) {
                     Text("Health").foregroundStyle(Theme.mutedForeground)
                     Rectangle().fill(Theme.border).frame(height: 1)
                     Text(healthSummary).lineLimit(1)
-                    Image(systemName: "chevron.right").font(.system(size: 12))
+                    Image(systemName: "chevron.up.chevron.down").font(.system(size: 12))
                 }
                 .font(Theme.sans(14, weight: .semibold))
                 .foregroundStyle(healthLimited ? Theme.primary : Theme.foreground)
                 .padding(4)
-            }.buttonStyle(.plain)
-            .popover(isPresented: $healthOpen, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
-                AppMenuSurface(dismiss: {}) {
-                    Text("Anything to train around?")
-                        .font(Theme.sans(13, weight: .bold))
-                        .foregroundStyle(Theme.mutedForeground)
-                        .padding(.horizontal, 12)
-                        .padding(.top, 6)
-                        .padding(.bottom, 2)
-
-                    healthMenuRow(
-                        "Nothing to train around",
-                        checked: store.trainingProfile.profile.health.status == .healthy,
-                        action: store.trainingProfile.setHealthy
-                    )
-
-                    ForEach(ProfileVocabulary.healthLimitations, id: \.self) { limitation in
-                        healthMenuRow(
-                            ProfileVocabulary.label(for: limitation),
-                            checked: (store.trainingProfile.profile.health.reasons ?? []).contains(limitation)
-                        ) {
-                            store.trainingProfile.toggleHealthLimitation(limitation)
-                        }
-                    }
-                }
-                .presentationCompactAdaptation(.popover)
-                .presentationBackground(.clear)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .menuOrder(.fixed)
+            .tint(Theme.primary)
         }
     }
 
-    private func healthMenuRow(
-        _ title: String,
-        checked: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button {
-            Haptics.trigger(.selection)
-            action()
-        } label: {
-            HStack(spacing: 12) {
-                Text(title)
-                    .font(Theme.sans(15, weight: checked ? .semibold : .regular))
-                Spacer(minLength: 16)
-                if checked {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(Theme.primary)
-                }
+    private func healthToggle(_ title: String, isOn: Bool, action: @escaping () -> Void) -> some View {
+        Toggle(title, isOn: Binding(
+            get: { isOn },
+            set: { _ in
+                Haptics.trigger(.selection)
+                action()
             }
-        }
+        ))
     }
 }
 
@@ -209,11 +194,11 @@ struct ProfileGoalControl: View {
     }
 }
 
+/// RAUTA's line for a profile step, carried under the step's title, and the
+/// badge it speaks from.
 struct ProfileTopPanel: View {
-    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     @ObservedObject private var store = AppStore.shared
     var step: ProfileStep
-    var showsSpeech = true
     private var speech: String {
         let p = store.trainingProfile.profile
         switch step {
@@ -252,14 +237,9 @@ struct ProfileTopPanel: View {
         }
     }
     var body: some View {
-        VStack(spacing: 0) {
-            Color.clear.frame(height: 68 + safeAreaInsets.top)
-            if showsSpeech {
-                Text(speech).font(Theme.sans(15, weight: .semibold)).tracking(-0.3).lineSpacing(2)
-                    .foregroundStyle(Theme.foreground).multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity).padding(.horizontal, 52).padding(.top, 16).padding(.bottom, 16)
-            }
-        }
+        Text(speech).font(Theme.sans(15, weight: .semibold)).tracking(-0.3).lineSpacing(2)
+            .foregroundStyle(Theme.foreground).multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity).padding(.horizontal, 40).padding(.top, 6)
     }
 
     var headerBadge: some View {
