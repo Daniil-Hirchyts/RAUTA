@@ -13,35 +13,46 @@ struct AppSwitch: View {
             Haptics.trigger(.selection)
             withAnimation(Theme.Motion.smoothOut(0.2)) { isOn.toggle() }
         } label: {
-            ZStack(alignment: isOn ? .trailing : .leading) {
-                Color.clear
-                    .glassSurface(
-                        isOn ? .tinted(Theme.primary) : .clear,
-                        in: Capsule(),
-                        interactive: !isDisabled,
-                        border: isOn ? Theme.Glassware.brightEdge : Theme.Glassware.edge,
-                        legacyFill: Theme.muted
-                    )
-                    .overlay {
-                        if isOn {
-                            Capsule()
-                                .fill(Theme.primaryGradient)
-                                .opacity(Theme.Glassware.primaryWash)
-                        }
-                    }
-                    .clipShape(Capsule())
-                Circle()
-                    .fill(.white)
-                    .frame(width: 22, height: 22)
-                    .shadow(color: .black.opacity(0.18), radius: 2, y: 1)
-                    .padding(2)
-            }
-            .frame(width: 48, height: 28)
+            switchTrack
         }
         .buttonStyle(.plain)
         .opacity(isDisabled ? 0.45 : 1)
         .accessibilityLabel(label)
         .accessibilityValue(isOn ? "On" : "Off")
+    }
+
+    @ViewBuilder
+    private var switchTrack: some View {
+        let track = ZStack(alignment: isOn ? .trailing : .leading) {
+            Capsule()
+                .fill(isOn ? Theme.primary.opacity(0.16) : Color.clear)
+
+            Circle()
+                .fill(.white)
+                .frame(width: 22, height: 22)
+                .shadow(color: .black.opacity(0.18), radius: 2, y: 1)
+                .padding(2)
+        }
+        .frame(width: 48, height: 28)
+        .contentShape(Capsule())
+
+        if #available(iOS 26.0, *) {
+            track
+                .glassEffect(
+                    isOn
+                        ? .regular.tint(Theme.primary).interactive(!isDisabled)
+                        : .regular.interactive(!isDisabled),
+                    in: .capsule
+                )
+        } else {
+            track
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay {
+                    Capsule()
+                        .fill(isOn ? Theme.primary.opacity(0.72) : Theme.muted.opacity(0.72))
+                }
+                .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
+        }
     }
 }
 
@@ -163,41 +174,39 @@ struct AppStepper: View {
     var onStep: (Int) -> Void
 
     var body: some View {
-        GlassGroup(spacing: 8) {
-            HStack(spacing: 6) {
-                StepButton(
-                    systemImage: "minus",
-                    label: "Decrease \(label.lowercased())",
-                    isDisabled: !canDecrement
-                ) { onStep(-1) }
+        HStack(spacing: 6) {
+            StepButton(
+                systemImage: "minus",
+                label: "Decrease \(label.lowercased())",
+                isDisabled: !canDecrement
+            ) { onStep(-1) }
 
-                VStack(spacing: 2) {
-                    Text(label.uppercased())
-                        .font(Theme.sans(10, weight: .black))
-                        .kerning(1.8)
-                        .foregroundStyle(Theme.mutedForeground)
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text(display)
-                            .font(Theme.sans(21, weight: .black))
-                            .kerning(-0.4)
-                            .monospacedDigit()
-                            .foregroundStyle(Theme.foreground)
-                        if let unit {
-                            Text(unit)
-                                .font(Theme.sans(13, weight: .bold))
-                                .foregroundStyle(Theme.mutedForeground)
-                        }
+            VStack(spacing: 2) {
+                Text(label.uppercased())
+                    .font(Theme.sans(10, weight: .black))
+                    .kerning(1.8)
+                    .foregroundStyle(Theme.mutedForeground)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(display)
+                        .font(Theme.sans(21, weight: .black))
+                        .kerning(-0.4)
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.foreground)
+                    if let unit {
+                        Text(unit)
+                            .font(Theme.sans(13, weight: .bold))
+                            .foregroundStyle(Theme.mutedForeground)
                     }
-                    .lineLimit(1)
                 }
-                .frame(maxWidth: .infinity)
-
-                StepButton(
-                    systemImage: "plus",
-                    label: "Increase \(label.lowercased())",
-                    isDisabled: false
-                ) { onStep(1) }
+                .lineLimit(1)
             }
+            .frame(maxWidth: .infinity)
+
+            StepButton(
+                systemImage: "plus",
+                label: "Increase \(label.lowercased())",
+                isDisabled: false
+            ) { onStep(1) }
         }
         .padding(6)
         .background(

@@ -40,6 +40,20 @@ under Settings → General → VPN & Device Management.
 Anything that changes the web app needs a `bun run ios:sync` before it shows
 up in the native shell.
 
+### Force the native onboarding flow
+
+The SwiftUI app in `ios/Rauta` accepts a Debug-only `--onboarding` launch
+argument. It forces the onboarding route on every launch without deleting the
+existing training profile or app data.
+
+In Xcode, open `ios/Rauta/Rauta.xcodeproj` and select the `Rauta` app scheme.
+If Xcode has not created it yet, use Product → Scheme → New Scheme… and choose
+the `Rauta` target. Then use Product → Scheme → Edit Scheme → Run → Arguments.
+Add `--onboarding` under
+"Arguments Passed On Launch" and keep it checked while working on onboarding.
+Run the app normally with ⌘R. Uncheck the argument to restore the normal
+first-run behavior.
+
 The app icon is an Icon Composer document at `ios/App/App/AppIcon.icon` — open
 it with Icon Composer (bundled in Xcode) to edit the layers. Xcode renders the
 default, dark, and tinted appearances from it at build time, so there is no

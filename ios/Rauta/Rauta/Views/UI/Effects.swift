@@ -206,19 +206,41 @@ struct FlowProgress: View {
     var body: some View {
         HStack(spacing: 6) {
             ForEach(1...Swift.max(1, steps), id: \.self) { step in
-                Capsule()
-                    .fill(fill(step))
+                Color.clear
                     .frame(width: step == stage ? 28 : 14, height: 4)
+                    .glassSurface(
+                        tone(step),
+                        in: Capsule(),
+                        legacyFill: legacyFill(step)
+                    )
+                    .overlay {
+                        if step == stage {
+                            Capsule()
+                                .fill(Theme.primaryGradient)
+                                .opacity(Theme.Glassware.primaryWash)
+                        } else if step < stage {
+                            Capsule()
+                                .fill(Theme.primary)
+                                .opacity(Theme.Glassware.supportsLiquidGlass ? 0.12 : 0.20)
+                        }
+                    }
+                    .clipShape(Capsule())
             }
         }
         .animation(Theme.Motion.smoothOut, value: stage)
         .accessibilityLabel("Step \(stage) of \(steps)")
     }
 
-    private func fill(_ step: Int) -> AnyShapeStyle {
-        if step == stage { return AnyShapeStyle(Theme.primaryGradient) }
-        if step < stage { return AnyShapeStyle(Theme.primary.opacity(0.35)) }
-        return AnyShapeStyle(Color.white.opacity(0.10))
+    private func tone(_ step: Int) -> GlassTone {
+        if step == stage { return .tinted(Theme.primary) }
+        if step < stage { return .tinted(Theme.primary.opacity(0.28)) }
+        return .clear
+    }
+
+    private func legacyFill(_ step: Int) -> Color {
+        if step == stage { return Theme.primary }
+        if step < stage { return Theme.primary.opacity(0.35) }
+        return Color.white.opacity(0.10)
     }
 }
 

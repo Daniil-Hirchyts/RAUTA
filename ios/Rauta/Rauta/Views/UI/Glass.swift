@@ -46,17 +46,6 @@ extension View {
             )
         )
     }
-
-    /// Ties this pane to its neighbours inside a ``GlassGroup``, so panes that
-    /// come near each other merge and pull apart the way liquid does.
-    @ViewBuilder
-    func glassMorph(_ id: String, in namespace: Namespace.ID) -> some View {
-        if #available(iOS 26.0, *) {
-            glassEffectID(id, in: namespace)
-        } else {
-            self
-        }
-    }
 }
 
 struct GlassSurface<S: InsettableShape>: ViewModifier {
@@ -114,27 +103,6 @@ struct GlassSurface<S: InsettableShape>: ViewModifier {
     private var borderOverlay: some View {
         if let border {
             shape.strokeBorder(border, lineWidth: 1)
-        }
-    }
-}
-
-/// The space inside which panes of glass know about each other.
-///
-/// Two glass buttons sitting side by side are two separate panes until they
-/// share a container; inside one they behave as a single body of liquid —
-/// blending where they overlap, and morphing into one another when one is
-/// swapped for the next.
-struct GlassGroup<Content: View>: View {
-    /// Keep the merge threshold below the visual gap between neighbouring
-    /// controls. Large values make separate buttons fuse into a blob at rest.
-    var spacing: CGFloat = 4
-    @ViewBuilder var content: () -> Content
-
-    var body: some View {
-        if #available(iOS 26.0, *) {
-            GlassEffectContainer(spacing: spacing) { content() }
-        } else {
-            content()
         }
     }
 }

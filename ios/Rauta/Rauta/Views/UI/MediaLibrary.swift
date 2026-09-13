@@ -24,7 +24,7 @@ enum MediaLibrary {
     static func goalURL(_ goal: TrainingGoal) -> URL {
         root
             .appendingPathComponent("goals")
-            .appendingPathComponent("\(goal.rawValue.replacingOccurrences(of: "_", with: "-")).webp")
+            .appendingPathComponent("\(goal.rawValue.replacingOccurrences(of: "_", with: "-")).png")
     }
 
     static let grainImage: UIImage? = {
@@ -357,10 +357,18 @@ struct GoalImageView: View {
     var body: some View {
         if let image = StillImage.load(MediaLibrary.goalURL(goal)) {
             Image(uiImage: image)
+                .interpolation(.high)
                 .resizable()
-                .scaledToFill()
+                .scaledToFit()
+                .padding(4)
+                .shadow(
+                    color: Theme.obsidian.opacity(0.52),
+                    radius: 14,
+                    y: 10
+                )
+                .accessibilityHidden(true)
         } else {
-            Theme.card
+            Color.clear
         }
     }
 }

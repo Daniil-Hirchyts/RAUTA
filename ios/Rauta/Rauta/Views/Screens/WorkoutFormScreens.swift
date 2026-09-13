@@ -238,7 +238,19 @@ private struct NewWorkoutDestinationRow: View {
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(Theme.primaryForeground)
                     .frame(width: 44, height: 44)
-                    .background(Theme.primaryGradient, in: Circle())
+                    .glassSurface(
+                        .tinted(Theme.primary),
+                        in: Circle(),
+                        border: Theme.Glassware.brightEdge,
+                        legacyFill: Theme.primary
+                    )
+                    .overlay {
+                        Circle()
+                            .fill(Theme.primaryGradient)
+                            .opacity(Theme.Glassware.primaryWash)
+                            .allowsHitTesting(false)
+                    }
+                    .clipShape(Circle())
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("New workout")

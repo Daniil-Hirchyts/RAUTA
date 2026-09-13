@@ -2,7 +2,10 @@ import SwiftUI
 
 struct OnboardingScreen: View {
     var body: some View {
-        ProfileStepFlow(steps: [.about, .experience, .goal, .duration, .gym], onboarding: true) {
+        ProfileStepFlow(
+            steps: [.welcome, .about, .experience, .goal, .duration, .gym, .ready],
+            onboarding: true
+        ) {
             Haptics.trigger(.success)
             AppStore.shared.trainingProfile.completeOnboarding()
             AppStore.shared.navigation.reset([.workouts])
@@ -11,8 +14,10 @@ struct OnboardingScreen: View {
 }
 
 enum ProfileStep: String {
+    case welcome = "Meet RAUTA"
     case about = "About you", experience = "Experience", goal = "Goal"
     case duration = "Session length", gym = "Your gym", health = "Health"
+    case ready = "Ready to train"
 }
 
 /// Mirrors ProfileStepFlow in profile-pages.tsx; settings reuses these steps.
@@ -24,6 +29,12 @@ struct ProfileStepFlow: View {
     let onFinish: () -> Void
     @State private var index = 0
     private var step: ProfileStep { steps[index] }
+    private var isStoryStep: Bool { step == .welcome || step == .ready }
+    private var actionTitle: String {
+        if step == .welcome { return "Set up RAUTA" }
+        if index == steps.count - 1 { return onboarding ? "Start training" : "Done" }
+        return "Continue"
+    }
 
     var body: some View {
         AppShell(commandsVisible: true) {
@@ -31,7 +42,13 @@ struct ProfileStepFlow: View {
                 ZStack(alignment: .top) {
                     VStack(spacing: 0) {
                         Color.clear.frame(height: 68 + safeAreaInsets.top)
-                        if step == .about || step == .duration {
+                        if isStoryStep {
+                            profileContent
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                                .padding(.horizontal, 12)
+                                .padding(.top, 12)
+                                .padding(.bottom, 12)
+                        } else if step == .about || step == .duration {
                             Spacer(minLength: 20)
                             if step == .about {
                                 ProfileNameControl().padding(.horizontal, 12)
@@ -48,8 +65,13 @@ struct ProfileStepFlow: View {
                                     .padding(.horizontal, 12)
                             }
                         }
-                    }.id(step).transition(.opacity)
-                    ProfileTopPanel(step: step, hasRightControl: onboarding)
+                    }
+                    .id(step)
+                    .transition(.opacity.combined(with: .scale(scale: 0.985)))
+                    ProfileTopPanel(
+                        step: step,
+                        showsSpeech: !isStoryStep
+                    )
                     header
                     if step == .gym {
                         VStack {
@@ -62,9 +84,12 @@ struct ProfileStepFlow: View {
                 }
             }
         } controls: {
-            AppButton(index == steps.count - 1 ? (onboarding ? "Start training" : "Done") : "Continue", size: .cta, expands: true) {
+            AppButton(actionTitle, size: .cta, expands: true) {
                 if index == steps.count - 1 { onFinish() }
-                else { withAnimation(.easeOut(duration: 0.2)) { index += 1 }; Haptics.trigger(.medium) }
+                else {
+                    withAnimation(Theme.Motion.pageEnter) { index += 1 }
+                    Haptics.trigger(.medium)
+                }
             }.id(index)
         }
     }
@@ -82,21 +107,28 @@ struct ProfileStepFlow: View {
 
             HStack(spacing: 0) {
                 if index > 0 || !onboarding {
-                    AppHeaderButton(systemImage: "chevron.left", label: index > 0 ? "Previous step" : "Back") {
-                        if index > 0 { index -= 1 } else { onFinish() }
+                    AppHeaderButton(
+                        systemImage: "chevron.left",
+                        label: index > 0 ? "Previous step" : "Back"
+                    ) {
+                        if index > 0 {
+                            withAnimation(Theme.Motion.pageExit) { index -= 1 }
+                            Haptics.trigger(.selection)
+                        } else {
+                            onFinish()
+                        }
                     }
+                    .frame(width: 44, height: 44, alignment: .leading)
                 } else {
                     Color.clear.frame(width: 44, height: 44)
                 }
                 Spacer(minLength: 0)
-                if onboarding {
-                    AppHeaderButton(systemImage: "xmark", label: "Skip setup") {
-                        Haptics.trigger(.light)
-                        store.trainingProfile.completeOnboarding()
-                        store.navigation.reset([.workouts])
-                    }
-                } else {
+                if isStoryStep {
                     Color.clear.frame(width: 44, height: 44)
+                } else {
+                    ProfileTopPanel(step: step)
+                        .headerBadge
+                        .frame(width: 44, height: 44, alignment: .trailing)
                 }
             }
         }
@@ -109,12 +141,187 @@ struct ProfileStepFlow: View {
 
     @ViewBuilder private var profileContent: some View {
         switch step {
+        case .welcome: OnboardingIntroView()
         case .experience: ProfileExperienceControl()
         case .goal: ProfileGoalControl().padding(.horizontal, -12)
         case .gym: EquipmentGrid(selected: store.filters.gymEquipment, onToggle: store.filters.toggleGymEquipment)
         case .health: ProfileHealthControl()
+        case .ready: OnboardingReadyView()
         default: EmptyView()
         }
+    }
+}
+
+private struct OnboardingIntroView: View {
+    var body: some View {
+        VStack(spacing: 14) {
+            Spacer(minLength: 4)
+
+            ZStack {
+                Circle()
+                    .fill(Theme.primary.opacity(0.10))
+                    .frame(width: 156, height: 156)
+                    .blur(radius: 24)
+
+                RautaCharacter(
+                    mood: .excited,
+                    reactionKey: "onboarding-welcome",
+                    reaction: .gearUp
+                )
+                .frame(width: 172, height: 172)
+            }
+
+            VStack(spacing: 8) {
+                Text("Training that fits your week")
+                    .font(Theme.sans(26, weight: .black))
+                    .tracking(-0.8)
+                    .foregroundStyle(Theme.foreground)
+                    .multilineTextAlignment(.center)
+
+                Text("A few quick choices. A plan that fits.")
+                    .font(Theme.sans(14, weight: .medium))
+                    .foregroundStyle(Theme.mutedForeground)
+                    .multilineTextAlignment(.center)
+            }
+
+            HStack(spacing: 8) {
+                OnboardingPill(systemImage: "clock", title: "Your time")
+                OnboardingPill(systemImage: "target", title: "Your goal")
+                OnboardingPill(systemImage: "dumbbell", title: "Your gym")
+            }
+
+            Spacer(minLength: 4)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct OnboardingPill: View {
+    let systemImage: String
+    let title: String
+
+    var body: some View {
+        VStack(spacing: 7) {
+            Image(systemName: systemImage)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(Theme.primary)
+            Text(title)
+                .font(Theme.sans(12, weight: .semibold))
+                .foregroundStyle(Theme.foreground)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, minHeight: 62)
+        .padding(.horizontal, 8)
+        .background(
+            Theme.card.opacity(0.82),
+            in: RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+                .strokeBorder(Theme.border)
+        )
+    }
+}
+
+private struct OnboardingReadyView: View {
+    @ObservedObject private var store = AppStore.shared
+
+    private var equipmentSummary: String {
+        let count = store.filters.gymEquipment.count
+        return count == 0 ? "No equipment selected" : "\(count) equipment types"
+    }
+
+    var body: some View {
+        let profile = store.trainingProfile.profile
+
+        VStack(spacing: 22) {
+            Spacer(minLength: 4)
+
+            RautaCharacter(
+                mood: .proud,
+                reactionKey: "onboarding-ready",
+                reaction: .celebrate
+            )
+            .frame(width: 190, height: 190)
+
+            VStack(spacing: 8) {
+                Text("Your plan starts here")
+                    .font(Theme.sans(26, weight: .black))
+                    .tracking(-0.8)
+                    .foregroundStyle(Theme.foreground)
+                    .multilineTextAlignment(.center)
+
+                Text("You can change any answer in Settings.")
+                    .font(Theme.sans(14, weight: .medium))
+                    .foregroundStyle(Theme.mutedForeground)
+                    .multilineTextAlignment(.center)
+            }
+
+            VStack(spacing: 0) {
+                OnboardingSummaryRow(
+                    systemImage: "target",
+                    label: "Goal",
+                    value: ProfileVocabulary.goalLabel(profile.goal)
+                )
+                Divider().overlay(Theme.border)
+                OnboardingSummaryRow(
+                    systemImage: "figure.strengthtraining.traditional",
+                    label: "Experience",
+                    value: ProfileVocabulary.experienceLabel(profile.trainingExperience)
+                )
+                Divider().overlay(Theme.border)
+                OnboardingSummaryRow(
+                    systemImage: "clock",
+                    label: "Session",
+                    value: "\(Num.trimmed(profile.preferredSessionDurationMinutes)) min"
+                )
+                Divider().overlay(Theme.border)
+                OnboardingSummaryRow(
+                    systemImage: "dumbbell",
+                    label: "Equipment",
+                    value: equipmentSummary
+                )
+            }
+            .background(
+                Theme.card.opacity(0.88),
+                in: RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
+                    .strokeBorder(Theme.border)
+            )
+
+            Spacer(minLength: 4)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct OnboardingSummaryRow: View {
+    let systemImage: String
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Theme.primary)
+                .frame(width: 28)
+
+            Text(label)
+                .font(Theme.sans(13, weight: .semibold))
+                .foregroundStyle(Theme.mutedForeground)
+
+            Spacer(minLength: 12)
+
+            Text(value)
+                .font(Theme.sans(14, weight: .bold))
+                .foregroundStyle(Theme.foreground)
+                .multilineTextAlignment(.trailing)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
     }
 }
 

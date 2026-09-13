@@ -198,17 +198,12 @@ struct ProfileGoalControl: View {
             ZStack {
                 Theme.muted
                 RadialGradient(
-                    colors: [Theme.primary.opacity(0.34), .clear],
-                    center: UnitPoint(x: 0.68, y: 0.78),
+                    colors: [Theme.primary.opacity(0.28), Theme.oxblood.opacity(0.12), .clear],
+                    center: UnitPoint(x: 0.68, y: 0.74),
                     startRadius: 0,
-                    endRadius: 180
+                    endRadius: 220
                 )
-                if let image = StillImage.load(MediaLibrary.goalURL(slide.id)) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .padding(6)
-                }
+                GoalImageView(goal: slide.id)
             }
         }
     }
@@ -218,38 +213,60 @@ struct ProfileTopPanel: View {
     @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     @ObservedObject private var store = AppStore.shared
     var step: ProfileStep
-    var hasRightControl: Bool
+    var showsSpeech = true
     private var speech: String {
         let p = store.trainingProfile.profile
         switch step {
+        case .welcome: return "I’ll learn the constraints that matter, then help you train around them."
         case .about: return p.name.isEmpty ? "Tell me your name, then turn the dial to your age." : "Good to meet you, \(p.name). Age \(Num.trimmed(p.age)) — adjust the dial if needed."
         case .experience: return p.health.status == .healthy ? "\(ProfileVocabulary.experienceLabel(p.trainingExperience)). I’ll use this as your starting point." : "Noted. I will leave the planning to you and stay out of the way."
         case .goal: return "\(ProfileVocabulary.goalLabel(p.goal)). That's our direction."
         case .duration: return "\(Num.trimmed(p.preferredSessionDurationMinutes)) minutes. I’ll plan around the time you have."
         case .gym: return "Pick the equipment you actually have."
         case .health: return "Your limits matter. You can always build your own workout."
+        case .ready: return "That’s enough context. I can make the rest practical from here."
         }
     }
     private var mood: RautaMood {
         let profile = store.trainingProfile.profile
         switch step {
+        case .welcome: return .excited
         case .about: return profile.name.isEmpty ? .listening : .curious
         case .experience: return .focused
         case .goal: return .happy
         case .duration, .health: return .calm
         case .gym: return .curious
+        case .ready: return .proud
+        }
+    }
+    private var reaction: RautaReaction {
+        switch step {
+        case .welcome: return .gearUp
+        case .about: return .peek
+        case .experience: return .acknowledge
+        case .goal: return .spinRight
+        case .duration: return .turnaround
+        case .gym: return .wink
+        case .health: return .relieved
+        case .ready: return .celebrate
         }
     }
     var body: some View {
         VStack(spacing: 0) {
             Color.clear.frame(height: 68 + safeAreaInsets.top)
-            Text(speech).font(Theme.sans(15, weight: .semibold)).tracking(-0.3).lineSpacing(2)
-                .foregroundStyle(Theme.foreground).multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity).padding(.horizontal, 52).padding(.top, 16).padding(.bottom, 16)
-        }.overlay(alignment: .topTrailing) {
-            RautaHeaderBadge(mood: mood, reactionKey: speech)
-                .padding(.top, 12 + safeAreaInsets.top)
-                .padding(.trailing, hasRightControl ? 58 : 6)
+            if showsSpeech {
+                Text(speech).font(Theme.sans(15, weight: .semibold)).tracking(-0.3).lineSpacing(2)
+                    .foregroundStyle(Theme.foreground).multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity).padding(.horizontal, 52).padding(.top, 16).padding(.bottom, 16)
+            }
         }
+    }
+
+    var headerBadge: some View {
+        RautaHeaderBadge(
+            mood: mood,
+            reactionKey: step.rawValue,
+            reaction: reaction
+        )
     }
 }

@@ -84,8 +84,7 @@ private struct PresetChip: View {
     var action: () -> Void
 
     var body: some View {
-        GlassGroup(spacing: 4) {
-            HStack(spacing: 6) {
+        HStack(spacing: 6) {
             Button(action: action) {
                 Text(name)
                     .font(Theme.sans(13, weight: .semibold))
@@ -112,7 +111,6 @@ private struct PresetChip: View {
             }
             .buttonStyle(.plain)
             .accessibilityAddTraits(selected ? [.isSelected] : [])
-
             if let onDelete {
                 Button(action: onDelete) {
                     Image(systemName: "trash")
@@ -130,7 +128,6 @@ private struct PresetChip: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Delete \(name) preset")
             }
-        }
         }
     }
 }

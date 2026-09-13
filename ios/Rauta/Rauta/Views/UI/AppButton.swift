@@ -134,7 +134,12 @@ struct AppButton<Label: View>: View {
     @ViewBuilder
     private func buttonSurface<Content: View>(_ content: Content) -> some View {
         content
-            .glassSurface(tone, in: shape, interactive: false, border: borderColor)
+            .glassSurface(
+                tone,
+                in: shape,
+                interactive: !isDisabled,
+                border: borderColor
+            )
             .overlay {
                 if !isDisabled, variant == .primary {
                     shape
@@ -181,9 +186,11 @@ extension AppButton where Label == Text {
 
 private struct PressReporting: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
+        let usesLegacyPressFeedback = !Theme.Glassware.supportsLiquidGlass
+
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.985 : 1)
-            .opacity(configuration.isPressed ? 0.90 : 1)
+            .scaleEffect(usesLegacyPressFeedback && configuration.isPressed ? 0.985 : 1)
+            .opacity(usesLegacyPressFeedback && configuration.isPressed ? 0.90 : 1)
             .animation(Theme.Motion.spring, value: configuration.isPressed)
     }
 }

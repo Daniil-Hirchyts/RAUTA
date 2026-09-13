@@ -5,6 +5,7 @@ import RiveRuntime
 struct RautaCharacter: View {
     var mood: RautaMood = .calm
     var reactionKey = ""
+    var reaction: RautaReaction?
     var onActivate: (() -> Void)?
     @Environment(\.accessibilityReduceMotion) private var reducedMotion
     @StateObject private var rig = RiveViewModel(
@@ -23,13 +24,18 @@ struct RautaCharacter: View {
             .onAppear {
                 rig.setPreferredFramesPerSecond(preferredFramesPerSecond: 20)
                 updateMood()
+                if let reaction {
+                    react(reaction, source: .explicit)
+                }
             }
             .onDisappear {
                 pauseTask?.cancel()
                 rig.pause()
             }
             .onChange(of: mood) { _, _ in updateMood() }
-            .onChange(of: reactionKey) { _, _ in react(.acknowledge, source: .explicit) }
+            .onChange(of: reactionKey) { _, _ in
+                react(reaction ?? .acknowledge, source: .explicit)
+            }
             .onTapGesture { react(.tapped, source: .interaction); onActivate?(); Haptics.trigger(.light) }
             .gesture(DragGesture(minimumDistance: 8).onChanged { value in
                 wake(for: 0.45)
@@ -95,12 +101,13 @@ struct CompanionAction: Identifiable {
 struct RautaHeaderBadge: View {
     var mood: RautaMood = .focused
     var reactionKey = ""
+    var reaction: RautaReaction?
     var onActivate: (() -> Void)?
 
     var body: some View {
         ZStack {
             Color.clear
-                .frame(width: 44, height: 44)
+                .frame(width: 40, height: 40)
                 .glassSurface(
                     .regular,
                     in: Circle(),
@@ -112,10 +119,11 @@ struct RautaHeaderBadge: View {
             RautaCharacter(
                 mood: mood,
                 reactionKey: reactionKey,
+                reaction: reaction,
                 onActivate: onActivate
             )
             .frame(width: 48, height: 48)
-            .frame(width: 44, height: 44)
+            .frame(width: 40, height: 40)
         }
         .frame(width: 44, height: 44)
     }
@@ -187,13 +195,11 @@ struct RautaBottomDock: View {
             }
             .overlay(alignment: .top) {
                 if open, !actions.isEmpty {
-                    GlassGroup(spacing: 4) {
-                        VStack(spacing: 8) {
-                            ForEach(actions) { action in
-                                AppButton(action.title, variant: action.primary ? .primary : .secondary, expands: true) {
-                                    open = false
-                                    action.action()
-                                }
+                    VStack(spacing: 8) {
+                        ForEach(actions) { action in
+                            AppButton(action.title, variant: action.primary ? .primary : .secondary, expands: true) {
+                                open = false
+                                action.action()
                             }
                         }
                     }

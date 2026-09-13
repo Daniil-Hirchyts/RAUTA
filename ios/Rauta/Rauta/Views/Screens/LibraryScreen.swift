@@ -19,7 +19,6 @@ struct LibraryScreen: View {
     private let navigation = AppSessionStore.shared
     @State private var browse = LibraryBrowseState()
     @FocusState private var searchFocused: Bool
-    @Namespace private var libraryChromeNamespace
 
     private var filteredExercises: [ExerciseSummary] {
         let query = browse.search.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -99,12 +98,10 @@ struct LibraryScreen: View {
                     .transition(.opacity)
             }
 
-            GlassGroup(spacing: 8) {
-                if browse.searchOpen {
-                    expandedSearchBar
-                } else {
-                    compactFilterBar
-                }
+            if browse.searchOpen {
+                expandedSearchBar
+            } else {
+                compactFilterBar
             }
 
             resultCountLabel
@@ -181,7 +178,6 @@ struct LibraryScreen: View {
                         border: Theme.Glassware.edge,
                         legacyFill: Theme.card.opacity(0.24)
                     )
-                    .glassMorph("library-search", in: libraryChromeNamespace)
             }
             .buttonStyle(.plain)
             .frame(minWidth: 48, minHeight: 48)
@@ -234,7 +230,6 @@ struct LibraryScreen: View {
                 border: searchFocused ? Theme.ring : Theme.Glassware.edge,
                 legacyFill: Theme.card.opacity(0.24)
             )
-            .glassMorph("library-search", in: libraryChromeNamespace)
 
             LibraryRoundButton(systemImage: "xmark", label: "Cancel search") {
                 closeSearch()

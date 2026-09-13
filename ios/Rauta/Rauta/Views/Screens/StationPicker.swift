@@ -45,25 +45,23 @@ struct StationPicker: View {
                         }
                     }
                 }
-                GlassGroup(spacing: 8) {
-                    HStack(spacing: 6) {
-                        Button { edit(active) } label: {
-                            Image(systemName: "slider.horizontal.3")
-                                .foregroundStyle(Theme.primary)
-                                .frame(width: 34, height: 34)
-                                .glassSurface(.clear, in: Circle(), interactive: true, border: Theme.Glassware.edge, legacyFill: Theme.card)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Edit station")
-                        Button(action: add) {
-                            Image(systemName: "plus")
-                                .foregroundStyle(Theme.primary)
-                                .frame(width: 34, height: 34)
-                                .glassSurface(.clear, in: Circle(), interactive: true, border: Theme.Glassware.edge, legacyFill: Theme.card)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Add station")
+                HStack(spacing: 6) {
+                    Button { edit(active) } label: {
+                        Image(systemName: "slider.horizontal.3")
+                            .foregroundStyle(Theme.primary)
+                            .frame(width: 34, height: 34)
+                            .glassSurface(.clear, in: Circle(), interactive: true, border: Theme.Glassware.edge, legacyFill: Theme.card)
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Edit station")
+                    Button(action: add) {
+                        Image(systemName: "plus")
+                            .foregroundStyle(Theme.primary)
+                            .frame(width: 34, height: 34)
+                            .glassSurface(.clear, in: Circle(), interactive: true, border: Theme.Glassware.edge, legacyFill: Theme.card)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add station")
                 }
             }
             if let issue {

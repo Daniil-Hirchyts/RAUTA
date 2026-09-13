@@ -236,6 +236,11 @@ final class AppSessionStore: ObservableObject {
     /// while; a wizard in front of their workouts would be an ambush, and every
     /// answer it asks for is in Settings anyway.
     private static func initialPages() -> [AppPage] {
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--onboarding") {
+            return [.onboarding]
+        }
+#endif
         let onboarding = TrainingProfileStore.shared.onboarding
         if !onboarding.completed && !AppBackup.hasMeaningfulData() { return [.onboarding] }
         return [.workouts]

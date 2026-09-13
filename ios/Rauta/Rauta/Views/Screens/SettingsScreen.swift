@@ -124,6 +124,13 @@ struct SettingsScreen: View {
                                             .foregroundStyle(Theme.primary)
                                             .frame(width: 40, height: 40)
                                             .contentShape(Circle())
+                                            .glassSurface(
+                                                .clear,
+                                                in: Circle(),
+                                                interactive: true,
+                                                border: Theme.Glassware.edge,
+                                                legacyFill: Theme.card
+                                            )
                                     }
                                     .buttonStyle(.plain)
                                     .accessibilityLabel("Sync iCloud backup now")

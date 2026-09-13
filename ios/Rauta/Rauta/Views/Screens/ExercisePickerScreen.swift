@@ -16,7 +16,6 @@ struct ExercisePickerScreen: View {
     @State private var destinationMenuOpen = false
     @State private var visibleExerciseCount = ExerciseCatalogue.pageSize
     @StateObject private var scrollTracker = ScrollHideTracker()
-    @Namespace private var destinationMenuNamespace
 
     private var selectedMuscles: [MuscleId] { store.filters.selectedMuscles }
     private var selectedEquipment: [String] { store.filters.selectedEquipment }
@@ -376,35 +375,31 @@ struct ExercisePickerScreen: View {
                     searchOpen = false
                 }
             } else {
-                GlassGroup(spacing: 12) {
-                    ZStack(alignment: .bottom) {
-                        if destinationMenuOpen {
-                            destinationMenu
-                                .fixedSize(horizontal: false, vertical: true)
-                                .frame(maxWidth: .infinity)
-                                .glassMorph("destination-control", in: destinationMenuNamespace)
-                                .transition(.opacity)
-                        } else {
-                            AppButton(
-                                store.navigation.selectMode ? "Add to workout" : "Select",
-                                size: .cta,
-                                isDisabled: store.navigation.selectMode && store.navigation.selectedIds.isEmpty,
-                                expands: true
-                            ) {
-                                if store.navigation.selectMode {
-                                    Haptics.trigger(.selection)
-                                    withAnimation(Theme.Motion.smoothOut(0.28)) {
-                                        destinationMenuOpen = true
-                                    }
-                                } else {
-                                    store.navigation.selectMode = true
+                ZStack(alignment: .bottom) {
+                    if destinationMenuOpen {
+                        destinationMenu
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity)
+                            .transition(.opacity)
+                    } else {
+                        AppButton(
+                            store.navigation.selectMode ? "Add to workout" : "Select",
+                            size: .cta,
+                            isDisabled: store.navigation.selectMode && store.navigation.selectedIds.isEmpty,
+                            expands: true
+                        ) {
+                            if store.navigation.selectMode {
+                                Haptics.trigger(.selection)
+                                withAnimation(Theme.Motion.smoothOut(0.28)) {
+                                    destinationMenuOpen = true
                                 }
+                            } else {
+                                store.navigation.selectMode = true
                             }
-                            .glassMorph("destination-control", in: destinationMenuNamespace)
                         }
                     }
-                    .animation(Theme.Motion.smoothOut(0.28), value: destinationMenuOpen)
                 }
+                .animation(Theme.Motion.smoothOut(0.28), value: destinationMenuOpen)
             }
         }
     }

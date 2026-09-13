@@ -1293,18 +1293,16 @@ private struct WorkoutsModeSwitcher: View {
 
     var body: some View {
         ScrollView(.horizontal) {
-            GlassGroup(spacing: 8) {
-                HStack(spacing: 8) {
-                    ForEach(availableFilters) { filter in
-                        WorkoutFilterChip(
-                            title: filter.title,
-                            selected: selection == filter.rawValue
-                        ) {
-                            guard selection != filter.rawValue else { return }
-                            Haptics.trigger(.selection)
-                            withAnimation(Theme.Motion.smoothOut(0.24)) {
-                                selection = filter.rawValue
-                            }
+            HStack(spacing: 8) {
+                ForEach(availableFilters) { filter in
+                    WorkoutFilterChip(
+                        title: filter.title,
+                        selected: selection == filter.rawValue
+                    ) {
+                        guard selection != filter.rawValue else { return }
+                        Haptics.trigger(.selection)
+                        withAnimation(Theme.Motion.smoothOut(0.24)) {
+                            selection = filter.rawValue
                         }
                     }
                 }
