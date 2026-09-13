@@ -27,6 +27,22 @@ private enum NativeTabSelection: Hashable {
     case rauta
 }
 
+private enum WorkoutListFilter: Int, CaseIterable, Identifiable {
+    case all
+    case planned
+    case past
+
+    var id: Int { rawValue }
+
+    var title: String {
+        switch self {
+        case .all: return "All"
+        case .planned: return "Planned"
+        case .past: return "Past"
+        }
+    }
+}
+
 enum NativeTabIcons {
     static let summary = make(MainTab.summary.systemImage)
     static let workout = make(MainTab.workout.systemImage)
@@ -88,6 +104,7 @@ struct WorkoutsScreen: View {
     @State private var workoutListSelection = 0
     @State private var selectedWorkoutId: String?
     @State private var tabHostIdentity = UUID()
+    @Namespace private var rautaProfileNamespace
 
     private var visibleWorkouts: [Workout] {
         workouts.workouts.filter { workout in
@@ -338,7 +355,13 @@ struct WorkoutsScreen: View {
             set: { selection in
                 switch selection {
                 case .page(let tab):
-                    mainTab = tab
+                    if mainTab == .profile || tab == .profile {
+                        withAnimation(.spring(response: 0.58, dampingFraction: 0.86)) {
+                            mainTab = tab
+                        }
+                    } else {
+                        mainTab = tab
+                    }
                 case .rauta:
                     presentRautaMenu()
                 }
@@ -369,6 +392,12 @@ struct WorkoutsScreen: View {
             .padding(.trailing, 8)
             .padding(.bottom, Swift.max(7, safeAreaInsets.bottom))
             .offset(x: -3, y: rautaCompact ? 34 : 46)
+            .matchedGeometryEffect(
+                id: "rauta-profile-position",
+                in: rautaProfileNamespace,
+                properties: .frame,
+                anchor: .center
+            )
             .transition(.scale(scale: 0.78, anchor: .bottomTrailing).combined(with: .opacity))
             .zIndex(1_000)
         }
@@ -441,7 +470,10 @@ struct WorkoutsScreen: View {
                         } else if pageTab == .library {
                             LibraryScreen()
                         } else if pageTab == .profile {
-                            ProfileDashboard()
+                            ProfileDashboard(
+                                rautaNamespace: rautaProfileNamespace,
+                                isActive: mainTab == .profile
+                            )
                         } else {
                             Spacer(minLength: 0)
                         }
@@ -848,14 +880,23 @@ private struct WorkoutTabHost: View {
                     onOpen: openWorkout
                 )
 
-                AppTopScrim()
+                AppGradientBlur(edge: .top, radiusScale: 1.05)
+                    .frame(height: safeAreaInsets.top + 134)
+                    .frame(maxWidth: .infinity, alignment: .top)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                    .ignoresSafeArea(edges: .top)
                     .zIndex(20)
 
-                WorkoutsModeSwitcher(selection: $listSelection)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .padding(.horizontal, Theme.Metrics.contentInset)
-                    .padding(.top, 12 + safeAreaInsets.top)
+                AppShellHeader(
+                    title: "Workout",
+                    left: { Color.clear.frame(width: 44, height: 44) },
+                    right: { Color.clear.frame(width: 44, height: 44) },
+                    above: { EmptyView() },
+                    below: {
+                        WorkoutsModeSwitcher(selection: $listSelection)
+                    }
+                )
                     .zIndex(30)
             }
         } controls: {
@@ -982,34 +1023,104 @@ private struct WorkoutListContent: View {
     @Binding var selection: Int
     let onOpen: (Workout) -> Void
 
-    @State private var upcomingLimit = 6
-    @State private var pastLimit = 6
+    @State private var visibleLimit = 12
+
+    private struct MonthSection: Identifiable {
+        let id: String
+        let title: String
+        var workouts: [Workout]
+    }
+
+    private var filter: WorkoutListFilter {
+        WorkoutListFilter(rawValue: selection) ?? .all
+    }
+
+    private var allWorkouts: [Workout] {
+        var seen = Set<String>()
+        return (upcoming + past)
+            .filter { seen.insert($0.id).inserted }
+            .sorted { $0.date > $1.date }
+    }
+
+    private var filteredWorkouts: [Workout] {
+        switch filter {
+        case .all:
+            return allWorkouts
+        case .planned:
+            return upcoming
+        case .past:
+            return past
+        }
+    }
+
+    private var visibleWorkouts: [Workout] {
+        Array(filteredWorkouts.prefix(visibleLimit))
+    }
+
+    private var pastIds: Set<String> {
+        Set(past.map(\.id))
+    }
+
+    private var monthSections: [MonthSection] {
+        var sections: [MonthSection] = []
+        for workout in visibleWorkouts {
+            let key = String(workout.date.prefix(7))
+            if let last = sections.indices.last, sections[last].id == key {
+                sections[last].workouts.append(workout)
+            } else {
+                sections.append(
+                    MonthSection(
+                        id: key,
+                        title: monthTitle(workout.date),
+                        workouts: [workout]
+                    )
+                )
+            }
+        }
+        return sections
+    }
+
+    private var emptyMessage: String {
+        switch filter {
+        case .all: return "No workouts yet"
+        case .planned: return "No planned workouts"
+        case .past: return "No past workouts yet"
+        }
+    }
 
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 10) {
-                Group {
-                    if selection == 0 {
-                        workoutList(
-                            items: upcoming,
-                            itemLimit: upcomingLimit,
-                            isPast: false,
-                            emptyMessage: "No upcoming workouts",
-                            onMore: { upcomingLimit += 6 },
-                            onLess: { upcomingLimit = 6 }
-                        )
-                        .id("upcoming-workouts")
-                    } else {
-                        workoutList(
-                            items: past,
-                            itemLimit: pastLimit,
-                            isPast: true,
-                            emptyMessage: "No past workouts yet",
-                            onMore: { pastLimit += 6 },
-                            onLess: { pastLimit = 6 }
-                        )
-                        .id("past-workouts")
+            LazyVStack(alignment: .leading, spacing: 10) {
+                if filteredWorkouts.isEmpty {
+                    Text(emptyMessage)
+                        .font(Theme.sans(13))
+                        .foregroundStyle(Theme.mutedForeground)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 24)
+                } else {
+                    ForEach(monthSections) { section in
+                        Text(section.title)
+                            .font(Theme.sans(17, weight: .heavy))
+                            .foregroundStyle(Theme.foreground)
+                            .padding(.horizontal, 4)
+                            .padding(.top, 8)
+
+                        ForEach(section.workouts) { workout in
+                            WorkoutRow(
+                                workout: workout,
+                                isPast: pastIds.contains(workout.id),
+                                isRunning: activeWorkoutId == workout.id,
+                                onOpen: { onOpen(workout) }
+                            )
+                        }
                     }
+
+                    sectionFooter(
+                        remaining: Swift.max(0, filteredWorkouts.count - visibleLimit),
+                        showLess: visibleLimit > 12,
+                        onMore: { visibleLimit += 12 },
+                        onLess: { visibleLimit = 12 }
+                    )
                 }
             }
             .padding(.horizontal, 12)
@@ -1017,48 +1128,22 @@ private struct WorkoutListContent: View {
         }
         .contentMargins(
             .top,
-            Theme.Metrics.headerHeight + safeAreaInsets.top + 36,
+            safeAreaInsets.top + 138,
             for: .scrollContent
         )
         .scrollIndicators(.hidden)
         .animation(Theme.Motion.smoothOut(0.24), value: selection)
+        .onChange(of: selection) { _, _ in
+            visibleLimit = 12
+        }
     }
 
-    @ViewBuilder
-    private func workoutList(
-        items: [Workout],
-        itemLimit: Int,
-        isPast: Bool,
-        emptyMessage: String,
-        onMore: @escaping () -> Void,
-        onLess: @escaping () -> Void
-    ) -> some View {
-        let remaining = Swift.max(0, items.count - itemLimit)
-        let showLess = itemLimit > 6
-
-        if items.isEmpty {
-            Text(emptyMessage)
-                .font(Theme.sans(13))
-                .foregroundStyle(Theme.mutedForeground)
-                .frame(maxWidth: .infinity)
-                .padding(.top, 24)
-        }
-
-        ForEach(items.prefix(itemLimit)) { workout in
-            WorkoutRow(
-                workout: workout,
-                isPast: isPast,
-                isRunning: activeWorkoutId == workout.id,
-                onOpen: { onOpen(workout) }
-            )
-        }
-
-        sectionFooter(
-            remaining: remaining,
-            showLess: showLess,
-            onMore: onMore,
-            onLess: onLess
-        )
+    private func monthTitle(_ isoDate: String) -> String {
+        guard let date = CalendarDate.parse(isoDate) else { return isoDate }
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.setLocalizedDateFormatFromTemplate("MMMM yyyy")
+        return formatter.string(from: date)
     }
 
     @ViewBuilder
@@ -1109,22 +1194,62 @@ private struct WorkoutsModeSwitcher: View {
     @Binding var selection: Int
 
     var body: some View {
-        Picker("Workout list", selection: $selection) {
-            Text("Next").tag(0)
-            Text("Past").tag(1)
+        GlassGroup(spacing: 8) {
+            HStack(spacing: 8) {
+                ForEach(WorkoutListFilter.allCases) { filter in
+                    WorkoutFilterChip(
+                        title: filter.title,
+                        selected: selection == filter.rawValue
+                    ) {
+                        guard selection != filter.rawValue else { return }
+                        Haptics.trigger(.selection)
+                        withAnimation(Theme.Motion.smoothOut(0.24)) {
+                            selection = filter.rawValue
+                        }
+                    }
+                }
+
+                Spacer(minLength: 0)
+            }
         }
-        .pickerStyle(.segmented)
-        .frame(maxWidth: 214)
-        .tint(Theme.primary)
-        .glassSurface(
-            .tinted(Theme.primary.opacity(0.30)),
-            in: Capsule(),
-            border: Theme.primary.opacity(0.34),
-            legacyFill: Theme.primary.opacity(0.16)
-        )
-        .onChange(of: selection) { _, _ in
-            Haptics.trigger(.selection)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct WorkoutFilterChip: View {
+    let title: String
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(Theme.sans(13, weight: .semibold))
+                .foregroundStyle(selected ? Theme.primaryForeground : Theme.secondaryForeground)
+                .padding(.horizontal, 16)
+                .frame(height: 40)
+                .contentShape(Capsule())
+                .glassSurface(
+                    selected ? .tinted(Theme.primary) : .clear,
+                    in: Capsule(),
+                    interactive: true,
+                    border: selected ? Theme.Glassware.brightEdge : Theme.Glassware.edge,
+                    legacyFill: selected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.24)
+                )
+                .overlay {
+                    if selected {
+                        Capsule()
+                            .fill(Theme.primaryGradient)
+                            .opacity(Theme.Glassware.primaryWash)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .clipShape(Capsule())
         }
+        .buttonStyle(.plain)
+        .frame(minHeight: 44)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 

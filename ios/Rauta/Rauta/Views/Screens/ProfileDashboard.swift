@@ -3,6 +3,8 @@ import SwiftUI
 struct ProfileDashboard: View {
     @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     @ObservedObject private var store = AppStore.shared
+    let rautaNamespace: Namespace.ID
+    let isActive: Bool
 
     private let recordColumns = [
         GridItem(.flexible(), spacing: 10),
@@ -25,7 +27,7 @@ struct ProfileDashboard: View {
 
     private var displayName: String {
         let value = profile.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        return value.isEmpty ? "Your profile" : value
+        return value.isEmpty ? "Rauta" : value
     }
 
     private var profileLine: String {
@@ -75,35 +77,6 @@ struct ProfileDashboard: View {
         }
     }
 
-    private var achievements: [ProfileAchievement] {
-        [
-            ProfileAchievement(
-                title: "First session",
-                detail: "Complete one workout",
-                systemImage: "flag.checkered",
-                unlocked: totalWorkoutCount >= 1
-            ),
-            ProfileAchievement(
-                title: "Ten strong",
-                detail: "Complete 10 workouts",
-                systemImage: "10.circle.fill",
-                unlocked: totalWorkoutCount >= 10
-            ),
-            ProfileAchievement(
-                title: "On a roll",
-                detail: "Reach a 3-day streak",
-                systemImage: "flame.fill",
-                unlocked: streak.longestStreak >= 3
-            ),
-            ProfileAchievement(
-                title: "Ten hours",
-                detail: "Log 10 hours of training",
-                systemImage: "timer",
-                unlocked: totalTrainingSeconds >= 36_000
-            ),
-        ]
-    }
-
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -137,17 +110,9 @@ struct ProfileDashboard: View {
                         )
                     }
                 }
-
-                section(title: "Achievements") {
-                    VStack(spacing: 10) {
-                        ForEach(achievements) { achievement in
-                            ProfileAchievementRow(achievement: achievement)
-                        }
-                    }
-                }
             }
             .padding(.horizontal, 12)
-            .padding(.bottom, 200)
+            .padding(.bottom, 120)
         }
         .contentMargins(
             .top,
@@ -159,25 +124,40 @@ struct ProfileDashboard: View {
 
     private var identity: some View {
         VStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(Theme.primary.opacity(0.07))
-                    .frame(width: 144, height: 144)
-                    .blur(radius: 18)
+            Group {
+                if isActive {
+                    ZStack {
+                        Circle()
+                            .fill(Theme.primary.opacity(0.07))
+                            .frame(width: 144, height: 144)
+                            .blur(radius: 18)
 
-                Color.clear
-                    .frame(width: 132, height: 132)
-                    .glassSurface(
-                        .regular,
-                        in: Circle(),
-                        border: Theme.Glassware.edge,
-                        legacyFill: Theme.card.opacity(0.78)
+                        Color.clear
+                            .frame(width: 132, height: 132)
+                            .glassSurface(
+                                .regular,
+                                in: Circle(),
+                                border: Theme.Glassware.edge,
+                                legacyFill: Theme.card.opacity(0.78)
+                            )
+                            .allowsHitTesting(false)
+
+                        RautaCharacter(mood: .happy)
+                            .frame(width: 126, height: 126)
+                    }
+                    .matchedGeometryEffect(
+                        id: "rauta-profile-position",
+                        in: rautaNamespace,
+                        properties: .frame,
+                        anchor: .center,
+                        isSource: false
                     )
-                    .allowsHitTesting(false)
-
-                RautaCharacter(mood: .happy)
-                    .frame(width: 126, height: 126)
+                    .transition(.identity)
+                } else {
+                    Color.clear
+                }
             }
+            .frame(width: 148, height: 148)
             .frame(height: 148)
             .accessibilityLabel("RAUTA profile avatar")
 
@@ -261,58 +241,6 @@ private struct ProfileRecordCard: View {
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .strokeBorder(Theme.border, lineWidth: 1)
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
-private struct ProfileAchievement: Identifiable {
-    let title: String
-    let detail: String
-    let systemImage: String
-    let unlocked: Bool
-
-    var id: String { title }
-}
-
-private struct ProfileAchievementRow: View {
-    let achievement: ProfileAchievement
-
-    var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: achievement.unlocked ? achievement.systemImage : "lock.fill")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(achievement.unlocked ? Theme.primary : Theme.mutedForeground)
-                .frame(width: 44, height: 44)
-                .background(
-                    (achievement.unlocked ? Theme.primary : Theme.mutedForeground).opacity(0.10),
-                    in: Circle()
-                )
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(achievement.title)
-                    .font(Theme.sans(15, weight: .bold))
-                    .foregroundStyle(Theme.foreground)
-
-                Text(achievement.unlocked ? "Unlocked" : achievement.detail)
-                    .font(Theme.sans(12, weight: .medium))
-                    .foregroundStyle(Theme.mutedForeground)
-            }
-
-            Spacer(minLength: 8)
-
-            if achievement.unlocked {
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Theme.primary)
-            }
-        }
-        .padding(.horizontal, 14)
-        .frame(minHeight: 68)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .strokeBorder(Theme.border, lineWidth: 1)
         }
         .accessibilityElement(children: .combine)
