@@ -19,9 +19,8 @@ enum MainTab: String, CaseIterable, Identifiable {
     }
 }
 
-/// The native tab shell has one auxiliary slot that is a control rather than a
-/// destination. Keeping that slot out of `MainTab` means RAUTA can never replace
-/// the current page or become restorable navigation state.
+/// RAUTA's auxiliary slot is a control, never a destination. Keeping it out of
+/// `MainTab` prevents it from becoming restorable navigation state.
 private enum NativeTabSelection: Hashable {
     case page(MainTab)
     case rauta
@@ -233,9 +232,9 @@ struct WorkoutsScreen: View {
     @available(iOS 26.0, *)
     private func activeWorkoutPlayerShell<Content: View>(_ content: Content) -> some View {
         content
-            // The compact tab-bar layout only has a job while a live workout
-            // can supply the exercise accessory. Returning to idle should also
-            // return the native tab bar to its normal, expanded presentation.
+            // The wrapped layout exists only while an exercise player exists.
+            // Scrolling down may wrap the native bar around that player; idle
+            // navigation stays expanded.
             .tabBarMinimizeBehavior(activeWorkout.session == nil ? .never : .onScrollDown)
             // UIKit can retain the previous bottom-accessory chrome after the
             // accessory disappears. Rebuild the native tab host at the workout
@@ -269,7 +268,11 @@ struct WorkoutsScreen: View {
                 tabLabel(.profile)
             }
             if mainTab != .profile {
-                Tab(value: NativeTabSelection.rauta, role: .search) {
+                // iOS 27 has a real auxiliary/prominent tab role. Use it here
+                // instead of abusing the search role: the system reserves a
+                // separate trailing control without merging it into the four
+                // navigation destinations.
+                Tab(value: NativeTabSelection.rauta, role: .prominent) {
                     Color.clear
                 } label: {
                     Image(uiImage: NativeTabIcons.transparentPlaceholder)
@@ -417,13 +420,21 @@ struct WorkoutsScreen: View {
                 mood: activeWorkout.session == nil ? .calm : .focused,
                 activeTab: $mainTab,
                 actionsForTab: companionActions(for:),
-                compact: rautaCompact,
+                workoutActive: activeWorkout.session != nil,
+                wrapped: rautaCompact,
                 isPresented: $rautaMenuPresented,
                 onPresent: presentRautaMenu
             )
-            .padding(.trailing, 8)
+            .padding(.trailing, 6)
             .padding(.bottom, Swift.max(7, safeAreaInsets.bottom))
-            .offset(x: -3, y: rautaCompact ? 34 : 46)
+            .offset(
+                // Keep the center fixed while the RAUTA overlay shrinks from
+                // 68pt to 48pt. With a bottom-trailing anchor the smaller frame
+                // otherwise drifts 10pt right; the native prominent circle does
+                // not move horizontally when it morphs.
+                x: rautaCompact ? -23 : -13,
+                y: rautaCompact ? 42 : 52
+            )
             .matchedGeometryEffect(
                 id: "rauta-profile-position",
                 in: rautaProfileNamespace,
@@ -805,8 +816,14 @@ private struct NativeExerciseBottomAccessory: View {
             compact: compact
         )
         .padding(.horizontal, compact ? 4 : Theme.Metrics.contentInset)
-        .onAppear { onCompactChange(compact) }
-        .onChange(of: placement) { _, _ in onCompactChange(compact) }
+        .task(id: compact) {
+            // The native tab/accessory morph can briefly keep both placement
+            // hosts alive. Yield once so a disappearing host is cancelled and
+            // only the currently mounted placement drives RAUTA's compactness.
+            await Task.yield()
+            guard !Task.isCancelled else { return }
+            onCompactChange(compact)
+        }
     }
 }
 
@@ -857,8 +874,13 @@ private struct NativeWorkoutCompleteAccessory: View {
         .frame(height: compact ? 50 : 62)
         .padding(.horizontal, compact ? 4 : Theme.Metrics.contentInset)
         .accessibilityLabel("Workout complete, open workout summary")
-        .onAppear { onCompactChange(compact) }
-        .onChange(of: placement) { _, _ in onCompactChange(compact) }
+        .task(id: compact) {
+            // See `NativeExerciseBottomAccessory`: only the surviving native
+            // placement host may update the shared RAUTA compact state.
+            await Task.yield()
+            guard !Task.isCancelled else { return }
+            onCompactChange(compact)
+        }
     }
 }
 
@@ -969,31 +991,31 @@ struct RautaNativeTabControl: View {
     var mood: RautaMood
     @Binding var activeTab: MainTab
     var actionsForTab: (MainTab) -> [CompanionAction]
-    var compact = false
+    var workoutActive = false
+    var wrapped = false
     @Binding var isPresented: Bool
     var onPresent: () -> Void
     @State private var reactionKey = ""
-    // The native bottom accessory changes its placement when the tab bar wraps.
-    // Give the Rive view a genuinely different layout size in each state: a
-    // transform alone can leave the representable rendering at its old bounds.
-    private var controlSize: CGFloat { compact ? 88 : 80 }
-    private var characterSize: CGFloat { compact ? 48 : 62 }
+
+    private var controlSize: CGFloat {
+        if wrapped { return 48 }
+        return workoutActive ? 68 : 64
+    }
+
+    // IMPORTANT: the scroll-wrapped / inline exercise-player RAUTA MUST stay
+    // smaller than the expanded version and centered in the SAME native
+    // prominent circle. iOS 27 morphs that circle with the tab bar; do not hide
+    // it or draw a replacement circle here.
+    private var characterSize: CGFloat {
+        if wrapped { return 40 }
+        return workoutActive ? 56 : 62
+    }
 
     var body: some View {
         let actions = actionsForTab(activeTab)
 
         Button(action: onPresent) {
-            ZStack {
-                RautaCharacter(
-                    mood: mood,
-                    reactionKey: reactionKey
-                )
-                .frame(width: characterSize, height: characterSize)
-                .offset(y: compact ? 0 : 7)
-                .allowsHitTesting(false)
-            }
-            .frame(width: controlSize, height: controlSize)
-            .contentShape(Circle())
+            rautaFace
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Rauta actions")
@@ -1017,7 +1039,21 @@ struct RautaNativeTabControl: View {
             }
         }
         .accessibilityHidden(true)
-        .animation(.spring(response: 0.38, dampingFraction: 0.88), value: compact)
+        .animation(.spring(response: 0.38, dampingFraction: 0.88), value: workoutActive)
+        .animation(.spring(response: 0.38, dampingFraction: 0.88), value: wrapped)
+    }
+
+    private var rautaFace: some View {
+        ZStack {
+            RautaCharacter(
+                mood: mood,
+                reactionKey: reactionKey
+            )
+            .frame(width: characterSize, height: characterSize)
+            .allowsHitTesting(false)
+        }
+        .frame(width: controlSize, height: controlSize)
+        .contentShape(Circle())
     }
 }
 
