@@ -121,7 +121,7 @@ final class RautaDirector {
 
     /// Something happened. Cues landing within a moment of each other are one
     /// event seen from several stores; the most meaningful of them is answered.
-    func cue(_ cue: RautaCue) {
+    private func cue(_ cue: RautaCue) {
         if let pendingCue, pendingCue.salience >= cue.salience { return }
         pendingCue = cue
         guard flushTask == nil else { return }

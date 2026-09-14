@@ -145,14 +145,23 @@ struct WorkoutsScreen: View {
             return !ProgramRecords.isSupersededPlannedSession(trainingRecords.data, p.programId, p.sessionId)
         }
     }
-    private var upcoming: [Workout] {
-        visibleWorkouts.filter {
-            activeWorkout.session?.workoutId == $0.id ||
-            ($0.completion == nil && !($0.planned.map { TrainingPlan.isPlannedSessionRecorded($0.sessionId) } ?? false))
-        }.sorted { $0.date < $1.date }
-    }
-    private var past: [Workout] {
-        visibleWorkouts.filter { w in !upcoming.contains { $0.id == w.id } }.sorted { $0.date > $1.date }
+    /// Every visible workout, split once into what is still ahead and what is
+    /// done. A workout is upcoming while it is the one in progress, or not yet
+    /// completed and not already recorded against its planned session.
+    private var timeline: (upcoming: [Workout], past: [Workout]) {
+        let activeId = activeWorkout.session?.workoutId
+        let recordedSessions = Set(trainingRecords.data.sessions.compactMap(\.plannedSessionId))
+        var upcoming: [Workout] = []
+        var past: [Workout] = []
+        for workout in visibleWorkouts {
+            let recorded = workout.planned.map { recordedSessions.contains($0.sessionId) } ?? false
+            if workout.id == activeId || (workout.completion == nil && !recorded) {
+                upcoming.append(workout)
+            } else {
+                past.append(workout)
+            }
+        }
+        return (upcoming.sorted { $0.date < $1.date }, past.sorted { $0.date > $1.date })
     }
 
     var body: some View {
@@ -495,9 +504,10 @@ struct WorkoutsScreen: View {
 
     @ViewBuilder
     private var workoutTabContent: some View {
+        let timeline = timeline
         WorkoutTabHost(
-            upcoming: upcoming,
-            past: past,
+            upcoming: timeline.upcoming,
+            past: timeline.past,
             activeWorkoutId: activeWorkout.session?.workoutId,
             liveWorkoutPresented: $liveWorkoutPresented,
             detailActionState: $workoutDetailActionState,
@@ -550,7 +560,7 @@ struct WorkoutsScreen: View {
 
     private var summaryContent: some View {
         SummaryWorkoutsContent(
-            completedWorkouts: past.filter { $0.completion != nil },
+            completedWorkouts: timeline.past.filter { $0.completion != nil },
             history: trainingRecords.trainingHistory()
         )
     }
@@ -1254,11 +1264,7 @@ private struct WorkoutListContent: View {
     }
 
     private func formatted(_ isoDate: String, template: String) -> String {
-        guard let date = CalendarDate.parse(isoDate) else { return isoDate }
-        let formatter = DateFormatter()
-        formatter.locale = Locale.current
-        formatter.setLocalizedDateFormatFromTemplate(template)
-        return formatter.string(from: date)
+        CalendarDate.format(isoDate, template)
     }
 
     @ViewBuilder

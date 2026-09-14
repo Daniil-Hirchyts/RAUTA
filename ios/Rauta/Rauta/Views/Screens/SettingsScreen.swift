@@ -258,10 +258,8 @@ struct SettingsScreen: View {
             guard let value = store.iCloud.lastSyncedAt, let millis = ISOTime.parse(value) else {
                 return "Backed up automatically"
             }
-            let formatter = DateFormatter()
-            formatter.timeStyle = .short
-            formatter.dateStyle = .none
-            return "Saved · \(formatter.string(from: Date(timeIntervalSince1970: millis / 1000)))"
+            let saved = Date(timeIntervalSince1970: millis / 1000)
+            return "Saved · \(saved.formatted(date: .omitted, time: .shortened))"
         }
     }
 

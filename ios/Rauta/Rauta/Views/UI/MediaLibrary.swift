@@ -31,19 +31,6 @@ enum MediaLibrary {
         UIImage(contentsOfFile: root.appendingPathComponent("grain.png").path)
     }()
 
-    static var rautaArtworkURL: URL { root.appendingPathComponent("rauta.svg") }
-}
-
-/// One decoded animation: the frames and how long each is held.
-struct AnimatedImage {
-    var frames: [UIImage]
-    var duration: TimeInterval
-
-    var uiImage: UIImage? {
-        guard !frames.isEmpty else { return nil }
-        if frames.count == 1 { return frames[0] }
-        return UIImage.animatedImage(with: frames, duration: duration)
-    }
 }
 
 /// Which theme an exercise demonstration is prepared for.
@@ -231,7 +218,9 @@ enum ExerciseMedia {
 
     /// A single treated frame, cached — what a grid of hundreds of cards can
     /// afford to show.
-    static func poster(for exerciseId: String, style: ExerciseMediaStyle) -> UIImage? {
+    /// A poster already decoded, without decoding one: the only lookup that is
+    /// safe on the main thread.
+    static func cachedPoster(for exerciseId: String, style: ExerciseMediaStyle) -> UIImage? {
         let key = cacheKey(exerciseId, style)
         if let cached = posterCache.object(forKey: key) { return cached }
         if let cachedAnim = animationCache.object(forKey: key),
@@ -239,6 +228,12 @@ enum ExerciseMedia {
             posterCache.setObject(firstFrame, forKey: key)
             return firstFrame
         }
+        return nil
+    }
+
+    static func poster(for exerciseId: String, style: ExerciseMediaStyle) -> UIImage? {
+        let key = cacheKey(exerciseId, style)
+        if let cached = cachedPoster(for: exerciseId, style: style) { return cached }
 
         let url = MediaLibrary.exerciseAnimationURL(exerciseId)
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
@@ -327,9 +322,12 @@ struct ExerciseMediaView: View {
         let wantsAnimation = animated
         let style = ExerciseMediaStyle(tone: ExerciseMediaTone(colorScheme), hueShift: Theme.palette.hueShift)
 
-        if let existing = ExerciseMedia.poster(for: id, style: style) {
+        // Decoding and recolouring a frame is real work: only a cache hit is taken
+        // on the main thread, and a card scrolled away before its turn skips it.
+        if let existing = ExerciseMedia.cachedPoster(for: id, style: style) {
             poster = existing
         } else {
+            guard !Task.isCancelled else { return }
             let rendered = await Task.detached(priority: .userInitiated) {
                 ExerciseMedia.poster(for: id, style: style)
             }.value
@@ -345,6 +343,7 @@ struct ExerciseMediaView: View {
         if let existingAnim = ExerciseMedia.cachedAnimation(for: id, style: style) {
             animatedImage = existingAnim
         } else {
+            guard !Task.isCancelled else { return }
             let decoded = await Task.detached(priority: .userInitiated) {
                 ExerciseMedia.animation(for: id, style: style)
             }.value

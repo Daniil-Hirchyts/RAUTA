@@ -259,27 +259,6 @@ final class WorkoutsStore: ObservableObject {
         mutate { workouts.removeAll { $0.id == id } }
     }
 
-    /// Listed field by field on purpose: a copy is a workout somebody chose to
-    /// repeat, not the session a program prescribed, so it starts life without a
-    /// plan behind it.
-    func duplicateWorkout(_ id: String) -> String? {
-        guard let source = workout(id) else { return nil }
-        let newId = Self.makeId()
-        let now = ISOTime.now()
-        let copy = Workout(
-            id: newId,
-            name: "\(source.name) copy",
-            date: CalendarDate.today,
-            exerciseIds: source.exerciseIds,
-            completion: nil,
-            createdAt: now,
-            updatedAt: now,
-            planned: nil
-        )
-        mutate { workouts.append(copy) }
-        return newId
-    }
-
     func completeWorkout(_ id: String, _ completion: WorkoutCompletion) {
         guard let index = workouts.firstIndex(where: { $0.id == id }) else { return }
         mutate {
@@ -310,5 +289,4 @@ final class WorkoutsStore: ObservableObject {
         workout.completion != nil || workout.date < CalendarDate.toISO(today)
     }
 
-    func isCompleted(_ workout: Workout) -> Bool { workout.completion != nil }
 }

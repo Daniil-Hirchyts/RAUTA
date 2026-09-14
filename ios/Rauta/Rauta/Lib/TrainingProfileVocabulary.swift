@@ -9,10 +9,6 @@ struct ProfileChoice {
     var description: String
 }
 
-/// `planningEligibility` refuses `power`, and the policy carries no volume or
-/// rep guidance for it, so it is not a goal the profile can hold.
-typealias SupportedTrainingGoal = TrainingGoal
-
 enum ProfileVocabulary {
     /// Declaration order is the presentation order; the policy decides which of
     /// those goals the planner can actually carry.

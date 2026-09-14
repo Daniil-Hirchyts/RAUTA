@@ -189,60 +189,6 @@ enum Generate {
         ]))
     }
 
-    struct Evaluation {
-        var valid: Bool
-        var score: Score?
-        var issues: [PlanningIssue]
-    }
-
-    static func evaluateTrainingProgram(
-        _ program: TrainingProgram,
-        _ request: ProgramGenerationRequest,
-        index: ExerciseIndex? = nil
-    ) -> Evaluation {
-        var authoritativeRequest = request
-        authoritativeRequest.policy = program.policy
-
-        let invalid = InputValidation.validateGenerationRequest(authoritativeRequest)
-        if !invalid.isEmpty { return Evaluation(valid: false, score: nil, issues: invalid) }
-
-        if let requestPolicy = request.policy,
-           fingerprint(requestPolicy.jsonTree) != fingerprint(program.policy.jsonTree) {
-            return Evaluation(
-                valid: false,
-                score: nil,
-                issues: [PlanningIssue(.invalidProgram, path: "program.policy")]
-            )
-        }
-
-        let input = preparation(authoritativeRequest, previousProgram: nil, index: index)
-        let validation = ProgramValidation.validate(program, authoritativeRequest, suppliedIndex: input.index)
-        if !validation.valid { return Evaluation(valid: false, score: nil, issues: validation.issues) }
-
-        let weekScores = program.weeks.map { week -> Score in
-            var weekInput = input
-            weekInput.policy = program.policy
-            weekInput.targets = week.targets
-            return Scoring.scoreWeek(week, weekInput)
-        }
-        guard let first = weekScores.first else {
-            return Evaluation(valid: true, score: .zero, issues: validation.warnings)
-        }
-
-        let contributions = first.contributions.enumerated().map { index, contribution -> ScoreContribution in
-            var merged = contribution
-            merged.rawValue = Num.mean(weekScores.map { $0.contributions[index].rawValue })
-            merged.contribution = Num.mean(weekScores.map { $0.contributions[index].contribution })
-            return merged
-        }
-
-        return Evaluation(
-            valid: true,
-            score: Score(total: Num.mean(weekScores.map(\.total)), contributions: contributions),
-            issues: validation.warnings
-        )
-    }
-
     /// Scope planned identities to a revision, so historical matches cannot
     /// cross programs.
     static func namespaceProgramIds(_ program: inout TrainingProgram, _ id: String) {

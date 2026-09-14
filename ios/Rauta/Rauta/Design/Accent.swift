@@ -154,8 +154,6 @@ struct ThemePalette {
     var primaryForeground: Color
     var primaryGradientStart: Color
     var primaryGradientEnd: Color
-    var primaryGradientActiveStart: Color
-    var primaryGradientActiveEnd: Color
 
     var secondary: Color
     var secondaryForeground: Color
@@ -214,8 +212,6 @@ struct ThemePalette {
         primaryForeground: Color(hex: 0x060606),
         primaryGradientStart: Color(hex: 0xFF6700),
         primaryGradientEnd: Color(hex: 0xFF3F00),
-        primaryGradientActiveStart: Color(hex: 0xFF8A2F),
-        primaryGradientActiveEnd: Color(hex: 0xFF601B),
         secondary: Color(light: 0xEFE8E0, dark: 0x302620),
         secondaryForeground: Color(light: 0x3B2F28, dark: 0xE9DFD2),
         muted: Color(light: 0xEDE6DE, dark: 0x2B231E),
@@ -272,8 +268,6 @@ struct ThemePalette {
             primaryForeground: whiteLabel ? .white : Color(hex: 0x060606),
             primaryGradientStart: Color(uiColor: dark.shifted(3.8).color),
             primaryGradientEnd: Color(uiColor: dark.shifted(-5.6).color),
-            primaryGradientActiveStart: Color(uiColor: accent(5.8, 0.816, 1.06, from: dark)),
-            primaryGradientActiveEnd: Color(uiColor: accent(-2.3, 0.894, 1.03, from: dark)),
             secondary: pair(neutral(11.5, 0.063, 0.937), neutral(2.0, 0.333, 0.188)),
             secondaryForeground: pair(neutral(1.6, 0.322, 0.231), neutral(13.4, 0.099, 0.914)),
             muted: pair(neutral(11.5, 0.063, 0.929), neutral(2.6, 0.302, 0.169)),

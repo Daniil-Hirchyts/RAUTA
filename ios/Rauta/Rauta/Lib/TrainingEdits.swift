@@ -240,34 +240,6 @@ enum TrainingEdits {
         }
     }
 
-    /// Recomputes every future prescription from the newly completed history.
-    /// Workout identities and dates stay stable, so open screens and calendar
-    /// entries continue to point at the refreshed plan revisions.
-    static func refreshFutureWorkoutPrescriptions() {
-        let today = CalendarDate.today
-        let ids = WorkoutsStore.shared.workouts
-            .filter { $0.completion == nil && $0.date >= today }
-            .map(\.id)
-
-        for workoutId in ids {
-            guard let workout = WorkoutsStore.shared.workout(workoutId),
-                  workout.completion == nil
-            else { continue }
-            if workout.planned != nil {
-                try? updateScheduledWorkoutExercises(
-                    workoutId, workout.exerciseIds, rePrescribe: true
-                )
-            } else {
-                _ = try? EngineWorkout.createWorkout(
-                    date: workout.date,
-                    name: workout.name,
-                    exerciseIds: workout.exerciseIds,
-                    workoutId: workoutId
-                )
-            }
-        }
-    }
-
     static func rescheduleWorkout(_ workoutId: String, date: String) throws {
         guard let workout = WorkoutsStore.shared.workout(workoutId), workout.completion == nil
         else { throw TrainingPersistenceError("This workout cannot be rescheduled.") }

@@ -103,36 +103,6 @@ final class TrainingRecordsStore: ObservableObject {
         try commit(next)
     }
 
-    func activateProgram(_ programId: String) throws {
-        guard data.programs.contains(where: { $0.id == programId }) else {
-            throw TrainingPersistenceError("Program not found")
-        }
-        var next = data
-        next.activeProgramId = programId
-        next.programs = next.programs.map { program in
-            var updated = program
-            if program.id == programId { updated.lifecycle = .active }
-            else if program.lifecycle == .active { updated.lifecycle = .archived }
-            return updated
-        }
-        try commit(next)
-    }
-
-    func archiveProgram(_ programId: String) throws {
-        guard data.programs.contains(where: { $0.id == programId }) else {
-            throw TrainingPersistenceError("Program not found")
-        }
-        var next = data
-        if next.activeProgramId == programId { next.activeProgramId = nil }
-        next.programs = next.programs.map { program in
-            guard program.id == programId else { return program }
-            var updated = program
-            updated.lifecycle = .archived
-            return updated
-        }
-        try commit(next)
-    }
-
     // MARK: Starting a workout
 
     @discardableResult
@@ -301,16 +271,6 @@ final class TrainingRecordsStore: ObservableObject {
         }
     }
 
-    func moveExercise(_ exerciseEntryId: String, direction: Int) throws {
-        try withActiveDraft { draft in
-            guard let index = draft.exercises.firstIndex(where: { $0.id == exerciseEntryId })
-            else { return }
-            let next = index + direction
-            guard next >= 0, next < draft.exercises.count else { return }
-            draft.exercises.swapAt(index, next)
-        }
-    }
-
     func reorderExercises(_ exerciseEntryIds: [String]) throws {
         guard let draft = data.activeWorkout,
               exerciseEntryIds.count == draft.exercises.count,
@@ -339,17 +299,6 @@ final class TrainingRecordsStore: ObservableObject {
             else { throw TrainingPersistenceError("Set not found") }
             draft.exercises[exerciseIndex].sets[setIndex].setType = setType
             draft.exercises[exerciseIndex].sets[setIndex].side = side
-        }
-    }
-
-    func removeUnplannedSet(exerciseEntryId: String, setDraftId: String) throws {
-        try withActiveDraft { draft in
-            guard let exerciseIndex = draft.exercises.firstIndex(where: { $0.id == exerciseEntryId }),
-                  let set = draft.exercises[exerciseIndex].sets.first(where: { $0.id == setDraftId }),
-                  set.plannedSetId == nil,
-                  set.observation?.completed != true
-            else { throw TrainingPersistenceError("Only unfinished additional sets can be removed") }
-            draft.exercises[exerciseIndex].sets.removeAll { $0.id == setDraftId }
         }
     }
 
@@ -445,85 +394,6 @@ final class TrainingRecordsStore: ObservableObject {
     }
 
     // MARK: Coverage and stations
-
-    func setHistoryCoverageUnknown() throws {
-        var next = data
-        next.settings.historyCoverage = .unknown
-        try commit(next)
-    }
-
-    func setHistoryCoverageCompleteFrom(_ coverageStart: String) throws {
-        var next = data
-        next.settings.historyCoverage = PersistedHistoryCoverage(
-            status: .complete, coverageStart: coverageStart
-        )
-        try commit(next)
-    }
-
-    @discardableResult
-    func saveLoadConfiguration(
-        id: String? = nil,
-        exerciseId: String,
-        stationId: String,
-        mode: PersistedLoadConfiguration.Mode = .externalLoad,
-        basis: LoadBasis,
-        grid: LoadGrid
-    ) throws -> String {
-        // One station of one exercise in one measurement is one record.
-        // Describing it again — a second turn of the dial — corrects the record
-        // that is already there rather than making a rival one.
-        let existing = data.settings.loadConfigurations.first {
-            $0.exerciseId == exerciseId
-                && $0.stationId == stationId
-                && $0.basis == basis
-                && $0.effectiveMode == mode
-        }
-        let configurationId = id ?? existing?.id ?? Self.makeId("load-context")
-        let configuration = PersistedLoadConfiguration(
-            id: configurationId,
-            exerciseId: exerciseId,
-            stationId: stationId,
-            mode: mode == .externalLoad ? nil : mode,
-            basis: basis,
-            grid: grid
-        )
-
-        var next = data
-        next.settings.loadConfigurations = next.settings.loadConfigurations
-            .filter { $0.id != configurationId } + [configuration]
-        try commit(next)
-        return configurationId
-    }
-
-    func removeLoadConfiguration(_ id: String) throws {
-        var next = data
-        next.settings.loadConfigurations.removeAll { $0.id == id }
-        // A station that no longer exists cannot stay selected: the exercise
-        // returns to its equipment default rather than to a grid nothing
-        // describes.
-        if var active = next.settings.activeLoadConfigurations {
-            active = active.filter { $0.value != id }
-            next.settings.activeLoadConfigurations = active
-        }
-        try commit(next)
-    }
-
-    /// Pins which saved station an exercise is being trained at; nil returns it
-    /// to the equipment default.
-    func selectLoadConfiguration(_ exerciseId: String, _ configurationId: String?) throws {
-        if let configurationId,
-           !data.settings.loadConfigurations.contains(where: {
-               $0.id == configurationId && $0.exerciseId == exerciseId
-           }) {
-            throw TrainingPersistenceError("Load configuration not found for this exercise")
-        }
-        var next = data
-        var active = next.settings.activeLoadConfigurations ?? [:]
-        if let configurationId { active[exerciseId] = configurationId }
-        else { active.removeValue(forKey: exerciseId) }
-        next.settings.activeLoadConfigurations = active
-        try commit(next)
-    }
 
     // MARK: History
 

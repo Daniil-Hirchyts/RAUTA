@@ -18,14 +18,6 @@ struct StationContext: Hashable {
     var grid: LoadGrid
 }
 
-/// One station a set can be logged against, as the editor offers it.
-struct StationChoice: Identifiable, Hashable {
-    /// The saved configuration, or nil for the equipment default.
-    var id: String?
-    var label: String
-    var context: StationContext
-}
-
 enum Resistance {
     /// How the load on a piece of equipment is held and what it moves in.
     ///
@@ -266,93 +258,6 @@ enum Resistance {
     /// needs the choice.
     static func sideOptions(for exercise: ExerciseSummary) -> [SetSide] {
         metadata(for: exercise).laterality == .unilateral ? [.both, .left, .right] : [.both]
-    }
-
-    /// Whether a station this app minted belongs to a piece of equipment. Ids
-    /// from a backup, or written by hand, name themselves.
-    private static func isDerivedStationId(_ stationId: String, _ defaultStationId: String) -> Bool {
-        for separator in ["#", "-"] {
-            let prefix = defaultStationId + separator
-            if stationId.hasPrefix(prefix) {
-                return stationId.count > prefix.count
-            }
-        }
-        return false
-    }
-
-    /// What to call a station on screen.
-    ///
-    /// A number, not an identity. Kilograms are compared by `stationId`, which
-    /// is minted once and never reused; what a person reads is simply which of
-    /// their stations this is, counted in the order they described them.
-    static func stationLabel(
-        _ stationId: String,
-        _ defaultStationId: String,
-        ordinal: Int? = nil
-    ) -> String {
-        if stationId == defaultStationId { return Wording.titleCase(defaultStationId) }
-        if !isDerivedStationId(stationId, defaultStationId) { return Wording.titleCase(stationId) }
-        guard let ordinal else {
-            // A station nothing describes any more: sets logged at it are still
-            // its own, and must never read as one of the stations that exist.
-            return "Earlier \(defaultStationId)"
-        }
-        return "\(Wording.titleCase(defaultStationId)) \(ordinal)"
-    }
-
-    /// A station identity that will never be handed out twice.
-    static func newStationId(_ defaultStationId: String) -> String {
-        let unique = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased().prefix(12)
-        return "\(defaultStationId)#\(unique)"
-    }
-
-    /// The stations saved for one exercise in one measurement, plus the
-    /// equipment default they sit above. The default is always offered and
-    /// always first.
-    static func stationChoices(
-        for exercise: ExerciseSummary,
-        mode: ResistanceMode,
-        settings: PersistedTrainingSettings,
-        equipmentIncrementKg: Double? = nil
-    ) -> [StationChoice] {
-        let fallback = loadContext(
-            for: exercise, mode: mode, configuration: nil, equipmentIncrementKg: equipmentIncrementKg
-        )
-        var choices: [StationChoice] = [
-            StationChoice(id: nil, label: Wording.titleCase(fallback.stationId), context: fallback)
-        ]
-
-        for configuration in settings.loadConfigurations {
-            guard configuration.exerciseId == exercise.id,
-                  configurationMode(configuration) == mode
-            else { continue }
-            let context = loadContext(
-                for: exercise,
-                mode: mode,
-                configuration: configuration,
-                equipmentIncrementKg: equipmentIncrementKg
-            )
-            // A configuration on the default station is that station described
-            // properly — a stack that starts at 5 rather than 0 — not a second.
-            if configuration.stationId == fallback.stationId {
-                choices[0] = StationChoice(
-                    id: configuration.id, label: choices[0].label, context: context
-                )
-            } else {
-                choices.append(StationChoice(
-                    id: configuration.id,
-                    // Counted from where it sits in the list, so the names read
-                    // 1, 2, 3 however many have come and gone.
-                    label: stationLabel(
-                        configuration.stationId,
-                        fallback.stationId,
-                        ordinal: choices.count + 1
-                    ),
-                    context: context
-                ))
-            }
-        }
-        return choices
     }
 
     /// Where a set that has already been logged was measured. A station nobody

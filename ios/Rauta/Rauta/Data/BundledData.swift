@@ -31,6 +31,12 @@ enum ExerciseCatalogue {
         BundledData.decode("exercises.generated", as: [ExerciseSummary].self) ?? []
     }()
 
+    /// The catalogue in the order people read it. Sorted once: a locale-aware
+    /// sort of the whole catalogue is too slow to repeat per query.
+    static let allByName: [ExerciseSummary] = {
+        all.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }()
+
     static let byId: [String: ExerciseSummary] = {
         Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     }()
@@ -117,21 +123,9 @@ enum ExerciseCatalogue {
     }
 
     private static let focusedRelevance = 0.5
-    private static let focusedOfBest = 0.9
-
-    /// Where a relevance-sorted list stops being about the selection and starts
-    /// being exercises that merely touch it.
-    static func supportingFromIndex(_ sorted: [ExerciseSummary], _ selectedMuscles: [MuscleId]) -> Int {
-        guard let first = sorted.first else { return -1 }
-        let muscles = Set(selectedMuscles)
-        let best: Double = relevance(first, muscles) * focusedOfBest
-        let cutoff: Double = Swift.min(focusedRelevance, best)
-        guard let index = sorted.firstIndex(where: { relevance($0, muscles) < cutoff }) else { return -1 }
-        return index <= 0 ? -1 : index
-    }
 
     static func filter(
-        _ exercises: [ExerciseSummary] = all,
+        _ exercises: [ExerciseSummary] = allByName,
         muscles selectedMuscles: [MuscleId],
         equipment selectedEquipment: [String]
     ) -> [ExerciseSummary] {
@@ -139,14 +133,15 @@ enum ExerciseCatalogue {
         let muscles = Set(selectedMuscles)
         let equipment = Set(selectedEquipment)
 
-        var scored: [(exercise: ExerciseSummary, score: Double)] = []
-        for exercise in exercises where equipment.contains(exercise.equipment) {
+        // Scored once each, then ordered by score with the name order as the tie
+        // break — the input's own order, so no string comparison in the sort.
+        var scored: [(exercise: ExerciseSummary, score: Double, order: Int)] = []
+        for (order, exercise) in exercises.enumerated() where equipment.contains(exercise.equipment) {
             let score = relevance(exercise, muscles)
-            if score > 0 { scored.append((exercise, score)) }
+            if score > 0 { scored.append((exercise, score, order)) }
         }
         scored.sort { left, right in
-            if left.score != right.score { return left.score > right.score }
-            return left.exercise.name.localizedCompare(right.exercise.name) == .orderedAscending
+            left.score != right.score ? left.score > right.score : left.order < right.order
         }
         return scored.map(\.exercise)
     }

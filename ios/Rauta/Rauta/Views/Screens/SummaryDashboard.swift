@@ -31,10 +31,7 @@ struct MonthlySummarySnapshot {
             return interval.contains(Date(timeIntervalSince1970: millis / 1_000))
         }
 
-        let formatter = DateFormatter()
-        formatter.locale = Locale.current
-        formatter.setLocalizedDateFormatFromTemplate("MMMM")
-        monthTitle = formatter.string(from: now)
+        monthTitle = CalendarDate.string(from: now, template: "MMMM")
 
         workoutCount = Swift.max(monthWorkouts.count, monthSessions.count)
         let workoutDuration = monthWorkouts.compactMap(\.completion).reduce(0) {

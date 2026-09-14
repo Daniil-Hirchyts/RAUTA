@@ -12,16 +12,31 @@ struct ProfileDashboard: View {
 
     private var profile: TrainingProfile { store.trainingProfile.profile }
 
-    private var completedWorkouts: [Workout] {
-        store.workouts.workouts.filter { $0.completion != nil }
-    }
+    /// The four record figures, from one pass over the history. Building the
+    /// training history converts every logged session, so it is done once per
+    /// render rather than once per figure.
+    private struct Records {
+        var workouts: Int
+        var trainingSeconds: Double
+        var bestStreak: Int
+        var exercisesLogged: Int
 
-    private var history: TrainingHistory {
-        store.trainingRecords.trainingHistory()
-    }
+        init(workouts allWorkouts: [Workout], history: TrainingHistory) {
+            let completed = allWorkouts.filter { $0.completion != nil }
+            workouts = Swift.max(completed.count, history.sessions.count)
 
-    private var streak: Streak {
-        StreakBuilder.build(completedWorkouts)
+            let structuredSeconds = history.sessions.reduce(0) { $0 + ($1.durationSeconds ?? 0) }
+            trainingSeconds = structuredSeconds > 0
+                ? structuredSeconds
+                : completed.reduce(0) { $0 + ($1.completion?.durationMs ?? 0) / 1_000 }
+
+            bestStreak = StreakBuilder.build(completed).longestStreak
+
+            let structuredExercises = history.sessions.reduce(0) { $0 + $1.exercises.count }
+            exercisesLogged = structuredExercises > 0
+                ? structuredExercises
+                : completed.reduce(0) { $0 + ($1.completion?.completedExerciseIds.count ?? 0) }
+        }
     }
 
     private var displayName: String {
@@ -56,27 +71,11 @@ struct ProfileDashboard: View {
         return parts.joined(separator: " · ")
     }
 
-    private var totalWorkoutCount: Int {
-        Swift.max(completedWorkouts.count, history.sessions.count)
-    }
-
-    private var totalTrainingSeconds: Double {
-        let structured = history.sessions.reduce(0) { $0 + ($1.durationSeconds ?? 0) }
-        if structured > 0 { return structured }
-        return completedWorkouts.reduce(0) {
-            $0 + ($1.completion?.durationMs ?? 0) / 1_000
-        }
-    }
-
-    private var completedExerciseCount: Int {
-        let structured = history.sessions.reduce(0) { $0 + $1.exercises.count }
-        if structured > 0 { return structured }
-        return completedWorkouts.reduce(0) {
-            $0 + ($1.completion?.completedExerciseIds.count ?? 0)
-        }
-    }
-
     var body: some View {
+        let records = Records(
+            workouts: store.workouts.workouts,
+            history: store.trainingRecords.trainingHistory()
+        )
         ScrollView {
             VStack(spacing: 24) {
                 identity
@@ -85,25 +84,25 @@ struct ProfileDashboard: View {
                     LazyVGrid(columns: recordColumns, spacing: 10) {
                         ProfileRecordCard(
                             systemImage: "figure.strengthtraining.traditional",
-                            value: "\(totalWorkoutCount)",
+                            value: "\(records.workouts)",
                             label: "Workouts",
                             accent: Theme.primary
                         )
                         ProfileRecordCard(
                             systemImage: "timer",
-                            value: durationLabel(totalTrainingSeconds),
+                            value: durationLabel(records.trainingSeconds),
                             label: "Training time",
                             accent: Theme.gold
                         )
                         ProfileRecordCard(
                             systemImage: "flame.fill",
-                            value: "\(streak.longestStreak)",
+                            value: "\(records.bestStreak)",
                             label: "Best streak",
                             accent: Theme.lime
                         )
                         ProfileRecordCard(
                             systemImage: "checkmark.circle",
-                            value: "\(completedExerciseCount)",
+                            value: "\(records.exercisesLogged)",
                             label: "Exercises logged",
                             accent: Theme.ember
                         )

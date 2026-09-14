@@ -67,24 +67,6 @@ enum TrainingWeekOutcome {
     case blocked(PlanBlock)
 }
 
-/// Offsets into the planned week, which the engine always starts on a Monday.
-struct WeekDay: Identifiable, Hashable {
-    var offset: Int
-    var short: String
-    var long: String
-    var id: Int { offset }
-}
-
-let WEEK_DAYS: [WeekDay] = [
-    WeekDay(offset: 0, short: "Mon", long: "Monday"),
-    WeekDay(offset: 1, short: "Tue", long: "Tuesday"),
-    WeekDay(offset: 2, short: "Wed", long: "Wednesday"),
-    WeekDay(offset: 3, short: "Thu", long: "Thursday"),
-    WeekDay(offset: 4, short: "Fri", long: "Friday"),
-    WeekDay(offset: 5, short: "Sat", long: "Saturday"),
-    WeekDay(offset: 6, short: "Sun", long: "Sunday"),
-]
-
 @MainActor
 enum TrainingPlan {
     private static let upper = Set(SplitMuscleGroups.upper)
@@ -279,46 +261,6 @@ enum TrainingPlan {
         )
     }
 
-    /// Creates a training week from everything already saved plus the one answer
-    /// only this week can give: which days are free.
-    static func createTrainingWeek(days rawDays: [Int], now: String? = nil) -> TrainingWeekOutcome {
-        var seen = Set<Int>()
-        let days = rawDays
-            .filter { $0 >= 0 && $0 <= 6 && seen.insert($0).inserted }
-            .sorted()
-        guard !days.isEmpty else {
-            return .blocked(PlanBlock(
-                reason: .days,
-                message: "Pick at least one day you can train.",
-                page: nil,
-                issues: []
-            ))
-        }
-
-        do {
-            let attempt = try TrainingWorkflow.planTrainingWeek(
-                now: now ?? ISOTime.now(), availableDays: days
-            )
-            guard let program = attempt.result.program else {
-                return .blocked(toPlanBlock(attempt.result.issues))
-            }
-            try TrainingRecordsStore.shared.saveProgram(program)
-            let sessions = sessionViews(program)
-            projectPlannedWorkouts(sessions)
-            return .created(
-                programId: program.id, sessions: sessions, issues: attempt.result.issues
-            )
-        } catch {
-            return .blocked(PlanBlock(
-                reason: .input,
-                message: (error as? TrainingPersistenceError)?.message
-                    ?? "I could not build a week from what I know.",
-                page: .profileTraining,
-                issues: []
-            ))
-        }
-    }
-
     /// Creates one plan from exact calendar dates. Dates may span several weeks;
     /// each week is solved by the engine, then stored as one immutable plan.
     static func createTrainingPlanForDates(
@@ -435,23 +377,4 @@ enum TrainingPlan {
         return .created(programId: program.id, sessions: sessions, issues: issues)
     }
 
-    /// A compact reading of one prescribed exercise: `3 × 8–12 · RIR 2 · 80 kg`.
-    static func formatPrescription(_ item: PlannedExercisePrescription) -> String {
-        let reps = item.reps.min == item.reps.max
-            ? Num.trimmed(item.reps.max)
-            : "\(Num.trimmed(item.reps.min))–\(Num.trimmed(item.reps.max))"
-        var parts = ["\(item.sets) × \(reps)", "RIR \(Num.trimmed(item.rir))"]
-        if let loadKg = item.loadKg {
-            let each = item.loadBasis == .perImplement ? " each" : ""
-            parts.append("\(Resistance.formatKg(loadKg)) kg\(each)")
-        }
-        parts.append("\(Int(item.restSeconds.rounded()))s rest")
-        return parts.joined(separator: " · ")
-    }
-
-    /// The muscles a planned session loads, for the body preview the workout list
-    /// already draws beside every other row.
-    static func plannedSessionMuscles(_ view: PlannedSessionView) -> [MuscleId] {
-        ExerciseCatalogue.musclesForExerciseIds(view.exerciseIds)
-    }
 }

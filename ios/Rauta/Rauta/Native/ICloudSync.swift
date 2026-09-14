@@ -143,8 +143,11 @@ final class ICloudSync: ObservableObject {
         var meta = readMeta()
         meta.localChangedAt = changedAt
         writeMeta(meta)
-        status = .syncing
-        error = nil
+        // Every local edit lands here, and both values are published through the
+        // app store: assigning what is already there would redraw every screen
+        // for nothing — continuously, while a slider or colour picker is dragged.
+        if status != .syncing { status = .syncing }
+        if error != nil { error = nil }
 
         uploadTask?.cancel()
         uploadTask = Task { [weak self] in

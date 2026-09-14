@@ -240,7 +240,6 @@ final class AppSessionStore: ObservableObject {
     }
 
     var activeEntry: AppPageEntry? { pages.last ?? pages.first }
-    var activePage: AppPage { activeEntry?.page ?? .workouts }
 
     // MARK: Navigation
 

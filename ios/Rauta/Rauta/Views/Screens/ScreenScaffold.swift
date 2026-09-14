@@ -161,47 +161,6 @@ struct SurfaceCard<Content: View>: View {
     }
 }
 
-struct ChoiceRow: View {
-    let title: String
-    var detail: String?
-    var systemImage: String?
-    var selected = false
-    var destructive = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                if let systemImage {
-                    Image(systemName: systemImage)
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(destructive ? Theme.destructive : Theme.primary)
-                        .frame(width: 28)
-                }
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(Theme.sans(16, weight: .semibold))
-                        .foregroundStyle(destructive ? Theme.destructive : Theme.foreground)
-                    if let detail {
-                        Text(detail)
-                            .font(Theme.sans(12))
-                            .foregroundStyle(Theme.mutedForeground)
-                            .lineLimit(2)
-                    }
-                }
-                Spacer(minLength: 8)
-                Image(systemName: selected ? "checkmark.circle.fill" : "chevron.right")
-                    .foregroundStyle(selected ? Theme.primary : Theme.mutedForeground)
-            }
-            .padding(.vertical, 13)
-            .padding(.horizontal, 14)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .background(selected ? Theme.primary.opacity(0.08) : .clear)
-    }
-}
-
 struct SelectionChip: View {
     let title: String
     var selected = false
@@ -245,49 +204,3 @@ struct InlineNotice: View {
     }
 }
 
-struct RautaCompanion: View {
-    var speech: String
-    var size: CGFloat = 104
-
-    private static let artwork = VectorArtworkLoader.load(contentsOf: MediaLibrary.rautaArtworkURL)
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Group {
-                if let artwork = Self.artwork {
-                    VectorArtworkView(artwork: artwork)
-                } else {
-                    Image(systemName: "figure.strengthtraining.traditional")
-                        .font(.system(size: size * 0.46, weight: .bold))
-                        .foregroundStyle(Theme.primary)
-                }
-            }
-            .frame(width: size, height: size)
-
-            Text(speech)
-                .font(Theme.sans(14, weight: .semibold))
-                .foregroundStyle(Theme.foreground)
-                .lineSpacing(3)
-                .padding(12)
-                .background(Theme.popover.opacity(0.94))
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
-                        .strokeBorder(Theme.border)
-                )
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
-@MainActor
-struct ErrorState {
-    var message: String?
-
-    mutating func capture(_ error: Error) {
-        message = (error as? TrainingPersistenceError)?.message
-            ?? (error as? TrainingPersistenceValidationError)?.localizedDescription
-            ?? error.localizedDescription
-        Haptics.trigger(.warning)
-    }
-}

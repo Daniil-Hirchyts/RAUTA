@@ -41,17 +41,4 @@ enum SessionTiming {
         )
     }
 
-    static func estimateProgram(
-        _ program: TrainingProgram,
-        _ index: ExerciseIndex
-    ) -> [(weekId: String, seconds: Double)] {
-        program.weeks.map { week in
-            (
-                weekId: week.id,
-                seconds: week.sessions.reduce(0.0) {
-                    $0 + estimateSession($1.exercises, index, program.policy).totalSeconds
-                }
-            )
-        }
-    }
 }

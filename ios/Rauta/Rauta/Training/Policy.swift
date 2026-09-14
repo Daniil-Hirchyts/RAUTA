@@ -83,23 +83,6 @@ struct TrainingPolicy: Codable, Hashable, Sendable {
         priorityMultipliers[level.rawValue] ?? 1
     }
 
-    func exerciseWeight(_ key: ExerciseWeightKey) -> Double { exerciseWeights[key.rawValue] ?? 0 }
-    func sessionWeight(_ key: SessionWeightKey) -> Double { sessionWeights[key.rawValue] ?? 0 }
-    func programWeight(_ key: ProgramWeightKey) -> Double { programWeights[key.rawValue] ?? 0 }
-}
-
-enum ExerciseWeightKey: String, CaseIterable {
-    case coverage, specificity, continuity, preference, skillSuitability
-    case patternNeed, quality, redundancy, workload, duration
-}
-
-enum SessionWeightKey: String, CaseIterable {
-    case coverage, duration, quality, redundancy, concentration, nonempty
-}
-
-enum ProgramWeightKey: String, CaseIterable {
-    case volume, specificity, frequency, balance, quality, continuity
-    case duration, preference, redundancy, recovery, session
 }
 
 let DEFAULT_POLICY = TrainingPolicy(

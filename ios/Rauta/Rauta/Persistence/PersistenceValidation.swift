@@ -1188,10 +1188,4 @@ enum PersistenceValidation {
         }
     }
 
-    static func serialize(_ state: PersistedTrainingState) throws -> String {
-        let normalized = normalize(state)
-        let issues = validate(normalized)
-        if !issues.isEmpty { throw TrainingPersistenceValidationError(issues: issues) }
-        return normalized.jsonTree.canonical
-    }
 }

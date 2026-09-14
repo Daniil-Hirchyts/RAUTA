@@ -346,11 +346,3 @@ private struct OnboardingSummaryRow: View {
     }
 }
 
-struct ChoiceList<Content: View>: View {
-    @ViewBuilder let content: () -> Content
-    var body: some View {
-        VStack(spacing: 0) { content() }.background(Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous).strokeBorder(Theme.border))
-    }
-}

@@ -199,11 +199,6 @@ final class FiltersStore: ObservableObject {
         }
     }
 
-    func applyEquipmentPreset(_ id: String) {
-        guard let preset = equipmentPresets.first(where: { $0.id == id }) else { return }
-        mutateTransient { selectedEquipment = preset.equipment }
-    }
-
     func deleteEquipmentPreset(_ id: String) {
         mutatePersistent { equipmentPresets.removeAll { $0.id == id } }
     }

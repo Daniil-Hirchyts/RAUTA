@@ -67,27 +67,3 @@ struct SwipeableRow<Content: View, Action: View>: View {
     }
 }
 
-/// The delete parked behind a swiped row.
-struct SwipeDeleteAction: View {
-    var label: String
-    var action: () -> Void
-
-    var body: some View {
-        Button {
-            Haptics.trigger(.warning)
-            action()
-        } label: {
-            Image(systemName: "trash")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(Theme.primary)
-        }
-        .buttonStyle(
-            .glassControl(
-                .tinted(Theme.primary.opacity(0.36)),
-                .circle(diameter: 42),
-                legacyFill: Theme.card.opacity(0.78)
-            )
-        )
-        .accessibilityLabel(label)
-    }
-}

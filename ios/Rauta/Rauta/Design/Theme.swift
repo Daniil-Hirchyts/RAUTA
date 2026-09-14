@@ -64,9 +64,7 @@ extension Theme {
     static var background: Color { palette.background }
     static var foreground: Color { palette.foreground }
     static var card: Color { palette.card }
-    static var cardForeground: Color { palette.foreground }
     static var popover: Color { palette.popover }
-    static var popoverForeground: Color { palette.foreground }
 
     static var primary: Color { palette.primary }
     static var primarySoft: Color { palette.primarySoft }
@@ -74,15 +72,12 @@ extension Theme {
     static var primaryForeground: Color { palette.primaryForeground }
     static var primaryGradientStart: Color { palette.primaryGradientStart }
     static var primaryGradientEnd: Color { palette.primaryGradientEnd }
-    static var primaryGradientActiveStart: Color { palette.primaryGradientActiveStart }
-    static var primaryGradientActiveEnd: Color { palette.primaryGradientActiveEnd }
 
     static var secondary: Color { palette.secondary }
     static var secondaryForeground: Color { palette.secondaryForeground }
     static var muted: Color { palette.muted }
     static var mutedForeground: Color { palette.mutedForeground }
     static var accent: Color { palette.primary }
-    static var accentForeground: Color { palette.primaryForeground }
     static var destructive: Color { ThemePalette.destructive }
 
     static var border: Color { palette.border }
@@ -108,13 +103,6 @@ extension Theme {
     static var primaryGradient: LinearGradient {
         LinearGradient(
             colors: [primaryGradientStart, primaryGradientEnd],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-    }
-    static var primaryGradientActive: LinearGradient {
-        LinearGradient(
-            colors: [primaryGradientActiveStart, primaryGradientActiveEnd],
             startPoint: .top,
             endPoint: .bottom
         )

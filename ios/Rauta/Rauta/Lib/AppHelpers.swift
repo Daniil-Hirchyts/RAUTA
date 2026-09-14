@@ -25,6 +25,28 @@ enum Wording {
     }
 }
 
+// MARK: - Memo
+
+/// Remembers the last answer to an expensive question until it is asked with
+/// different inputs.
+///
+/// Meant for `@State`: as a reference, filling it never triggers a redraw — it
+/// only spares the next render the same work. A screen that reads a derived
+/// list in several places per render, and once per cell while scrolling, then
+/// pays for it once per change of what it is derived from.
+final class Memo<Key: Equatable, Value> {
+    private var key: Key?
+    private var value: Value?
+
+    func callAsFunction(_ key: Key, _ compute: () -> Value) -> Value {
+        if let value, self.key == key { return value }
+        let computed = compute()
+        self.key = key
+        value = computed
+        return computed
+    }
+}
+
 // MARK: - Calendar dates
 
 /// Local calendar dates as "YYYY-MM-DD", with no time-of-day or timezone
@@ -57,17 +79,39 @@ enum CalendarDate {
         return toISO(shifted)
     }
 
-    private static func format(_ iso: String, _ template: String) -> String {
-        guard let date = parse(iso) else { return iso }
-        let formatter = DateFormatter()
-        formatter.locale = Locale.current
-        formatter.setLocalizedDateFormatFromTemplate(template)
+    /// One formatter per template and locale. Building a `DateFormatter` costs
+    /// far more than using one, and date labels are drawn on every row of every
+    /// list.
+    private static let formatters: NSCache<NSString, DateFormatter> = {
+        let cache = NSCache<NSString, DateFormatter>()
+        cache.countLimit = 32
+        return cache
+    }()
+
+    /// `date` in the current locale's own rendering of `template` ("MMMM",
+    /// "EEEMMMd"…).
+    static func string(from date: Date, template: String) -> String {
+        let locale = Locale.current
+        let key = "\(locale.identifier)|\(template)" as NSString
+        let formatter: DateFormatter
+        if let cached = formatters.object(forKey: key) {
+            formatter = cached
+        } else {
+            formatter = DateFormatter()
+            formatter.locale = locale
+            formatter.setLocalizedDateFormatFromTemplate(template)
+            formatters.setObject(formatter, forKey: key)
+        }
         return formatter.string(from: date)
+    }
+
+    static func format(_ iso: String, _ template: String) -> String {
+        guard let date = parse(iso) else { return iso }
+        return string(from: date, template: template)
     }
 
     static func short(_ iso: String) -> String { format(iso, "EEEMMMd") }
     static func long(_ iso: String) -> String { format(iso, "EEEEMMMMd") }
-    static func monthDay(_ iso: String) -> String { format(iso, "MMMMd") }
     static func weekdayShort(_ iso: String) -> String { format(iso, "EEE") }
     static func monthShort(_ iso: String) -> String { format(iso, "MMM") }
     /// The day of the month on its own, for a date stamp that shows the weekday

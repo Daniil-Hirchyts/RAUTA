@@ -52,21 +52,6 @@ enum Optimizer {
         }
     }
 
-    static func allocationForSplit(
-        _ sessions: [PlannedSession],
-        _ input: OptimizationInput
-    ) -> [(sessionId: String, muscles: [MuscleId: Double])] {
-        sessions.map { session in
-            var muscles: [MuscleId: Double] = [:]
-            for muscle in session.focus {
-                let preferred = input.targets.first { $0.muscleId == muscle }?.preferred ?? 0
-                let slots = Swift.max(1, sessions.filter { $0.focus.contains(muscle) }.count)
-                muscles[muscle] = preferred / Double(slots)
-            }
-            return (sessionId: session.id, muscles: muscles)
-        }
-    }
-
     private static func weekKey(_ week: TrainingWeek) -> String {
         week.sessions
             .map { session in

@@ -14,18 +14,35 @@ struct ExercisePickerScreen: View {
     @State private var presetEditorOpen = false
     @State private var destinationMenuOpen = false
     @State private var visibleExerciseCount = ExerciseCatalogue.pageSize
+    @State private var matches = Memo<MatchQuery, [ExerciseSummary]>()
+
+    private struct MatchQuery: Equatable {
+        var muscles: [MuscleId]
+        var equipment: [String]
+        var search: String
+        var favorites: [String]?
+    }
 
     private var selectedMuscles: [MuscleId] { store.filters.selectedMuscles }
     private var selectedEquipment: [String] { store.filters.selectedEquipment }
+
+    /// Scored and sorted once per change of the selection: the screen reads it
+    /// several times per render, and redraws whenever any store changes.
     private var matchingExercises: [ExerciseSummary] {
-        let filtered = ExerciseCatalogue.filter(
+        let query = MatchQuery(
             muscles: selectedMuscles,
-            equipment: selectedEquipment
+            equipment: selectedEquipment,
+            search: search,
+            favorites: favoritesOnly ? store.favorites.favoriteIds : nil
         )
-        return filtered.filter { exercise in
-            (!favoritesOnly || store.favorites.isFavorite(exercise.id))
-                && (search.trimmingCharacters(in: .whitespaces).isEmpty
-                    || exercise.name.localizedCaseInsensitiveContains(search))
+        return matches(query) {
+            let favoriteSet = query.favorites.map(Set.init)
+            let trimmed = query.search.trimmingCharacters(in: .whitespaces)
+            return ExerciseCatalogue.filter(muscles: query.muscles, equipment: query.equipment)
+                .filter { exercise in
+                    (favoriteSet?.contains(exercise.id) ?? true)
+                        && (trimmed.isEmpty || exercise.name.localizedCaseInsensitiveContains(query.search))
+                }
         }
     }
 

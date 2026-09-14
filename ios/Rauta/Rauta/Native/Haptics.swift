@@ -61,7 +61,7 @@ enum Haptics {
     }
 }
 
-/// Short synthesised tones: the interface chimes, and the end of a rest.
+/// Short synthesised tones for the interface chimes.
 enum Chimes {
     private static let engineBox = EngineBox()
 
@@ -133,16 +133,6 @@ enum Chimes {
     static func play(_ frequency: Double) {
         guard let buffer = makeTone(
             frequencies: [frequency], noteDuration: 0.17, gap: 0, peak: 0.08
-        ) else { return }
-        play(buffer: buffer)
-    }
-
-    /// The end of a rest, out loud. Two rising notes, deliberately short.
-    /// Unlike the interface chimes this is not gated on the sound setting: a
-    /// rest timer nobody hears is a rest timer that does not work.
-    static func playRestAlarm() {
-        guard let buffer = makeTone(
-            frequencies: [660, 880], noteDuration: 0.17, gap: 0.01, peak: 0.12
         ) else { return }
         play(buffer: buffer)
     }

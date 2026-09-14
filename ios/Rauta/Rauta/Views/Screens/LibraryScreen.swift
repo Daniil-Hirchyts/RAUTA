@@ -17,32 +17,47 @@ struct LibraryScreen: View {
     @ObservedObject private var favorites = FavoritesStore.shared
     private let navigation = AppSessionStore.shared
     @State private var browse = LibraryBrowseState()
+    @State private var resultsMemo = Memo<LibraryQuery, [ExerciseSummary]>()
     @FocusState private var searchFocused: Bool
 
-    private var filteredExercises: [ExerciseSummary] {
-        let query = browse.search.trimmingCharacters(in: .whitespacesAndNewlines)
-        let muscleSet = Set(browse.selectedMuscles)
-        let equipmentSet = Set(browse.selectedEquipment)
+    private struct LibraryQuery: Equatable {
+        var search: String
+        var muscles: [MuscleId]
+        var equipment: [String]
+        var favorites: [String]?
+    }
 
-        let matches = ExerciseCatalogue.all.filter { exercise in
-            (query.isEmpty || exercise.name.localizedCaseInsensitiveContains(query))
+    /// The page reads this in several places per render and once per card as
+    /// the grid scrolls, so it is worked out once per change of the query.
+    private var filteredExercises: [ExerciseSummary] {
+        let query = LibraryQuery(
+            search: browse.search.trimmingCharacters(in: .whitespacesAndNewlines),
+            muscles: browse.selectedMuscles,
+            equipment: browse.selectedEquipment,
+            favorites: browse.favoritesOnly ? favorites.favoriteIds : nil
+        )
+        return resultsMemo(query) { Self.exercises(matching: query) }
+    }
+
+    private static func exercises(matching query: LibraryQuery) -> [ExerciseSummary] {
+        let muscleSet = Set(query.muscles)
+        let equipmentSet = Set(query.equipment)
+        let favoriteSet = query.favorites.map(Set.init)
+
+        // Already in name order, so a plain filter keeps it.
+        let matches = ExerciseCatalogue.allByName.filter { exercise in
+            (query.search.isEmpty || exercise.name.localizedCaseInsensitiveContains(query.search))
                 && (muscleSet.isEmpty || exercise.muscles.contains(where: muscleSet.contains))
                 && (equipmentSet.isEmpty || equipmentSet.contains(exercise.equipment))
-                && (!browse.favoritesOnly || favorites.isFavorite(exercise.id))
+                && (favoriteSet?.contains(exercise.id) ?? true)
         }
+        guard !muscleSet.isEmpty else { return matches }
 
-        guard !muscleSet.isEmpty else {
-            return matches.sorted {
-                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
-            }
-        }
-
-        return matches.sorted { left, right in
-            let leftScore = ExerciseCatalogue.relevance(left, muscleSet)
-            let rightScore = ExerciseCatalogue.relevance(right, muscleSet)
-            if leftScore != rightScore { return leftScore > rightScore }
-            return left.name.localizedCaseInsensitiveCompare(right.name) == .orderedAscending
-        }
+        // Each exercise scored once, ties kept in name order.
+        return matches.enumerated()
+            .map { (exercise: $0.element, score: ExerciseCatalogue.relevance($0.element, muscleSet), order: $0.offset) }
+            .sorted { $0.score != $1.score ? $0.score > $1.score : $0.order < $1.order }
+            .map(\.exercise)
     }
 
     private var visibleExercises: ArraySlice<ExerciseSummary> {

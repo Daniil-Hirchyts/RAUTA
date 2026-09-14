@@ -493,14 +493,13 @@ struct RautaContext: Equatable, Sendable {
 // MARK: - Cues
 
 /// Meaningful product events RAUTA can answer without coupling screens to the
-/// animation. Most are noticed by the director watching the stores, so a screen
-/// rarely has to say anything at all.
+/// animation. The director notices them by watching the stores and the app's
+/// haptics, so a screen never has to say anything at all.
 enum RautaCue: String, Sendable {
     case setSaved = "set-saved"
     case hardSetSaved = "hard-set-saved"
     case exerciseCompleted = "exercise-completed"
     case allExercisesDone = "all-exercises-done"
-    case exerciseSkipped = "exercise-skipped"
     case restOver = "rest-over"
     case workoutPaused = "workout-paused"
     case workoutResumed = "workout-resumed"
@@ -512,7 +511,6 @@ enum RautaCue: String, Sendable {
     case planCreated = "plan-created"
     case planAdjusted = "plan-adjusted"
     case favoriteAdded = "favorite-added"
-    case actionBlocked = "action-blocked"
     /// Something the person did went through: a success haptic with no richer
     /// event behind it.
     case confirmed
@@ -534,13 +532,11 @@ enum RautaCue: String, Sendable {
         case .allExercisesDone: return 85
         case .exerciseCompleted: return 80
         case .planAdjusted: return 75
-        case .actionBlocked: return 70
         case .workoutCancelled: return 65
         case .hardSetSaved: return 62
         case .setSaved: return 60
         case .restOver: return 55
         case .workoutPaused, .workoutResumed: return 50
-        case .exerciseSkipped: return 48
         case .workoutCreated: return 45
         case .workoutDeleted: return 40
         case .favoriteAdded: return 35
@@ -560,7 +556,6 @@ enum RautaCue: String, Sendable {
         case .allExercisesDone: return (.excited, 8)
         case .exerciseCompleted: return (.happy, 8)
         case .welcomeBack: return (.happy, 6)
-        case .actionBlocked: return (.skeptical, 4)
         default: return nil
         }
     }
@@ -593,10 +588,6 @@ enum RautaCues {
         ],
         .allExercisesDone: [
             RautaResponse(reaction: .celebrate, line: "Every exercise done. Finish when you're ready."),
-        ],
-        .exerciseSkipped: [
-            RautaResponse(reaction: .acknowledge, line: "Moving on. We can come back."),
-            RautaResponse(reaction: .peek, line: "Skipping ahead. I've kept your place."),
         ],
         .restOver: [
             RautaResponse(reaction: .gearUp, line: "Rest's up. Next set."),
@@ -644,10 +635,6 @@ enum RautaCues {
             RautaResponse(reaction: .wink, line: "Good pick."),
             RautaResponse(reaction: .laugh, line: "One of yours now."),
         ],
-        .actionBlocked: [
-            RautaResponse(reaction: .frustrated, line: "That didn't work. Try once more."),
-            RautaResponse(reaction: .recoil, line: "I couldn't save that change."),
-        ],
         .confirmed: [
             RautaResponse(reaction: .acknowledge, line: ""),
             RautaResponse(reaction: .wink, line: ""),
@@ -687,10 +674,3 @@ enum RautaCues {
     }
 }
 
-/// Tells RAUTA something happened that the stores cannot see — a skipped
-/// exercise, a refused action. Everything the stores record is noticed without
-/// being asked.
-@MainActor
-func cueRauta(_ cue: RautaCue) {
-    RautaDirector.shared.cue(cue)
-}

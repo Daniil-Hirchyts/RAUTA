@@ -253,22 +253,6 @@ struct FlowProgress: View {
     }
 }
 
-/// Keeps an optional command mounted while its space opens and closes.
-struct MorphingActionSlot<Content: View>: View {
-    var visible: Bool
-    @ViewBuilder var content: () -> Content
-
-    var body: some View {
-        content()
-            .frame(width: visible ? 48 : 0)
-            .opacity(visible ? 1 : 0)
-            .scaleEffect(visible ? 1 : 0.7)
-            .clipped()
-            .allowsHitTesting(visible)
-            .animation(Theme.Motion.smoothOut(0.32), value: visible)
-    }
-}
-
 /// A label that crossfades and lifts when its text changes.
 struct TextSwap: View {
     var text: String
