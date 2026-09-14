@@ -55,6 +55,20 @@ enum ExerciseMediaTone: String, Sendable {
     }
 }
 
+/// How a demonstration is drawn: for which theme, and how far its highlight is
+/// turned from the brand orange to the accent in use.
+struct ExerciseMediaStyle: Hashable, Sendable {
+    var tone: ExerciseMediaTone
+    /// Whole degrees, so a colour dragged across the picker does not render a
+    /// new set of frames for every fraction of a degree.
+    var hueShift: Int
+
+    init(tone: ExerciseMediaTone, hueShift: Double) {
+        self.tone = tone
+        self.hueShift = Int(hueShift.rounded())
+    }
+}
+
 /// Decodes still and animated WebP through ImageIO, then applies the app's
 /// treatment for the current theme.
 ///
@@ -84,8 +98,11 @@ enum ExerciseMedia {
     /// theme the rest invert and recolour the figure, and the rotation lands the
     /// source red on the app's primary orange. On a light theme the figure keeps
     /// its own greys, which already read on paper, and only its red is turned a
-    /// little towards the orange.
-    private static func treated(_ input: CIImage, tone: ExerciseMediaTone) -> CIImage? {
+    /// little towards the orange. Either way the highlight is then turned on by
+    /// the accent's distance from orange, so the muscles light up in the app's
+    /// colour.
+    private static func treated(_ input: CIImage, style: ExerciseMediaStyle) -> CIImage? {
+        let shift = Double(style.hueShift)
         // Background key: everything near white becomes transparent, matching
         // the `feColorMatrix` the web build used.
         let keyed = input.applyingFilter("CIColorMatrix", parameters: [
@@ -104,10 +121,10 @@ enum ExerciseMedia {
             "inputMaxComponents": CIVector(x: 1, y: 1, z: 1, w: 1),
         ])
 
-        if tone == .light {
+        if style.tone == .light {
             let warmed = clamped
                 .applyingFilter("CIHueAdjust", parameters: [
-                    kCIInputAngleKey: 20.0 * .pi / 180.0,
+                    kCIInputAngleKey: (20.0 + shift) * .pi / 180.0,
                 ])
                 .applyingFilter("CIColorControls", parameters: [
                     kCIInputSaturationKey: 1.35,
@@ -126,7 +143,7 @@ enum ExerciseMedia {
 
         // 188 degrees, expressed in radians, as the web filter chain asked for.
         let hue = inverted.applyingFilter("CIHueAdjust", parameters: [
-            kCIInputAngleKey: 188.0 * .pi / 180.0,
+            kCIInputAngleKey: (188.0 + shift) * .pi / 180.0,
         ])
 
         let controls = hue.applyingFilter("CIColorControls", parameters: [
@@ -142,8 +159,8 @@ enum ExerciseMedia {
         ])
     }
 
-    private static func render(_ image: CIImage, size: CGSize, tone: ExerciseMediaTone) -> UIImage? {
-        guard let treatedImage = treated(image, tone: tone),
+    private static func render(_ image: CIImage, size: CGSize, style: ExerciseMediaStyle) -> UIImage? {
+        guard let treatedImage = treated(image, style: style),
               let cgImage = context.createCGImage(
                   treatedImage,
                   from: CGRect(origin: .zero, size: size),
@@ -156,8 +173,8 @@ enum ExerciseMedia {
 
     /// The demonstration for one exercise, decoded and treated. Nil when the
     /// bundle carries no artwork for it.
-    static func animation(for exerciseId: String, tone: ExerciseMediaTone, maxFrames: Int = 40) -> UIImage? {
-        let key = cacheKey(exerciseId, tone)
+    static func animation(for exerciseId: String, style: ExerciseMediaStyle, maxFrames: Int = 40) -> UIImage? {
+        let key = cacheKey(exerciseId, style)
         if let cached = animationCache.object(forKey: key) { return cached }
 
         let url = MediaLibrary.exerciseAnimationURL(exerciseId)
@@ -182,7 +199,7 @@ enum ExerciseMedia {
             else { continue }
             let size = CGSize(width: cgImage.width, height: cgImage.height)
             let ciImage = CIImage(cgImage: cgImage, options: [.colorSpace: srgbSpace])
-            guard let rendered = render(ciImage, size: size, tone: tone) else { continue }
+            guard let rendered = render(ciImage, size: size, style: style) else { continue }
             let nextIndex = Swift.min(index + stride, count)
             let sourceDuration = (index..<nextIndex).reduce(0.0) { partial, frameIndex in
                 partial + frameDelay(source, frameIndex)
@@ -202,20 +219,20 @@ enum ExerciseMedia {
         return animated
     }
 
-    static func cachedAnimation(for exerciseId: String, tone: ExerciseMediaTone) -> UIImage? {
-        animationCache.object(forKey: cacheKey(exerciseId, tone))
+    static func cachedAnimation(for exerciseId: String, style: ExerciseMediaStyle) -> UIImage? {
+        animationCache.object(forKey: cacheKey(exerciseId, style))
     }
 
-    /// Each theme's rendering is cached on its own, so switching themes back
-    /// and forth never re-decodes what has already been drawn once.
-    private static func cacheKey(_ exerciseId: String, _ tone: ExerciseMediaTone) -> NSString {
-        "\(exerciseId)|\(tone.rawValue)" as NSString
+    /// Each theme and accent is cached on its own, so switching back and forth
+    /// never re-decodes what has already been drawn once.
+    private static func cacheKey(_ exerciseId: String, _ style: ExerciseMediaStyle) -> NSString {
+        "\(exerciseId)|\(style.tone.rawValue)|\(style.hueShift)" as NSString
     }
 
     /// A single treated frame, cached — what a grid of hundreds of cards can
     /// afford to show.
-    static func poster(for exerciseId: String, tone: ExerciseMediaTone) -> UIImage? {
-        let key = cacheKey(exerciseId, tone)
+    static func poster(for exerciseId: String, style: ExerciseMediaStyle) -> UIImage? {
+        let key = cacheKey(exerciseId, style)
         if let cached = posterCache.object(forKey: key) { return cached }
         if let cachedAnim = animationCache.object(forKey: key),
            let firstFrame = cachedAnim.images?.first {
@@ -231,7 +248,7 @@ enum ExerciseMedia {
 
         let size = CGSize(width: cgImage.width, height: cgImage.height)
         let ciImage = CIImage(cgImage: cgImage, options: [.colorSpace: srgbSpace])
-        guard let rendered = render(ciImage, size: size, tone: tone) else { return nil }
+        guard let rendered = render(ciImage, size: size, style: style) else { return nil }
         posterCache.setObject(rendered, forKey: key)
         return rendered
     }
@@ -300,19 +317,21 @@ struct ExerciseMediaView: View {
                 Color.clear
             }
         }
-        .task(id: "\(exerciseId)-\(animated)-\(colorScheme)") { await load() }
+        .task(id: "\(exerciseId)-\(animated)-\(colorScheme)-\(Int(Theme.palette.hueShift.rounded()))") {
+            await load()
+        }
     }
 
     private func load() async {
         let id = exerciseId
         let wantsAnimation = animated
-        let tone = ExerciseMediaTone(colorScheme)
+        let style = ExerciseMediaStyle(tone: ExerciseMediaTone(colorScheme), hueShift: Theme.palette.hueShift)
 
-        if let existing = ExerciseMedia.poster(for: id, tone: tone) {
+        if let existing = ExerciseMedia.poster(for: id, style: style) {
             poster = existing
         } else {
             let rendered = await Task.detached(priority: .userInitiated) {
-                ExerciseMedia.poster(for: id, tone: tone)
+                ExerciseMedia.poster(for: id, style: style)
             }.value
             guard id == exerciseId else { return }
             poster = rendered
@@ -323,11 +342,11 @@ struct ExerciseMediaView: View {
             return
         }
 
-        if let existingAnim = ExerciseMedia.cachedAnimation(for: id, tone: tone) {
+        if let existingAnim = ExerciseMedia.cachedAnimation(for: id, style: style) {
             animatedImage = existingAnim
         } else {
             let decoded = await Task.detached(priority: .userInitiated) {
-                ExerciseMedia.animation(for: id, tone: tone)
+                ExerciseMedia.animation(for: id, style: style)
             }.value
             guard id == exerciseId, animated else { return }
             animatedImage = decoded
@@ -378,6 +397,9 @@ struct EquipmentImageView: View {
                 .scaledToFit()
                 .padding(10)
                 .saturation(1.25)
+                // The art's orange details turn to the accent; its blacks and
+                // greys have no hue to turn.
+                .hueRotation(.degrees(Theme.palette.hueShift))
         } else {
             Image(systemName: "dumbbell")
                 .font(.system(size: 28))

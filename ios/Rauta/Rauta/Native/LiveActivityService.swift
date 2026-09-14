@@ -24,6 +24,8 @@ struct LiveActivityContent: Equatable {
     /// Frozen elapsed time; 0 while running.
     var elapsedMs: Double
     var isPaused: Bool
+    /// The accent chosen in Settings, `0xRRGGBB`.
+    var accentHex: Int
 }
 
 @MainActor
@@ -43,7 +45,8 @@ enum LiveActivitySync {
             totalCount: progress.total,
             timerStartEpochMs: isPaused ? 0 : (session.runningSince ?? 0) - session.accumulatedMs,
             elapsedMs: isPaused ? session.accumulatedMs : 0,
-            isPaused: isPaused
+            isPaused: isPaused,
+            accentHex: Int(SettingsStore.shared.accent.signature.primary)
         )
     }
 
@@ -61,6 +64,7 @@ enum LiveActivitySync {
     private static var lastWorkoutId: String?
     private static var previousSession: ActiveWorkoutSession?
     private static var cancellable: AnyCancellable?
+    private static var accentCancellable: AnyCancellable?
 
     private static func render(_ session: ActiveWorkoutSession) {
         let frame = content(for: session)
@@ -105,6 +109,19 @@ enum LiveActivitySync {
                 } else if let previous {
                     stop(previous, dismissImmediately: store.lastOutcome != .finished)
                 }
+            }
+
+        // A card already on the Lock Screen takes a new accent straight away;
+        // the changed colour makes the frame differ, so this is one update.
+        accentCancellable = SettingsStore.shared.changed
+            .map { SettingsStore.shared.accent }
+            // Seeded with the accent in use, so only a real change gets through
+            // — including the very first one.
+            .prepend(SettingsStore.shared.accent)
+            .removeDuplicates()
+            .dropFirst()
+            .sink { _ in
+                if let current = store.session { render(current) }
             }
     }
 }

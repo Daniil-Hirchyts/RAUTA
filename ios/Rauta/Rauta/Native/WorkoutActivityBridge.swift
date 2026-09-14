@@ -41,7 +41,8 @@ enum WorkoutActivityBridge {
                 ? Date(timeIntervalSince1970: content.timerStartEpochMs / 1000)
                 : nil,
             elapsed: content.elapsedMs / 1000,
-            isPaused: content.isPaused
+            isPaused: content.isPaused,
+            accentHex: content.accentHex
         )
     }
 

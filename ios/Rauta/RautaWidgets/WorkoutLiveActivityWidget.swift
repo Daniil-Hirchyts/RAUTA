@@ -15,13 +15,13 @@ struct WorkoutLiveActivityWidget: Widget {
                 state: context.state
             )
                 .activityBackgroundTint(Color(WorkoutActivityPalette.background))
-                .activitySystemActionForegroundColor(Color(WorkoutActivityPalette.accent))
+                .activitySystemActionForegroundColor(Color(context.state.accent))
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.center) {
                     VStack(alignment: .leading, spacing: 1) {
                         HStack(spacing: 6) {
-                            RautaActivityMark(isPaused: context.state.isPaused)
+                            RautaActivityMark(isPaused: context.state.isPaused, accent: context.state.accent)
                                 .frame(width: 22, height: 22)
 
                             Text(context.attributes.workoutDate)
@@ -31,7 +31,7 @@ struct WorkoutLiveActivityWidget: Widget {
                             Spacer(minLength: 6)
                             StatusLabel(state: context.state)
                         }
-                        .foregroundStyle(Color(WorkoutActivityPalette.accent))
+                        .foregroundStyle(Color(context.state.accent))
 
                         WorkoutTimerText(state: context.state)
                             .font(.system(size: 42, weight: .black, design: .rounded))
@@ -59,7 +59,7 @@ struct WorkoutLiveActivityWidget: Widget {
                     .padding(.top, 1)
                 }
             } compactLeading: {
-                RautaActivityMark(isPaused: context.state.isPaused)
+                RautaActivityMark(isPaused: context.state.isPaused, accent: context.state.accent)
                     .frame(width: 18, height: 18)
             } compactTrailing: {
                 WorkoutTimerText(state: context.state)
@@ -67,10 +67,10 @@ struct WorkoutLiveActivityWidget: Widget {
                     .foregroundStyle(Color(WorkoutActivityPalette.text))
                     .frame(maxWidth: 56, alignment: .trailing)
             } minimal: {
-                RautaActivityMark(isPaused: context.state.isPaused)
+                RautaActivityMark(isPaused: context.state.isPaused, accent: context.state.accent)
                     .frame(width: 18, height: 18)
             }
-            .keylineTint(Color(WorkoutActivityPalette.accent))
+            .keylineTint(Color(context.state.accent))
         }
     }
 }
@@ -95,7 +95,7 @@ private struct StatusLabel: View {
         Text(text.uppercased())
             .font(.system(size: 11, weight: .bold))
             .tracking(1.2)
-            .foregroundStyle(Color(WorkoutActivityPalette.accent))
+            .foregroundStyle(Color(state.accent))
     }
 }
 
@@ -118,7 +118,7 @@ private struct LockScreenCard: View {
                 StatusLabel(state: state)
             }
             .font(.system(size: 12, weight: .bold))
-            .foregroundStyle(Color(WorkoutActivityPalette.accent))
+            .foregroundStyle(Color(state.accent))
 
             WorkoutTimerText(state: state)
                 .font(.system(size: 70, weight: .black, design: .rounded))
@@ -130,7 +130,7 @@ private struct LockScreenCard: View {
             HStack(spacing: 6) {
                 WorkoutGlyph(isPaused: state.isPaused)
                     .font(.system(size: 10, weight: .black))
-                    .foregroundStyle(Color(WorkoutActivityPalette.accent))
+                    .foregroundStyle(Color(state.accent))
 
                 Text(state.exerciseName)
                     .font(.system(size: 11, weight: .semibold))
@@ -159,7 +159,7 @@ private struct LockScreenCard: View {
                     .fill(Color.white.opacity(0.03))
                 LinearGradient(
                     colors: [
-                        Color(WorkoutActivityPalette.accent).opacity(0.09),
+                        Color(state.accent).opacity(0.09),
                         Color.clear,
                         Color.white.opacity(0.025)
                     ],
@@ -171,7 +171,7 @@ private struct LockScreenCard: View {
         )
         .overlay {
             ContainerRelativeShape()
-                .stroke(Color(WorkoutActivityPalette.accent).opacity(0.28), lineWidth: 1)
+                .stroke(Color(state.accent).opacity(0.28), lineWidth: 1)
         }
     }
 }

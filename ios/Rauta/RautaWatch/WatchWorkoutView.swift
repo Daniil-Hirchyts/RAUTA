@@ -167,7 +167,7 @@ struct WatchWorkoutView: View {
                     if session.isSaving {
                         ProgressView()
                             .controlSize(.small)
-                            .tint(.white)
+                            .tint(WatchPalette.onPrimary)
                     } else {
                         Image(systemName: "checkmark")
                             .font(.system(size: 16, weight: .bold))
@@ -177,7 +177,7 @@ struct WatchWorkoutView: View {
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .lineLimit(1)
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(WatchPalette.onPrimary)
                 .frame(maxWidth: .infinity, minHeight: 48)
                 .background(
                     LinearGradient(
@@ -376,8 +376,24 @@ private struct AnimatedRauta: View {
     }
 }
 
-private enum WatchPalette {
-    static let primary = Color(red: 1.0, green: 87.0 / 255.0, blue: 0)
-    static let primaryGradientStart = Color(red: 1.0, green: 103.0 / 255.0, blue: 0)
-    static let primaryGradientEnd = Color(red: 1.0, green: 63.0 / 255.0, blue: 0)
+/// The iPhone app's accent. Read through ``WatchAccentStore``, which SwiftUI
+/// observes, so the watch redraws the moment the phone sends a new one.
+enum WatchPalette {
+    private static var accent: RautaWatchAccent { WatchAccentStore.shared.accent }
+
+    static var primary: Color { Color(watchHex: accent.primary) }
+    static var primaryGradientStart: Color { Color(watchHex: accent.gradientStart) }
+    static var primaryGradientEnd: Color { Color(watchHex: accent.gradientEnd) }
+    /// A label on the accent: white or near-black, whichever reads.
+    static var onPrimary: Color { accent.whiteLabel ? .white : Color(watchHex: 0x060606) }
+}
+
+private extension Color {
+    init(watchHex hex: UInt32) {
+        self.init(
+            red: Double((hex >> 16) & 0xFF) / 255,
+            green: Double((hex >> 8) & 0xFF) / 255,
+            blue: Double(hex & 0xFF) / 255
+        )
+    }
 }

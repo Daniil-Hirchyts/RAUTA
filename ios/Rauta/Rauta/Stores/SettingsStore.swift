@@ -21,6 +21,8 @@ struct SettingsPreferences: Codable, Hashable, Sendable {
     var soundChimesEnabled: Bool
     var keepAwake: Bool
     var appearance: AppAppearance
+    /// A preset's name, or `#RRGGBB` for a colour picked by hand.
+    var accent: String
 
     static let defaults = SettingsPreferences(
         appleHealthEnabled: false,
@@ -32,7 +34,8 @@ struct SettingsPreferences: Codable, Hashable, Sendable {
         hapticsEnabled: true,
         soundChimesEnabled: false,
         keepAwake: false,
-        appearance: .system
+        appearance: .system,
+        accent: "ember"
     )
 }
 
@@ -68,7 +71,10 @@ final class SettingsStore: ObservableObject {
             soundChimesEnabled: object["soundChimesEnabled"]?.boolValue == true,
             keepAwake: object["keepAwake"]?.boolValue == true,
             appearance: object["appearance"]?.stringValue
-                .flatMap(AppAppearance.init(rawValue:)) ?? .system
+                .flatMap(AppAppearance.init(rawValue:)) ?? .system,
+            // Normalised through the accent's own parser, so a stored value is
+            // always one the app can draw.
+            accent: AppAccent(storage: object["accent"]?.stringValue).storage
         )
     }
 
@@ -107,4 +113,5 @@ final class SettingsStore: ObservableObject {
     var soundChimesEnabled: Bool { preferences.soundChimesEnabled }
     var keepAwake: Bool { preferences.keepAwake }
     var appearance: AppAppearance { preferences.appearance }
+    var accent: AppAccent { AppAccent(storage: preferences.accent) }
 }

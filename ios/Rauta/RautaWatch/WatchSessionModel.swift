@@ -154,6 +154,7 @@ final class WatchSessionModel: NSObject, ObservableObject, WCSessionDelegate {
               let envelope = try? decoder.decode(RautaWatchSnapshotEnvelope.self, from: data)
         else { return }
 
+        if let accent = envelope.accent { WatchAccentStore.shared.apply(accent) }
         let previousSet = snapshot?.setDraftId
         snapshot = envelope.snapshot
         if previousSet != envelope.snapshot?.setDraftId || envelope.snapshot == nil {

@@ -65,12 +65,12 @@ struct BodyFigure: View {
     var onToggle: ((MuscleId) -> Void)?
     var compact: Bool = false
 
-    /// An untrained muscle: a warm shade just off the ground it sits on.
-    static let restingFill = Color(light: 0xD5C8BC, dark: 0x3D322B)
+    /// An untrained muscle: a shade just off the ground it sits on.
+    static var restingFill: Color { Theme.palette.bodyResting }
     /// Everything on the figure that is not a muscle.
-    static let silhouetteFill = Color(light: 0xE9E1D8, dark: 0x2D241F)
+    static var silhouetteFill: Color { Theme.palette.bodySilhouette }
     /// The small drop under a resting muscle that gives the figure relief.
-    static let restingShadow = Color(light: 0x5C4636, dark: 0x000000, lightOpacity: 0.16, darkOpacity: 0.45)
+    static var restingShadow: Color { Theme.palette.bodyRestingShadow }
 
     var body: some View {
         GeometryReader { proxy in
@@ -268,10 +268,13 @@ struct BodyPreview: View {
     var width: CGFloat = 96
     var height: CGFloat = 64
 
-    private static let restingFill = BodyFigure.restingFill
-    private static let silhouetteFill = BodyFigure.silhouetteFill
+    private static var restingFill: Color { BodyFigure.restingFill }
+    private static var silhouetteFill: Color { BodyFigure.silhouetteFill }
 
     var body: some View {
+        // Read here, not only inside the drawing, so the preview is redrawn
+        // when the accent changes.
+        let _ = Theme.palette.primary
         Canvas(rendersAsynchronously: true) { context, size in
             let gap: CGFloat = 2
             let figureWidth = max(1, (size.width - gap) / 2)

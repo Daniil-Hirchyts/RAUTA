@@ -32,6 +32,7 @@ struct WorkoutGlyph: View {
 @available(iOS 16.1, *)
 struct RautaActivityMark: View {
     var isPaused: Bool
+    var accent: WorkoutActivityColor
 
     var body: some View {
         Image("RautaIsland")
@@ -40,14 +41,14 @@ struct RautaActivityMark: View {
             .scaledToFit()
             .opacity(isPaused ? 0.68 : 1)
             .shadow(
-                color: Color(WorkoutActivityPalette.accent).opacity(isPaused ? 0.08 : 0.18),
+                color: Color(accent).opacity(isPaused ? 0.08 : 0.18),
                 radius: 3
             )
             .overlay(alignment: .bottomTrailing) {
                 if isPaused {
                     ZStack {
                         Circle()
-                            .fill(Color(WorkoutActivityPalette.accent))
+                            .fill(Color(accent))
                         Image(systemName: "pause.fill")
                             .font(.system(size: 4.5, weight: .black))
                             .foregroundStyle(Color(WorkoutActivityPalette.background))
@@ -95,8 +96,8 @@ struct ProgressDots: View {
                     Capsule()
                         .fill(
                             index < state.completedCount
-                                ? Color(WorkoutActivityPalette.accent)
-                                : Color(WorkoutActivityPalette.accent).opacity(0.22)
+                                ? Color(state.accent)
+                                : Color(state.accent).opacity(0.22)
                         )
                         .frame(width: index == state.completedCount ? 14 : 7, height: 5)
                 }

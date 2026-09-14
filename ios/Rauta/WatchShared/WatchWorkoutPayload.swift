@@ -19,6 +19,26 @@ struct RautaWatchWorkoutSnapshot: Codable, Equatable, Sendable {
 
 struct RautaWatchSnapshotEnvelope: Codable, Equatable, Sendable {
     var snapshot: RautaWatchWorkoutSnapshot?
+    /// The accent chosen on iPhone. Sent with every snapshot, workout or not,
+    /// so the watch wears it before a session starts. Optional so an envelope
+    /// from an older phone build still decodes.
+    var accent: RautaWatchAccent? = nil
+}
+
+/// The iPhone app's accent, as the watch draws it: `0xRRGGBB` values.
+struct RautaWatchAccent: Codable, Equatable, Sendable {
+    var primary: UInt32
+    var gradientStart: UInt32
+    var gradientEnd: UInt32
+    /// Whether a label on the accent is white rather than near-black.
+    var whiteLabel: Bool
+
+    static let ember = RautaWatchAccent(
+        primary: 0xFF5700,
+        gradientStart: 0xFF6700,
+        gradientEnd: 0xFF3F00,
+        whiteLabel: false
+    )
 }
 
 struct RautaWatchSetAction: Codable, Equatable, Sendable {

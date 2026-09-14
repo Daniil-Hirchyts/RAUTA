@@ -113,6 +113,10 @@ struct SettingsScreen: View {
 
                         section("Appearance") {
                             appearanceRow
+                                .overlay(alignment: .bottom) {
+                                    Rectangle().fill(Theme.border).frame(height: 1)
+                                }
+                            accentRow
                         }
 
                         section("Data & Storage") {
@@ -290,6 +294,46 @@ struct SettingsScreen: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
+    }
+
+    /// The colour the whole app is drawn in: nine presets across the wheel, or
+    /// any colour from the system picker. Everything follows at once — buttons,
+    /// glass, glows, the muscle maps and the exercise demonstrations.
+    private var accentRow: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                rowIcon("paintpalette")
+                rowLabel(title: "Accent color", detail: store.settings.accent.name)
+            }
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 5), spacing: 10) {
+                ForEach(AccentPreset.allCases) { preset in
+                    AccentSwatch(
+                        fill: preset.swatch,
+                        selected: store.settings.accent == .preset(preset)
+                    ) {
+                        chooseAccent(.preset(preset))
+                    }
+                    .accessibilityLabel("\(preset.name) accent")
+                }
+                CustomAccentWell(
+                    color: Binding(
+                        get: { Theme.primary },
+                        set: { color in
+                            chooseAccent(.custom(HSB(UIColor(color)).hex), haptic: false)
+                        }
+                    ),
+                    selected: { if case .custom = store.settings.accent { return true }; return false }()
+                )
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+
+    private func chooseAccent(_ accent: AppAccent, haptic: Bool = true) {
+        guard accent != store.settings.accent else { return }
+        if haptic { Haptics.trigger(.selection) }
+        store.settings.update { $0.accent = accent.storage }
     }
 
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -485,5 +529,58 @@ struct SettingsScreen: View {
         _ = store.iCloud.syncNow()
         clearing = false
         store.navigation.reset([.workouts])
+    }
+}
+
+/// One preset accent: its own button gradient in a circle, ringed and checked
+/// when it is the one in use.
+private struct AccentSwatch: View {
+    var fill: LinearGradient
+    var selected: Bool
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(fill)
+                    .frame(width: 32, height: 32)
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(Theme.primaryForeground)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .frame(width: 42, height: 42)
+            .overlay(
+                Circle().strokeBorder(selected ? Theme.foreground.opacity(0.9) : .clear, lineWidth: 2)
+            )
+            .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .animation(Theme.Motion.spring, value: selected)
+    }
+}
+
+/// Any colour at all, through the system colour picker. The well shows the
+/// accent in use inside its rainbow ring, and is ringed like a preset when the
+/// accent is a picked colour.
+private struct CustomAccentWell: View {
+    @Binding var color: Color
+    var selected: Bool
+
+    var body: some View {
+        ColorPicker("Custom accent color", selection: $color, supportsOpacity: false)
+            .labelsHidden()
+            .scaleEffect(1.12)
+            .frame(width: 42, height: 42)
+            .overlay(
+                Circle()
+                    .strokeBorder(selected ? Theme.foreground.opacity(0.9) : .clear, lineWidth: 2)
+                    .allowsHitTesting(false)
+            )
+            .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

@@ -11,6 +11,7 @@ struct RautaWatchApp: App {
                 .environmentObject(watchSession)
                 .environmentObject(workoutManager)
                 .preferredColorScheme(.dark)
+                .tint(WatchPalette.primary)
         }
     }
 }

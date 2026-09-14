@@ -42,16 +42,38 @@ enum AppearanceController {
     static func start() {
         guard !started else { return }
         started = true
+        ThemeStore.shared.apply(SettingsStore.shared.accent)
         apply(animated: false)
         SettingsStore.shared.changed
             .map { SettingsStore.shared.appearance }
             .removeDuplicates()
             .sink { _ in apply(animated: true) }
             .store(in: &cancellables)
+        // The accent needs no cross-fade: every view drawing with it redraws in
+        // place, which is its own transition.
+        SettingsStore.shared.changed
+            .map { SettingsStore.shared.accent }
+            .removeDuplicates()
+            .sink { accent in
+                ThemeStore.shared.apply(accent)
+                applyTint()
+            }
+            .store(in: &cancellables)
         // A window that appears later — a new scene — wears the theme too.
         NotificationCenter.default.publisher(for: UIWindow.didBecomeVisibleNotification)
-            .sink { _ in apply(animated: false) }
+            .sink { _ in
+                apply(animated: false)
+                applyTint()
+            }
             .store(in: &cancellables)
+    }
+
+    /// UIKit's own controls — alerts, menus, the text cursor — in the accent.
+    static func applyTint() {
+        let tint = UIColor(Theme.primary)
+        for case let scene as UIWindowScene in UIApplication.shared.connectedScenes {
+            for window in scene.windows { window.tintColor = tint }
+        }
     }
 
     static func apply(animated: Bool) {

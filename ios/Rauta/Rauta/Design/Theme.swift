@@ -49,66 +49,76 @@ extension Color {
     }
 }
 
-/// Every token carries both themes. Dark is the original warm-charcoal design;
-/// light is the same warmth on paper — a pure white shell, a warm off-white
-/// surface, white cards — with the accents deepened wherever they have to be
-/// read as text on a light ground.
+/// Every token carries both themes, and follows the accent chosen in Settings.
+/// Dark is the original warm-charcoal design; light is the same warmth on paper
+/// — a pure white shell, a warm off-white surface, white cards — with accents
+/// deepened wherever they are read as text on a light ground.
+///
+/// The tokens are read through ``ThemeStore``, which SwiftUI observes: a view
+/// that draws with one is redrawn when the accent changes.
 extension Theme {
+    static var palette: ThemePalette { ThemeStore.shared.palette }
+
     /// The shell behind every screen — the surround the device paints.
-    static let shell = Color(light: 0xFFFFFF, dark: 0x000000)
-    static let background = Color(light: 0xF6F2ED, dark: 0x171311)
-    static let foreground = Color(light: 0x1C1512, dark: 0xF6F0E5)
-    static let card = Color(light: 0xFFFFFF, dark: 0x261E1A)
-    static let cardForeground = foreground
-    static let popover = Color(light: 0xFFFFFF, dark: 0x211915)
-    static let popoverForeground = foreground
+    static var shell: Color { palette.shell }
+    static var background: Color { palette.background }
+    static var foreground: Color { palette.foreground }
+    static var card: Color { palette.card }
+    static var cardForeground: Color { palette.foreground }
+    static var popover: Color { palette.popover }
+    static var popoverForeground: Color { palette.foreground }
 
-    static let primary = Color(light: 0xF25200, dark: 0xFF5700)
-    static let primarySoft = Color(light: 0xF46A1E, dark: 0xFF7E38)
-    static let primarySofter = Color(light: 0xE0662A, dark: 0xFF9B68)
-    static let primaryForeground = Color(hex: 0x060606)
-    static let primaryGradientStart = Color(hex: 0xFF6700)
-    static let primaryGradientEnd = Color(hex: 0xFF3F00)
-    static let primaryGradientActiveStart = Color(hex: 0xFF8A2F)
-    static let primaryGradientActiveEnd = Color(hex: 0xFF601B)
+    static var primary: Color { palette.primary }
+    static var primarySoft: Color { palette.primarySoft }
+    static var primarySofter: Color { palette.primarySofter }
+    static var primaryForeground: Color { palette.primaryForeground }
+    static var primaryGradientStart: Color { palette.primaryGradientStart }
+    static var primaryGradientEnd: Color { palette.primaryGradientEnd }
+    static var primaryGradientActiveStart: Color { palette.primaryGradientActiveStart }
+    static var primaryGradientActiveEnd: Color { palette.primaryGradientActiveEnd }
 
-    static let secondary = Color(light: 0xEFE8E0, dark: 0x302620)
-    static let secondaryForeground = Color(light: 0x3B2F28, dark: 0xE9DFD2)
-    static let muted = Color(light: 0xEDE6DE, dark: 0x2B231E)
-    static let mutedForeground = Color(light: 0x76685C, dark: 0xB1A396)
-    static let accent = primary
-    static let accentForeground = primaryForeground
-    static let destructive = Color(light: 0xD63A24, dark: 0xFF7966)
+    static var secondary: Color { palette.secondary }
+    static var secondaryForeground: Color { palette.secondaryForeground }
+    static var muted: Color { palette.muted }
+    static var mutedForeground: Color { palette.mutedForeground }
+    static var accent: Color { palette.primary }
+    static var accentForeground: Color { palette.primaryForeground }
+    static var destructive: Color { ThemePalette.destructive }
 
-    static let border = Color(light: 0x6B4A2A, dark: 0xD9AD6C, lightOpacity: 0.14, darkOpacity: 0.20)
-    static let input = Color(light: 0x6B4A2A, dark: 0xD9AD6C, lightOpacity: 0.10, darkOpacity: 0.17)
-    static let ring = primary
+    static var border: Color { palette.border }
+    static var input: Color { palette.input }
+    static var ring: Color { palette.primary }
     /// What dims the page under a modal panel.
-    static let scrim = Color(light: 0x1C1512, dark: 0x000000, lightOpacity: 0.28, darkOpacity: 0.6)
+    static var scrim: Color { palette.scrim }
 
-    // Warm supporting hues.
-    /// The deepest warm shade; in Light Mode a soft one, since it is only ever
-    /// used for shadows.
-    static let obsidian = Color(light: 0x5C4636, dark: 0x100D0B)
+    // Supporting hues.
+    /// The deepest shade; in Light Mode a soft one, since it is only ever used
+    /// for shadows.
+    static var obsidian: Color { palette.obsidian }
     /// The dark red the dark design glows with. On a light ground a dark glow
-    /// is a stain, so Light Mode glows peach instead.
-    static let oxblood = Color(light: 0xFFD2BD, dark: 0x501D16)
-    static let rust = Color(light: 0xB8432A, dark: 0x983723)
-    static let ember = Color(light: 0xE5452A, dark: 0xF34D32)
-    static let gold = Color(light: 0xA7742C, dark: 0xD9AD6C)
-    static let lime = Color(light: 0x6B8A00, dark: 0xD6E65B)
-    static let success = Color(light: 0x3F8F3A, dark: 0xC6E7BC)
+    /// is a stain, so Light Mode glows a pale tint instead.
+    static var oxblood: Color { palette.oxblood }
+    static var rust: Color { palette.rust }
+    static var ember: Color { palette.ember }
+    // Meaning, not brand: these never follow the accent.
+    static var gold: Color { ThemePalette.gold }
+    static var lime: Color { ThemePalette.lime }
+    static var success: Color { ThemePalette.success }
 
-    static let primaryGradient = LinearGradient(
-        colors: [primaryGradientStart, primaryGradientEnd],
-        startPoint: .top,
-        endPoint: .bottom
-    )
-    static let primaryGradientActive = LinearGradient(
-        colors: [primaryGradientActiveStart, primaryGradientActiveEnd],
-        startPoint: .top,
-        endPoint: .bottom
-    )
+    static var primaryGradient: LinearGradient {
+        LinearGradient(
+            colors: [primaryGradientStart, primaryGradientEnd],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+    static var primaryGradientActive: LinearGradient {
+        LinearGradient(
+            colors: [primaryGradientActiveStart, primaryGradientActiveEnd],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
 
     /// Mixes `other` into `base` the way `color-mix(in oklch, …)` does closely
     /// enough for the handful of blends the design asks for. The blend is taken

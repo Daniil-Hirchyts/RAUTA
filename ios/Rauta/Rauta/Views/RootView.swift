@@ -30,6 +30,7 @@ struct RootView: View {
         }
         .simultaneousGesture(edgeBackGesture)
         .background(AppearanceWindowAnchor().allowsHitTesting(false))
+        .tint(Theme.primary)
     }
 
     @ViewBuilder

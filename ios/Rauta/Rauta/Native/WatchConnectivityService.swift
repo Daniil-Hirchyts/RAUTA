@@ -32,6 +32,16 @@ final class WatchConnectivityService: NSObject, WCSessionDelegate {
         TrainingRecordsStore.shared.changed
             .sink { [weak self] in self?.sendLatestSnapshot() }
             .store(in: &cancellables)
+        // A new accent reaches the watch at once, workout or not.
+        SettingsStore.shared.changed
+            .map { SettingsStore.shared.accent }
+            // Seeded with the accent in use, so only a real change gets through
+            // — including the very first one.
+            .prepend(SettingsStore.shared.accent)
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] _ in self?.sendLatestSnapshot() }
+            .store(in: &cancellables)
 
         sendLatestSnapshot()
     }
@@ -40,12 +50,26 @@ final class WatchConnectivityService: NSObject, WCSessionDelegate {
     private func sendLatestSnapshot() {
         guard started, WCSession.default.activationState == .activated else { return }
         do {
-            let data = try encoder.encode(RautaWatchSnapshotEnvelope(snapshot: makeSnapshot()))
+            let data = try encoder.encode(makeEnvelope())
             try WCSession.default.updateApplicationContext([RautaWatchMessageKey.snapshot: data])
         } catch {
             // Watch sync is best-effort. The next store mutation or snapshot
             // request retries with the newest authoritative phone state.
         }
+    }
+
+    @MainActor
+    private func makeEnvelope() -> RautaWatchSnapshotEnvelope {
+        let signature = SettingsStore.shared.accent.signature
+        return RautaWatchSnapshotEnvelope(
+            snapshot: makeSnapshot(),
+            accent: RautaWatchAccent(
+                primary: signature.primary,
+                gradientStart: signature.gradientStart,
+                gradientEnd: signature.gradientEnd,
+                whiteLabel: signature.whiteLabel
+            )
+        )
     }
 
     @MainActor
@@ -210,7 +234,7 @@ final class WatchConnectivityService: NSObject, WCSessionDelegate {
     @MainActor
     private func reply(ok: Bool) -> [String: Any] {
         var reply: [String: Any] = [RautaWatchMessageKey.ok: ok]
-        if let data = try? encoder.encode(RautaWatchSnapshotEnvelope(snapshot: makeSnapshot())) {
+        if let data = try? encoder.encode(makeEnvelope()) {
             reply[RautaWatchMessageKey.snapshot] = data
         }
         return reply

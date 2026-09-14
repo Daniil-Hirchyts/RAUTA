@@ -21,6 +21,10 @@ struct WorkoutActivityAttributes: ActivityAttributes {
         /// Frozen elapsed time, shown in place of the live timer while paused.
         var elapsed: TimeInterval
         var isPaused: Bool
+        /// The app's accent, `0xRRGGBB`. In the state rather than the
+        /// attributes so a card follows an accent changed mid-workout. Optional
+        /// so a card from an older build still decodes.
+        var accentHex: Int?
     }
 
     var workoutId: String
@@ -31,6 +35,8 @@ struct WorkoutActivityAttributes: ActivityAttributes {
 @available(iOS 16.1, *)
 extension WorkoutActivityAttributes.ContentState {
     var progressText: String { "\(completedCount) of \(totalCount) done" }
+
+    var accent: WorkoutActivityColor { WorkoutActivityPalette.accent(accentHex) }
 
     var isComplete: Bool { totalCount > 0 && completedCount >= totalCount }
 
