@@ -38,26 +38,29 @@ struct ExerciseAlternativesScreen: View {
             ) {
                 ScrollView {
                     VStack(spacing: 0) {
-                        SurfaceCard(padding: 12, cornerRadius: Theme.Radius.xl2) {
-                            HStack(spacing: 10) {
-                                ExerciseMediaView(exerciseId: source.id)
-                                    .frame(width: 64, height: 64)
-                                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl2))
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(source.name.capitalized)
-                                        .font(Theme.sans(16, weight: .semibold))
-                                        .lineLimit(2)
-                                    Text(
-                                        workout?.planned == nil
-                                            ? "Same muscles, different equipment."
-                                            : "Fits this workout and your current equipment."
-                                    )
-                                        .font(Theme.sans(12))
-                                        .foregroundStyle(Theme.mutedForeground)
-                                }
-                                Spacer(minLength: 0)
+                        HStack(spacing: 12) {
+                            ExerciseMediaView(exerciseId: source.id, animated: true)
+                                .frame(width: 88, height: 88)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(source.name.capitalized)
+                                    .font(Theme.sans(17, weight: .semibold))
+                                    .foregroundStyle(Theme.foreground)
+                                    .lineLimit(2)
+                                Text(
+                                    workout?.planned == nil
+                                        ? "Same muscles, different equipment."
+                                        : "Fits this workout and your current equipment."
+                                )
+                                    .font(Theme.sans(13))
+                                    .foregroundStyle(Theme.mutedForeground)
                             }
+                            Spacer(minLength: 0)
                         }
+                        .padding(12)
+                        .background(
+                            Theme.card.opacity(0.88),
+                            in: RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
+                        )
 
                         if let issue {
                             InlineNotice(message: issue, isError: true)
@@ -67,7 +70,7 @@ struct ExerciseAlternativesScreen: View {
                         if equipmentOptions.count > 1 {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 7) {
-                                    SelectionChip(title: "All available", selected: equipment == nil) {
+                                    SelectionChip(title: "All", selected: equipment == nil) {
                                         equipment = nil
                                     }
                                     ForEach(equipmentOptions, id: \.self) { item in
@@ -97,43 +100,43 @@ struct ExerciseAlternativesScreen: View {
                             .padding(.horizontal, 20)
                             .padding(.vertical, 28)
                             .frame(maxWidth: .infinity)
-                            .background(Theme.card)
-                            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl2))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: Theme.Radius.xl2)
-                                    .strokeBorder(Theme.border)
+                            .background(
+                                Theme.card,
+                                in: RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
                             )
                             .padding(.top, 16)
                         } else {
                             LazyVStack(spacing: 10) {
-                                ForEach(Array(visibleAlternatives.enumerated()), id: \.element.id) { _, alternative in
-                                Button { swap(to: alternative) } label: {
-                                    HStack(spacing: 12) {
-                                            ExerciseMediaView(exerciseId: alternative.id)
-                                                .frame(width: 80, height: 80)
-                                                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg))
-                                            VStack(alignment: .leading, spacing: 4) {
+                                ForEach(visibleAlternatives) { alternative in
+                                    Button { swap(to: alternative) } label: {
+                                        HStack(spacing: 16) {
+                                            ExerciseMediaView(exerciseId: alternative.id, animated: true)
+                                                .frame(width: 128, height: 128)
+                                            VStack(alignment: .leading, spacing: 6) {
                                                 Text(alternative.name.capitalized)
-                                                    .font(Theme.sans(14, weight: .semibold))
+                                                    .font(Theme.sans(17, weight: .semibold))
                                                     .foregroundStyle(Theme.foreground)
-                                                    .lineLimit(2)
+                                                    .lineLimit(3)
                                                 Text("Use \(Wording.titleCase(alternative.equipment))")
-                                                    .font(Theme.sans(12, weight: .medium))
+                                                    .font(Theme.sans(14, weight: .medium))
                                                     .foregroundStyle(Theme.primary)
+                                                    .lineLimit(1)
                                             }
-                                            Spacer()
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        }
+                                        .padding(.vertical, 4)
+                                        .padding(.leading, 8)
+                                        .padding(.trailing, 16)
+                                        .frame(minHeight: 136)
+                                        .background(
+                                            Theme.card,
+                                            in: RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
+                                        )
+                                        .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous))
                                     }
-                                    .padding(10)
-                                    .background(Theme.card)
-                                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl2))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: Theme.Radius.xl2)
-                                            .strokeBorder(Theme.border)
-                                    )
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("Swap to \(alternative.name)")
                                 }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel("Swap to \(alternative.name)")
-                            }
                             }
                             .padding(.top, 16)
                         }

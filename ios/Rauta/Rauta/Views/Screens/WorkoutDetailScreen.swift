@@ -23,7 +23,6 @@ struct WorkoutDetailActionState: Equatable {
 struct WorkoutDetailScreen: View {
     @ObservedObject private var store = AppStore.shared
     let workoutId: String
-    var embeddedInMainTabs = false
     var onOpenExercisePlayer: (() -> Void)? = nil
     var onBackToWorkouts: (() -> Void)? = nil
     var onReplaceWorkout: ((String) -> Void)? = nil
@@ -68,39 +67,18 @@ struct WorkoutDetailScreen: View {
     private var canStartWorkout: Bool {
         !isPast && !plannedUnavailable && store.activeWorkout.session == nil
     }
-    private var finishConfirmation: ConfirmationKind {
-        TrainingSessionBridge.activePlannedCoverage()?.complete == false
-            ? .finishWorkoutPartial
-            : .finishWorkout
-    }
-
     var body: some View {
         ZStack {
             if let workout {
                 if let session {
-                    if embeddedInMainTabs {
-                        activeWorkoutPage(workout, session: session, embedded: true)
-                    } else {
-                        standardWorkoutScreen(workout)
-                    }
+                    activeWorkoutPage(workout, session: session)
                 } else if isPast {
-                    if embeddedInMainTabs {
-                        RautaScreen(
-                            title: CalendarDate.long(workout.date),
-                            backLabel: "Back to workouts",
-                            onBack: backToWorkouts,
-                            content: { content(workout) }
-                        )
-                    } else {
-                        RautaScreen(
-                            title: CalendarDate.long(workout.date),
-                            backLabel: "Back to workouts",
-                            onBack: backToWorkouts,
-                            fullScreen: true,
-                            right: { pastWorkoutMenu(workout) },
-                            content: { content(workout) }
-                        )
-                    }
+                    RautaScreen(
+                        title: CalendarDate.long(workout.date),
+                        backLabel: "Back to workouts",
+                        onBack: backToWorkouts,
+                        content: { content(workout) }
+                    )
                 } else {
                     standardWorkoutScreen(workout)
                 }
@@ -151,73 +129,34 @@ struct WorkoutDetailScreen: View {
         }
     }
 
-    @ViewBuilder
     private func standardWorkoutScreen(_ workout: Workout) -> some View {
-        if embeddedInMainTabs {
-            RautaScreen(
-                title: CalendarDate.long(workout.date),
-                subtitle: progressLabel,
-                subtitleProgress: headerProgress,
-                onTitleTap: canEditWorkout ? {
-                    Haptics.trigger(.light)
-                    showingDate = true
-                } : nil,
-                backLabel: "Back to workouts",
-                onBack: backToWorkouts,
-                content: { content(workout) }
-            )
-        } else {
-            RautaScreen(
-                title: CalendarDate.long(workout.date),
-                subtitle: progressLabel,
-                subtitleProgress: headerProgress,
-                onTitleTap: canEditWorkout ? {
-                    Haptics.trigger(.light)
-                    showingDate = true
-                } : nil,
-                backLabel: "Back to workouts",
-                onBack: backToWorkouts,
-                content: { content(workout) },
-                controls: { controls(workout) }
-            )
-        }
+        RautaScreen(
+            title: CalendarDate.long(workout.date),
+            subtitle: progressLabel,
+            subtitleProgress: headerProgress,
+            onTitleTap: canEditWorkout ? {
+                Haptics.trigger(.light)
+                showingDate = true
+            } : nil,
+            backLabel: "Back to workouts",
+            onBack: backToWorkouts,
+            content: { content(workout) }
+        )
     }
 
     private func backToWorkouts() {
-        if embeddedInMainTabs {
-            onBackToWorkouts?()
-        } else {
-            store.navigation.pop()
-        }
+        onBackToWorkouts?()
     }
 
-    private func activeWorkoutPage(
-        _ workout: Workout,
-        session: ActiveWorkoutSession,
-        embedded: Bool = false
-    ) -> some View {
-        Group {
-            if embedded {
-                RautaScreen(
-                    title: CalendarDate.long(workout.date),
-                    subtitle: progressLabel,
-                    subtitleProgress: headerProgress,
-                    backLabel: onBackToWorkouts == nil ? nil : "Back to workouts",
-                    onBack: onBackToWorkouts
-                ) {
-                    activeWorkoutContent(workout, session: session)
-                }
-            } else {
-                RautaScreen(
-                    title: CalendarDate.long(workout.date),
-                    subtitle: progressLabel,
-                    subtitleProgress: headerProgress,
-                    backLabel: "Back to summary",
-                    onBack: store.navigation.pop
-                ) {
-                    activeWorkoutContent(workout, session: session)
-                }
-            }
+    private func activeWorkoutPage(_ workout: Workout, session: ActiveWorkoutSession) -> some View {
+        RautaScreen(
+            title: CalendarDate.long(workout.date),
+            subtitle: progressLabel,
+            subtitleProgress: headerProgress,
+            backLabel: onBackToWorkouts == nil ? nil : "Back to workouts",
+            onBack: onBackToWorkouts
+        ) {
+            activeWorkoutContent(workout, session: session)
         }
     }
 
@@ -342,8 +281,7 @@ struct WorkoutDetailScreen: View {
                             }
                         }
                 }
-                .padding(.horizontal, embeddedInMainTabs ? 0 : Theme.Metrics.contentInset)
-                .padding(.bottom, embeddedInMainTabs ? 188 : (session == nil ? 24 : 144))
+                .padding(.bottom, 188)
             }
             .pageScroll()
             .scrollDisabled(reorder.active != nil)
@@ -360,100 +298,6 @@ struct WorkoutDetailScreen: View {
                     onResume: store.activeWorkout.resume
                 )
             }
-        }
-    }
-
-    @ViewBuilder private func controls(_ workout: Workout) -> some View {
-        if let session {
-            HStack(spacing: 8) {
-                AppMenuButton(label: "Workout actions") {
-                    shareAction(workout)
-                    Button {
-                        beginExerciseFlow(preferredWorkoutId: workout.id)
-                    } label: {
-                        Label("Add exercise", systemImage: "plus")
-                    }
-                    Button {
-                        Haptics.trigger(.medium)
-                        confirmation = finishConfirmation
-                    } label: {
-                        Label("Finish workout", systemImage: "flag")
-                    }
-                    Button(role: .destructive) {
-                        Haptics.trigger(.warning)
-                        confirmation = .discardSession
-                    } label: {
-                        Label("Discard session", systemImage: "xmark")
-                    }
-                }
-                if session.currentExerciseId != nil {
-                    AppButton("Mark done", size: .cta, expands: true) {
-                        Haptics.trigger(.success)
-                        store.activeWorkout.completeCurrent()
-                    }
-                } else {
-                    AppButton("Finish", size: .cta, expands: true) {
-                        Haptics.trigger(.medium)
-                        confirmation = finishConfirmation
-                    }
-                }
-            }
-        } else {
-            HStack(spacing: 8) {
-                AppMenuButton(label: "Workout actions") {
-                    shareAction(workout)
-                    Button(action: duplicate) {
-                        Label("Copy to today", systemImage: "doc.on.doc")
-                    }
-                    if !workout.exerciseIds.isEmpty, canEditWorkout {
-                        Button {
-                            beginExerciseFlow(preferredWorkoutId: workout.id)
-                        } label: {
-                            Label("Add exercise", systemImage: "plus")
-                        }
-                    }
-                    if canDeleteWorkout {
-                        Button(role: .destructive) {
-                            Haptics.trigger(.warning)
-                            confirmation = .deleteWorkout
-                        } label: {
-                            Label("Delete workout", systemImage: "trash")
-                        }
-                    }
-                }
-                if canStartWorkout {
-                    AppButton(
-                        workout.exerciseIds.isEmpty ? "Add exercise" : "Start workout",
-                        size: .cta,
-                        expands: true
-                    ) {
-                        if workout.exerciseIds.isEmpty {
-                            beginExerciseFlow(preferredWorkoutId: workout.id)
-                        } else {
-                            Haptics.trigger(.heavy)
-                            countingDown = true
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func pastWorkoutMenu(_ workout: Workout) -> some View {
-        AppMenuButton(label: "Workout actions", arrowEdge: .top, compact: true) {
-            shareAction(workout)
-            Button(action: duplicate) {
-                Label("Copy to today", systemImage: "doc.on.doc")
-            }
-        }
-    }
-
-    private func shareAction(_ workout: Workout) -> some View {
-        ShareLink(
-            item: WorkoutSharing.text(workout),
-            subject: Text(WorkoutSharing.title(workout))
-        ) {
-            Label("Share workout", systemImage: "square.and.arrow.up")
         }
     }
 
@@ -475,11 +319,7 @@ struct WorkoutDetailScreen: View {
     private func duplicate() {
         do {
             let id = try EngineWorkout.duplicateWithEngine(workoutId, date: CalendarDate.today)
-            if embeddedInMainTabs, let onReplaceWorkout {
-                onReplaceWorkout(id)
-            } else {
-                store.navigation.replace(.workoutDetail(workoutId: id))
-            }
+            onReplaceWorkout?(id)
             Haptics.trigger(.success)
         } catch { capture(error) }
     }
@@ -545,18 +385,7 @@ struct WorkoutDetailScreen: View {
             case .deleteWorkout:
                 try TrainingEdits.deleteScheduledWorkout(workoutId)
                 confirmation = nil
-                if embeddedInMainTabs {
-                    backToWorkouts()
-                } else {
-                    store.navigation.reset([.workouts])
-                }
-            case .discardSession:
-                store.activeWorkout.cancel()
-                confirmation = nil
-            case .finishWorkout, .finishWorkoutPartial:
-                store.activeWorkout.finish()
-                TrainingEdits.refreshFutureWorkoutPrescriptions()
-                confirmation = nil
+                backToWorkouts()
             default:
                 confirmation = nil
             }
@@ -581,8 +410,7 @@ struct WorkoutDetailScreen: View {
     }
 
     private func publishCompanionActions() {
-        guard embeddedInMainTabs,
-              let workout,
+        guard let workout,
               session == nil
         else {
             onActionStateChange?(.none)

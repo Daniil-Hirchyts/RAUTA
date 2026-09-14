@@ -13,7 +13,6 @@ enum AppPage: Hashable {
     case profileEquipment
     case profileLoadSteps
     case profilePriorities
-    case workoutDetail(workoutId: String)
     case planWeek(sourceProgramId: String?)
     case muscles(preferredWorkoutId: String?)
     case equipment(preferredWorkoutId: String?)
@@ -35,7 +34,6 @@ enum AppPage: Hashable {
         case .profileEquipment: return "profile-equipment"
         case .profileLoadSteps: return "profile-load-steps"
         case .profilePriorities: return "profile-priorities"
-        case .workoutDetail: return "workout-detail"
         case .planWeek: return "plan-week"
         case .muscles: return "muscles"
         case .equipment: return "equipment"
@@ -54,8 +52,6 @@ enum AppPage: Hashable {
         case .planWeek(let sourceProgramId):
             guard let sourceProgramId else { return true }
             return !sourceProgramId.trimmingCharacters(in: .whitespaces).isEmpty
-        case .workoutDetail(let workoutId):
-            return !workoutId.trimmingCharacters(in: .whitespaces).isEmpty
         case .exerciseDetail(let exerciseId):
             return ExerciseCatalogue.has(exerciseId)
         case .exerciseAlternatives(let exerciseId, let workoutId):
@@ -95,7 +91,6 @@ enum AppPage: Hashable {
 
     var key: String {
         switch self {
-        case .workoutDetail(let workoutId): return "workout-detail:\(workoutId)"
         case .exerciseDetail(let exerciseId): return "exercise-detail:\(exerciseId)"
         case .exerciseAlternatives(let exerciseId, let workoutId):
             return "exercise-alternatives:\(workoutId):\(exerciseId)"
@@ -116,8 +111,6 @@ enum AppPage: Hashable {
         switch self {
         case .planWeek(let sourceProgramId):
             if let sourceProgramId { object["sourceProgramId"] = .string(sourceProgramId) }
-        case .workoutDetail(let workoutId):
-            object["workoutId"] = .string(workoutId)
         case .exerciseDetail(let exerciseId):
             object["exerciseId"] = .string(exerciseId)
         case .muscles(let id), .equipment(let id), .exercises(let id), .workoutDestination(let id):
@@ -160,9 +153,6 @@ enum AppPage: Hashable {
         // First-run setup is decided from the profile at launch, never restored
         // from a session: whether it is due is the profile's answer to give.
         case "onboarding": return nil
-        case "workout-detail":
-            guard let workoutId = optionalString("workoutId") else { return nil }
-            return .workoutDetail(workoutId: workoutId)
         case "muscles": return .muscles(preferredWorkoutId: optionalString("preferredWorkoutId"))
         case "equipment": return .equipment(preferredWorkoutId: optionalString("preferredWorkoutId"))
         case "exercises": return .exercises(preferredWorkoutId: optionalString("preferredWorkoutId"))
@@ -216,6 +206,9 @@ final class AppSessionStore: ObservableObject {
     @Published private(set) var direction: NavigationDirection = .forward
     @Published var selectMode = false
     @Published var selectedIds: [String] = []
+    /// A workout waiting to be shown on the Workout tab. Set by ``openWorkout(_:)``
+    /// and cleared by the tab once it has opened it.
+    @Published var requestedWorkoutId: String?
 
     private var sequence = 0
 
@@ -275,6 +268,19 @@ final class AppSessionStore: ObservableObject {
         guard !nextPages.isEmpty, nextPages.allSatisfy(\.isValid) else { return }
         direction = .back
         pages = nextPages.map(makeEntry)
+    }
+
+    /// Shows a workout where workouts live: everything pushed over the tabs is
+    /// closed and the Workout tab opens on that workout. A workout has one page,
+    /// and it is that one.
+    func openWorkout(_ workoutId: String) {
+        requestedWorkoutId = workoutId
+        direction = .back
+        if let root = pages.first, root.page == .workouts {
+            pages = [root]
+        } else {
+            pages = [makeEntry(.workouts)]
+        }
     }
 
 }

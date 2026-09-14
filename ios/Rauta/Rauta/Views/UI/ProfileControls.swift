@@ -206,6 +206,10 @@ struct ProfileTopPanel: View {
         case .about: return p.name.isEmpty ? "Tell me your name, then turn the dial to your age." : "Good to meet you, \(p.name). Age \(Num.trimmed(p.age)) — adjust the dial if needed."
         case .experience: return p.health.status == .healthy ? "\(ProfileVocabulary.experienceLabel(p.trainingExperience)). I’ll use this as your starting point." : "Noted. I will leave the planning to you and stay out of the way."
         case .goal: return "\(ProfileVocabulary.goalLabel(p.goal)). That's our direction."
+        case .priorities:
+            return p.priorityMuscles.isEmpty
+                ? "Tap the muscles you want to grow first. Skip it and I’ll keep things balanced."
+                : "\(Wording.countLabel(p.priorityMuscles.count, "muscle")) in focus. They’ll get more of the work."
         case .duration: return "\(Num.trimmed(p.preferredSessionDurationMinutes)) minutes. I’ll plan around the time you have."
         case .gym: return "Pick the equipment you actually have."
         case .health: return "Your limits matter. You can always build your own workout."
@@ -219,6 +223,7 @@ struct ProfileTopPanel: View {
         case .about: return profile.name.isEmpty ? .listening : .curious
         case .experience: return .focused
         case .goal: return .happy
+        case .priorities: return profile.priorityMuscles.isEmpty ? .curious : .focused
         case .duration, .health: return .calm
         case .gym: return .curious
         case .ready: return .proud
@@ -230,6 +235,7 @@ struct ProfileTopPanel: View {
         case .about: return .peek
         case .experience: return .acknowledge
         case .goal: return .spinRight
+        case .priorities: return .blinkDouble
         case .duration: return .turnaround
         case .gym: return .wink
         case .health: return .relieved

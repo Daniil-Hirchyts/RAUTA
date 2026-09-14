@@ -53,8 +53,6 @@ struct RootView: View {
             EquipmentLoadScreen()
         case .profilePriorities:
             MusclePrioritiesScreen()
-        case .workoutDetail(let workoutId):
-            WorkoutDetailScreen(workoutId: workoutId)
         case .planWeek(let sourceProgramId):
             PlanWeekScreen(sourceProgramId: sourceProgramId)
         case .muscles(let preferredWorkoutId):

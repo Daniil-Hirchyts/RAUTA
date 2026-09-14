@@ -3,7 +3,7 @@ import SwiftUI
 struct OnboardingScreen: View {
     var body: some View {
         ProfileStepFlow(
-            steps: [.welcome, .about, .experience, .goal, .duration, .gym, .ready],
+            steps: [.welcome, .about, .experience, .goal, .priorities, .duration, .gym, .ready],
             onboarding: true
         ) {
             Haptics.trigger(.success)
@@ -16,6 +16,7 @@ struct OnboardingScreen: View {
 enum ProfileStep: String {
     case welcome = "Meet RAUTA"
     case about = "About you", experience = "Experience", goal = "Goal"
+    case priorities = "Priority muscles"
     case duration = "Session length", gym = "Your gym", health = "Health"
     case ready = "Ready to train"
 }
@@ -29,6 +30,7 @@ struct ProfileStepFlow: View {
     let onFinish: () -> Void
     @State private var index = 0
     @State private var nameEntryFocused = false
+    @State private var prioritySide: BodySide = .front
     private var step: ProfileStep { steps[index] }
     private var isStoryStep: Bool { step == .welcome || step == .ready }
     private var isEnteringName: Bool { step == .about && nameEntryFocused }
@@ -65,6 +67,11 @@ struct ProfileStepFlow: View {
                                     }
                                 }
                                 .belowPageHeader()
+                            } else if step == .priorities {
+                                ProfilePrioritiesMap(side: $prioritySide, showsFlipButton: true)
+                                    .padding(.horizontal, 12)
+                                    .belowPageHeader()
+                                    .padding(.bottom, 12)
                             } else {
                                 ScrollView {
                                     profileContent

@@ -39,6 +39,26 @@ struct Workout: Codable, Hashable, Sendable, Identifiable {
     var planned: PlannedWorkoutReference?
 }
 
+extension Sequence where Element == Workout {
+    /// Soonest first: today's workouts, then the days ahead nearest first, then
+    /// the days behind most recent first.
+    func soonestFirst(today: String = CalendarDate.today) -> [Workout] {
+        func band(_ workout: Workout) -> Int {
+            if workout.date == today { return 0 }
+            return workout.date > today ? 1 : 2
+        }
+        return sorted { left, right in
+            let leftBand = band(left)
+            let rightBand = band(right)
+            if leftBand != rightBand { return leftBand < rightBand }
+            if left.date != right.date {
+                return leftBand == 2 ? left.date > right.date : left.date < right.date
+            }
+            return left.createdAt < right.createdAt
+        }
+    }
+}
+
 @MainActor
 final class WorkoutsStore: ObservableObject {
     static let shared = WorkoutsStore()

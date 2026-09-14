@@ -28,6 +28,7 @@ private enum NativeTabSelection: Hashable {
 
 private enum WorkoutListFilter: Int, CaseIterable, Identifiable {
     case all
+    case today
     case planned
     case past
     case fullBody
@@ -42,6 +43,7 @@ private enum WorkoutListFilter: Int, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .all: return "All"
+        case .today: return "Today"
         case .planned: return "Planned"
         case .past: return "Past"
         case .fullBody: return "Full body"
@@ -55,7 +57,7 @@ private enum WorkoutListFilter: Int, CaseIterable, Identifiable {
 
     var isWorkoutType: Bool {
         switch self {
-        case .all, .planned, .past: return false
+        case .all, .today, .planned, .past: return false
         case .fullBody, .upper, .lower, .push, .pull, .legs: return true
         }
     }
@@ -69,7 +71,7 @@ private enum WorkoutListFilter: Int, CaseIterable, Identifiable {
         case .push: return name.hasPrefix("push")
         case .pull: return name.hasPrefix("pull")
         case .legs: return name.hasPrefix("legs") || name.hasPrefix("leg day")
-        case .all, .planned, .past: return false
+        case .all, .today, .planned, .past: return false
         }
     }
 }
@@ -221,6 +223,10 @@ struct WorkoutsScreen: View {
                 rautaMenuPresented = false
             }
         }
+        .onReceive(navigation.$requestedWorkoutId) { workoutId in
+            guard let workoutId else { return }
+            openRequestedWorkout(workoutId)
+        }
         .task {
             // Restore any missing lightweight projection from its authoritative plan.
             for view in TrainingPlan.activePlannedSessions() where !TrainingPlan.isPlannedSessionRecorded(view.sessionId) {
@@ -371,7 +377,7 @@ struct WorkoutsScreen: View {
             page(for: .summary)
                 .tabItem { Label("Summary", systemImage: MainTab.summary.systemImage) }
                 .tag(MainTab.summary)
-            page(for: .workout)
+            workoutTabContent
                 .tabItem { Label("Workout", systemImage: MainTab.workout.systemImage) }
                 .tag(MainTab.workout)
             page(for: .library)
@@ -492,73 +498,44 @@ struct WorkoutsScreen: View {
         )
     }
 
-    @ViewBuilder
+    /// Summary, Library and Profile. The Workout tab is ``workoutTabContent``.
     private func page(for pageTab: MainTab) -> some View {
-        if pageTab == .workout,
-           let session = activeWorkout.session {
-            WorkoutDetailScreen(
-                workoutId: session.workoutId,
-                embeddedInMainTabs: true,
-                onOpenExercisePlayer: exercisePlayerOpener
-            )
-        } else {
-            AppShell(commandsVisible: false) {
-                if pageTab == .library {
-                    LibraryScreen()
-                } else {
-                    AppTitledPage {
-                        AppShellHeader(
-                            title: pageTab.rawValue,
-                            left: { Color.clear.frame(width: 44, height: 44) },
-                            right: {
-                                if pageTab == .profile {
-                                    AppHeaderButton(systemImage: "gearshape", label: "Settings") {
-                                        navigation.push(.settings)
-                                    }
-                                } else {
-                                    Color.clear.frame(width: 44, height: 44)
+        AppShell(commandsVisible: false) {
+            if pageTab == .library {
+                LibraryScreen()
+            } else {
+                AppTitledPage {
+                    AppShellHeader(
+                        title: pageTab.rawValue,
+                        left: { Color.clear.frame(width: 44, height: 44) },
+                        right: {
+                            if pageTab == .profile {
+                                AppHeaderButton(systemImage: "gearshape", label: "Settings") {
+                                    navigation.push(.settings)
                                 }
-                            },
-                            above: { EmptyView() },
-                            below: { EmptyView() }
+                            } else {
+                                Color.clear.frame(width: 44, height: 44)
+                            }
+                        },
+                        above: { EmptyView() },
+                        below: { EmptyView() }
+                    )
+                } content: {
+                    if pageTab == .summary {
+                        summaryContent
+                    } else if pageTab == .profile {
+                        ProfileDashboard(
+                            rautaNamespace: rautaProfileNamespace,
+                            isActive: mainTab == .profile
                         )
-                    } content: {
-                        if pageTab == .summary {
-                            summaryContent
-                        } else if pageTab == .workout {
-                            noActiveWorkout
-                                .belowPageHeader()
-                        } else if pageTab == .profile {
-                            ProfileDashboard(
-                                rautaNamespace: rautaProfileNamespace,
-                                isActive: mainTab == .profile
-                            )
-                        } else {
-                            Spacer(minLength: 0)
-                        }
+                    } else {
+                        Spacer(minLength: 0)
                     }
                 }
-            } controls: {
-                EmptyView()
             }
+        } controls: {
+            EmptyView()
         }
-    }
-
-    private var noActiveWorkout: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "figure.strengthtraining.traditional")
-                .font(.system(size: 28, weight: .semibold))
-                .foregroundStyle(Theme.primary)
-            Text("No workout in progress")
-                .font(Theme.sans(17, weight: .bold))
-                .foregroundStyle(Theme.foreground)
-            Text("Start one from Summary to see the live workout here.")
-                .font(Theme.sans(13))
-                .foregroundStyle(Theme.mutedForeground)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, 32)
     }
 
     private var summaryContent: some View {
@@ -713,6 +690,27 @@ struct WorkoutsScreen: View {
     }
     private func selectMainTab(_ tab: MainTab) {
         mainTab = tab
+    }
+
+    /// A flow over the tabs — adding exercises, building a workout — finished
+    /// with a workout and asked for it to be shown.
+    private func openRequestedWorkout(_ workoutId: String) {
+        _ = EngineWorkout.ensureEngineWorkout(workoutId)
+        workoutDetailActionState = .none
+        workoutDetailActionRequest = nil
+        if activeWorkout.session?.workoutId == workoutId {
+            selectedWorkoutId = nil
+            liveWorkoutPresented = true
+        } else {
+            liveWorkoutPresented = false
+            selectedWorkoutId = workoutId
+        }
+        mainTab = .workout
+        DispatchQueue.main.async {
+            if navigation.requestedWorkoutId == workoutId {
+                navigation.requestedWorkoutId = nil
+            }
+        }
     }
 
     private var exercisePlayerOpener: () -> Void {
@@ -899,7 +897,6 @@ private struct WorkoutTabHost: View {
             if let selectedId = selectedWorkoutId {
                 WorkoutDetailScreen(
                     workoutId: selectedId,
-                    embeddedInMainTabs: true,
                     onOpenExercisePlayer: onOpenExercisePlayer,
                     onBackToWorkouts: closeWorkout,
                     onReplaceWorkout: { self.selectedWorkoutId = $0 },
@@ -910,7 +907,6 @@ private struct WorkoutTabHost: View {
                let session = activeWorkout.session {
                 WorkoutDetailScreen(
                     workoutId: session.workoutId,
-                    embeddedInMainTabs: true,
                     onOpenExercisePlayer: onOpenExercisePlayer,
                     onBackToWorkouts: closeWorkout
                 )
@@ -1081,7 +1077,7 @@ private struct WorkoutListContent: View {
 
     @State private var visibleLimit = 12
 
-    private struct MonthSection: Identifiable {
+    private struct WorkoutSection: Identifiable {
         let id: String
         let title: String
         var workouts: [Workout]
@@ -1095,24 +1091,27 @@ private struct WorkoutListContent: View {
         var seen = Set<String>()
         return (upcoming + past)
             .filter { seen.insert($0.id).inserted }
-            .sorted { $0.date > $1.date }
+            .soonestFirst()
     }
 
     private var filteredWorkouts: [Workout] {
         switch filter {
         case .all:
             return allWorkouts
+        case .today:
+            let today = CalendarDate.today
+            return allWorkouts.filter { $0.date == today }
         case .planned:
-            return upcoming
+            return upcoming.soonestFirst()
         case .past:
-            return past
+            return past.soonestFirst()
         case .fullBody, .upper, .lower, .push, .pull, .legs:
             return allWorkouts.filter(filter.matchesWorkoutType)
         }
     }
 
     private var availableFilters: [WorkoutListFilter] {
-        let base: [WorkoutListFilter] = [.all, .planned, .past]
+        let base: [WorkoutListFilter] = [.all, .today, .planned, .past]
         let workoutTypes = WorkoutListFilter.allCases.filter { candidate in
             candidate.isWorkoutType && allWorkouts.contains(where: candidate.matchesWorkoutType)
         }
@@ -1127,20 +1126,35 @@ private struct WorkoutListContent: View {
         Set(past.map(\.id))
     }
 
-    private var monthSections: [MonthSection] {
-        var sections: [MonthSection] = []
+    /// Today on its own, then a section per month for the days ahead and again
+    /// for the days behind. A month on both sides of today names its earlier
+    /// half "Earlier in …", so the two never read as one.
+    private var sections: [WorkoutSection] {
+        let today = CalendarDate.today
+        let aheadMonths = Set(
+            visibleWorkouts.filter { $0.date > today }.map { String($0.date.prefix(7)) }
+        )
+        var sections: [WorkoutSection] = []
         for workout in visibleWorkouts {
-            let key = String(workout.date.prefix(7))
-            if let last = sections.indices.last, sections[last].id == key {
+            let month = String(workout.date.prefix(7))
+            let id: String
+            let title: String
+            if workout.date == today {
+                id = "today"
+                title = "Today"
+            } else if workout.date > today {
+                id = "ahead-\(month)"
+                title = monthTitle(workout.date)
+            } else {
+                id = "behind-\(month)"
+                title = aheadMonths.contains(month)
+                    ? "Earlier in \(monthName(workout.date))"
+                    : monthTitle(workout.date)
+            }
+            if let last = sections.indices.last, sections[last].id == id {
                 sections[last].workouts.append(workout)
             } else {
-                sections.append(
-                    MonthSection(
-                        id: key,
-                        title: monthTitle(workout.date),
-                        workouts: [workout]
-                    )
-                )
+                sections.append(WorkoutSection(id: id, title: title, workouts: [workout]))
             }
         }
         return sections
@@ -1149,6 +1163,7 @@ private struct WorkoutListContent: View {
     private var emptyMessage: String {
         switch filter {
         case .all: return "No workouts yet"
+        case .today: return "Nothing planned for today"
         case .planned: return "No planned workouts"
         case .past: return "No past workouts yet"
         case .fullBody, .upper, .lower, .push, .pull, .legs:
@@ -1181,7 +1196,7 @@ private struct WorkoutListContent: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.top, 24)
                         } else {
-                            ForEach(monthSections) { section in
+                            ForEach(sections) { section in
                                 Text(section.title)
                                     .font(Theme.sans(17, weight: .heavy))
                                     .foregroundStyle(Theme.foreground)
@@ -1226,10 +1241,18 @@ private struct WorkoutListContent: View {
     }
 
     private func monthTitle(_ isoDate: String) -> String {
+        formatted(isoDate, template: "MMMM yyyy")
+    }
+
+    private func monthName(_ isoDate: String) -> String {
+        formatted(isoDate, template: "MMMM")
+    }
+
+    private func formatted(_ isoDate: String, template: String) -> String {
         guard let date = CalendarDate.parse(isoDate) else { return isoDate }
         let formatter = DateFormatter()
         formatter.locale = Locale.current
-        formatter.setLocalizedDateFormatFromTemplate("MMMM yyyy")
+        formatter.setLocalizedDateFormatFromTemplate(template)
         return formatter.string(from: date)
     }
 
@@ -1282,7 +1305,7 @@ private struct WorkoutsModeSwitcher: View {
     let workouts: [Workout]
 
     private var availableFilters: [WorkoutListFilter] {
-        let base: [WorkoutListFilter] = [.all, .planned, .past]
+        let base: [WorkoutListFilter] = [.all, .today, .planned, .past]
         let workoutTypes = WorkoutListFilter.allCases.filter { candidate in
             candidate.isWorkoutType && workouts.contains(where: candidate.matchesWorkoutType)
         }

@@ -29,18 +29,22 @@ struct ExercisePickerScreen: View {
         }
     }
 
+    /// Every workout still open to more exercises, soonest first, with the one
+    /// being worked on at the top: the workout this flow started from, or else
+    /// the one in progress.
     private var destinationWorkouts: [Workout] {
-        Array(
-            store.workouts.workouts
-                .filter { $0.completion == nil }
-                .sorted {
-                    if $0.id == preferredWorkoutId { return true }
-                    if $1.id == preferredWorkoutId { return false }
-                    return $0.date > $1.date
-                }
-                .prefix(3)
-        )
+        let currentId = preferredWorkoutId ?? store.activeWorkout.session?.workoutId
+        let open = store.workouts.workouts
+            .filter { $0.completion == nil }
+            .soonestFirst()
+        guard let current = open.first(where: { $0.id == currentId }) else { return open }
+        return [current] + open.filter { $0.id != current.id }
     }
+
+    /// Rows past this many scroll inside the menu rather than pushing it off
+    /// the top of the screen.
+    private let destinationRowsVisible = 6
+    private let destinationRowHeight: CGFloat = 46
 
     var body: some View {
         RautaScreen(
@@ -413,16 +417,23 @@ struct ExercisePickerScreen: View {
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
             } else {
-                ForEach(destinationWorkouts) { workout in
-                    Button {
-                        addSelectedExercises(to: workout)
-                    } label: {
-                        Label(
-                            "\(CalendarDate.short(workout.date)) · \(Wording.countLabel(workout.exerciseIds.count, "exercise"))",
-                            systemImage: "calendar"
-                        )
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(destinationWorkouts) { workout in
+                            Button {
+                                addSelectedExercises(to: workout)
+                            } label: {
+                                Label(CalendarDate.short(workout.date), systemImage: "calendar")
+                            }
+                        }
                     }
                 }
+                .scrollIndicators(.hidden)
+                .scrollBounceBehavior(.basedOnSize)
+                .frame(
+                    height: CGFloat(min(destinationWorkouts.count, destinationRowsVisible))
+                        * destinationRowHeight
+                )
             }
         }
     }
@@ -453,7 +464,7 @@ struct ExercisePickerScreen: View {
             }
             store.navigation.selectMode = false
             store.navigation.selectedIds = []
-            store.navigation.reset([.workouts, .workoutDetail(workoutId: workout.id)])
+            store.navigation.openWorkout(workout.id)
             Haptics.trigger(.success)
         } catch {
             Haptics.trigger(.warning)

@@ -76,7 +76,7 @@ struct WorkoutDestinationScreen: View {
             }
             store.navigation.selectMode = false
             store.navigation.selectedIds = []
-            store.navigation.reset([.workouts, .workoutDetail(workoutId: workout.id)])
+            store.navigation.openWorkout(workout.id)
             Haptics.trigger(.success)
         } catch {
             Haptics.trigger(.warning)
@@ -217,7 +217,7 @@ struct WorkoutFormScreen: View {
             }
             store.navigation.selectMode = false
             store.navigation.selectedIds = []
-            store.navigation.reset([.workouts, .workoutDetail(workoutId: id)])
+            store.navigation.openWorkout(id)
             Haptics.trigger(.success)
         } catch { capture(error) }
     }

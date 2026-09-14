@@ -235,16 +235,6 @@ struct MusclePrioritiesScreen: View {
         store.trainingProfile.profile.priorityMuscles
     }
 
-    private var selected: [MuscleId] {
-        priorities.map(\.muscleId)
-    }
-
-    private var weights: [MuscleId: Double] {
-        Dictionary(uniqueKeysWithValues: priorities.map {
-            ($0.muscleId, ProfileVocabulary.priorityPaintWeights[$0.level] ?? 1)
-        })
-    }
-
     private var subtitle: String {
         priorities.isEmpty
             ? "Tap a muscle to prioritise it"
@@ -257,35 +247,10 @@ struct MusclePrioritiesScreen: View {
             subtitle: subtitle,
             onBack: store.navigation.pop
         ) {
-            VStack(spacing: 0) {
-                ZStack {
-                    DotPattern(
-                        color: Theme.mix(
-                            Theme.mutedForeground,
-                            Theme.primary,
-                            min(Double(priorities.count) / 6, 1) * 0.75
-                        ),
-                        opacity: 0.36 + min(Double(priorities.count) / 6, 1) * 0.28
-                    )
-                    BodyMap(
-                        selectedMuscles: selected,
-                        muscleWeights: weights,
-                        onToggle: store.trainingProfile.cycleMusclePriority,
-                        onSideChange: { side = $0 },
-                        showCornerCount: false,
-                        showFlipButton: false,
-                        side: side
-                    )
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                PriorityScaleLegend()
-                    .padding(.horizontal, 48)
-                    .padding(.bottom, 4)
-            }
-            .padding(.horizontal, Theme.Metrics.contentInset)
-            .belowPageHeader()
-            .padding(.bottom, 12)
+            ProfilePrioritiesMap(side: $side)
+                .padding(.horizontal, Theme.Metrics.contentInset)
+                .belowPageHeader()
+                .padding(.bottom, 12)
         } controls: {
             HStack(spacing: 10) {
                 if !priorities.isEmpty {
@@ -305,6 +270,52 @@ struct MusclePrioritiesScreen: View {
 
                 AppButton("Done", size: .cta, expands: true, action: store.navigation.pop)
             }
+        }
+    }
+}
+
+/// The body map priorities are painted on, with the scale that reads it. A tap
+/// on a muscle steps it up through the priority levels and back to normal.
+struct ProfilePrioritiesMap: View {
+    @ObservedObject private var store = AppStore.shared
+    @Binding var side: BodySide
+    /// Off where the page carries its own flip control.
+    var showsFlipButton = false
+
+    private var priorities: [MusclePriority] {
+        store.trainingProfile.profile.priorityMuscles
+    }
+
+    private var weights: [MuscleId: Double] {
+        Dictionary(uniqueKeysWithValues: priorities.map {
+            ($0.muscleId, ProfileVocabulary.priorityPaintWeights[$0.level] ?? 1)
+        })
+    }
+
+    private var emphasis: Double { min(Double(priorities.count) / 6, 1) }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                DotPattern(
+                    color: Theme.mix(Theme.mutedForeground, Theme.primary, emphasis * 0.75),
+                    opacity: 0.36 + emphasis * 0.28
+                )
+                BodyMap(
+                    selectedMuscles: priorities.map(\.muscleId),
+                    muscleWeights: weights,
+                    onToggle: store.trainingProfile.cycleMusclePriority,
+                    onSideChange: { side = $0 },
+                    showCornerCount: false,
+                    showFlipButton: showsFlipButton,
+                    side: side
+                )
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            PriorityScaleLegend()
+                .padding(.horizontal, 48)
+                .padding(.bottom, 4)
         }
     }
 }
