@@ -54,6 +54,8 @@ final class AppStore: ObservableObject {
         guard !bootstrapped else { return }
         bootstrapped = true
 
+        AppearanceController.start()
+
         // A session follows the workout it is performing, wherever that workout
         // is edited from.
         activeWorkout.observeWorkouts()

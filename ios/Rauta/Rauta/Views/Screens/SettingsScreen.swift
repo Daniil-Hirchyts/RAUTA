@@ -111,6 +111,10 @@ struct SettingsScreen: View {
                             }
                         }
 
+                        section("Appearance") {
+                            appearanceRow
+                        }
+
                         section("Data & Storage") {
                             settingsRow(title: "iCloud backup", detail: iCloudDescription, icon: "icloud", showsDivider: true) {
                                 switch store.iCloud.status {
@@ -261,6 +265,31 @@ struct SettingsScreen: View {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
         return build.map { "\(version) (\($0))" } ?? version
+    }
+
+    /// The theme: the iPhone's own, or light or dark for good. The change
+    /// cross-fades the whole app in place, so the choice is seen as it is made.
+    ///
+    /// A compact glass segment control, its selection tinted in the brand's
+    /// orange.
+    private var appearanceRow: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                rowIcon("circle.lefthalf.filled")
+                rowLabel(title: "Theme", detail: store.settings.appearance.summary)
+            }
+            GlassSegmentedPicker(
+                title: "Theme",
+                options: AppAppearance.allCases,
+                selection: Binding(
+                    get: { store.settings.appearance },
+                    set: { appearance in store.settings.update { $0.appearance = appearance } }
+                ),
+                label: \.label
+            )
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
     }
 
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {

@@ -29,7 +29,7 @@ struct RootView: View {
             .environment(\.appSafeAreaInsets, proxy.safeAreaInsets)
         }
         .simultaneousGesture(edgeBackGesture)
-        .preferredColorScheme(.dark)
+        .background(AppearanceWindowAnchor().allowsHitTesting(false))
     }
 
     @ViewBuilder

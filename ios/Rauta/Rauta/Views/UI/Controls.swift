@@ -262,6 +262,103 @@ struct SlidingTabs: View {
     }
 }
 
+// MARK: - Glass segments
+
+/// A compact segmented choice with a Liquid Glass selection in the brand's
+/// colour.
+///
+/// The system segmented control is glass too, but it cannot be tinted or made
+/// this small. Here the track is a quiet fill and only the selection is glass —
+/// tinted, and flexing under a finger on iOS 26 — so it reads as the one thing
+/// that moves. Drag across to scrub; the choice is made where the finger lifts.
+/// Before iOS 26 the selection is the brand gradient.
+struct GlassSegmentedPicker<Option: Hashable>: View {
+    var title: String
+    var options: [Option]
+    @Binding var selection: Option
+    var label: (Option) -> String
+    var tint: Color = Theme.primary
+
+    @Namespace private var selectionNamespace
+    @State private var scrubbing: Option?
+    @State private var width: CGFloat = 0
+
+    private static var height: CGFloat { 30 }
+    private var shown: Option { scrubbing ?? selection }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(options, id: \.self) { option in
+                let active = option == shown
+                Text(label(option))
+                    .font(Theme.sans(13, weight: .semibold))
+                    .foregroundStyle(active ? Theme.primaryForeground : Theme.mutedForeground)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: Self.height)
+                    .background {
+                        if active {
+                            thumb.matchedGeometryEffect(id: "selection", in: selectionNamespace)
+                        }
+                    }
+            }
+        }
+        .padding(2)
+        .background(Theme.foreground.opacity(0.07), in: Capsule())
+        .contentShape(Capsule())
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { newWidth in
+            width = newWidth
+        }
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    let option = option(at: value.location.x)
+                    guard option != shown else { return }
+                    Haptics.trigger(.selection)
+                    withAnimation(Theme.Motion.spring(0.32)) { scrubbing = option }
+                }
+                .onEnded { value in
+                    let option = option(at: value.location.x)
+                    withAnimation(Theme.Motion.spring(0.32)) {
+                        scrubbing = nil
+                        if option != selection { selection = option }
+                    }
+                }
+        )
+        // VoiceOver gets the system control's own semantics: a picker whose
+        // value can be swiped through.
+        .accessibilityRepresentation {
+            Picker(title, selection: $selection) {
+                ForEach(options, id: \.self) { option in
+                    Text(label(option)).tag(option)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
+    @ViewBuilder
+    private var thumb: some View {
+        if #available(iOS 26.0, *) {
+            Color.clear
+                .glassEffect(.regular.tint(tint).interactive(), in: Capsule())
+        } else {
+            Capsule()
+                .fill(Theme.primaryGradient)
+                .shadow(color: tint.opacity(0.18), radius: 6, y: 2)
+        }
+    }
+
+    private func option(at x: CGFloat) -> Option {
+        guard !options.isEmpty else { return selection }
+        let inner = Swift.max(1, width - 4)
+        let index = Int(((x - 2) / inner * CGFloat(options.count)).rounded(.down))
+        return options[Swift.min(options.count - 1, Swift.max(0, index))]
+    }
+}
+
 // MARK: - Dot pattern
 
 /// The faint dotted field behind the body map, which warms towards the accent as

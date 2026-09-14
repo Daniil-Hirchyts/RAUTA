@@ -105,12 +105,16 @@ struct AppShell<Content: View, Controls: View>: View {
 /// One shell-sized raster keeps the texture organic without a repeating tile
 /// boundary. The image lives beside the other bundled media.
 struct AppGrain: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         if let image = MediaLibrary.grainImage {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFill()
-                .opacity(0.22)
+                // Overlay grain darkens a light ground far more than it lightens
+                // a dark one, so paper carries less of it.
+                .opacity(colorScheme == .dark ? 0.22 : 0.10)
                 .blendMode(.overlay)
                 .allowsHitTesting(false)
         }
@@ -387,7 +391,7 @@ struct ProgressiveBlur: UIViewRepresentable {
     var radius: CGFloat
 
     func makeUIView(context: Context) -> PureBackdropBlurView {
-        let view = PureBackdropBlurView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
+        let view = PureBackdropBlurView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
         view.isUserInteractionEnabled = false
         view.blurRadius = radius
         return view
@@ -522,7 +526,7 @@ struct AppShellHeader<Left: View, Right: View, Above: View, Below: View>: View {
         case .current:
             return AnyShapeStyle(Theme.primary.opacity(0.55))
         case .pending:
-            return AnyShapeStyle(Color.white.opacity(0.12))
+            return AnyShapeStyle(Theme.foreground.opacity(0.12))
         }
     }
 }

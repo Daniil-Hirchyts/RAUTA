@@ -86,7 +86,6 @@ struct GlassSurface<S: InsettableShape>: ViewModifier {
     private var legacyPane: some View {
         shape
             .fill(.ultraThinMaterial)
-            .environment(\.colorScheme, .dark)
             .overlay(shape.fill(legacyTint))
     }
 

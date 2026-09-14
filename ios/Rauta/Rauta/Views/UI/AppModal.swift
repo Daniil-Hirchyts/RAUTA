@@ -21,7 +21,7 @@ struct AppModal<Content: View>: View {
                 // The scrim dims the page — the panel is the only thing to
                 // answer while it is up — and catches the taps that would
                 // otherwise land underneath it.
-                Color.black.opacity(0.6)
+                Theme.scrim
                     .ignoresSafeArea()
                     .transition(.opacity)
                     .onTapGesture { onClose() }

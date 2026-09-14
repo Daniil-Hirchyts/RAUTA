@@ -1133,14 +1133,16 @@ private struct LiveExerciseCard: View {
                         .zIndex(1)
                         .allowsHitTesting(false)
 
+                        // The caption sits on frosted glass, which is light in Light
+                        // Mode: ink on it there, and a halo of the shell behind it.
                         Text(exercise.name.capitalized)
                             .font(Theme.sans(18, weight: .heavy))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Theme.foreground)
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
                             .padding(.horizontal, 16)
                             .padding(.bottom, 14)
-                            .shadow(color: .black.opacity(0.34), radius: 4, y: 1)
+                            .shadow(color: Theme.shell.opacity(0.34), radius: 4, y: 1)
                             .frame(maxWidth: .infinity, alignment: .bottom)
                             .zIndex(2)
                     }

@@ -321,7 +321,7 @@ struct ProfilePrioritiesMap: View {
 }
 
 private struct PriorityScaleLegend: View {
-    private let resting = Color(hex: 0x3D322B)
+    private let resting = BodyFigure.restingFill
 
     private var stops: [(label: String, weight: Double)] {
         [("Normal", 0)] + ProfileVocabulary.selectablePriorityLevels.reversed().map {
@@ -338,7 +338,7 @@ private struct PriorityScaleLegend: View {
             )
             .frame(height: 10)
             .clipShape(Capsule())
-            .overlay(Capsule().strokeBorder(.white.opacity(0.10), lineWidth: 1))
+            .overlay(Capsule().strokeBorder(Theme.foreground.opacity(0.10), lineWidth: 1))
 
             HStack {
                 ForEach(Array(stops.enumerated()), id: \.offset) { index, stop in

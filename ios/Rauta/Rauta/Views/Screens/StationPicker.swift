@@ -254,7 +254,6 @@ private struct StationEditorSheet: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
     }
 
     private func save() {

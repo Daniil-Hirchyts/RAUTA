@@ -9,7 +9,6 @@ struct RautaApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                .preferredColorScheme(.dark)
                 .environment(\.appStore, AppStore.shared)
         }
     }

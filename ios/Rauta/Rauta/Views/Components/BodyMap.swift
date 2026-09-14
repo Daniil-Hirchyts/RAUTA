@@ -65,8 +65,12 @@ struct BodyFigure: View {
     var onToggle: ((MuscleId) -> Void)?
     var compact: Bool = false
 
-    private static let restingFill = Color(hex: 0x3D322B)
-    private static let silhouetteFill = Color(hex: 0x2D241F)
+    /// An untrained muscle: a warm shade just off the ground it sits on.
+    static let restingFill = Color(light: 0xD5C8BC, dark: 0x3D322B)
+    /// Everything on the figure that is not a muscle.
+    static let silhouetteFill = Color(light: 0xE9E1D8, dark: 0x2D241F)
+    /// The small drop under a resting muscle that gives the figure relief.
+    static let restingShadow = Color(light: 0x5C4636, dark: 0x000000, lightOpacity: 0.16, darkOpacity: 0.45)
 
     var body: some View {
         GeometryReader { proxy in
@@ -118,7 +122,7 @@ struct BodyFigure: View {
                                 ? (showsSelectionGlow
                                     ? selectedColor.opacity(0.55 * weight)
                                     : .clear)
-                                : .black.opacity(0.45),
+                                : Self.restingShadow,
                             radius: selected ? 4 : 2,
                             y: selected ? 0 : 2
                         )
@@ -264,8 +268,8 @@ struct BodyPreview: View {
     var width: CGFloat = 96
     var height: CGFloat = 64
 
-    private static let restingFill = Color(hex: 0x3D322B)
-    private static let silhouetteFill = Color(hex: 0x2D241F)
+    private static let restingFill = BodyFigure.restingFill
+    private static let silhouetteFill = BodyFigure.silhouetteFill
 
     var body: some View {
         Canvas(rendersAsynchronously: true) { context, size in

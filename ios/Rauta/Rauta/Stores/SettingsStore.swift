@@ -5,6 +5,11 @@ enum HealthStatus: String, Codable, Hashable, Sendable {
     case idle, connected, unavailable, error
 }
 
+/// Which theme the app wears: the iPhone's own, or one chosen for good.
+enum AppAppearance: String, Codable, Hashable, CaseIterable, Sendable {
+    case system, light, dark
+}
+
 struct SettingsPreferences: Codable, Hashable, Sendable {
     var appleHealthEnabled: Bool
     var healthStatus: HealthStatus
@@ -15,6 +20,7 @@ struct SettingsPreferences: Codable, Hashable, Sendable {
     var hapticsEnabled: Bool
     var soundChimesEnabled: Bool
     var keepAwake: Bool
+    var appearance: AppAppearance
 
     static let defaults = SettingsPreferences(
         appleHealthEnabled: false,
@@ -25,7 +31,8 @@ struct SettingsPreferences: Codable, Hashable, Sendable {
         syncActiveCalories: true,
         hapticsEnabled: true,
         soundChimesEnabled: false,
-        keepAwake: false
+        keepAwake: false,
+        appearance: .system
     )
 }
 
@@ -59,7 +66,9 @@ final class SettingsStore: ObservableObject {
             syncActiveCalories: object["syncActiveCalories"]?.boolValue != false,
             hapticsEnabled: object["hapticsEnabled"]?.boolValue != false,
             soundChimesEnabled: object["soundChimesEnabled"]?.boolValue == true,
-            keepAwake: object["keepAwake"]?.boolValue == true
+            keepAwake: object["keepAwake"]?.boolValue == true,
+            appearance: object["appearance"]?.stringValue
+                .flatMap(AppAppearance.init(rawValue:)) ?? .system
         )
     }
 
@@ -97,4 +106,5 @@ final class SettingsStore: ObservableObject {
     var hapticsEnabled: Bool { preferences.hapticsEnabled }
     var soundChimesEnabled: Bool { preferences.soundChimesEnabled }
     var keepAwake: Bool { preferences.keepAwake }
+    var appearance: AppAppearance { preferences.appearance }
 }

@@ -249,7 +249,7 @@ struct FlowProgress: View {
     private func legacyFill(_ step: Int) -> Color {
         if step == stage { return Theme.primary }
         if step < stage { return Theme.primary.opacity(0.35) }
-        return Color.white.opacity(0.10)
+        return Theme.foreground.opacity(0.10)
     }
 }
 
@@ -298,7 +298,6 @@ struct FrostedBackground: View {
     var body: some View {
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             .fill(.ultraThinMaterial)
-            .environment(\.colorScheme, .dark)
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(Theme.popover.opacity(compact ? 0.5 : 0.72))
