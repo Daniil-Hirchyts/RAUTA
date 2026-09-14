@@ -168,6 +168,47 @@ enum TrainingSessionBridge {
         return WorkoutDrafts.plannedWorkCoverage(draft, plannedSession(data, draft))
     }
 
+    /// What the running session prescribes, by exercise.
+    ///
+    /// The program snapshot never learns about an exercise swapped in or added
+    /// after the session started, but the draft does: it carries the targets the
+    /// engine gave that exercise. So sets, reps, RIR and load come from the draft,
+    /// and rest from the plan — or, for an exercise the plan never had, from the
+    /// rule the engine prescribed it by.
+    static func activePrescriptions(
+        _ data: PersistedTrainingState? = nil
+    ) -> [String: PlannedExercisePrescription] {
+        let data = data ?? TrainingRecordsStore.shared.data
+        guard let draft = data.activeWorkout else { return [:] }
+        let session = plannedSession(data, draft)
+        let program = data.programs.first { $0.id == draft.plannedProgramId }
+        let goal = DEFAULT_POLICY.goal(
+            (program?.snapshot.goal ?? TrainingProfileStore.shared.profile.goal).policyKey
+        )
+        let index = TrainingWorkflow.trainingIndex()
+
+        var prescriptions: [String: PlannedExercisePrescription] = [:]
+        for exercise in draft.exercises where prescriptions[exercise.exerciseId] == nil {
+            let targets = exercise.sets
+                .filter { $0.setType == .working }
+                .compactMap(\.target)
+            guard let first = targets.first else { continue }
+            let rest = session?.exercises.first { $0.exerciseId == exercise.exerciseId }?.restSeconds
+                ?? index.byId[exercise.exerciseId].map { Prescribe.restSeconds($0, goal: goal) }
+                ?? goal.isolationRest
+            prescriptions[exercise.exerciseId] = PlannedExercisePrescription(
+                exerciseId: exercise.exerciseId,
+                sets: targets.count,
+                reps: first.reps,
+                rir: first.rir,
+                loadKg: first.resistance.kg,
+                loadBasis: first.resistance.basis,
+                restSeconds: rest
+            )
+        }
+        return prescriptions
+    }
+
     /// Closes the draft the way the session ended.
     ///
     /// Only sets with a real observation are written. The status is what the

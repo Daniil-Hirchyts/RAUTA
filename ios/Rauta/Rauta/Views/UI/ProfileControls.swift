@@ -28,6 +28,13 @@ struct ProfileNameControl: View {
                 }
             }
             .onAppear { draft = store.trainingProfile.profile.name }
+#if DEBUG // claude-temp
+            .task {
+                guard ProcessInfo.processInfo.arguments.contains("--claude-temp-name") else { return }
+                try? await Task.sleep(for: .seconds(4))
+                focused = true
+            }
+#endif
             .onChange(of: draft) { _, value in store.trainingProfile.updateProfile(.init(name: String(value.prefix(60)))) }
             .onChange(of: focused) { _, value in onFocusChange(value) }
             .onSubmit { focused = false }

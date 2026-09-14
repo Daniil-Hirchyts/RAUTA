@@ -55,6 +55,13 @@ struct LibraryScreen: View {
         } content: {
             results
         }
+#if DEBUG // claude-temp
+        .task {
+            guard ProcessInfo.processInfo.arguments.contains("--claude-temp-search") else { return }
+            try? await Task.sleep(for: .seconds(4))
+            openSearch()
+        }
+#endif
         .fullScreenCover(item: $browse.presentedFilter) { filter in
             LibraryFilterPage(
                 filter: filter,

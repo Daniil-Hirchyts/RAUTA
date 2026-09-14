@@ -107,6 +107,9 @@ struct ProfileStepFlow: View {
             }.id(index)
         }
         .onChange(of: index) { _, _ in nameEntryFocused = false }
+#if DEBUG // claude-temp
+        .onAppear { if ProcessInfo.processInfo.arguments.contains("--claude-temp-name") { index = 1 } }
+#endif
     }
 
     /// Where a scrolling step's content starts under a plain title bar.

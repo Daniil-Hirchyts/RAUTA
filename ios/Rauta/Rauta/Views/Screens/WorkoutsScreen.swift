@@ -228,6 +228,28 @@ struct WorkoutsScreen: View {
             openRequestedWorkout(workoutId)
         }
         .task {
+#if DEBUG // claude-temp
+            let claudeTempArgs = ProcessInfo.processInfo.arguments
+            if claudeTempArgs.contains("--claude-temp-library") { mainTab = .library }
+            if claudeTempArgs.contains("--claude-temp-running") {
+                if let id = try? EngineWorkout.createWorkout(
+                    date: CalendarDate.today,
+                    exerciseIds: ["0080", "0410", "0025"].filter(ExerciseCatalogue.has)
+                ), let workout = workouts.workout(id), activeWorkout.start(workout) {
+                    let current = workouts.workout(id)!.exerciseIds
+                    let added = ExerciseCatalogue.all.first { !current.contains($0.id) && $0.equipment == "dumbbell" }!.id
+                    workouts.updateWorkout(id, .init(exerciseIds: current + [added]))
+                    activeWorkout.syncExercises(current + [added])
+                    let swapSource = current[0]
+                    if let replacement = TrainingWorkflow.replacementIds(swapSource, workoutId: id).first {
+                        do { try PlannedSubstitution.substituteRunningPlannedExercise(id, swapSource, replacement) }
+                        catch { print("claude-temp swap failed", error) }
+                    }
+                    print("claude-temp prescriptions", TrainingSessionBridge.activePrescriptions().mapValues { "\($0.sets)x\($0.reps) rest \($0.restSeconds)" })
+                    openRequestedWorkout(id)
+                }
+            }
+#endif
             // Restore any missing lightweight projection from its authoritative plan.
             for view in TrainingPlan.activePlannedSessions() where !TrainingPlan.isPlannedSessionRecorded(view.sessionId) {
                 TrainingPlan.ensurePlannedWorkout(view)
@@ -753,12 +775,7 @@ struct WorkoutsScreen: View {
     }
 
     private func restSeconds(for exerciseId: String) -> Double {
-        guard let workoutId = activeWorkout.session?.workoutId,
-              let workout = workouts.workout(workoutId),
-              let reference = workout.planned,
-              let planned = TrainingPlan.plannedSessionView(reference.programId, reference.sessionId)
-        else { return 90 }
-        return planned.prescription.first { $0.exerciseId == exerciseId }?.restSeconds ?? 90
+        TrainingSessionBridge.activePrescriptions()[exerciseId]?.restSeconds ?? 90
     }
 }
 

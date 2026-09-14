@@ -46,6 +46,19 @@ struct WorkoutDetailScreen: View {
         guard let reference = workout?.planned else { return nil }
         return TrainingPlan.plannedSessionView(reference.programId, reference.sessionId)
     }
+    /// What each exercise is prescribed, by exercise. The plan's snapshot answers,
+    /// except while this workout runs: then its draft does, because the draft
+    /// also knows the exercises swapped in or added since it started.
+    private var prescriptions: [String: PlannedExercisePrescription] {
+        var byExercise: [String: PlannedExercisePrescription] = [:]
+        for item in planned?.prescription ?? [] where byExercise[item.exerciseId] == nil {
+            byExercise[item.exerciseId] = item
+        }
+        if session != nil {
+            byExercise.merge(TrainingSessionBridge.activePrescriptions()) { _, active in active }
+        }
+        return byExercise
+    }
     private var isPast: Bool { session == nil && workout?.completion != nil }
     private var hasAnotherActiveWorkout: Bool {
         guard let active = store.activeWorkout.session else { return false }
@@ -161,16 +174,20 @@ struct WorkoutDetailScreen: View {
     }
 
     private func activeWorkoutContent(_ workout: Workout, session: ActiveWorkoutSession) -> some View {
-        ScrollView {
+        let prescriptions = prescriptions
+        return ScrollView {
             LazyVStack(spacing: 18) {
-                RunningWorkoutOverview(workout: workout, session: session, planned: planned)
+                RunningWorkoutOverview(
+                    session: session,
+                    sets: workout.exerciseIds.compactMap { prescriptions[$0]?.sets }.reduce(0, +)
+                )
 
                 ForEach(Array(workout.exerciseIds.enumerated()), id: \.element) { index, id in
                     if let exercise = ExerciseCatalogue.byId[id] {
                         WorkoutExerciseRow(
                             exercise: exercise,
                             index: index,
-                            prescription: planned?.prescription.first { $0.exerciseId == id },
+                            prescription: prescriptions[id],
                             status: ActiveWorkout.status(session, id),
                             canFindAlternative: canEditWorkout,
                             canRemove: canEditWorkout,
@@ -214,7 +231,8 @@ struct WorkoutDetailScreen: View {
     }
 
     private func content(_ workout: Workout) -> some View {
-        ZStack(alignment: .bottom) {
+        let prescriptions = prescriptions
+        return ZStack(alignment: .bottom) {
             ScrollView {
                 VStack(spacing: 20) {
                     // In React the tabs are the first item inside the same
@@ -248,7 +266,7 @@ struct WorkoutDetailScreen: View {
                                let exercise = ExerciseCatalogue.byId[currentId] {
                                 LiveExerciseCard(
                                     exercise: exercise,
-                                    restSeconds: planned?.prescription.first { $0.exerciseId == currentId }?.restSeconds ?? 90,
+                                    restSeconds: prescriptions[currentId]?.restSeconds ?? 90,
                                     onDetail: { store.navigation.push(.exerciseDetail(exerciseId: exercise.id)) }
                                 )
                             } else {
@@ -264,7 +282,7 @@ struct WorkoutDetailScreen: View {
                                     WorkoutExerciseRow(
                                         exercise: exercise,
                                         index: index,
-                                        prescription: planned?.prescription.first { $0.exerciseId == id },
+                                        prescription: prescriptions[id],
                                         status: session.map { ActiveWorkout.status($0, id) },
                                         canFindAlternative: canEditWorkout,
                                         canRemove: canEditWorkout,
@@ -914,9 +932,9 @@ struct CompletedWorkoutDrawer: View {
 }
 
 private struct RunningWorkoutOverview: View {
-    let workout: Workout
     let session: ActiveWorkoutSession
-    let planned: PlannedSessionView?
+    /// Working sets across the workout as it now stands.
+    let sets: Int
 
     var body: some View {
         VStack(spacing: 0) {
@@ -946,7 +964,7 @@ private struct RunningWorkoutOverview: View {
             .padding(.bottom, 18)
 
             HStack(spacing: 0) {
-                metric("square.stack.3d.up", value: String(planned?.workingSets ?? workout.exerciseIds.count), label: "Sets")
+                metric("square.stack.3d.up", value: String(sets), label: "Sets")
                 Rectangle().fill(Theme.foreground.opacity(0.16)).frame(width: 1).padding(.vertical, 4)
                 metric("clock", value: elapsedMinutes, label: "Minutes")
             }

@@ -84,11 +84,16 @@ enum Prescribe {
             order: 0,
             workingSets: workingSets,
             warmupSets: warmupSets,
-            restSeconds: compound ? goal.compoundRest : goal.isolationRest,
+            restSeconds: restSeconds(item, goal: goal),
             targetMuscles: item.metadata.setRoles.filter { $0.role == .direct }.map(\.muscleId),
             rationale: rationale,
             progression: progression
         )
+    }
+
+    /// Rest between sets: a compound lift gets the goal's longer rest.
+    static func restSeconds(_ item: IndexedExercise, goal: GoalPolicy) -> Double {
+        item.metadata.mechanics == .compound ? goal.compoundRest : goal.isolationRest
     }
 }
 
