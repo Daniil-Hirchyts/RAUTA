@@ -67,6 +67,9 @@ struct ProfileStepFlow: View {
                                     }
                                 }
                                 .belowPageHeader()
+                                // The app's safe area takes in an open keyboard, so
+                                // the name centres in what the keyboard leaves.
+                                .padding(.bottom, isEnteringName ? safeAreaInsets.bottom : 0)
                             } else if step == .priorities {
                                 ProfilePrioritiesMap(side: $prioritySide, showsFlipButton: true)
                                     .padding(.horizontal, 12)
@@ -107,9 +110,6 @@ struct ProfileStepFlow: View {
             }.id(index)
         }
         .onChange(of: index) { _, _ in nameEntryFocused = false }
-#if DEBUG // claude-temp
-        .onAppear { if ProcessInfo.processInfo.arguments.contains("--claude-temp-name") { index = 1 } }
-#endif
     }
 
     /// Where a scrolling step's content starts under a plain title bar.

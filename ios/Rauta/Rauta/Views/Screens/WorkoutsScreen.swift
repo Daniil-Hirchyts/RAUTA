@@ -121,7 +121,6 @@ enum NativeTabIcons {
 }
 
 struct WorkoutsScreen: View {
-    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     @ObservedObject private var workouts = WorkoutsStore.shared
     @ObservedObject private var trainingRecords = TrainingRecordsStore.shared
     @ObservedObject private var activeWorkout = ActiveWorkoutStore.shared
@@ -228,28 +227,6 @@ struct WorkoutsScreen: View {
             openRequestedWorkout(workoutId)
         }
         .task {
-#if DEBUG // claude-temp
-            let claudeTempArgs = ProcessInfo.processInfo.arguments
-            if claudeTempArgs.contains("--claude-temp-library") { mainTab = .library }
-            if claudeTempArgs.contains("--claude-temp-running") {
-                if let id = try? EngineWorkout.createWorkout(
-                    date: CalendarDate.today,
-                    exerciseIds: ["0080", "0410", "0025"].filter(ExerciseCatalogue.has)
-                ), let workout = workouts.workout(id), activeWorkout.start(workout) {
-                    let current = workouts.workout(id)!.exerciseIds
-                    let added = ExerciseCatalogue.all.first { !current.contains($0.id) && $0.equipment == "dumbbell" }!.id
-                    workouts.updateWorkout(id, .init(exerciseIds: current + [added]))
-                    activeWorkout.syncExercises(current + [added])
-                    let swapSource = current[0]
-                    if let replacement = TrainingWorkflow.replacementIds(swapSource, workoutId: id).first {
-                        do { try PlannedSubstitution.substituteRunningPlannedExercise(id, swapSource, replacement) }
-                        catch { print("claude-temp swap failed", error) }
-                    }
-                    print("claude-temp prescriptions", TrainingSessionBridge.activePrescriptions().mapValues { "\($0.sets)x\($0.reps) rest \($0.restSeconds)" })
-                    openRequestedWorkout(id)
-                }
-            }
-#endif
             // Restore any missing lightweight projection from its authoritative plan.
             for view in TrainingPlan.activePlannedSessions() where !TrainingPlan.isPlannedSessionRecorded(view.sessionId) {
                 TrainingPlan.ensurePlannedWorkout(view)
@@ -314,7 +291,7 @@ struct WorkoutsScreen: View {
                 nativeExerciseAccessory
             }
         )
-        .overlay(alignment: .bottomTrailing) { nativeRautaControl }
+        .overlay { nativeRautaControl }
     }
 
     @available(iOS 26.0, *)
@@ -355,7 +332,7 @@ struct WorkoutsScreen: View {
                 nativeExerciseAccessory
             }
         )
-        .overlay(alignment: .bottomTrailing) { nativeRautaControl }
+        .overlay { nativeRautaControl }
     }
 
     @available(iOS 18.4, *)
@@ -391,7 +368,7 @@ struct WorkoutsScreen: View {
         }
         .tabViewStyle(.sidebarAdaptable)
         .tint(Theme.primary)
-        .overlay(alignment: .bottomTrailing) { nativeRautaControl }
+        .overlay { nativeRautaControl }
     }
 
     private var legacyTabView: some View {
@@ -441,37 +418,48 @@ struct WorkoutsScreen: View {
         }
     }
 
-    @ViewBuilder
+    /// RAUTA sits in the tab bar. A keyboard opens over the tab bar without
+    /// moving it, so RAUTA is laid out as if the keyboard were not there either.
     private var nativeRautaControl: some View {
-        if mainTab != .profile {
-            RautaNativeTabControl(
-                mood: activeWorkout.session == nil ? .calm : .focused,
-                activeTab: $mainTab,
-                actionsForTab: companionActions(for:),
-                workoutActive: activeWorkout.session != nil,
-                wrapped: rautaCompact,
-                isPresented: $rautaMenuPresented,
-                onPresent: presentRautaMenu
-            )
-            .padding(.trailing, 6)
-            .padding(.bottom, Swift.max(7, safeAreaInsets.bottom))
-            .offset(
-                // Keep the center fixed while the RAUTA overlay shrinks from
-                // 68pt to 48pt. With a bottom-trailing anchor the smaller frame
-                // otherwise drifts 10pt right; the native prominent circle does
-                // not move horizontally when it morphs.
-                x: rautaCompact ? -23 : -13,
-                y: rautaCompact ? 42 : 52
-            )
-            .matchedGeometryEffect(
-                id: "rauta-profile-position",
-                in: rautaProfileNamespace,
-                properties: .frame,
-                anchor: .center
-            )
-            .transition(.scale(scale: 0.78, anchor: .bottomTrailing).combined(with: .opacity))
-            .zIndex(1_000)
+        GeometryReader { proxy in
+            ZStack(alignment: .bottomTrailing) {
+                if mainTab != .profile {
+                    rautaTabControl(bottomInset: proxy.safeAreaInsets.bottom)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
         }
+        .ignoresSafeArea(.keyboard)
+    }
+
+    private func rautaTabControl(bottomInset: CGFloat) -> some View {
+        RautaNativeTabControl(
+            mood: activeWorkout.session == nil ? .calm : .focused,
+            activeTab: $mainTab,
+            actionsForTab: companionActions(for:),
+            workoutActive: activeWorkout.session != nil,
+            wrapped: rautaCompact,
+            isPresented: $rautaMenuPresented,
+            onPresent: presentRautaMenu
+        )
+        .padding(.trailing, 6)
+        .padding(.bottom, Swift.max(7, bottomInset))
+        .offset(
+            // Keep the center fixed while the RAUTA overlay shrinks from
+            // 68pt to 48pt. With a bottom-trailing anchor the smaller frame
+            // otherwise drifts 10pt right; the native prominent circle does
+            // not move horizontally when it morphs.
+            x: rautaCompact ? -23 : -13,
+            y: rautaCompact ? 42 : 52
+        )
+        .matchedGeometryEffect(
+            id: "rauta-profile-position",
+            in: rautaProfileNamespace,
+            properties: .frame,
+            anchor: .center
+        )
+        .transition(.scale(scale: 0.78, anchor: .bottomTrailing).combined(with: .opacity))
+        .zIndex(1_000)
     }
 
     private func presentRautaMenu() {
