@@ -166,7 +166,7 @@ final class ActiveWorkoutStore: ObservableObject {
         // session keeps the sets that were really performed.
         WorkoutTransition.recoverWorkoutTransition()
         setSession(nil, outcome: .finished)
-        RestTimerNotifications.shared.cancel()
+        RestAlerts.shared.cancel()
         WorkoutTransition.settleWorkoutTransition()
     }
 
@@ -178,7 +178,7 @@ final class ActiveWorkoutStore: ObservableObject {
             WorkoutTransition.recoverWorkoutTransition()
         }
         setSession(nil, outcome: .cancelled)
-        RestTimerNotifications.shared.cancel()
+        RestAlerts.shared.cancel()
         WorkoutTransition.settleWorkoutTransition()
     }
 
@@ -205,7 +205,7 @@ final class ActiveWorkoutStore: ObservableObject {
         current.restUntil = deadlineMs
         current.setPhaseStartedAt = deadlineMs
         mutate { session = current }
-        RestTimerNotifications.shared.schedule(
+        RestAlerts.shared.schedule(
             deadline: Date(timeIntervalSince1970: deadlineMs / 1_000),
             exerciseName: exerciseName
         )

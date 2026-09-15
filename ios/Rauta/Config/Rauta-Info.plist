@@ -30,6 +30,11 @@
 	<string>Rauta reads your body weight and workout access status so it can tailor training loads and keep your workout sync connected.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Rauta saves completed workouts, duration, and active calories to Apple Health when you choose to sync them.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>workout-processing</string>
+	</array>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Geist-Variable.ttf</string>

@@ -81,14 +81,6 @@ struct ActiveSetLog: View {
             loadCurrent()
         }
         .onChange(of: selectedSetId) { _, _ in loadCurrent() }
-        .task(id: restUntil) {
-            guard let restUntil else { return }
-            let duration = restUntil.timeIntervalSinceNow
-            guard duration > 0 else { return }
-            try? await Task.sleep(for: .seconds(duration))
-            guard !Task.isCancelled, self.restUntil == restUntil else { return }
-            Haptics.trigger(.heavy)
-        }
     }
 
     private var activeSession: ActiveWorkoutSession? { store.activeWorkout.session }

@@ -5,7 +5,6 @@ import HealthKit
 final class WatchWorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HKLiveWorkoutBuilderDelegate, @unchecked Sendable {
     @Published private(set) var heartRate: Double?
     @Published private(set) var activeKilocalories: Double = 0
-    @Published private(set) var distanceMeters: Double = 0
     @Published private(set) var isTracking = false
     @Published private(set) var issue: String?
 
@@ -24,8 +23,7 @@ final class WatchWorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDel
 
             let heartRateType = HKQuantityType(.heartRate)
             let energyType = HKQuantityType(.activeEnergyBurned)
-            let distanceType = HKQuantityType(.distanceWalkingRunning)
-            let readTypes: Set<HKObjectType> = [heartRateType, energyType, distanceType]
+            let readTypes: Set<HKObjectType> = [heartRateType, energyType]
             let shareTypes: Set<HKSampleType> = [HKObjectType.workoutType()]
 
             do {
@@ -49,7 +47,6 @@ final class WatchWorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDel
                     self?.isTracking = false
                     self?.heartRate = nil
                     self?.activeKilocalories = 0
-                    self?.distanceMeters = 0
                 }
             }
         }
@@ -89,7 +86,6 @@ final class WatchWorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDel
 
         let heartType = HKQuantityType(.heartRate)
         let energyType = HKQuantityType(.activeEnergyBurned)
-        let distanceType = HKQuantityType(.distanceWalkingRunning)
 
         if types.contains(heartType),
            let value = builder.statistics(for: heartType)?.mostRecentQuantity() {
@@ -98,10 +94,6 @@ final class WatchWorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDel
         if types.contains(energyType),
            let value = builder.statistics(for: energyType)?.sumQuantity() {
             activeKilocalories = value.doubleValue(for: .kilocalorie())
-        }
-        if types.contains(distanceType),
-           let value = builder.statistics(for: distanceType)?.sumQuantity() {
-            distanceMeters = value.doubleValue(for: .meter())
         }
     }
 

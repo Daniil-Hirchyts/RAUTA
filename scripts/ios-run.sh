@@ -144,7 +144,11 @@ for devices in json.load(sys.stdin)["devices"].values():
     xcrun simctl boot "$UDID"
     xcrun simctl bootstatus "$UDID" -b >/dev/null
   fi
-  pgrep -x Simulator >/dev/null || open -g -a Simulator
+  # Show the device window without taking focus. Xcode 27 replaced the
+  # Simulator app with DeviceHub; a missing viewer never fails the run.
+  if ! pgrep -x Simulator >/dev/null && ! pgrep -x DeviceHub >/dev/null; then
+    open -g -a Simulator 2>/dev/null || open -g -a DeviceHub 2>/dev/null || true
+  fi
   if [[ -n "$APPEARANCE" ]]; then xcrun simctl ui "$UDID" appearance "$APPEARANCE"; fi
   echo "simulator $SIM_NAME ($UDID)"
 }

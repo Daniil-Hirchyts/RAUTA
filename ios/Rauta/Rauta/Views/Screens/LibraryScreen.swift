@@ -157,22 +157,9 @@ struct LibraryScreen: View {
                     Spacer(minLength: 0)
                 }
 
+                // Closing is the round filters button at the front: the field
+                // runs to the edge with nothing after it.
                 searchField(open: open)
-
-                if open {
-                    Button(action: closeSearch) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(Theme.primary)
-                            .frame(width: 42, height: 42)
-                            .contentShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .glassSurface(.clear, in: Circle(), interactive: true, legacyFill: Theme.card.opacity(0.24))
-                    .frame(minWidth: 48, minHeight: 48)
-                    .accessibilityLabel("Cancel search")
-                    .transition(.scale(scale: 0.4).combined(with: .opacity))
-                }
             }
             .frame(height: 48)
         }

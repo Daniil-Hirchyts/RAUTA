@@ -116,8 +116,8 @@ final class RautaRig: RiveViewModel {
 /// Four things drive it, in order of who wins. Cues the director hears from the
 /// app. A finger on the character itself. The person touching anywhere else,
 /// which the eyes follow. And, when nothing is happening, the character's own
-/// idle thoughts, chosen by mood. Between those moments it holds its pose, so
-/// the cost of drawing it follows how much is actually happening.
+/// idle thoughts, chosen by mood. Between those moments it keeps its mood's
+/// loop going at a gentler frame rate: on screen, it is never a still picture.
 ///
 /// Nothing here publishes: the rig is imperative, and redrawing SwiftUI for a
 /// glance would cost more than the glance.
@@ -369,19 +369,27 @@ final class RautaPerformer: ObservableObject {
     private func startIdle() {
         idleTask?.cancel()
         idleTask = Task { @MainActor [weak self] in
+            var delay = 1.0
             while !Task.isCancelled {
-                let delay = self.map { RautaIdle.delay(for: $0.applied?.mood ?? $0.baseMood, random: RautaPerformer.random) } ?? 8
                 try? await Task.sleep(for: .seconds(delay))
-                guard !Task.isCancelled else { return }
-                self?.idle()
+                guard !Task.isCancelled, let self else { return }
+                // A thought that could not happen — something else still holds
+                // the floor, a glance is still out — is tried again shortly,
+                // not a whole thought later: that wait is what used to leave
+                // the character with nothing to do.
+                delay = self.idle()
+                    ? RautaIdle.delay(for: self.applied?.mood ?? self.baseMood, random: RautaPerformer.random)
+                    : RautaIdle.retryDelay
             }
         }
     }
 
-    private func idle() {
-        guard performing, !dragging, !pressing else { return }
+    /// One idle thought. Returns whether it happened.
+    @discardableResult
+    private func idle() -> Bool {
+        guard performing, !dragging, !pressing else { return false }
         let now = Self.nowMs
-        guard now >= activity.ambientDueAt, !activity.isHeld(at: now) else { return }
+        guard now >= activity.ambientDueAt, !activity.isHeld(at: now) else { return false }
         let beat = RautaIdle.beat(
             for: applied?.mood ?? baseMood,
             placement: placement,
@@ -395,11 +403,12 @@ final class RautaPerformer: ObservableObject {
         switch beat {
         case let .glance(x, y, hold):
             // Never pull the eyes off something the person is doing.
-            guard gazeReturnTask == nil else { return }
+            guard gazeReturnTask == nil else { return false }
             aim(at: (x, y), speed: 14)
             returnGaze(after: hold)
+            return true
         case let .play(reaction):
-            play(reaction, source: .ambient)
+            return play(reaction, source: .ambient)
         }
     }
 
@@ -658,10 +667,9 @@ final class RautaPerformer: ObservableObject {
     /// The artwork re-composes thousands of grain paths on every frame the body
     /// moves, so the rig renders at full rate only while something is happening
     /// — a reaction for its whole length, a glance, a touch, an idle thought.
-    /// Between moments the character holds its pose, unless its mood is motion
-    /// itself, which keeps a slow loop. Reduce Motion and Low Power Mode always
-    /// hold still between moments, and a character nobody can see does not
-    /// render at all.
+    /// Between moments it keeps the mood's own loop running at a gentler rate,
+    /// lower still in Low Power Mode, so a character on screen never freezes.
+    /// Only a character nobody can see stops rendering.
     private func refreshPlayback() {
         playbackTask?.cancel()
         playbackTask = nil
@@ -676,13 +684,13 @@ final class RautaPerformer: ObservableObject {
         let target: Int
         if lively {
             target = placement == .hero && !lowPower ? 60 : 30
+        } else if lowPower {
+            target = 12
         } else {
+            // Motion that is the expression itself — a hop, a tremor — needs
+            // more frames to read than a breath does.
             let mood = applied?.mood ?? baseMood
-            guard mood.keepsMoving, !reducedMotion, !lowPower else {
-                rig.pause()
-                return
-            }
-            target = placement == .hero ? 15 : 12
+            target = mood.keepsMoving || placement == .hero ? 24 : 20
         }
         rig.play()
         if target != framesPerSecond, rig.riveView != nil {

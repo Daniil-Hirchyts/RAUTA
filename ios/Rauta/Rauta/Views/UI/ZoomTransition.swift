@@ -193,3 +193,23 @@ private final class SwipeBackDelegate: NSObject, UIGestureRecognizerDelegate {
         return navigation.viewControllers.count > 1 && navigation.transitionCoordinator == nil
     }
 }
+
+// MARK: - UIKit animation
+
+/// Runs a SwiftUI change inside a UIKit animation, for the UIKit-backed pieces
+/// SwiftUI hosts — the tab bar above all — whose layout `withAnimation` does
+/// not reach. The change is applied and every window laid out while the
+/// animation block is open, so UIKit animates the new frames.
+@MainActor
+enum UIKitAnimation {
+    static func spring(duration: TimeInterval, bounce: CGFloat, _ changes: @escaping () -> Void) {
+        UIView.animate(springDuration: duration, bounce: bounce, initialSpringVelocity: 0, delay: 0, options: [.allowUserInteraction]) {
+            changes()
+            for case let scene as UIWindowScene in UIApplication.shared.connectedScenes {
+                for window in scene.windows where !window.isHidden {
+                    window.layoutIfNeeded()
+                }
+            }
+        }
+    }
+}

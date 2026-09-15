@@ -55,6 +55,8 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        [.banner, .list, .sound]
+        // A rest ending in the app is announced by sound, not a banner.
+        if notification.request.identifier == RestAlerts.notificationID { return [] }
+        return [.banner, .list, .sound]
     }
 }

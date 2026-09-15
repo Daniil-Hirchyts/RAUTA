@@ -55,6 +55,9 @@ final class AppStore: ObservableObject {
         bootstrapped = true
 
         AppearanceController.start()
+        // Before anything can make a sound: the app's audio never stops the
+        // person's music.
+        WorkoutAudio.configure()
 
         // A session follows the workout it is performing, wherever that workout
         // is edited from.
@@ -63,6 +66,8 @@ final class AppStore: ObservableObject {
         activeWorkout.reconcileRestored()
 
         LiveActivitySync.start()
+        WorkoutBackgroundSession.shared.start()
+        RestAlerts.shared.start()
         HealthService.shared.startAutoSync()
         WatchConnectivityService.shared.start()
         iCloud.start()

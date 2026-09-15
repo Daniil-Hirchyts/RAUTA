@@ -59,8 +59,7 @@ enum RautaMood: String, CaseIterable, Sendable {
     }
 
     /// Moods whose motion is the expression itself — a hop, a hammer, a
-    /// tremor. Frozen mid-loop they read as something else, so these keep
-    /// moving between moments while every other mood holds its pose.
+    /// tremor — and so need a smoother loop between moments than a breath.
     var keepsMoving: Bool {
         switch self {
         case .excited, .working, .playful, .nervous: return true
@@ -176,7 +175,7 @@ enum RautaSource: String, Sendable {
 
 /// How long anything happening keeps the character from having an idle thought
 /// of its own, in milliseconds.
-let RAUTA_QUIET_AFTER_MS = 4200.0
+let RAUTA_QUIET_AFTER_MS = 2600.0
 
 struct RautaActivity {
     /// The source that currently holds the floor, and until when.
@@ -282,22 +281,27 @@ enum RautaIdle {
         case play(RautaReaction)
     }
 
-    /// Seconds until the next thought.
+    /// Seconds until the next thought. Short enough that a few seconds never
+    /// pass without the character doing something of its own; the mood still
+    /// sets the pace, from a restless nervous to an unhurried sleepy.
     static func delay(for mood: RautaMood, random: () -> Double) -> Double {
         let range: (Double, Double)
         switch mood {
-        case .focused, .working: range = (7, 15)
-        case .calm, .listening: range = (4.5, 10)
-        case .happy, .proud: range = (3.5, 8)
-        case .excited, .playful: range = (2.8, 6)
-        case .curious, .thinking, .confused, .skeptical: range = (3.5, 8)
-        case .bored: range = (5, 11)
-        case .sleepy: range = (9, 18)
-        case .nervous: range = (2.5, 5)
-        case .blocked: range = (4, 8)
+        case .focused, .working: range = (3, 5.5)
+        case .calm, .listening: range = (2.6, 4.8)
+        case .happy, .proud: range = (2.4, 4.2)
+        case .excited, .playful: range = (2, 3.6)
+        case .curious, .thinking, .confused, .skeptical: range = (2.4, 4.2)
+        case .bored: range = (2.8, 5)
+        case .sleepy: range = (3.5, 6)
+        case .nervous: range = (1.8, 3.2)
+        case .blocked: range = (2.6, 4.6)
         }
         return range.0 + random() * (range.1 - range.0)
     }
+
+    /// How soon a thought that could not happen is tried again.
+    static let retryDelay = 0.7
 
     private static func menu(for mood: RautaMood) -> [(Option, Double)] {
         switch mood {

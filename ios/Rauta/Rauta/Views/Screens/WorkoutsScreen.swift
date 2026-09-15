@@ -260,8 +260,21 @@ struct WorkoutsScreen: View {
             try? await Task.sleep(for: .milliseconds(30))
             try? await Task.sleep(for: .milliseconds(380))
             guard !Task.isCancelled else { return }
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
-                profileChrome = target
+            guard target else {
+                // The bar makes room for RAUTA's circle with its own animation.
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
+                    profileChrome = false
+                }
+                return
+            }
+            // Taking the circle away, UIKit lays the bar out full width in one
+            // frame. Applying the change and that layout inside a UIKit
+            // animation makes the bar grow into the space instead — the same
+            // motion as it shrinking back, run the other way.
+            UIKitAnimation.spring(duration: 0.5, bounce: 0.08) {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
+                    profileChrome = true
+                }
             }
         }
         .onReceive(navigation.$requestedWorkoutId) { workoutId in
@@ -314,11 +327,11 @@ struct WorkoutsScreen: View {
             } label: {
                 tabLabel(.profile)
             }
+            // iOS 27 has a real auxiliary/prominent tab role. Use it here
+            // instead of abusing the search role: the system reserves a
+            // separate trailing control without merging it into the four
+            // navigation destinations.
             if !profileChrome {
-                // iOS 27 has a real auxiliary/prominent tab role. Use it here
-                // instead of abusing the search role: the system reserves a
-                // separate trailing control without merging it into the four
-                // navigation destinations.
                 Tab(value: NativeTabSelection.rauta, role: .prominent) {
                     Color.clear
                 } label: {

@@ -1,4 +1,3 @@
-import AVFoundation
 import UIKit
 
 enum HapticInput: String {
@@ -40,7 +39,7 @@ enum Haptics {
         RautaDirector.shared.feedback(input)
         let settings = SettingsStore.shared
         if settings.soundChimesEnabled, input == .success || input == .warning {
-            Chimes.play(input == .success ? 740 : 420)
+            WorkoutAudio.chime(input == .success ? 740 : 420)
         }
         guard settings.hapticsEnabled else { return }
 
@@ -58,83 +57,6 @@ enum Haptics {
             notificationGenerator.notificationOccurred(.warning)
             notificationGenerator.prepare()
         }
-    }
-}
-
-/// Short synthesised tones for the interface chimes.
-enum Chimes {
-    private static let engineBox = EngineBox()
-
-    private final class EngineBox: @unchecked Sendable {
-        var engine: AVAudioEngine?
-        var player: AVAudioPlayerNode?
-        let lock = NSLock()
-    }
-
-    private static func makeTone(
-        frequencies: [Double],
-        noteDuration: Double,
-        gap: Double,
-        peak: Float
-    ) -> AVAudioPCMBuffer? {
-        let sampleRate = 44_100.0
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)
-        else { return nil }
-        let total = noteDuration * Double(frequencies.count) + gap * Double(frequencies.count - 1)
-        let frameCount = AVAudioFrameCount(sampleRate * Swift.max(total, noteDuration))
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount),
-              let channel = buffer.floatChannelData?[0]
-        else { return nil }
-        buffer.frameLength = frameCount
-
-        for frame in 0..<Int(frameCount) { channel[frame] = 0 }
-
-        for (index, frequency) in frequencies.enumerated() {
-            let start = Int(sampleRate * (Double(index) * (noteDuration + gap)))
-            let length = Int(sampleRate * noteDuration)
-            for offset in 0..<length {
-                let frame = start + offset
-                guard frame < Int(frameCount) else { break }
-                let time = Double(offset) / sampleRate
-                // A short exponential swell and decay, so the note reads as a
-                // chime rather than a click.
-                let attack = Swift.min(1.0, time / 0.015)
-                let decay = exp(-time / (noteDuration * 0.35))
-                let envelope = Float(attack * decay)
-                channel[frame] += Float(sin(2 * .pi * frequency * time)) * envelope * peak
-            }
-        }
-        return buffer
-    }
-
-    private static func play(buffer: AVAudioPCMBuffer) {
-        engineBox.lock.lock()
-        defer { engineBox.lock.unlock() }
-
-        let engine = engineBox.engine ?? AVAudioEngine()
-        let player = engineBox.player ?? AVAudioPlayerNode()
-        if engineBox.engine == nil {
-            engine.attach(player)
-            engine.connect(player, to: engine.mainMixerNode, format: buffer.format)
-            engineBox.engine = engine
-            engineBox.player = player
-        }
-        do {
-            try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
-            try? AVAudioSession.sharedInstance().setActive(true)
-            if !engine.isRunning { try engine.start() }
-            player.scheduleBuffer(buffer, at: nil, options: [.interrupts])
-            player.play()
-        } catch {
-            // Audio feedback is optional; blocked playback is harmless.
-        }
-    }
-
-    static func play(_ frequency: Double) {
-        guard let buffer = makeTone(
-            frequencies: [frequency], noteDuration: 0.17, gap: 0, peak: 0.08
-        ) else { return }
-        play(buffer: buffer)
     }
 }
 

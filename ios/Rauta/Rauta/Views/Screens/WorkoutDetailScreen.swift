@@ -538,10 +538,12 @@ private struct WorkoutStartCountdown: View {
         }
         .task(id: remaining) {
             if remaining <= 0 {
+                WorkoutAudio.go()
                 Haptics.trigger(.heavy)
                 onComplete()
                 return
             }
+            WorkoutAudio.tick()
             Haptics.trigger(.light)
             try? await Task.sleep(for: .seconds(1))
             guard !Task.isCancelled else { return }

@@ -40,7 +40,7 @@ struct WatchWorkoutView: View {
         VStack(spacing: 10) {
             header(snapshot)
             timePanel(snapshot)
-            metrics
+            metrics(snapshot)
 
             if let issue = session.connectionIssue ?? workout.issue {
                 Text(issue)
@@ -104,7 +104,9 @@ struct WatchWorkoutView: View {
         }
     }
 
-    private var metrics: some View {
+    /// Heart, energy and where the exercise is up to. No distance: this is a
+    /// strength session, and a walking figure next to metres read as a run.
+    private func metrics(_ snapshot: RautaWatchWorkoutSnapshot) -> some View {
         HStack(spacing: 8) {
             MetricValue(
                 icon: "heart.fill",
@@ -117,9 +119,11 @@ struct WatchWorkoutView: View {
                 unit: "KCAL"
             )
             MetricValue(
-                icon: "figure.walk",
-                value: distance(workout.distanceMeters),
-                unit: workout.distanceMeters >= 1000 ? "KM" : "M"
+                icon: "dumbbell.fill",
+                value: snapshot.setCount > 0
+                    ? "\(Swift.min(snapshot.setIndex, snapshot.setCount))/\(snapshot.setCount)"
+                    : "--",
+                unit: "SETS"
             )
         }
     }
@@ -264,10 +268,6 @@ struct WatchWorkoutView: View {
         return String(format: "%02d:%02d", minutes, secs)
     }
 
-    private func distance(_ meters: Double) -> String {
-        if meters >= 1000 { return String(format: "%.2f", meters / 1000) }
-        return String(Int(meters.rounded()))
-    }
 }
 
 private struct MetricValue: View {
