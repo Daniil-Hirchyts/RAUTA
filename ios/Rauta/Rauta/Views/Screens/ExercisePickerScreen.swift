@@ -142,16 +142,13 @@ struct ExercisePickerScreen: View {
 
     @ViewBuilder private var exerciseResults: some View {
         if matchingExercises.isEmpty {
-            VStack(spacing: 12) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 27, weight: .medium))
-                    .foregroundStyle(Theme.mutedForeground)
-                Text(emptyExercisesMessage)
-                    .font(Theme.sans(16))
-                    .foregroundStyle(Theme.mutedForeground)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 256)
-            }
+            EmptyStatePlaceholder(
+                systemImage: emptyExercisesSymbol,
+                title: emptyExercisesTitle,
+                message: emptyExercisesMessage,
+                actionTitle: emptyExercisesActionTitle,
+                action: emptyExercisesAction
+            )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(24)
         } else {
@@ -170,8 +167,12 @@ struct ExercisePickerScreen: View {
                                 index: index,
                                 selectMode: store.navigation.selectMode,
                                 selected: store.navigation.selectedIds.contains(exercise.id),
+                                zoomSourceID: "picker-exercise:\(exercise.id)",
                                 onOpenDetail: {
-                                    store.navigation.push(.exerciseDetail(exerciseId: $0.id))
+                                    store.navigation.push(
+                                        .exerciseDetail(exerciseId: $0.id),
+                                        from: "picker-exercise:\($0.id)"
+                                    )
                                 },
                                 onToggleSelect: toggleSelected
                             )
@@ -231,15 +232,43 @@ struct ExercisePickerScreen: View {
         .padding(.top, 28)
     }
 
+    private var emptyExercisesQuery: String {
+        search.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var emptyExercisesSymbol: String {
+        emptyExercisesQuery.isEmpty && favoritesOnly ? "heart" : "magnifyingglass"
+    }
+
+    private var emptyExercisesTitle: String {
+        if !emptyExercisesQuery.isEmpty { return "No matches for “\(emptyExercisesQuery)”" }
+        if favoritesOnly { return "No favorites here" }
+        return "No exercises match"
+    }
+
     private var emptyExercisesMessage: String {
-        let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !query.isEmpty {
-            return "Nothing matches \"\(query)\". Try a shorter word — the search reads exercise names only."
+        if !emptyExercisesQuery.isEmpty {
+            return "Try a shorter word — the search reads exercise names only."
         }
         if favoritesOnly {
-            return "No favorites yet. Add favorites from an exercise's detail page."
+            return "Open any exercise and tap the heart to keep it in your favorites."
         }
         return "Nothing uses every muscle and every piece of equipment you picked. Go back and drop one of them."
+    }
+
+    private var emptyExercisesActionTitle: String? {
+        if !emptyExercisesQuery.isEmpty { return "Clear search" }
+        if favoritesOnly { return "Show all exercises" }
+        return nil
+    }
+
+    private func emptyExercisesAction() {
+        Haptics.trigger(.selection)
+        if !emptyExercisesQuery.isEmpty {
+            search = ""
+        } else {
+            favoritesOnly = false
+        }
     }
 
     @ViewBuilder private var rautaOptions: some View {

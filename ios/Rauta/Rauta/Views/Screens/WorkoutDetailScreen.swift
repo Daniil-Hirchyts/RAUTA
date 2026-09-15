@@ -267,7 +267,12 @@ struct WorkoutDetailScreen: View {
                                 LiveExerciseCard(
                                     exercise: exercise,
                                     restSeconds: prescriptions[currentId]?.restSeconds ?? 90,
-                                    onDetail: { store.navigation.push(.exerciseDetail(exerciseId: exercise.id)) }
+                                    onDetail: {
+                                        store.navigation.push(
+                                            .exerciseDetail(exerciseId: exercise.id),
+                                            from: "live-exercise:\(exercise.id)"
+                                        )
+                                    }
                                 )
                             } else {
                                 Text("Every exercise in this workout is done.")
@@ -289,7 +294,12 @@ struct WorkoutDetailScreen: View {
                                         canReorder: canEditWorkout,
                                         exerciseIds: workout.exerciseIds,
                                         reorder: reorder,
-                                        onOpen: { store.navigation.push(.exerciseDetail(exerciseId: id)) },
+                                        onOpen: {
+                                            store.navigation.push(
+                                                .exerciseDetail(exerciseId: id),
+                                                from: "workout-exercise:\(id)"
+                                            )
+                                        },
                                         onAlternative: { openAlternative(id) },
                                         onToggle: { store.activeWorkout.toggleComplete(id) },
                                         onReorder: { ids, moved in updateExercises(ids, moved: moved) },
@@ -361,7 +371,10 @@ struct WorkoutDetailScreen: View {
             return
         }
         issue = nil
-        store.navigation.push(.exerciseAlternatives(exerciseId: exerciseId, workoutId: workoutId))
+        store.navigation.push(
+            .exerciseAlternatives(exerciseId: exerciseId, workoutId: workoutId),
+            from: "workout-exercise:\(exerciseId)"
+        )
     }
 
     private func beginExerciseFlow(preferredWorkoutId: String) {
@@ -369,7 +382,8 @@ struct WorkoutDetailScreen: View {
         store.filters.setEquipment(store.filters.gymEquipment)
         store.navigation.selectedIds = []
         store.navigation.selectMode = false
-        store.navigation.push(.muscles(preferredWorkoutId: preferredWorkoutId))
+        // Asked for from RAUTA's menu, so the flow grows out of RAUTA.
+        store.navigation.push(.muscles(preferredWorkoutId: preferredWorkoutId), from: RautaNativeTabControl.zoomSourceID)
     }
 
     private func move(_ id: String, from index: Int, by direction: Int) {
@@ -670,7 +684,10 @@ struct ActiveExerciseDrawer: View {
                     playerSurface(proxy)
                         .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
                         .offset(y: dismissalOffset)
-                        .simultaneousGesture(dismissGesture(in: proxy))
+                        // With the zoom transition the system follows the drag
+                        // and throws the player back; the hand-made drag is only
+                        // for where that does not exist.
+                        .simultaneousGesture(dismissGesture(in: proxy), including: AppZoom.isAvailable ? .none : .all)
                 }
                 .transition(.opacity)
             }
@@ -710,12 +727,16 @@ struct ActiveExerciseDrawer: View {
                     min(336, min(proxy.size.width - 32, mediaProxy.size.height))
                 )
 
-                Button(action: onDetail) {
-                    ExerciseMediaView(exerciseId: exercise.id, animated: true)
-                        .frame(width: mediaSize, height: mediaSize)
-                }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                // A tap rather than a button: a button holds on to a touch that
+                // starts on it, and this is the biggest thing a drag down to
+                // close the player starts on.
+                ExerciseMediaView(exerciseId: exercise.id, animated: true)
+                    .frame(width: mediaSize, height: mediaSize)
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: onDetail)
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityLabel("Open \(exercise.name) details")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             }
             .padding(.top, Swift.max(proxy.safeAreaInsets.top, 18) + 24)
             .frame(maxWidth: .infinity)
@@ -894,7 +915,7 @@ struct CompletedWorkoutDrawer: View {
                 .ignoresSafeArea()
             }
             .offset(y: dismissalOffset)
-            .simultaneousGesture(dismissGesture(in: proxy))
+            .simultaneousGesture(dismissGesture(in: proxy), including: AppZoom.isAvailable ? .none : .all)
         }
         .ignoresSafeArea()
         .accessibilityAddTraits(.isModal)
@@ -1157,6 +1178,7 @@ private struct LiveExerciseCard: View {
                 .shadow(color: .black.opacity(0.20), radius: 8, y: 4)
             }
             .buttonStyle(.plain)
+            .appZoomSource("live-exercise:\(exercise.id)", cornerRadius: Theme.Radius.xl3)
             .accessibilityLabel("Open \(exercise.name) demonstration")
 
             ActiveSetLog(exerciseId: exercise.id, restSeconds: restSeconds)
@@ -1204,6 +1226,7 @@ private struct WorkoutExerciseRow: View {
             }
 
             card
+                .appZoomSource("workout-exercise:\(exercise.id)", cornerRadius: Theme.Radius.xl2)
                 .offset(x: canFindAlternative || canRemove ? swipeOffset : 0)
         }
         .padding(.horizontal, Theme.Metrics.contentInset)

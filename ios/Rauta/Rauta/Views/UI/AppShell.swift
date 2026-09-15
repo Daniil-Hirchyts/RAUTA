@@ -134,6 +134,8 @@ struct AppGrain: View {
 ///   scroller slides the bar away, scrolling back brings it in.
 struct AppTitledPage<Header: View, Content: View>: View {
     @Environment(\.appSafeAreaInsets) private var safeAreaInsets
+    /// From the bottom of the bar to the page's first row.
+    var contentGap: CGFloat = Theme.Metrics.headerContentGap
     @ViewBuilder var header: () -> Header
     @ViewBuilder var content: () -> Content
 
@@ -151,7 +153,7 @@ struct AppTitledPage<Header: View, Content: View>: View {
     }
 
     private var contentTop: CGFloat {
-        headerHeight + Theme.Metrics.headerContentGap
+        headerHeight + contentGap
     }
 
     /// Once the bar has gone, a tall one leaves no more blur behind than a

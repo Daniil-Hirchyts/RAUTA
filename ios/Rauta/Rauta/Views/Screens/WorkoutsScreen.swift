@@ -130,38 +130,46 @@ struct WorkoutsScreen: View {
     @State private var rautaMenuPresented = false
     @State private var rautaCompact = false
     @State private var exercisePlayerOpen = false
+    /// Navigation asked for from inside the exercise player, run once the
+    /// player has finished closing — nothing can be presented while it is up.
+    @State private var afterExercisePlayer: (() -> Void)?
     @State private var liveWorkoutPresented = false
     @State private var workoutDetailActionState = WorkoutDetailActionState.none
     @State private var workoutDetailActionRequest: WorkoutDetailExternalAction?
     @State private var workoutListSelection = 0
     @State private var selectedWorkoutId: String?
     @State private var tabHostIdentity = UUID()
-    @Namespace private var rautaProfileNamespace
+    @Environment(\.rautaOnStage) private var onStage
+    /// Whether the tab bar and RAUTA are arranged for Profile. It follows
+    /// `mainTab` a beat behind: the selection moves first, and only once it
+    /// has settled does RAUTA leave its circle and the bar resize — each on
+    /// frames of its own instead of all on the same one.
+    @State private var profileChrome = false
 
-    private var visibleWorkouts: [Workout] {
-        workouts.workouts.filter { workout in
-            guard let p = workout.planned, workout.completion == nil,
-                  activeWorkout.session?.workoutId != workout.id else { return true }
-            return !ProgramRecords.isSupersededPlannedSession(trainingRecords.data, p.programId, p.sessionId)
-        }
+    @State private var timelineMemo = Memo<TimelineInputs, WorkoutTimeline>()
+
+    private struct TimelineInputs: Equatable {
+        var workouts: [Workout]
+        var records: PersistedTrainingState
+        var activeWorkoutId: String?
     }
-    /// Every visible workout, split once into what is still ahead and what is
-    /// done. A workout is upcoming while it is the one in progress, or not yet
-    /// completed and not already recorded against its planned session.
-    private var timeline: (upcoming: [Workout], past: [Workout]) {
-        let activeId = activeWorkout.session?.workoutId
-        let recordedSessions = Set(trainingRecords.data.sessions.compactMap(\.plannedSessionId))
-        var upcoming: [Workout] = []
-        var past: [Workout] = []
-        for workout in visibleWorkouts {
-            let recorded = workout.planned.map { recordedSessions.contains($0.sessionId) } ?? false
-            if workout.id == activeId || (workout.completion == nil && !recorded) {
-                upcoming.append(workout)
-            } else {
-                past.append(workout)
-            }
+
+    /// This screen's body runs on every tab change, so the split is kept until
+    /// the workouts, the records or the running workout actually change.
+    /// Unchanged arrays compare by storage, so asking costs next to nothing.
+    private var timeline: WorkoutTimeline {
+        let inputs = TimelineInputs(
+            workouts: workouts.workouts,
+            records: trainingRecords.data,
+            activeWorkoutId: activeWorkout.session?.workoutId
+        )
+        return timelineMemo(inputs) {
+            WorkoutTimeline(
+                workouts: inputs.workouts,
+                records: inputs.records,
+                activeWorkoutId: inputs.activeWorkoutId
+            )
         }
-        return (upcoming.sorted { $0.date < $1.date }, past.sorted { $0.date > $1.date })
     }
 
     var body: some View {
@@ -176,7 +184,11 @@ struct WorkoutsScreen: View {
                 legacyTabView
             }
         }
-        .fullScreenCover(isPresented: $exercisePlayerOpen) {
+        .fullScreenCover(isPresented: $exercisePlayerOpen, onDismiss: {
+            let next = afterExercisePlayer
+            afterExercisePlayer = nil
+            next?()
+        }) {
             if let session = activeWorkout.session {
                 if let exercise = ActiveWorkout.currentExercise(session) {
                     ActiveExerciseDrawer(
@@ -184,8 +196,13 @@ struct WorkoutsScreen: View {
                         session: session,
                         restSeconds: restSeconds(for: exercise.id),
                         onDetail: {
+                            afterExercisePlayer = {
+                                navigation.push(
+                                    .exerciseDetail(exerciseId: exercise.id),
+                                    from: ExercisePlayerZoom.sourceID
+                                )
+                            }
                             closeExercisePlayer()
-                            navigation.push(.exerciseDetail(exerciseId: exercise.id))
                         },
                         hasNextExercise: session.exerciseIds.contains { id in
                             id != session.currentExerciseId && !session.completedIds.contains(id)
@@ -199,6 +216,7 @@ struct WorkoutsScreen: View {
                     )
                     .interactiveDismissDisabled(false)
                     .presentationBackground(.clear)
+                    .appZoomTransition(from: ExercisePlayerZoom.sourceID)
                 } else if ActiveWorkout.progress(session).isComplete {
                     CompletedWorkoutDrawer(
                         session: session,
@@ -207,6 +225,7 @@ struct WorkoutsScreen: View {
                     )
                     .interactiveDismissDisabled(false)
                     .presentationBackground(.clear)
+                    .appZoomTransition(from: ExercisePlayerZoom.sourceID)
                 } else {
                     Color.clear
                         .onAppear { exercisePlayerOpen = false }
@@ -229,6 +248,20 @@ struct WorkoutsScreen: View {
             }
             if tab == .profile {
                 rautaMenuPresented = false
+            }
+        }
+        .task(id: mainTab == .profile) {
+            let target = mainTab == .profile
+            guard profileChrome != target else { return }
+            // Let the tab selection finish moving before anything else does. The
+            // first short wait only resumes once the new page has been built —
+            // the first visit to a page can hold the main thread for a moment —
+            // so the second is always a full beat of settled selection.
+            try? await Task.sleep(for: .milliseconds(30))
+            try? await Task.sleep(for: .milliseconds(380))
+            guard !Task.isCancelled else { return }
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
+                profileChrome = target
             }
         }
         .onReceive(navigation.$requestedWorkoutId) { workoutId in
@@ -281,7 +314,7 @@ struct WorkoutsScreen: View {
             } label: {
                 tabLabel(.profile)
             }
-            if mainTab != .profile {
+            if !profileChrome {
                 // iOS 27 has a real auxiliary/prominent tab role. Use it here
                 // instead of abusing the search role: the system reserves a
                 // separate trailing control without merging it into the four
@@ -326,7 +359,7 @@ struct WorkoutsScreen: View {
             } label: {
                 tabLabel(.profile)
             }
-            if mainTab != .profile {
+            if !profileChrome {
                 Tab(value: NativeTabSelection.rauta, role: .search) {
                     Color.clear
                 } label: {
@@ -367,7 +400,7 @@ struct WorkoutsScreen: View {
             } label: {
                 tabLabel(.profile)
             }
-            if mainTab != .profile {
+            if !profileChrome {
                 Tab(value: NativeTabSelection.rauta, role: .search) {
                     Color.clear
                 } label: {
@@ -404,13 +437,7 @@ struct WorkoutsScreen: View {
             set: { selection in
                 switch selection {
                 case .page(let tab):
-                    if mainTab == .profile || tab == .profile {
-                        withAnimation(.spring(response: 0.58, dampingFraction: 0.86)) {
-                            mainTab = tab
-                        }
-                    } else {
-                        mainTab = tab
-                    }
+                    mainTab = tab
                 case .rauta:
                     presentRautaMenu()
                 }
@@ -432,9 +459,15 @@ struct WorkoutsScreen: View {
     private var nativeRautaControl: some View {
         GeometryReader { proxy in
             ZStack(alignment: .bottomTrailing) {
-                if mainTab != .profile {
-                    rautaTabControl(bottomInset: proxy.safeAreaInsets.bottom)
-                }
+                // Always mounted: building a RAUTA costs about 100 ms of frames,
+                // and switching to Profile and back used to build one each way.
+                // Off to one side it only hides and stops rendering.
+                rautaTabControl(bottomInset: proxy.safeAreaInsets.bottom)
+                    .scaleEffect(profileChrome ? 0.78 : 1, anchor: .bottomTrailing)
+                    .opacity(profileChrome ? 0 : 1)
+                    .allowsHitTesting(!profileChrome)
+                    .accessibilityHidden(profileChrome)
+                    .environment(\.rautaOnStage, onStage && !profileChrome)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
         }
@@ -461,13 +494,6 @@ struct WorkoutsScreen: View {
             x: rautaCompact ? -23 : -13,
             y: rautaCompact ? 42 : 52
         )
-        .matchedGeometryEffect(
-            id: "rauta-profile-position",
-            in: rautaProfileNamespace,
-            properties: .frame,
-            anchor: .center
-        )
-        .transition(.scale(scale: 0.78, anchor: .bottomTrailing).combined(with: .opacity))
         .zIndex(1_000)
     }
 
@@ -524,15 +550,18 @@ struct WorkoutsScreen: View {
             if pageTab == .library {
                 LibraryScreen()
             } else {
-                AppTitledPage {
+                // Summary opens straight onto its first card, a little closer
+                // to the bar than a page that starts with a title of its own.
+                AppTitledPage(contentGap: pageTab == .summary ? 12 : Theme.Metrics.headerContentGap) {
                     AppShellHeader(
                         title: pageTab.rawValue,
                         left: { Color.clear.frame(width: 44, height: 44) },
                         right: {
                             if pageTab == .profile {
                                 AppHeaderButton(systemImage: "gearshape", label: "Settings") {
-                                    navigation.push(.settings)
+                                    navigation.push(.settings, from: "profile-settings")
                                 }
+                                .appZoomSource("profile-settings", cornerRadius: 22)
                             } else {
                                 Color.clear.frame(width: 44, height: 44)
                             }
@@ -544,10 +573,7 @@ struct WorkoutsScreen: View {
                     if pageTab == .summary {
                         summaryContent
                     } else if pageTab == .profile {
-                        ProfileDashboard(
-                            rautaNamespace: rautaProfileNamespace,
-                            isActive: mainTab == .profile
-                        )
+                        ProfileDashboard(isActive: profileChrome)
                     } else {
                         Spacer(minLength: 0)
                     }
@@ -559,10 +585,7 @@ struct WorkoutsScreen: View {
     }
 
     private var summaryContent: some View {
-        SummaryWorkoutsContent(
-            completedWorkouts: timeline.past.filter { $0.completion != nil },
-            history: trainingRecords.trainingHistory()
-        )
+        SummaryWorkoutsContent()
     }
 
     private func companionActions(for tab: MainTab) -> [CompanionAction] {
@@ -576,7 +599,7 @@ struct WorkoutsScreen: View {
         case .profile:
             return [
                 CompanionAction(title: "Settings", systemImage: "gearshape", primary: true) {
-                    navigation.push(.settings)
+                    navigation.push(.settings, from: RautaNativeTabControl.zoomSourceID)
                 }
             ]
         case .summary:
@@ -606,12 +629,12 @@ struct WorkoutsScreen: View {
                 })
             } else if remaining.sessions.isEmpty {
                 actions.append(CompanionAction(title: "Extend training plan", systemImage: "calendar.badge.plus", primary: true) {
-                    navigation.push(.planWeek(sourceProgramId: source.id))
+                    navigation.push(.planWeek(sourceProgramId: source.id), from: RautaNativeTabControl.zoomSourceID)
                 })
             }
         }
         actions.append(CompanionAction(title: trainingRecords.data.activeProgramId == nil ? "Create training plan" : "New training plan", systemImage: "calendar.badge.plus", primary: actions.isEmpty) {
-            navigation.push(.planWeek(sourceProgramId: nil))
+            navigation.push(.planWeek(sourceProgramId: nil), from: RautaNativeTabControl.zoomSourceID)
         })
         actions.append(CompanionAction(title: "Choose exercises", systemImage: "list.bullet.rectangle", action: startExerciseFlow))
         return actions
@@ -706,7 +729,7 @@ struct WorkoutsScreen: View {
     private func startExerciseFlow() {
         filters.reset(); filters.setEquipment(filters.gymEquipment)
         navigation.selectMode = false; navigation.selectedIds = []
-        navigation.push(.muscles(preferredWorkoutId: nil))
+        navigation.push(.muscles(preferredWorkoutId: nil), from: RautaNativeTabControl.zoomSourceID)
     }
     private func selectMainTab(_ tab: MainTab) {
         mainTab = tab
@@ -802,6 +825,12 @@ private struct ConditionalNativeBottomAccessory<Accessory: View>: ViewModifier {
     }
 }
 
+/// The exercise player grows out of the accessory above the tab bar, the way a
+/// mini player opens into Now Playing, and drags back down into it.
+enum ExercisePlayerZoom {
+    static let sourceID = "exercise-player"
+}
+
 @available(iOS 26.0, *)
 private struct NativeExerciseBottomAccessory: View {
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
@@ -822,6 +851,7 @@ private struct NativeExerciseBottomAccessory: View {
             },
             compact: compact
         )
+        .appZoomSource(ExercisePlayerZoom.sourceID, cornerRadius: compact ? 25 : 31)
         .padding(.horizontal, compact ? 4 : Theme.Metrics.contentInset)
         .task(id: compact) {
             // The native tab/accessory morph can briefly keep both placement
@@ -879,6 +909,7 @@ private struct NativeWorkoutCompleteAccessory: View {
         }
         .buttonStyle(.plain)
         .frame(height: compact ? 50 : 62)
+        .appZoomSource(ExercisePlayerZoom.sourceID, cornerRadius: compact ? 25 : 31)
         .padding(.horizontal, compact ? 4 : Theme.Metrics.contentInset)
         .accessibilityLabel("Workout complete, open workout summary")
         .task(id: compact) {
@@ -907,27 +938,73 @@ private struct WorkoutTabHost: View {
         !upcoming.isEmpty || !past.isEmpty
     }
 
-    var body: some View {
-        Group {
-            if let selectedId = selectedWorkoutId {
-                WorkoutDetailScreen(
-                    workoutId: selectedId,
-                    onOpenExercisePlayer: onOpenExercisePlayer,
-                    onBackToWorkouts: closeWorkout,
-                    onReplaceWorkout: { self.selectedWorkoutId = $0 },
-                    externalActionRequest: $detailActionRequest,
-                    onActionStateChange: { detailActionState = $0 }
-                )
-            } else if liveWorkoutPresented,
-               let session = activeWorkout.session {
-                WorkoutDetailScreen(
-                    workoutId: session.workoutId,
-                    onOpenExercisePlayer: onOpenExercisePlayer,
-                    onBackToWorkouts: closeWorkout
-                )
-            } else {
-                workoutListPage
+    /// A workout opened from the list, or the one running.
+    private enum Route: Hashable {
+        case workout(String)
+        case live(String)
+
+        var workoutId: String {
+            switch self {
+            case .workout(let id), .live(let id): return id
             }
+        }
+    }
+
+    /// The tab's stack, read from the selection this host is given: opening a
+    /// workout pushes it, and swiping back or dragging it down closes it.
+    private var path: Binding<[Route]> {
+        Binding(
+            get: {
+                if let selectedWorkoutId { return [.workout(selectedWorkoutId)] }
+                if liveWorkoutPresented, let session = activeWorkout.session {
+                    return [.live(session.workoutId)]
+                }
+                return []
+            },
+            set: { routes in
+                guard routes.isEmpty else { return }
+                detailActionState = .none
+                detailActionRequest = nil
+                selectedWorkoutId = nil
+                liveWorkoutPresented = false
+            }
+        )
+    }
+
+    var body: some View {
+        NavigationStack(path: path) {
+            workoutListPage
+                .toolbar(.hidden, for: .navigationBar)
+                .navigationDestination(for: Route.self) { route in
+                    detail(route)
+                        .toolbar(.hidden, for: .navigationBar)
+                        .swipeBackEnabled()
+                        .background(Theme.shell.ignoresSafeArea())
+                        // The workout grows out of its row, and a drag down
+                        // throws it back there.
+                        .appZoomTransition(from: WorkoutRow.zoomSourceID(route.workoutId))
+                }
+        }
+    }
+
+    @ViewBuilder
+    private func detail(_ route: Route) -> some View {
+        switch route {
+        case .workout(let id):
+            WorkoutDetailScreen(
+                workoutId: id,
+                onOpenExercisePlayer: onOpenExercisePlayer,
+                onBackToWorkouts: closeWorkout,
+                onReplaceWorkout: { self.selectedWorkoutId = $0 },
+                externalActionRequest: $detailActionRequest,
+                onActionStateChange: { detailActionState = $0 }
+            )
+        case .live(let id):
+            WorkoutDetailScreen(
+                workoutId: id,
+                onOpenExercisePlayer: onOpenExercisePlayer,
+                onBackToWorkouts: closeWorkout
+            )
         }
     }
 
@@ -965,26 +1042,22 @@ private struct WorkoutTabHost: View {
     private func openWorkout(_ workout: Workout) {
         _ = EngineWorkout.ensureEngineWorkout(workout.id)
         Haptics.trigger(.selection)
-        withAnimation(Theme.Motion.smoothOut(0.28)) {
-            detailActionState = .none
-            detailActionRequest = nil
-            if activeWorkoutId == workout.id {
-                selectedWorkoutId = nil
-                liveWorkoutPresented = true
-            } else {
-                liveWorkoutPresented = false
-                selectedWorkoutId = workout.id
-            }
+        detailActionState = .none
+        detailActionRequest = nil
+        if activeWorkoutId == workout.id {
+            selectedWorkoutId = nil
+            liveWorkoutPresented = true
+        } else {
+            liveWorkoutPresented = false
+            selectedWorkoutId = workout.id
         }
     }
 
     private func closeWorkout() {
-        withAnimation(Theme.Motion.smoothOut(0.28)) {
-            detailActionState = .none
-            detailActionRequest = nil
-            selectedWorkoutId = nil
-            liveWorkoutPresented = false
-        }
+        detailActionState = .none
+        detailActionRequest = nil
+        selectedWorkoutId = nil
+        liveWorkoutPresented = false
     }
 }
 
@@ -997,6 +1070,11 @@ struct RautaNativeTabControl: View {
     @Binding var isPresented: Bool
     var onPresent: () -> Void
     @State private var reactionKey = ""
+    /// The action picked from the menu, run once the menu has finished
+    /// closing: a page cannot be presented while the menu still is.
+    @State private var pendingAction: (() -> Void)?
+
+    static let zoomSourceID = "rauta-menu"
 
     private var controlSize: CGFloat {
         if wrapped { return 48 }
@@ -1024,8 +1102,8 @@ struct RautaNativeTabControl: View {
             AppMenuSurface(dismiss: { isPresented = false }) {
                 ForEach(actions) { action in
                     Button {
+                        pendingAction = action.action
                         isPresented = false
-                        action.action()
                     } label: {
                         Label(action.title, systemImage: action.systemImage)
                     }
@@ -1033,6 +1111,11 @@ struct RautaNativeTabControl: View {
             }
             .presentationCompactAdaptation(.popover)
             .presentationBackground(.clear)
+            .onDisappear {
+                let action = pendingAction
+                pendingAction = nil
+                action?()
+            }
         }
         .onChange(of: isPresented) { _, presented in
             if presented, !actions.isEmpty {
@@ -1056,18 +1139,58 @@ struct RautaNativeTabControl: View {
         }
         .frame(width: controlSize, height: controlSize)
         .contentShape(Circle())
+        .appZoomSource(Self.zoomSourceID, cornerRadius: controlSize / 2)
     }
 }
 
-private struct SummaryWorkoutsContent: View {
-    let completedWorkouts: [Workout]
-    let history: TrainingHistory
+/// Every visible workout, split once into what is still ahead and what is done.
+/// A workout is upcoming while it is the one in progress, or not yet completed
+/// and not already recorded against its planned session. A planned session a
+/// later plan has replaced is not shown at all.
+struct WorkoutTimeline {
+    var upcoming: [Workout]
+    var past: [Workout]
 
-    private var month: MonthlySummarySnapshot {
-        MonthlySummarySnapshot(workouts: completedWorkouts, history: history)
+    init(workouts: [Workout], records: PersistedTrainingState, activeWorkoutId: String?) {
+        let recordedSessions = Set(records.sessions.compactMap(\.plannedSessionId))
+        var upcoming: [Workout] = []
+        var past: [Workout] = []
+        for workout in workouts {
+            if let planned = workout.planned, workout.completion == nil, workout.id != activeWorkoutId,
+               ProgramRecords.isSupersededPlannedSession(records, planned.programId, planned.sessionId) {
+                continue
+            }
+            let recorded = workout.planned.map { recordedSessions.contains($0.sessionId) } ?? false
+            if workout.id == activeWorkoutId || (workout.completion == nil && !recorded) {
+                upcoming.append(workout)
+            } else {
+                past.append(workout)
+            }
+        }
+        self.upcoming = upcoming.sorted { $0.date < $1.date }
+        self.past = past.sorted { $0.date > $1.date }
     }
+}
+
+/// The Summary tab. It reads the stores itself rather than being handed its
+/// figures, so the host redrawing for a tab change does not rebuild the
+/// training history: with nothing passed in, SwiftUI has no reason to run this
+/// body again until a store it reads changes.
+private struct SummaryWorkoutsContent: View {
+    @ObservedObject private var workouts = WorkoutsStore.shared
+    @ObservedObject private var trainingRecords = TrainingRecordsStore.shared
+    @ObservedObject private var activeWorkout = ActiveWorkoutStore.shared
 
     var body: some View {
+        let completedWorkouts = WorkoutTimeline(
+            workouts: workouts.workouts,
+            records: trainingRecords.data,
+            activeWorkoutId: activeWorkout.session?.workoutId
+        ).past.filter { $0.completion != nil }
+        let month = MonthlySummarySnapshot(
+            workouts: completedWorkouts,
+            history: trainingRecords.trainingHistory()
+        )
         ScrollView {
             LazyVStack(spacing: 12) {
                 StreakStrip(workouts: completedWorkouts)
@@ -1076,7 +1199,9 @@ private struct SummaryWorkoutsContent: View {
                 MonthlySummaryDashboard(snapshot: month)
             }
             .padding(.horizontal, 12)
-            .padding(.bottom, 220)
+            // The same run-out as Profile: enough to scroll the last card clear
+            // of the tab bar, no more.
+            .padding(.bottom, 120)
         }
         .pageScroll()
         .scrollIndicators(.hidden)
@@ -1175,7 +1300,17 @@ private struct WorkoutListContent: View {
         return sections
     }
 
-    private var emptyMessage: String {
+    private var emptySymbol: String {
+        switch filter {
+        case .all: return "figure.strengthtraining.traditional"
+        case .today: return "calendar"
+        case .planned: return "calendar.badge.plus"
+        case .past: return "clock.arrow.circlepath"
+        case .fullBody, .upper, .lower, .push, .pull, .legs: return "line.3.horizontal.decrease"
+        }
+    }
+
+    private var emptyTitle: String {
         switch filter {
         case .all: return "No workouts yet"
         case .today: return "Nothing planned for today"
@@ -1186,55 +1321,60 @@ private struct WorkoutListContent: View {
         }
     }
 
+    private var emptyMessage: String {
+        switch filter {
+        case .all: return "Plan your week or choose exercises, and your workouts will show up here."
+        case .today: return "A rest day. Pick exercises from the Library if you want to train anyway."
+        case .planned: return "Create a training plan and its sessions will line up here."
+        case .past: return "Finished workouts stay here with their sets and times."
+        case .fullBody, .upper, .lower, .push, .pull, .legs:
+            return "None of your workouts are \(filter.title.lowercased()) sessions yet."
+        }
+    }
+
     var body: some View {
         Group {
-            if allWorkouts.isEmpty {
-                VStack(spacing: 14) {
-                    Image(systemName: "figure.strengthtraining.traditional")
-                        .font(.system(size: 34, weight: .semibold))
-                        .foregroundStyle(Theme.primary)
-
-                    Text("No workouts yet")
-                        .font(Theme.sans(20, weight: .heavy))
-                        .foregroundStyle(Theme.foreground)
-                }
+            if filteredWorkouts.isEmpty {
+                EmptyStatePlaceholder(
+                    systemImage: emptySymbol,
+                    title: emptyTitle,
+                    message: emptyMessage,
+                    actionTitle: filter == .all ? nil : "Show all workouts",
+                    action: {
+                        Haptics.trigger(.selection)
+                        selection = WorkoutListFilter.all.rawValue
+                    }
+                )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.horizontal, 32)
-                .accessibilityElement(children: .combine)
+                .belowPageHeader()
+                .padding(32)
+                .offset(y: -30)
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 10) {
-                        if filteredWorkouts.isEmpty {
-                            Text(emptyMessage)
-                                .font(Theme.sans(13))
-                                .foregroundStyle(Theme.mutedForeground)
-                                .frame(maxWidth: .infinity)
-                                .padding(.top, 24)
-                        } else {
-                            ForEach(sections) { section in
-                                Text(section.title)
-                                    .font(Theme.sans(17, weight: .heavy))
-                                    .foregroundStyle(Theme.foreground)
-                                    .padding(.horizontal, 4)
-                                    .padding(.top, 8)
+                        ForEach(sections) { section in
+                            Text(section.title)
+                                .font(Theme.sans(17, weight: .heavy))
+                                .foregroundStyle(Theme.foreground)
+                                .padding(.horizontal, 4)
+                                .padding(.top, 8)
 
-                                ForEach(section.workouts) { workout in
-                                    WorkoutRow(
-                                        workout: workout,
-                                        isPast: pastIds.contains(workout.id),
-                                        isRunning: activeWorkoutId == workout.id,
-                                        onOpen: { onOpen(workout) }
-                                    )
-                                }
+                            ForEach(section.workouts) { workout in
+                                WorkoutRow(
+                                    workout: workout,
+                                    isPast: pastIds.contains(workout.id),
+                                    isRunning: activeWorkoutId == workout.id,
+                                    onOpen: { onOpen(workout) }
+                                )
                             }
-
-                            sectionFooter(
-                                remaining: Swift.max(0, filteredWorkouts.count - visibleLimit),
-                                showLess: visibleLimit > 12,
-                                onMore: { visibleLimit += 12 },
-                                onLess: { visibleLimit = 12 }
-                            )
                         }
+
+                        sectionFooter(
+                            remaining: Swift.max(0, filteredWorkouts.count - visibleLimit),
+                            showLess: visibleLimit > 12,
+                            onMore: { visibleLimit += 12 },
+                            onLess: { visibleLimit = 12 }
+                        )
                     }
                     .padding(.horizontal, 12)
                     .padding(.bottom, 92)
@@ -1546,6 +1686,8 @@ private struct WorkoutRow: View {
     let onOpen: () -> Void
     private var muscles: [MuscleId] { ExerciseCatalogue.musclesForExerciseIds(workout.exerciseIds) }
 
+    static func zoomSourceID(_ workoutId: String) -> String { "workout:\(workoutId)" }
+
     var body: some View {
         Button(action: onOpen) {
             HStack(spacing: 12) {
@@ -1570,6 +1712,7 @@ private struct WorkoutRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .appZoomSource(Self.zoomSourceID(workout.id), cornerRadius: 30)
         .frame(maxWidth: .infinity)
     }
 

@@ -1,41 +1,106 @@
 import SwiftUI
 
+/// The app's navigation, drawn from ``AppSessionStore/pages``.
+///
+/// The root page is the tabs (or first-run setup). Every page opened over it is
+/// a real presentation: a full-screen modal that grows out of what was tapped
+/// and can be dragged back into it. Steps taken inside a modal push within its
+/// own navigation stack, with the system's swipe back. Modals opened from
+/// inside a modal stack on top of it.
 @MainActor
 struct RootView: View {
     @ObservedObject private var navigation = AppSessionStore.shared
+    @Namespace private var zoomNamespace
 
     var body: some View {
         GeometryReader { proxy in
-            ZStack {
+            Group {
                 if let rootEntry = navigation.pages.first {
-                    page(for: rootEntry.page)
+                    AppPageView(entry: rootEntry)
                         .id(rootEntry.id)
-                        // The root page stays mounted under whatever is pushed
-                        // over it; its RAUTA must not keep performing unseen.
-                        .environment(\.rautaOnStage, navigation.activeEntry?.id == rootEntry.id)
                 } else {
                     WorkoutsScreen()
                 }
-
-                if let activeEntry = navigation.activeEntry,
-                   activeEntry.id != navigation.pages.first?.id {
-                    page(for: activeEntry.page)
-                        .id(activeEntry.id)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Theme.shell.ignoresSafeArea())
-                        .zIndex(100)
-                }
             }
+            .modifier(ModalPresenter(index: 0))
             .environment(\.appSafeAreaInsets, proxy.safeAreaInsets)
         }
-        .simultaneousGesture(edgeBackGesture)
+        .environment(\.appZoomNamespace, zoomNamespace)
         .background(AppearanceWindowAnchor().allowsHitTesting(false))
         .tint(Theme.primary)
     }
+}
+
+/// Presents the modal at `index` in ``AppSessionStore/modals`` over the view it
+/// is attached to.
+private struct ModalPresenter: ViewModifier {
+    let index: Int
+    @ObservedObject private var navigation = AppSessionStore.shared
+
+    func body(content: Content) -> some View {
+        content.fullScreenCover(
+            item: Binding(
+                get: { navigation.modals.indices.contains(index) ? navigation.modals[index].first : nil },
+                // Dragged down, or closed by the system.
+                set: { if $0 == nil { navigation.dismissModal(at: index) } }
+            )
+        ) { root in
+            ModalStack(index: index, root: root)
+        }
+    }
+}
+
+/// One modal: its first page, the steps pushed inside it, and any modal opened
+/// over it.
+private struct ModalStack: View {
+    let index: Int
+    let root: AppPageEntry
+    @ObservedObject private var navigation = AppSessionStore.shared
+
+    private var steps: Binding<[AppPageEntry]> {
+        Binding(
+            get: {
+                navigation.modals.indices.contains(index)
+                    ? Array(navigation.modals[index].dropFirst())
+                    : []
+            },
+            set: { navigation.setSteps($0, inModal: index) }
+        )
+    }
+
+    var body: some View {
+        NavigationStack(path: steps) {
+            AppPageView(entry: root)
+                .navigationDestination(for: AppPageEntry.self) { entry in
+                    AppPageView(entry: entry)
+                }
+        }
+        .modifier(ModalPresenter(index: index + 1))
+        .presentationBackground(Theme.shell)
+        .appZoomTransition(from: root.zoomSource)
+    }
+}
+
+/// A page, as the navigation shows it.
+struct AppPageView: View {
+    let entry: AppPageEntry
+    @ObservedObject private var navigation = AppSessionStore.shared
+
+    var body: some View {
+        page
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Theme.shell.ignoresSafeArea())
+            // Every page draws its own title bar.
+            .toolbar(.hidden, for: .navigationBar)
+            .swipeBackEnabled()
+            // A page something has been opened over keeps its place in the
+            // stack, but its RAUTA must not keep performing unseen.
+            .environment(\.rautaOnStage, navigation.activeEntry?.id == entry.id)
+    }
 
     @ViewBuilder
-    private func page(for page: AppPage) -> some View {
-        switch page {
+    private var page: some View {
+        switch entry.page {
         case .workouts:
             WorkoutsScreen()
         case .settings:
@@ -77,18 +142,5 @@ struct RootView: View {
         case .exerciseAlternatives(let exerciseId, let workoutId):
             ExerciseAlternativesScreen(exerciseId: exerciseId, workoutId: workoutId)
         }
-    }
-
-    private var edgeBackGesture: some Gesture {
-        DragGesture(minimumDistance: 20)
-            .onEnded { value in
-                guard navigation.pages.count > 1,
-                      value.startLocation.x < 24,
-                      value.translation.width > 90,
-                      abs(value.translation.height) < 80
-                else { return }
-                Haptics.trigger(.selection)
-                navigation.pop()
-            }
     }
 }

@@ -106,6 +106,24 @@ struct GlassSurface<S: InsettableShape>: ViewModifier {
     }
 }
 
+// MARK: - Morphing glass
+
+/// Groups glass that changes shape together: on iOS 26 panes that come close
+/// melt into one another as they move, so a strip of controls reads as one
+/// material rearranging itself. Before iOS 26 it is a plain container.
+struct GlassMorphContainer<Content: View>: View {
+    var spacing: CGFloat
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing, content: content)
+        } else {
+            content()
+        }
+    }
+}
+
 // MARK: - Glass buttons
 
 /// The cut of a glass button, and how big its pane is.

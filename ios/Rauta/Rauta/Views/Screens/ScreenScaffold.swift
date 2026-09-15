@@ -184,6 +184,46 @@ struct SelectionChip: View {
     }
 }
 
+/// What a page shows when it has nothing to list: a symbol, a title that says
+/// what is missing, a line on how to get some, and optionally the one action
+/// that fixes it. Every empty list in the app uses this, so they all read the
+/// same way.
+struct EmptyStatePlaceholder: View {
+    let systemImage: String
+    let title: String
+    let message: String
+    var actionTitle: String? = nil
+    var action: () -> Void = {}
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.system(size: 30, weight: .medium))
+                .foregroundStyle(Theme.primary)
+                .frame(height: 42)
+                .padding(.bottom, 4)
+
+            Text(title)
+                .font(Theme.sans(18, weight: .bold))
+                .foregroundStyle(Theme.foreground)
+                .multilineTextAlignment(.center)
+
+            Text(message)
+                .font(Theme.sans(14))
+                .foregroundStyle(Theme.mutedForeground)
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+                .frame(maxWidth: 286)
+
+            if let actionTitle {
+                AppButton(actionTitle, variant: .secondary, action: action)
+                    .padding(.top, 6)
+            }
+        }
+        .frame(maxWidth: 320)
+    }
+}
+
 struct InlineNotice: View {
     let message: String
     var isError = false

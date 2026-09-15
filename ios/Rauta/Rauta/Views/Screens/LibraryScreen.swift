@@ -78,6 +78,7 @@ struct LibraryScreen: View {
                 onClose: { browse.presentedFilter = nil }
             )
             .presentationBackground(Theme.shell)
+            .appZoomTransition(from: filter.zoomSourceID)
         }
         .onChange(of: browse.search) { _, _ in resetPagination() }
         .onChange(of: browse.selectedMuscles) { _, _ in resetPagination() }
@@ -94,15 +95,9 @@ struct LibraryScreen: View {
             above: { EmptyView() },
             below: {
                 VStack(alignment: .leading, spacing: 10) {
-                    if browse.searchOpen {
-                        expandedSearchBar
-                    } else {
-                        compactFilterBar
-                    }
-
+                    filterBar
                     resultCountLabel
                 }
-                .animation(Theme.Motion.smoothOut(0.28), value: browse.searchOpen)
             }
         )
     }
@@ -129,61 +124,115 @@ struct LibraryScreen: View {
         return parts.joined(separator: " · ")
     }
 
-    private var compactFilterBar: some View {
-        HStack(spacing: 8) {
-            LibraryFilterChip(
-                title: "Muscles",
-                selected: !browse.selectedMuscles.isEmpty
-            ) {
-                Haptics.trigger(.selection)
-                browse.presentedFilter = .muscles
-            }
+    /// The filters and the search are one strip of glass that changes shape.
+    /// Opening the search, the round search button stretches into the field
+    /// and the Muscles chip draws in to the round filters button, while the
+    /// chips between them melt away; closing runs the same morph backwards.
+    ///
+    /// The two ends are the same views in both states, so their glass is
+    /// reshaped in place rather than swapped for new glass.
+    private var filterBar: some View {
+        let open = browse.searchOpen
+        return GlassMorphContainer(spacing: 6) {
+            HStack(spacing: 8) {
+                leadingFilterButton(open: open)
 
-            LibraryFilterChip(
-                title: "Equipment",
-                selected: !browse.selectedEquipment.isEmpty
-            ) {
-                Haptics.trigger(.selection)
-                browse.presentedFilter = .equipment
-            }
+                if !open {
+                    LibraryFilterChip(
+                        title: "Equipment",
+                        selected: !browse.selectedEquipment.isEmpty
+                    ) {
+                        Haptics.trigger(.selection)
+                        browse.presentedFilter = .equipment
+                    }
+                    .appZoomSource(LibraryFilterKind.equipment.zoomSourceID, cornerRadius: 20)
+                    .transition(Self.chipMelt)
 
-            LibraryFilterChip(title: "Favorites", selected: browse.favoritesOnly) {
-                Haptics.trigger(.selection)
-                browse.favoritesOnly.toggle()
-            }
+                    LibraryFilterChip(title: "Favorites", selected: browse.favoritesOnly) {
+                        Haptics.trigger(.selection)
+                        browse.favoritesOnly.toggle()
+                    }
+                    .transition(Self.chipMelt)
 
-            Spacer(minLength: 0)
+                    Spacer(minLength: 0)
+                }
 
-            Button {
-                openSearch()
-            } label: {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Theme.primary)
+                searchField(open: open)
+
+                if open {
+                    Button(action: closeSearch) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(Theme.primary)
+                            .frame(width: 42, height: 42)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .glassSurface(.clear, in: Circle(), interactive: true, legacyFill: Theme.card.opacity(0.24))
+                    .frame(minWidth: 48, minHeight: 48)
+                    .accessibilityLabel("Cancel search")
+                    .transition(.scale(scale: 0.4).combined(with: .opacity))
+                }
             }
-            .buttonStyle(
-                .glassControl(.clear, .circle(diameter: 42), legacyFill: Theme.card.opacity(0.24))
-            )
-            .frame(minWidth: 48, minHeight: 48)
-            .accessibilityLabel("Search exercises")
+            .frame(height: 48)
         }
     }
 
-    private var expandedSearchBar: some View {
-        HStack(spacing: 8) {
-            LibraryRoundButton(
-                systemImage: "circle.grid.2x2.fill",
-                label: "Return to filters",
-                variant: .secondary
-            ) {
+    /// Muscles while browsing; the round way back to the filters while
+    /// searching.
+    private func leadingFilterButton(open: Bool) -> some View {
+        let musclesSelected = !browse.selectedMuscles.isEmpty
+        return Button {
+            if open {
                 closeSearch()
+            } else {
+                Haptics.trigger(.selection)
+                browse.presentedFilter = .muscles
             }
+        } label: {
+            ZStack {
+                if open {
+                    Image(systemName: "circle.grid.2x2.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Theme.secondaryForeground)
+                        .transition(.scale(scale: 0.5).combined(with: .opacity))
+                } else {
+                    Text("Muscles")
+                        .font(Theme.sans(13, weight: .semibold))
+                        .foregroundStyle(musclesSelected ? Theme.primaryForeground : Theme.secondaryForeground)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .padding(.horizontal, 16)
+                        .transition(.opacity)
+                }
+            }
+            .frame(width: open ? 42 : nil, height: open ? 42 : 40)
+            .clipShape(Capsule())
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .modifier(OptionalZoomSource(id: open ? nil : LibraryFilterKind.muscles.zoomSourceID, cornerRadius: 20))
+        .glassSurface(
+            open ? .regular : (musclesSelected ? .tinted(Theme.primary) : .clear),
+            in: Capsule(),
+            interactive: true,
+            legacyFill: !open && musclesSelected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.24)
+        )
+        .frame(minWidth: 48, minHeight: 44)
+        .accessibilityLabel(open ? "Return to filters" : "Muscles")
+        .accessibilityAddTraits(!open && musclesSelected ? .isSelected : [])
+    }
 
-            HStack(spacing: 9) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(Theme.secondaryForeground)
+    /// A round button until it is opened, then the field itself. The glyph is
+    /// the same one throughout: it travels from the middle of the circle to the
+    /// front of the field.
+    private func searchField(open: Bool) -> some View {
+        HStack(spacing: 9) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(open ? Theme.secondaryForeground : Theme.primary)
 
+            if open {
                 TextField("Search exercises", text: $browse.search)
                     .focused($searchFocused)
                     .font(Theme.sans(16))
@@ -191,6 +240,7 @@ struct LibraryScreen: View {
                     .tint(Theme.primary)
                     .submitLabel(.search)
                     .accessibilityLabel("Search exercises by name")
+                    .transition(.opacity)
 
                 if !browse.search.isEmpty {
                     Button {
@@ -203,27 +253,42 @@ struct LibraryScreen: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Clear search")
+                    .transition(.opacity)
                 }
             }
-            .padding(.horizontal, 14)
-            .frame(height: 46)
-            .glassSurface(
-                .regular,
-                in: Capsule(),
-                interactive: true,
-                border: searchFocused ? Theme.ring : Theme.Glassware.edge,
-                legacyFill: Theme.card.opacity(0.24)
-            )
-
-            LibraryRoundButton(systemImage: "xmark", label: "Cancel search") {
-                closeSearch()
-            }
         }
+        .padding(.horizontal, open ? 14 : 0)
+        .frame(width: open ? nil : 42, height: open ? 46 : 42)
+        .frame(maxWidth: open ? .infinity : nil, alignment: .leading)
+        .contentShape(Capsule())
+        .onTapGesture {
+            if open { searchFocused = true } else { openSearch() }
+        }
+        .glassSurface(
+            open ? .regular : .clear,
+            in: Capsule(),
+            interactive: true,
+            // Present in both states, so the ring grows with the glass
+            // instead of appearing at the field's final size.
+            border: open ? (searchFocused ? Theme.ring : Theme.Glassware.edge) : .clear,
+            legacyFill: Theme.card.opacity(0.24)
+        )
+        .frame(minWidth: 48, minHeight: 48)
+        .accessibilityElement(children: open ? .contain : .ignore)
+        .accessibilityLabel(open ? "" : "Search exercises")
+        .accessibilityAddTraits(open ? [] : .isButton)
+        .accessibilityAction { if !open { openSearch() } }
     }
+
+    /// Chips that make way for the field shrink into the glass beside them.
+    private static let chipMelt = AnyTransition.scale(scale: 0.6).combined(with: .opacity)
+
+    /// Glass moves best on a spring with a touch of give.
+    private static let searchMorphAnimation = Animation.spring(response: 0.42, dampingFraction: 0.82)
 
     private func openSearch() {
         Haptics.trigger(.selection)
-        withAnimation(Theme.Motion.smoothOut(0.28)) {
+        withAnimation(Self.searchMorphAnimation) {
             browse.searchOpen = true
         }
         Task { @MainActor in
@@ -236,7 +301,7 @@ struct LibraryScreen: View {
         Haptics.trigger(.selection)
         searchFocused = false
         browse.search = ""
-        withAnimation(Theme.Motion.smoothOut(0.28)) {
+        withAnimation(Self.searchMorphAnimation) {
             browse.searchOpen = false
         }
     }
@@ -258,8 +323,12 @@ struct LibraryScreen: View {
                         ExerciseCard(
                             exercise: exercise,
                             index: index,
+                            zoomSourceID: "library-exercise:\(exercise.id)",
                             onOpenDetail: {
-                                navigation.push(.exerciseDetail(exerciseId: $0.id))
+                                navigation.push(
+                                    .exerciseDetail(exerciseId: $0.id),
+                                    from: "library-exercise:\($0.id)"
+                                )
                             },
                             onToggleSelect: { _ in }
                         )
@@ -288,7 +357,7 @@ struct LibraryScreen: View {
     }
 
     private var emptyState: some View {
-        LibraryEmptyState(
+        EmptyStatePlaceholder(
             systemImage: emptySystemImage,
             title: emptyTitle,
             message: emptyMessage,
@@ -361,58 +430,26 @@ private struct LibraryFilterChip: View {
     let action: () -> Void
 
     var body: some View {
+        // Glass applied as an effect rather than a button style, so the filter
+        // bar can morph it — a style's glass cannot be named.
         Button(action: action) {
             Text(title)
                 .font(Theme.sans(13, weight: .semibold))
                 .foregroundStyle(selected ? Theme.primaryForeground : Theme.secondaryForeground)
                 .padding(.horizontal, 16)
+                .frame(height: 40)
+                .contentShape(Capsule())
         }
-        .buttonStyle(
-            .glassControl(
-                selected ? .tinted(Theme.primary) : .clear,
-                .capsule(height: 40),
-                legacyFill: selected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.24)
-            )
+        .buttonStyle(.plain)
+        .glassSurface(
+            selected ? .tinted(Theme.primary) : .clear,
+            in: Capsule(),
+            interactive: true,
+            legacyFill: selected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.24)
         )
         .frame(minHeight: 44)
         .accessibilityLabel(title)
         .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-}
-
-private struct LibraryRoundButton: View {
-    let systemImage: String
-    let label: String
-    var variant: ButtonVariant = .ghost
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(roundButtonForeground)
-        }
-        .buttonStyle(
-            .glassControl(roundButtonTone, .circle(diameter: 42), legacyFill: Theme.card.opacity(0.24))
-        )
-        .frame(minWidth: 48, minHeight: 48)
-        .accessibilityLabel(label)
-    }
-
-    private var roundButtonTone: GlassTone {
-        switch variant {
-        case .secondary: return .regular
-        case .primary: return .tinted(Theme.primary)
-        case .ghost, .destructive: return .clear
-        }
-    }
-
-    private var roundButtonForeground: Color {
-        switch variant {
-        case .secondary: return Theme.secondaryForeground
-        case .primary: return Theme.primaryForeground
-        case .ghost, .destructive: return Theme.primary
-        }
     }
 }
 
@@ -422,42 +459,8 @@ enum LibraryFilterKind: String, Identifiable {
 
     var id: String { rawValue }
     var title: String { self == .muscles ? "Muscles" : "Equipment" }
-}
-
-private struct LibraryEmptyState: View {
-    let systemImage: String
-    let title: String
-    let message: String
-    let actionTitle: String?
-    let action: () -> Void
-
-    var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.system(size: 30, weight: .medium))
-                .foregroundStyle(Theme.primary)
-                .frame(height: 42)
-                .padding(.bottom, 4)
-
-            Text(title)
-                .font(Theme.sans(18, weight: .bold))
-                .foregroundStyle(Theme.foreground)
-                .multilineTextAlignment(.center)
-
-            Text(message)
-                .font(Theme.sans(14))
-                .foregroundStyle(Theme.mutedForeground)
-                .multilineTextAlignment(.center)
-                .lineSpacing(3)
-                .frame(maxWidth: 286)
-
-            if let actionTitle {
-                AppButton(actionTitle, variant: .secondary, action: action)
-                    .padding(.top, 6)
-            }
-        }
-        .frame(maxWidth: 320)
-    }
+    /// The chip its page grows out of.
+    var zoomSourceID: String { "library-filter:\(rawValue)" }
 }
 
 private struct LibraryFilterPage: View {

@@ -2,7 +2,9 @@ import SwiftUI
 
 struct ProfileDashboard: View {
     @ObservedObject private var store = AppStore.shared
-    let rautaNamespace: Namespace.ID
+    @Environment(\.rautaOnStage) private var onStage
+    /// Whether Profile is the tab on screen. The avatar is built once and
+    /// kept; switching tabs only brings it in or sends it away.
     let isActive: Bool
 
     private let recordColumns = [
@@ -118,39 +120,30 @@ struct ProfileDashboard: View {
 
     private var identity: some View {
         VStack(spacing: 12) {
-            Group {
-                if isActive {
-                    ZStack {
-                        Circle()
-                            .fill(Theme.primary.opacity(0.07))
-                            .frame(width: 144, height: 144)
-                            .blur(radius: 18)
+            ZStack {
+                Circle()
+                    .fill(Theme.primary.opacity(0.07))
+                    .frame(width: 144, height: 144)
+                    .blur(radius: 18)
 
-                        Color.clear
-                            .frame(width: 132, height: 132)
-                            .glassSurface(
-                                .regular,
-                                in: Circle(),
-                                border: Theme.Glassware.edge,
-                                legacyFill: Theme.card.opacity(0.78)
-                            )
-                            .allowsHitTesting(false)
-
-                        RautaCharacter(mood: .happy)
-                            .frame(width: 126, height: 126)
-                    }
-                    .matchedGeometryEffect(
-                        id: "rauta-profile-position",
-                        in: rautaNamespace,
-                        properties: .frame,
-                        anchor: .center,
-                        isSource: false
+                Color.clear
+                    .frame(width: 132, height: 132)
+                    .glassSurface(
+                        .regular,
+                        in: Circle(),
+                        border: Theme.Glassware.edge,
+                        legacyFill: Theme.card.opacity(0.78)
                     )
-                    .transition(.identity)
-                } else {
-                    Color.clear
-                }
+                    .allowsHitTesting(false)
+
+                RautaCharacter(mood: .happy)
+                    .frame(width: 126, height: 126)
+                    .environment(\.rautaOnStage, onStage && isActive)
             }
+            // RAUTA arrives from the tab bar as the page changes: the one there
+            // shrinks away while this one grows in.
+            .scaleEffect(isActive ? 1 : 0.82)
+            .opacity(isActive ? 1 : 0)
             .frame(width: 148, height: 148)
             .frame(height: 148)
             .accessibilityLabel("RAUTA profile avatar")

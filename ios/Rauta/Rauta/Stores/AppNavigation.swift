@@ -71,6 +71,19 @@ enum AppPage: Hashable {
         }
     }
 
+    /// A page that is looked at over whatever it was opened from — an
+    /// exercise, a replacement, a flow or a settings screen — opens as a modal
+    /// of its own. Anything else opened from inside a modal is a step of that
+    /// modal and is pushed within it.
+    var opensAsModal: Bool {
+        switch self {
+        case .settings, .planWeek, .muscles, .exerciseDetail, .exerciseAlternatives:
+            return true
+        default:
+            return false
+        }
+    }
+
     var hasControls: Bool {
         switch self {
         case .settings, .workoutDestination, .exerciseAlternatives, .exerciseDetail:
@@ -186,6 +199,12 @@ enum AppPage: Hashable {
 struct AppPageEntry: Identifiable, Hashable {
     var id: String
     var page: AppPage
+    /// Whether this page is the first of a modal of its own, rather than a step
+    /// pushed inside the modal below it. The root page is neither.
+    var startsModal: Bool
+    /// The on-screen view the page grew out of, as an ``View/appZoomSource(_:)``
+    /// id. Closing the page returns it there.
+    var zoomSource: String?
 }
 
 enum NavigationDirection { case forward, back }
@@ -216,12 +235,20 @@ final class AppSessionStore: ObservableObject {
         // Remove legacy session snapshots written by older builds. UI state is
         // process-local now, so reopening the app always starts cleanly.
         Storage.remove(Self.storageKey)
-        pages = Self.initialPages().map(makeEntry)
+        pages = makeEntries(Self.initialPages())
     }
 
-    private func makeEntry(_ page: AppPage) -> AppPageEntry {
+    private func makeEntry(_ page: AppPage, startsModal: Bool = false, zoomSource: String? = nil) -> AppPageEntry {
         sequence += 1
-        return AppPageEntry(id: "page-\(sequence)", page: page)
+        return AppPageEntry(id: "page-\(sequence)", page: page, startsModal: startsModal, zoomSource: zoomSource)
+    }
+
+    /// Entries for a whole stack: the root, then pages as ``push(_:from:)``
+    /// would have opened them one after another.
+    private func makeEntries(_ nextPages: [AppPage]) -> [AppPageEntry] {
+        nextPages.enumerated().map { index, page in
+            makeEntry(page, startsModal: index == 1 || (index > 1 && page.opensAsModal))
+        }
     }
 
     /// First-run setup is offered to a genuinely new install only. Someone whose
@@ -241,12 +268,54 @@ final class AppSessionStore: ObservableObject {
 
     var activeEntry: AppPageEntry? { pages.last ?? pages.first }
 
+    /// The modals open over the root, bottom first. Each is its own first page
+    /// followed by the steps pushed inside it.
+    var modals: [[AppPageEntry]] {
+        var groups: [[AppPageEntry]] = []
+        for entry in pages.dropFirst() {
+            if entry.startsModal || groups.isEmpty {
+                groups.append([entry])
+            } else {
+                groups[groups.count - 1].append(entry)
+            }
+        }
+        return groups
+    }
+
     // MARK: Navigation
 
-    func push(_ page: AppPage) {
+    /// Opens a page. Over the root, or when the page is one that is looked at
+    /// rather than stepped through, it opens as a modal growing out of
+    /// `source`; otherwise it is pushed inside the modal it was opened from.
+    func push(_ page: AppPage, from source: String? = nil) {
         guard page.isValid else { return }
         direction = .forward
-        pages = pages + [makeEntry(page)]
+        let startsModal = pages.count <= 1 || page.opensAsModal
+        pages = pages + [makeEntry(page, startsModal: startsModal, zoomSource: startsModal ? source : nil)]
+    }
+
+    /// Closes the modal at `index` in ``modals`` and every modal over it — what
+    /// a drag down on a modal, or the system dismissing it, asks for.
+    func dismissModal(at index: Int) {
+        let groups = modals
+        guard groups.indices.contains(index), let first = groups[index].first,
+              let position = pages.firstIndex(where: { $0.id == first.id })
+        else { return }
+        direction = .back
+        pages = Array(pages.prefix(position))
+    }
+
+    /// Takes the steps pushed inside the modal at `index` from its navigation
+    /// stack — a swipe back arrives here as a shorter path.
+    func setSteps(_ steps: [AppPageEntry], inModal index: Int) {
+        let groups = modals
+        guard groups.indices.contains(index), let first = groups[index].first,
+              let position = pages.firstIndex(where: { $0.id == first.id }),
+              steps != Array(groups[index].dropFirst())
+        else { return }
+        direction = steps.count < groups[index].count - 1 ? .back : .forward
+        // Modals opened over this one close with it.
+        pages = Array(pages.prefix(position + 1)) + steps
     }
 
     func pop() {
@@ -259,14 +328,17 @@ final class AppSessionStore: ObservableObject {
         guard page.isValid, !pages.isEmpty else { return }
         direction = .forward
         var nextPages = pages
-        nextPages[nextPages.count - 1] = makeEntry(page)
+        let replaced = nextPages[nextPages.count - 1]
+        nextPages[nextPages.count - 1] = makeEntry(
+            page, startsModal: replaced.startsModal, zoomSource: replaced.zoomSource
+        )
         pages = nextPages
     }
 
     func reset(_ nextPages: [AppPage]) {
         guard !nextPages.isEmpty, nextPages.allSatisfy(\.isValid) else { return }
         direction = .back
-        pages = nextPages.map(makeEntry)
+        pages = makeEntries(nextPages)
     }
 
     /// Shows a workout where workouts live: everything pushed over the tabs is

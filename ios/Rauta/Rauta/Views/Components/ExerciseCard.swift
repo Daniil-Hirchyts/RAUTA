@@ -20,6 +20,8 @@ struct ExerciseCard: View {
     var index: Int = 0
     var selectMode: Bool = false
     var selected: Bool = false
+    /// The id its detail page grows out of; unique to the grid it sits in.
+    var zoomSourceID: String?
     var onOpenDetail: (ExerciseSummary) -> Void
     var onToggleSelect: (String) -> Void
 
@@ -38,6 +40,7 @@ struct ExerciseCard: View {
                 cardButton
             }
         }
+        .modifier(OptionalZoomSource(id: zoomSourceID, cornerRadius: Theme.Metrics.cardRadius))
         .overlay(alignment: .topTrailing) {
             AnimatedCheck(checked: selected)
                 .opacity(selectMode ? 1 : 0)
