@@ -205,7 +205,7 @@ private struct ThoughtGeometry {
     static let panelWidth: CGFloat = 272
     static let screenInset: CGFloat = 14
     /// Room between RAUTA and the panel for the trail of bubbles.
-    static let trailGap: CGFloat = 38
+    static let trailGap: CGFloat = 52
 
     /// Above RAUTA when it sits in the lower half of the screen.
     let above: Bool
@@ -237,7 +237,7 @@ private struct ThoughtGeometry {
             y: above ? anchor.minY - 2 : anchor.maxY + 2
         )
         let tailX = min(
-            max(anchor.midX + inward * 34, panelLeading + 44),
+            max(anchor.midX + inward * 40, panelLeading + 44),
             panelLeading + panelWidth - 44
         )
         tail = CGPoint(x: tailX, y: panelEdgeY)
@@ -301,7 +301,9 @@ private struct ThoughtBubble: View {
     var body: some View {
         let geometry = ThoughtGeometry(anchor: anchor, screen: screen)
 
-        GlassMorphContainer(spacing: 16) {
+        // Tight, so only the bubble touching the panel melts into it: glass
+        // that merely comes near other glass bulges toward it and magnifies.
+        GlassMorphContainer(spacing: 4) {
             ZStack(alignment: .topLeading) {
                 ForEach(Self.trail, id: \.order) { bubble in
                     // Out of RAUTA smallest first; back in largest first.
