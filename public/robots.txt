@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://gym-lib-umber.vercel.app/sitemap.xml

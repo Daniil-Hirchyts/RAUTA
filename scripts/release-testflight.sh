@@ -8,7 +8,6 @@
 #
 # Options:
 #   --dry-run        stop after validation; nothing is uploaded
-#   --checks         run typecheck, lint and tests before building
 #   --build <n>      use this build number instead of asking App Store Connect
 #   --no-wait        upload without waiting for processing
 #
@@ -29,14 +28,12 @@ if [[ -z "${DEVELOPER_DIR:-}" && -d "/Applications/Xcode Beta.app/Contents/Devel
 fi
 
 DRY_RUN=false
-RUN_CHECKS=false
 WAIT=true
 FORCED_BUILD=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=true; shift ;;
-    --checks) RUN_CHECKS=true; shift ;;
     --no-wait) WAIT=false; shift ;;
     --build) FORCED_BUILD="${2:?--build needs a number}"; shift 2 ;;
     -h|--help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
@@ -53,13 +50,6 @@ fail() { printf '\033[31merror: %s\033[0m\n' "$1" >&2; exit 1; }
 export ASC_KEY_ID ASC_ISSUER ASC_KEY_PATH
 
 cd "$ROOT"
-
-if [[ "$RUN_CHECKS" == true ]]; then
-  step "Checks"
-  bun run typecheck
-  bun run lint
-  bun run test
-fi
 
 step "Build number"
 if [[ -n "$FORCED_BUILD" ]]; then

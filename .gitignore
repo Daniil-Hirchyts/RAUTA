@@ -1,18 +1,8 @@
 # Logs
 logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
 *.local
-.wrangler
-.vercel
 
 # Python (upscale scripts)
 __pycache__/
@@ -25,24 +15,10 @@ venv
 !.vscode/extensions.json
 .idea
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
 *.sw?
 .env*
 
 # Native release artifacts
 build
-
-# Generated training media review artifacts
-docs/training-engine/media-review/
-
-# Local scratch scripts
-scripts/.tmp-*
-
-# Local browser verification and scratch artifacts
-output/playwright/
-.playwright-cli/
 
 .cache

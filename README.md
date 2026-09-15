@@ -1,130 +1,78 @@
 # RAUTA
 
-A deliberately simple, mobile-first exercise finder. Move through three focused stages: choose muscles, select equipment or reuse a saved preset, then browse visual matching exercises from the bundled dataset.
+A native SwiftUI training app for iPhone, with a Live Activity widget and an
+embedded watchOS companion. It runs fully offline and has no backend.
 
-## Local development
+The Xcode project is `ios/Rauta/Rauta.xcodeproj`:
 
-```bash
-bun install
-bun run dev
-```
+| Target | Folder | Bundle ID |
+|---|---|---|
+| Rauta (iPhone) | `ios/Rauta/Rauta` | `com.hirchyts.gymlib` |
+| RautaWidgets (Live Activity) | `ios/Rauta/RautaWidgets` | `com.hirchyts.gymlib.GymLibWidgets` |
+| RautaWatch | `ios/Rauta/RautaWatch` | `com.hirchyts.gymlib.watchkitapp` |
 
-Run the full validation suite with:
+`ios/Rauta/Shared` and `ios/Rauta/WatchShared` hold code shared between targets.
+Bundled exercise data, fonts and the app icon live in `ios/Rauta/Rauta/Resources`,
+and exercise, equipment and goal media in `ios/Rauta/Media`.
 
-```bash
-bun run typecheck
-bun run lint
-bun run test
-bun run build
-```
+The app needs the iOS/watchOS 27 SDKs bundled with **Xcode Beta**; the regular
+Xcode cannot build the embedded watch app.
 
-## iOS app
+The original React/Capacitor web app, and the TypeScript training engine and
+catalogue tooling the Swift code was ported from, now live in a separate
+`gym-lib-react` folder.
 
-The same web build ships as a native iOS app through Capacitor. `dist` is
-bundled into the app, so it runs fully offline with no server URL.
-
-```bash
-bun run ios        # build, sync, and open Xcode
-bun run ios:run    # build, sync, and run on a simulator or device
-bun run ios:sync   # build and copy the web assets into the Xcode project
-bun run ios:archive # build a Release .xcarchive for distribution
-bun run ios:export  # export the archive as an App Store .ipa
-```
-
-To install on a device, open the project with `bun run ios`, pick your iPhone
-as the run destination, and press Run. Signing is already configured for the
-`Daniil Hirchyts` team (`89NA3C53R8`) with bundle ID `com.hirchyts.gymlib`.
-The first install also needs the developer certificate trusted on the phone,
-under Settings → General → VPN & Device Management.
-
-Anything that changes the web app needs a `bun run ios:sync` before it shows
-up in the native shell.
-
-### Force the native onboarding flow
-
-The SwiftUI app in `ios/Rauta` accepts a Debug-only `--onboarding` launch
-argument. It forces the onboarding route on every launch without deleting the
-existing training profile or app data.
-
-In Xcode, open `ios/Rauta/Rauta.xcodeproj` and select the `Rauta` app scheme.
-If Xcode has not created it yet, use Product → Scheme → New Scheme… and choose
-the `Rauta` target. Then use Product → Scheme → Edit Scheme → Run → Arguments.
-Add `--onboarding` under
-"Arguments Passed On Launch" and keep it checked while working on onboarding.
-Run the app normally with ⌘R. Uncheck the argument to restore the normal
-first-run behavior.
-
-The app icon is an Icon Composer document at `ios/App/App/AppIcon.icon` — open
-it with Icon Composer (bundled in Xcode) to edit the layers. Xcode renders the
-default, dark, and tinted appearances from it at build time, so there is no
-`AppIcon.appiconset` to keep in sync.
-
-The launch screen is a real storyboard — `ios/App/App/Base.lproj/LaunchScreen.storyboard`
-— showing the logo, wordmark and a spinner on the app background, with the
-logo art in the `SplashLogo` image set. Do not run `capacitor-assets` against
-this project: it rewrites that storyboard and would replace the loading screen
-with a bare centred image.
-
-### TestFlight
-
-Distribution is wired up: the App ID `com.hirchyts.gymlib` is registered, an
-Apple Distribution certificate and App Store profile exist, and
-`ios/ExportOptions.plist` targets team `89NA3C53R8`.
-`ITSAppUsesNonExemptEncryption` is declared `false` in `App/Info.plist`, so
-builds skip the export-compliance prompt — RAUTA has no backend and no
-custom cryptography.
-
-Uploads authenticate with an App Store Connect API key. Keep the `.p8` in
-`~/.appstoreconnect/private_keys/` (never in the repo) and export the two
-identifiers before uploading:
+## Run
 
 ```bash
-export ASC_KEY_ID=<key id>
-export ASC_ISSUER=<issuer id>
-
-bun run ios:archive
-bun run ios:export
-bun run ios:upload
+scripts/ios-run.sh sim       # the iPhone 18 Pro Swift simulator
+scripts/ios-run.sh device    # the connected iPhone
 ```
 
-Bump `CURRENT_PROJECT_VERSION` for every upload — App Store Connect rejects a
-build number it has already seen.
+Builds are incremental and kept in `build/ios/<sim|device>/`. Run
+`scripts/ios-run.sh --help` for every option.
 
-Inside the native shell, haptics call straight into UIKit's feedback
-generators; the web build keeps using the Vibration API and the Safari
-switch-overlay fallback in `src/lib/haptics.ts`.
+Signing is automatic for team `89NA3C53R8`. When `ASC_KEY_ID` and `ASC_ISSUER`
+are set, in the environment or in an untracked `.env.ios` at the repo root, device
+builds sign with the App Store Connect API key, so a new iPhone is registered
+without an Xcode account login.
 
-RAUTA uses React, TypeScript, Vite, Tailwind CSS, shadcn/ui, and Zustand. It has no backend and stores filter selections, equipment presets and the training profile only in the browser's local storage.
+### Force the onboarding flow
 
-See [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) for dataset and anatomy-map attribution.
-
-## Deterministic training engine
-
-The independent offline TypeScript engine lives in `src/training`; no UI or
-persistence migration is required to run it. Start with
-[the architecture and API](docs/training-engine/ARCHITECTURE.md),
-[scientific evidence](docs/training-engine/EVIDENCE.md), and
-[supported boundaries](docs/training-engine/LIMITATIONS.md).
+Debug builds accept a `--onboarding` launch argument that forces the onboarding
+route on every launch without deleting the training profile or app data:
 
 ```bash
-bun run training:example
-bun run training:test
-bun run training:audit
-bun run training:benchmark
+scripts/ios-run.sh sim --arg --onboarding
 ```
 
-Workouts built by hand feed the same engine. Starting one opens a structured
-draft alongside the existing session; each set logged during the workout — load,
-reps, reps in reserve, with the resistance semantics the equipment implies — is
-persisted as a real observation, and finishing or abandoning the workout writes
-exactly those sets into the one training history the engine reads. Nothing is
-recorded for an exercise that was listed but not performed, and workouts from
-before structured logging keep their original, lower-information records.
+In Xcode, add it under Product → Scheme → Edit Scheme → Run → Arguments →
+"Arguments Passed On Launch" for the `Rauta` scheme.
 
-The stable answers the engine needs — age, experience, goal, health eligibility,
-session length, priority muscles — live in the application's own training
-profile (`src/store/use-training-profile.ts`), edited during first-run setup and
-in Settings. `src/lib/training-engine-adapter.ts` is the single boundary that
-turns that profile, the saved gym equipment and an optional Apple Health body
-weight into the engine's `UserTrainingProfile` and `PlanningPreferences`, so
-generating a week never asks for any of it again.
+## TestFlight
+
+```bash
+ASC_KEY_ID=<key id> ASC_ISSUER=<issuer id> scripts/release-testflight.sh
+```
+
+The script picks the next free build number from App Store Connect, archives,
+exports with `ios/ExportOptions.plist`, validates, uploads, and waits for
+processing. `--dry-run` stops after validation. Keep the `.p8` key in
+`~/.appstoreconnect/private_keys/` and never in the repo.
+
+`ITSAppUsesNonExemptEncryption` is `false` in `ios/Rauta/Config/Rauta-Info.plist`,
+so builds skip the export-compliance prompt.
+
+## App icon
+
+The iPhone and watch icons are Icon Composer documents at
+`ios/Rauta/Rauta/Resources/AppIcon.icon` and `ios/Rauta/RautaWatch/AppIcon.icon`.
+The source document and its exports are in `icon/`.
+
+## Training engine
+
+The deterministic training engine is in `ios/Rauta/Rauta/Training`. Its
+evidence register, formulas and support boundaries are in
+[EVIDENCE.md](docs/training-engine/EVIDENCE.md),
+[MATH.md](docs/training-engine/MATH.md) and
+[LIMITATIONS.md](docs/training-engine/LIMITATIONS.md).
