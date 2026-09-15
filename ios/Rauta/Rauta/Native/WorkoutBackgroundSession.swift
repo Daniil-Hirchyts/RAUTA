@@ -12,18 +12,11 @@ import HealthKit
 /// saves nothing — finished workouts still reach Apple Health the one way they
 /// always have, through ``HealthService``.
 ///
-/// Before iOS 26, or if the system will not run one, there is no session, and
-/// rest alerts fall back to notifications.
+/// Before iOS 26, or if the system will not run one, there is no session; rest
+/// alerts always keep a notification scheduled for an app that is suspended.
 @MainActor
 final class WorkoutBackgroundSession: NSObject {
     static let shared = WorkoutBackgroundSession()
-
-    /// Whether a session is running, so the app will stay awake in the
-    /// background.
-    private(set) var isRunning = false {
-        didSet { if isRunning != oldValue { changed.send() } }
-    }
-    let changed = PassthroughSubject<Void, Never>()
 
     private let healthStore = HKHealthStore()
     private var session: HKWorkoutSession?
@@ -71,26 +64,16 @@ final class WorkoutBackgroundSession: NSObject {
     private func end() {
         session?.end()
         session = nil
-        isRunning = false
     }
 
     private func sessionStateChanged(_ state: HKWorkoutSessionState, of changed: HKWorkoutSession) {
-        guard changed === session else { return }
-        switch state {
-        case .running, .paused:
-            isRunning = true
-        case .ended, .stopped:
-            session = nil
-            isRunning = false
-        default:
-            break
-        }
+        guard changed === session, state == .ended || state == .stopped else { return }
+        session = nil
     }
 
     private func sessionFailed(_ failed: HKWorkoutSession) {
         guard failed === session else { return }
         session = nil
-        isRunning = false
     }
 }
 
