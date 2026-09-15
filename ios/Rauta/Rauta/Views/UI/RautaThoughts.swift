@@ -3,7 +3,7 @@ import UIKit
 
 // RAUTA's menus, as thought bubbles.
 //
-// A menu opened from RAUTA is a glass panel with a trail of three glass bubbles
+// A menu opened from RAUTA is a glass panel with a trail of two glass bubbles
 // running back to the character, the way a cartoon thought rises from a head.
 // It grows out of RAUTA — the smallest bubble first, the panel last — and folds
 // back into it when it closes. Above RAUTA when the character sits low on the
@@ -205,7 +205,7 @@ private struct ThoughtGeometry {
     static let panelWidth: CGFloat = 272
     static let screenInset: CGFloat = 14
     /// Room between RAUTA and the panel for the trail of bubbles.
-    static let trailGap: CGFloat = 66
+    static let trailGap: CGFloat = 38
 
     /// Above RAUTA when it sits in the lower half of the screen.
     let above: Bool
@@ -237,8 +237,8 @@ private struct ThoughtGeometry {
             y: above ? anchor.minY - 2 : anchor.maxY + 2
         )
         let tailX = min(
-            max(anchor.midX + inward * 52, panelLeading + 48),
-            panelLeading + panelWidth - 48
+            max(anchor.midX + inward * 34, panelLeading + 44),
+            panelLeading + panelWidth - 44
         )
         tail = CGPoint(x: tailX, y: panelEdgeY)
     }
@@ -286,9 +286,8 @@ private struct ThoughtBubble: View {
     /// RAUTA's head: where each sits along the way, how big it is, and its
     /// place in line leaving RAUTA.
     private static let trail: [(fraction: CGFloat, diameter: CGFloat, order: Int)] = [
-        (0.10, 26, 2),
-        (0.50, 16, 1),
-        (0.84, 9, 0),
+        (0.14, 22, 1),
+        (0.70, 11, 0),
     ]
     /// Folded, the panel is nothing at all: it pours out of the trail's
     /// largest bubble rather than sitting beside it.
@@ -306,7 +305,7 @@ private struct ThoughtBubble: View {
             ZStack(alignment: .topLeading) {
                 ForEach(Self.trail, id: \.order) { bubble in
                     // Out of RAUTA smallest first; back in largest first.
-                    let delay = shown ? Double(bubble.order) * 0.055 : Double(2 - bubble.order) * 0.05 + 0.08
+                    let delay = shown ? Double(bubble.order) * 0.055 : Double(1 - bubble.order) * 0.06 + 0.08
                     let diameter = shown ? bubble.diameter : 0.5
                     Color.clear
                         .frame(width: diameter, height: diameter)
