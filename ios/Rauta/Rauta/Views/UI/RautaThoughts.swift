@@ -204,8 +204,15 @@ private struct RautaThoughtsOverlay: View {
 private struct ThoughtGeometry {
     static let panelWidth: CGFloat = 272
     static let screenInset: CGFloat = 14
-    /// Room between RAUTA and the panel for the trail of bubbles.
-    static let trailGap: CGFloat = 52
+    /// Room between RAUTA and the panel.
+    static let trailGap: CGFloat = 40
+    /// The small bubble sits where it would with this much room, whatever the
+    /// panel's own gap: it is RAUTA's, and stays put by the head.
+    private static let smallBubbleGap: CGFloat = 52
+    private static let smallBubbleFraction: CGFloat = 0.70
+    /// How far the large bubble's centre sits out past the panel's edge: most
+    /// of it inside the panel, a round bump outside.
+    private static let largeBubbleOverhang: CGFloat = 3
 
     /// Above RAUTA when it sits in the lower half of the screen.
     let above: Bool
@@ -218,6 +225,10 @@ private struct ThoughtGeometry {
     let tail: CGPoint
     /// Where the trail ends, just off RAUTA's head.
     let origin: CGPoint
+    /// The small bubble, by RAUTA's head.
+    let smallBubble: CGPoint
+    /// The large bubble, set into the panel's edge.
+    let largeBubble: CGPoint
 
     init(anchor: CGRect, screen: CGSize) {
         above = anchor.midY > screen.height * 0.5
@@ -241,13 +252,18 @@ private struct ThoughtGeometry {
             panelLeading + panelWidth - 44
         )
         tail = CGPoint(x: tailX, y: panelEdgeY)
-    }
 
-    /// A point `fraction` of the way from the panel's edge to RAUTA.
-    func trail(_ fraction: CGFloat) -> CGPoint {
-        CGPoint(
-            x: tail.x + (origin.x - tail.x) * fraction,
-            y: tail.y + (origin.y - tail.y) * fraction
+        let smallTailY = above ? anchor.minY - Self.smallBubbleGap : anchor.maxY + Self.smallBubbleGap
+        smallBubble = CGPoint(
+            x: tailX + (origin.x - tailX) * Self.smallBubbleFraction,
+            y: smallTailY + (origin.y - smallTailY) * Self.smallBubbleFraction
+        )
+        let dx = smallBubble.x - tail.x
+        let dy = smallBubble.y - tail.y
+        let length = max(1, (dx * dx + dy * dy).squareRoot())
+        largeBubble = CGPoint(
+            x: tail.x + dx / length * Self.largeBubbleOverhang,
+            y: tail.y + dy / length * Self.largeBubbleOverhang
         )
     }
 
@@ -282,12 +298,11 @@ private struct ThoughtBubble: View {
 
     @State private var contentHeight: CGFloat = 60
 
-    /// The trail, from the bubble joined to the panel to the smallest by
-    /// RAUTA's head: where each sits along the way, how big it is, and its
-    /// place in line leaving RAUTA.
-    private static let trail: [(fraction: CGFloat, diameter: CGFloat, order: Int)] = [
-        (0.14, 22, 1),
-        (0.70, 11, 0),
+    /// The trail: the bubble set into the panel and the small one by RAUTA's
+    /// head — how big each is, and its place in line leaving RAUTA.
+    private static let trail: [(large: Bool, diameter: CGFloat, order: Int)] = [
+        (true, 22, 1),
+        (false, 11, 0),
     ]
     /// Folded, the panel is nothing at all: it pours out of the trail's
     /// largest bubble rather than sitting beside it.
@@ -312,7 +327,7 @@ private struct ThoughtBubble: View {
                     Color.clear
                         .frame(width: diameter, height: diameter)
                         .glassSurface(Self.glass, in: Circle(), legacyFill: Theme.card.opacity(0.9))
-                        .position(shown ? geometry.trail(bubble.fraction) : geometry.origin)
+                        .position(shown ? (bubble.large ? geometry.largeBubble : geometry.smallBubble) : geometry.origin)
                         .animation(Self.spring(delay: delay), value: shown)
                         .allowsHitTesting(false)
                 }
