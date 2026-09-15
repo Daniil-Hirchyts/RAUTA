@@ -363,7 +363,6 @@ struct ExercisePickerScreen: View {
     private var headerRautaMenu: some View {
         AppMenuButton(
             label: "\(title) actions",
-            arrowEdge: .top,
             compact: true
         ) {
             rautaOptions

@@ -208,32 +208,26 @@ struct AppHeaderButton: View {
     }
 }
 
-/// A compact glass entry point for secondary actions that do not need to
-/// compete with the screen's primary command.
+/// RAUTA as the entry point for a page's secondary actions, which open as a
+/// thought bubble rising from the character.
 struct AppMenuButton<MenuContent: View>: View {
     var label: String
-    var arrowEdge: Edge = .bottom
     var compact = false
     @ViewBuilder var menu: () -> MenuContent
     @State private var isPresented = false
+    @State private var reactionKey = ""
 
     var body: some View {
         trigger
             .accessibilityLabel(label)
-            .popover(isPresented: $isPresented, attachmentAnchor: .rect(.bounds), arrowEdge: arrowEdge) {
-            AppMenuSurface(dismiss: { isPresented = false }) {
-                menu()
-            }
-                .presentationCompactAdaptation(.popover)
-                .presentationBackground(.clear)
-        }
+            .rautaThoughts(isPresented: $isPresented) { menu() }
     }
 
     @ViewBuilder private var trigger: some View {
         if compact {
-            RautaHeaderBadge(mood: .focused, onActivate: openMenu)
+            RautaHeaderBadge(mood: .focused, reactionKey: reactionKey, onActivate: openMenu)
         } else {
-            RautaCharacter(mood: .focused, onActivate: openMenu)
+            RautaCharacter(mood: .focused, reactionKey: reactionKey, onActivate: openMenu)
                 .frame(width: 72, height: 72)
                 .frame(width: 60, height: 52)
                 .contentShape(Circle())
@@ -242,6 +236,8 @@ struct AppMenuButton<MenuContent: View>: View {
 
     private func openMenu() {
         Haptics.trigger(.selection)
+        // The character reacts as the thought leaves it.
+        reactionKey = UUID().uuidString
         isPresented = true
     }
 }
@@ -270,7 +266,7 @@ struct AppMenuSurface<Content: View>: View {
     }
 }
 
-private struct AppMenuRowButtonStyle: ButtonStyle {
+struct AppMenuRowButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {

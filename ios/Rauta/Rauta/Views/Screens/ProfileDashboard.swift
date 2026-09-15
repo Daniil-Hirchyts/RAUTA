@@ -144,6 +144,13 @@ struct ProfileDashboard: View {
             // shrinks away while this one grows in.
             .scaleEffect(isActive ? 1 : 0.82)
             .opacity(isActive ? 1 : 0)
+            // It leaves only once the page is already off screen. Animated, that
+            // exit would wait for the page to come back and play then — the
+            // avatar showing, vanishing, and growing in again — so it is
+            // instant, and a return visit starts from nothing like the first.
+            .transaction(value: isActive) { transaction in
+                if !isActive { transaction.animation = nil }
+            }
             .frame(width: 148, height: 148)
             .frame(height: 148)
             .accessibilityLabel("RAUTA profile avatar")

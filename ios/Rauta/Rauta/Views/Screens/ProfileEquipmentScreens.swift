@@ -55,7 +55,7 @@ struct ProfileEquipmentScreen: View {
     }
 
     private var equipmentRautaMenu: some View {
-        AppMenuButton(label: "Equipment actions", arrowEdge: .top, compact: true) {
+        AppMenuButton(label: "Equipment actions", compact: true) {
             if presetEditorOpen {
                 Button {
                     presetEditorOpen = false

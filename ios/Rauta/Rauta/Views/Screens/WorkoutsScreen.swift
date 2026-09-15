@@ -1083,8 +1083,8 @@ struct RautaNativeTabControl: View {
     @Binding var isPresented: Bool
     var onPresent: () -> Void
     @State private var reactionKey = ""
-    /// The action picked from the menu, run once the menu has finished
-    /// closing: a page cannot be presented while the menu still is.
+    /// The action picked from the menu, run once the thought has folded back
+    /// into RAUTA, so the page it opens grows out of the character itself.
     @State private var pendingAction: (() -> Void)?
 
     static let zoomSourceID = "rauta-menu"
@@ -1111,23 +1111,14 @@ struct RautaNativeTabControl: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Rauta actions")
-        .popover(isPresented: $isPresented, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
-            AppMenuSurface(dismiss: { isPresented = false }) {
-                ForEach(actions) { action in
-                    Button {
-                        pendingAction = action.action
-                        isPresented = false
-                    } label: {
-                        Label(action.title, systemImage: action.systemImage)
-                    }
+        .rautaThoughts(isPresented: $isPresented, onDismissed: runPendingAction) {
+            ForEach(actions) { action in
+                Button {
+                    pendingAction = action.action
+                    isPresented = false
+                } label: {
+                    Label(action.title, systemImage: action.systemImage)
                 }
-            }
-            .presentationCompactAdaptation(.popover)
-            .presentationBackground(.clear)
-            .onDisappear {
-                let action = pendingAction
-                pendingAction = nil
-                action?()
             }
         }
         .onChange(of: isPresented) { _, presented in
@@ -1138,6 +1129,12 @@ struct RautaNativeTabControl: View {
         .accessibilityHidden(true)
         .animation(.spring(response: 0.38, dampingFraction: 0.88), value: workoutActive)
         .animation(.spring(response: 0.38, dampingFraction: 0.88), value: wrapped)
+    }
+
+    private func runPendingAction() {
+        let action = pendingAction
+        pendingAction = nil
+        action?()
     }
 
     private var rautaFace: some View {
