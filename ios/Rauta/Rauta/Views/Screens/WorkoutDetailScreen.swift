@@ -35,7 +35,6 @@ struct WorkoutDetailScreen: View {
     @State private var showingDate = false
     @State private var countingDown = false
     @State private var sharePayload: WorkoutSharePayload?
-    @StateObject private var reorder = CardReorder()
 
     private var workout: Workout? { store.workouts.workout(workoutId) }
     private var session: ActiveWorkoutSession? {
@@ -72,6 +71,13 @@ struct WorkoutDetailScreen: View {
             reference.sessionId
         )
     }
+    /// The exercise rows to show. `reorderable()` needs one unconditional view
+    /// per element, so ids missing from the catalogue are dropped here rather
+    /// than inside the `ForEach` body — a conditional there traps the lift.
+    private func resolvedExercises(_ workout: Workout) -> [ExerciseSummary] {
+        workout.exerciseIds.compactMap { ExerciseCatalogue.byId[$0] }
+    }
+
     private var canEditWorkout: Bool {
         guard let workout, !isPast, !plannedUnavailable else { return false }
         return workout.planned == nil || !hasAnotherActiveWorkout
@@ -175,6 +181,7 @@ struct WorkoutDetailScreen: View {
 
     private func activeWorkoutContent(_ workout: Workout, session: ActiveWorkoutSession) -> some View {
         let prescriptions = prescriptions
+        let rows = resolvedExercises(workout)
         return ScrollView {
             LazyVStack(spacing: 18) {
                 RunningWorkoutOverview(
@@ -182,37 +189,38 @@ struct WorkoutDetailScreen: View {
                     sets: workout.exerciseIds.compactMap { prescriptions[$0]?.sets }.reduce(0, +)
                 )
 
-                ForEach(Array(workout.exerciseIds.enumerated()), id: \.element) { index, id in
-                    if let exercise = ExerciseCatalogue.byId[id] {
-                        WorkoutExerciseRow(
-                            exercise: exercise,
-                            index: index,
-                            prescription: prescriptions[id],
-                            status: ActiveWorkout.status(session, id),
-                            canFindAlternative: canEditWorkout,
-                            canRemove: canEditWorkout,
-                            canReorder: canEditWorkout,
-                            exerciseIds: workout.exerciseIds,
-                            reorder: reorder,
-                            onOpen: {
-                                if session.currentExerciseId != id {
-                                    store.activeWorkout.setCurrentExercise(id)
-                                }
-                                onOpenExercisePlayer?()
-                            },
-                            onAlternative: { openAlternative(id) },
-                            onToggle: { store.activeWorkout.toggleComplete(id) },
-                            onReorder: { ids, moved in updateExercises(ids, moved: moved) },
-                            onRemove: { remove(id) }
-                        )
-                    }
+                ForEach(rows) { exercise in
+                    let id = exercise.id
+                    WorkoutExerciseRow(
+                        exercise: exercise,
+                        index: rows.firstIndex(of: exercise) ?? 0,
+                        prescription: prescriptions[id],
+                        status: ActiveWorkout.status(session, id),
+                        canFindAlternative: canEditWorkout,
+                        canRemove: canEditWorkout,
+                        onOpen: {
+                            if session.currentExerciseId != id {
+                                store.activeWorkout.setCurrentExercise(id)
+                            }
+                            onOpenExercisePlayer?()
+                        },
+                        onAlternative: { openAlternative(id) },
+                        onToggle: { store.activeWorkout.toggleComplete(id) },
+                        onRemove: { remove(id) }
+                    )
                 }
+                .reorderable()
+            }
+            .reorderContainer(for: ExerciseSummary.self, isEnabled: canEditWorkout) { difference in
+                updateExercises(
+                    workout.exerciseIds.applyingReorder(difference),
+                    moved: difference.sources.first
+                )
             }
             .padding(.bottom, 188)
         }
         .pageScroll()
-        .scrollDisabled(reorder.active != nil)
-        .onDisappear { reorder.cancel() }
+        .swipeActionsContainer()
     }
 
     private var progressLabel: String? {
@@ -232,6 +240,7 @@ struct WorkoutDetailScreen: View {
 
     private func content(_ workout: Workout) -> some View {
         let prescriptions = prescriptions
+        let rows = resolvedExercises(workout)
         return ZStack(alignment: .bottom) {
             ScrollView {
                 VStack(spacing: 20) {
@@ -282,18 +291,16 @@ struct WorkoutDetailScreen: View {
                                     .padding(.horizontal, 32)
                             }
                         } else {
-                            ForEach(Array(workout.exerciseIds.enumerated()), id: \.element) { index, id in
-                                if let exercise = ExerciseCatalogue.byId[id] {
+                            LazyVStack(spacing: 20) {
+                                ForEach(rows) { exercise in
+                                    let id = exercise.id
                                     WorkoutExerciseRow(
                                         exercise: exercise,
-                                        index: index,
+                                        index: rows.firstIndex(of: exercise) ?? 0,
                                         prescription: prescriptions[id],
                                         status: session.map { ActiveWorkout.status($0, id) },
                                         canFindAlternative: canEditWorkout,
                                         canRemove: canEditWorkout,
-                                        canReorder: canEditWorkout,
-                                        exerciseIds: workout.exerciseIds,
-                                        reorder: reorder,
                                         onOpen: {
                                             store.navigation.push(
                                                 .exerciseDetail(exerciseId: id),
@@ -302,18 +309,26 @@ struct WorkoutDetailScreen: View {
                                         },
                                         onAlternative: { openAlternative(id) },
                                         onToggle: { store.activeWorkout.toggleComplete(id) },
-                                        onReorder: { ids, moved in updateExercises(ids, moved: moved) },
                                         onRemove: { remove(id) }
                                     )
                                 }
+                                .reorderable()
+                            }
+                            .reorderContainer(
+                                for: ExerciseSummary.self,
+                                isEnabled: canEditWorkout
+                            ) { difference in
+                                updateExercises(
+                                    workout.exerciseIds.applyingReorder(difference),
+                                    moved: difference.sources.first
+                                )
                             }
                         }
                 }
                 .padding(.bottom, 188)
             }
             .pageScroll()
-            .scrollDisabled(reorder.active != nil)
-            .onDisappear { reorder.cancel() }
+            .swipeActionsContainer()
 
             if let session {
                 WorkoutSessionDock(
@@ -553,7 +568,6 @@ private struct WorkoutStartCountdown: View {
     }
 }
 
-@available(iOS 26.0, *)
 struct CurrentExerciseAccessory: View {
     @ObservedObject private var store = AppStore.shared
     let exercise: ExerciseSummary
@@ -688,7 +702,7 @@ struct ActiveExerciseDrawer: View {
                         // With the zoom transition the system follows the drag
                         // and throws the player back; the hand-made drag is only
                         // for where that does not exist.
-                        .simultaneousGesture(dismissGesture(in: proxy), including: AppZoom.isAvailable ? .none : .all)
+                        .simultaneousGesture(dismissGesture(in: proxy), including: .none)
                 }
                 .transition(.opacity)
             }
@@ -916,7 +930,7 @@ struct CompletedWorkoutDrawer: View {
                 .ignoresSafeArea()
             }
             .offset(y: dismissalOffset)
-            .simultaneousGesture(dismissGesture(in: proxy), including: AppZoom.isAvailable ? .none : .all)
+            .simultaneousGesture(dismissGesture(in: proxy), including: .none)
         }
         .ignoresSafeArea()
         .accessibilityAddTraits(.isModal)
@@ -1194,44 +1208,38 @@ private struct WorkoutExerciseRow: View {
     let status: ExerciseStatus?
     let canFindAlternative: Bool
     let canRemove: Bool
-    let canReorder: Bool
-    let exerciseIds: [String]
-    @ObservedObject var reorder: CardReorder
     let onOpen: () -> Void
     let onAlternative: () -> Void
     let onToggle: () -> Void
-    let onReorder: ([String], String) -> Void
     let onRemove: () -> Void
 
-    @State private var isOpen = false
-    @State private var swipeDrag: CGFloat?
-
-    private var actionCount: CGFloat { CGFloat((canFindAlternative ? 1 : 0) + (canRemove ? 1 : 0)) }
-    private var actionsWidth: CGFloat { actionCount * 54 + max(0, actionCount - 1) * 8 }
-    private var revealWidth: CGFloat { actionsWidth + 22 }
-    private var settledX: CGFloat { isOpen ? -revealWidth : 0 }
-    private var swipeOffset: CGFloat { swipeDrag ?? settledX }
-    private var revealProgress: CGFloat {
-        guard revealWidth > 0 else { return 0 }
-        return min(1, max(0, -swipeOffset / revealWidth))
-    }
-
     var body: some View {
-        ZStack(alignment: .trailing) {
-            if canFindAlternative || canRemove {
-                swipeActions
-                    .frame(width: actionsWidth)
-                    .padding(.trailing, 8)
-                    .opacity(revealProgress)
-                    .offset(x: (1 - revealProgress) * 18)
+        card
+            .appZoomSource("workout-exercise:\(exercise.id)", cornerRadius: Theme.Radius.xl2)
+            // Attached to the card rather than the padded row so the actions
+            // stay inside the content inset, where the hand-rolled ones sat.
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                if canRemove {
+                    Button(role: .destructive) {
+                        Haptics.trigger(.selection)
+                        onRemove()
+                    } label: {
+                        Label("Remove", systemImage: "trash")
+                    }
+                    .accessibilityLabel("Remove \(exercise.name)")
+                }
+                if canFindAlternative {
+                    Button {
+                        Haptics.trigger(.selection)
+                        onAlternative()
+                    } label: {
+                        Label("Replace", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .tint(Theme.primary)
+                    .accessibilityLabel("Replace \(exercise.name)")
+                }
             }
-
-            card
-                .appZoomSource("workout-exercise:\(exercise.id)", cornerRadius: Theme.Radius.xl2)
-                .offset(x: canFindAlternative || canRemove ? swipeOffset : 0)
-        }
-        .padding(.horizontal, Theme.Metrics.contentInset)
-        .modifier(CardReorderPlacement(reorder: reorder, id: exercise.id, spacing: 20))
+            .padding(.horizontal, Theme.Metrics.contentInset)
     }
 
     private var card: some View {
@@ -1278,22 +1286,11 @@ private struct WorkoutExerciseRow: View {
                         .padding(.top, 2)
                 }
                 .padding(.leading, 14)
-                .padding(.trailing, 8)
+                .padding(.trailing, 16)
                 .padding(.vertical, 8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onOpen)
-
-                if canReorder {
-                    CardReorderHandle(
-                        reorder: reorder,
-                        id: exercise.id,
-                        order: exerciseIds,
-                        name: exercise.name,
-                        height: 132,
-                        commit: onReorder
-                    )
-                }
             }
             .padding(.horizontal, 8)
             .padding(.top, 6)
@@ -1309,181 +1306,6 @@ private struct WorkoutExerciseRow: View {
         .clipShape(
             RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
         )
-        .overlay {
-            if canFindAlternative || canRemove {
-                WorkoutCardSwipeObserver(
-                    onChanged: { translation in
-                        swipeDrag = Swift.min(
-                            0,
-                            Swift.max(-revealWidth, settledX + translation)
-                        )
-                    },
-                    onEnded: { projectedTranslation in
-                        let projectedX = settledX + projectedTranslation
-                        withAnimation(Theme.Motion.smoothOut(0.24)) {
-                            isOpen = projectedX <= -revealWidth / 2
-                            swipeDrag = nil
-                        }
-                    }
-                )
-                .allowsHitTesting(false)
-
-                if isOpen {
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            withAnimation(Theme.Motion.smoothOut(0.22)) { isOpen = false }
-                        }
-                }
-            }
-        }
-    }
-
-    private var swipeActions: some View {
-        HStack(spacing: 8) {
-            if canFindAlternative {
-                flatSwipeAction(
-                    "Replace",
-                    systemImage: "arrow.triangle.2.circlepath"
-                ) {
-                    isOpen = false
-                    onAlternative()
-                }
-            }
-            if canRemove {
-                flatSwipeAction(
-                    "Remove",
-                    systemImage: "trash"
-                ) {
-                    isOpen = false
-                    onRemove()
-                }
-            }
-        }
-    }
-
-    private func flatSwipeAction(
-        _ title: String,
-        systemImage: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button {
-            Haptics.trigger(.selection)
-            action()
-        } label: {
-            Image(systemName: systemImage)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(Theme.primaryForeground)
-        }
-        .buttonStyle(.glassControl(.tinted(Theme.primary), .circle(diameter: 54)))
-        .accessibilityLabel(title)
-    }
-}
-
-/// Installs a horizontal-only recognizer on the enclosing `ScrollView`.
-/// Vertical drags fail this recognizer before it begins, leaving the native
-/// scroll pan untouched; horizontal drags update only the card under the touch.
-private struct WorkoutCardSwipeObserver: UIViewRepresentable {
-    let onChanged: (CGFloat) -> Void
-    let onEnded: (CGFloat) -> Void
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(onChanged: onChanged, onEnded: onEnded)
-    }
-
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView(frame: .zero)
-        view.backgroundColor = .clear
-        view.isUserInteractionEnabled = false
-        context.coordinator.hostView = view
-        DispatchQueue.main.async { context.coordinator.installIfNeeded() }
-        return view
-    }
-
-    func updateUIView(_ uiView: UIView, context: Context) {
-        context.coordinator.hostView = uiView
-        context.coordinator.onChanged = onChanged
-        context.coordinator.onEnded = onEnded
-        DispatchQueue.main.async { context.coordinator.installIfNeeded() }
-    }
-
-    static func dismantleUIView(_ uiView: UIView, coordinator: Coordinator) {
-        coordinator.uninstall()
-    }
-
-    final class Coordinator: NSObject {
-        weak var hostView: UIView?
-        weak var scrollView: UIScrollView?
-        var onChanged: (CGFloat) -> Void
-        var onEnded: (CGFloat) -> Void
-        private var panRecognizer: UIPanGestureRecognizer?
-
-        init(onChanged: @escaping (CGFloat) -> Void, onEnded: @escaping (CGFloat) -> Void) {
-            self.onChanged = onChanged
-            self.onEnded = onEnded
-        }
-
-        func installIfNeeded() {
-            guard let hostView else { return }
-            let enclosingScrollView = sequence(first: hostView.superview, next: { $0?.superview })
-                .compactMap { $0 as? UIScrollView }
-                .first
-            guard enclosingScrollView !== scrollView else { return }
-            uninstall()
-            scrollView = enclosingScrollView
-            guard let enclosingScrollView else { return }
-            let recognizer = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
-            recognizer.delegate = self
-            recognizer.cancelsTouchesInView = false
-            recognizer.delaysTouchesBegan = false
-            recognizer.delaysTouchesEnded = false
-            enclosingScrollView.addGestureRecognizer(recognizer)
-            panRecognizer = recognizer
-        }
-
-        func uninstall() {
-            if let panRecognizer {
-                scrollView?.removeGestureRecognizer(panRecognizer)
-            }
-            panRecognizer = nil
-            scrollView = nil
-        }
-
-        @objc private func handlePan(_ recognizer: UIPanGestureRecognizer) {
-            guard let scrollView else { return }
-
-            switch recognizer.state {
-            case .began, .changed:
-                onChanged(recognizer.translation(in: scrollView).x)
-            case .ended:
-                let translation = recognizer.translation(in: scrollView).x
-                let velocity = recognizer.velocity(in: scrollView).x
-                onEnded(translation + velocity * 0.16)
-            case .cancelled, .failed:
-                onEnded(0)
-            default:
-                break
-            }
-        }
-    }
-}
-
-extension WorkoutCardSwipeObserver.Coordinator: UIGestureRecognizerDelegate {
-    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        guard let pan = gestureRecognizer as? UIPanGestureRecognizer,
-              let hostView,
-              let scrollView else { return false }
-        let velocity = pan.velocity(in: scrollView)
-        let rowFrame = hostView.convert(hostView.bounds, to: scrollView)
-        let touch = pan.location(in: scrollView)
-        return rowFrame.contains(touch) && abs(velocity.x) > abs(velocity.y) * 1.08
-    }
-
-    func gestureRecognizer(
-        _ gestureRecognizer: UIGestureRecognizer,
-        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
-    ) -> Bool {
-        true
     }
 }
 
@@ -1570,7 +1392,7 @@ private struct WorkoutSessionDock: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Theme.foreground)
                 }
-                .buttonStyle(.glassControl(.clear, .circle(diameter: 38), legacyFill: .clear))
+                .buttonStyle(.glassControl(.clear, .circle(diameter: 38)))
                 .accessibilityLabel(session.runningSince == nil ? "Resume workout" : "Pause workout")
 
                 Button {
@@ -1584,8 +1406,7 @@ private struct WorkoutSessionDock: View {
                 .buttonStyle(
                     .glassControl(
                         onNext == nil ? .inert : .clear,
-                        .circle(diameter: 38),
-                        legacyFill: .clear
+                        .circle(diameter: 38)
                     )
                 )
                 .disabled(onNext == nil)
@@ -1595,7 +1416,7 @@ private struct WorkoutSessionDock: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, minHeight: 88)
-        .glassSurface(.regular, in: shape, legacyFill: .clear)
+        .glassSurface(.regular, in: shape)
         .padding(.horizontal, Theme.Metrics.contentInset)
         .padding(.bottom, Theme.Metrics.contentInset)
     }

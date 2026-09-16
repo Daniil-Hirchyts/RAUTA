@@ -215,23 +215,18 @@ private struct PageScrollReporting: ViewModifier {
     @Environment(\.appPageScrollTracker) private var tracker
 
     func body(content: Content) -> some View {
-        if #available(iOS 18.0, *) {
-            content
-                .onScrollGeometryChange(for: PageScrollState.self) { geometry in
-                    let insets = geometry.contentInsets
-                    return PageScrollState(
-                        offset: Swift.max(0, geometry.contentOffset.y + insets.top),
-                        isScrollable: geometry.contentSize.height + insets.top + insets.bottom
-                            > geometry.containerSize.height + 1
-                    )
-                } action: { _, state in
-                    tracker?.update(offset: state.offset, isScrollable: state.isScrollable)
-                }
-                .onDisappear { tracker?.reset() }
-        } else {
-            // Scroll geometry arrives with iOS 18; before it the bar stays put.
-            content
-        }
+        content
+            .onScrollGeometryChange(for: PageScrollState.self) { geometry in
+                let insets = geometry.contentInsets
+                return PageScrollState(
+                    offset: Swift.max(0, geometry.contentOffset.y + insets.top),
+                    isScrollable: geometry.contentSize.height + insets.top + insets.bottom
+                        > geometry.containerSize.height + 1
+                )
+            } action: { _, state in
+                tracker?.update(offset: state.offset, isScrollable: state.isScrollable)
+            }
+            .onDisappear { tracker?.reset() }
     }
 }
 

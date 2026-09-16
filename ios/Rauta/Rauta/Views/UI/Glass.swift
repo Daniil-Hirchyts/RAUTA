@@ -1,13 +1,11 @@
 import SwiftUI
 
-/// Liquid Glass, with a floor under it.
+/// Liquid Glass.
 ///
-/// On iOS 26 a control is made of real glass: it refracts the page behind it,
-/// picks up that page's colour as it scrolls past, and flexes under a finger.
-/// Before iOS 26 none of that exists, so the same control is drawn as the
-/// closest thing the platform has — a blurred material carrying the same tint.
+/// A control is made of real glass: it refracts the page behind it, picks up
+/// that page's colour as it scrolls past, and flexes under a finger.
 ///
-/// Both are described once, here, so no view has to ask which one it got.
+/// It is described once, here, so no view has to build a pane of its own.
 enum GlassTone: Equatable {
     /// Chrome that should read as a pane laid over the page.
     case regular
@@ -33,16 +31,14 @@ extension View {
         _ tone: GlassTone = .regular,
         in shape: S,
         interactive: Bool = false,
-        border: Color? = nil,
-        legacyFill: Color? = nil
+        border: Color? = nil
     ) -> some View {
         modifier(
             GlassSurface(
                 tone: tone,
                 shape: shape,
                 interactive: interactive,
-                border: border,
-                legacyFill: legacyFill
+                border: border
             )
         )
     }
@@ -53,22 +49,14 @@ struct GlassSurface<S: InsettableShape>: ViewModifier {
     var shape: S
     var interactive: Bool
     var border: Color?
-    var legacyFill: Color?
 
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content
-                .glassEffect(modernGlass, in: shape)
-                .overlay(borderOverlay)
-        } else {
-            content
-                .background(legacyPane)
-                .overlay(borderOverlay)
-        }
+        content
+            .glassEffect(glass, in: shape)
+            .overlay(borderOverlay)
     }
 
-    @available(iOS 26.0, *)
-    private var modernGlass: Glass {
+    private var glass: Glass {
         switch tone {
         case .regular:
             return .regular.interactive(interactive)
@@ -83,21 +71,6 @@ struct GlassSurface<S: InsettableShape>: ViewModifier {
         }
     }
 
-    private var legacyPane: some View {
-        shape
-            .fill(.ultraThinMaterial)
-            .overlay(shape.fill(legacyTint))
-    }
-
-    private var legacyTint: Color {
-        switch tone {
-        case .regular: return legacyFill ?? Theme.popover.opacity(0.72)
-        case .clear: return legacyFill ?? Theme.card.opacity(0.34)
-        case .tinted(let color): return color.opacity(0.86)
-        case .inert: return Theme.muted.opacity(0.92)
-        }
-    }
-
     @ViewBuilder
     private var borderOverlay: some View {
         if let border {
@@ -108,19 +81,15 @@ struct GlassSurface<S: InsettableShape>: ViewModifier {
 
 // MARK: - Morphing glass
 
-/// Groups glass that changes shape together: on iOS 26 panes that come close
-/// melt into one another as they move, so a strip of controls reads as one
-/// material rearranging itself. Before iOS 26 it is a plain container.
+/// Groups glass that changes shape together: panes that come close melt into
+/// one another as they move, so a strip of controls reads as one material
+/// rearranging itself.
 struct GlassMorphContainer<Content: View>: View {
     var spacing: CGFloat
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        if #available(iOS 26.0, *) {
-            GlassEffectContainer(spacing: spacing, content: content)
-        } else {
-            content()
-        }
+        GlassEffectContainer(spacing: spacing, content: content)
     }
 }
 
@@ -136,49 +105,37 @@ enum GlassButtonShape: Equatable {
 }
 
 extension PrimitiveButtonStyle where Self == GlassControlStyle {
-    /// A button made of the system's own Liquid Glass.
-    ///
-    /// On iOS 26 this is the platform's glass button: it flexes under a finger,
-    /// shimmers where it is touched, and carries its own rim and shadow — so
-    /// nothing is laid over it, and nothing clips it to its shape. Before iOS 26
-    /// the same button is drawn on the blurred pane `glassSurface` falls back to.
+    /// A button made of the system's own Liquid Glass: it flexes under a
+    /// finger, shimmers where it is touched, and carries its own rim and
+    /// shadow — so nothing is laid over it, and nothing clips it to its shape.
     static func glassControl(
         _ tone: GlassTone,
-        _ shape: GlassButtonShape,
-        legacyFill: Color? = nil
+        _ shape: GlassButtonShape
     ) -> GlassControlStyle {
-        GlassControlStyle(tone: tone, shape: shape, legacyFill: legacyFill)
+        GlassControlStyle(tone: tone, shape: shape)
     }
 }
 
 struct GlassControlStyle: PrimitiveButtonStyle {
     var tone: GlassTone
     var shape: GlassButtonShape
-    var legacyFill: Color?
 
     /// What the system glass style pads its label with at the regular control
     /// size. The label is laid out at the pane's full size and hands this back,
-    /// so a pane is the same size on either side of iOS 26.
+    /// so the pane ends up the size the caller asked for.
     private static let systemVerticalInset: CGFloat = 7
     private static let systemCircleInset: CGFloat = 7
     private static let systemCapsuleInset: CGFloat = 14
 
     func makeBody(configuration: Configuration) -> some View {
-        if #available(iOS 26.0, *) {
-            Button(role: configuration.role, action: configuration.trigger) {
-                sized(configuration.label)
-                    .padding(.vertical, -Self.systemVerticalInset)
-                    .padding(.horizontal, -horizontalInset)
-            }
-            .modifier(SystemGlassButton(tone: tone))
-            .buttonBorderShape(borderShape)
-            .controlSize(.regular)
-        } else {
-            Button(role: configuration.role, action: configuration.trigger) {
-                sized(configuration.label)
-            }
-            .buttonStyle(LegacyGlassButton(tone: tone, shape: shape, legacyFill: legacyFill))
+        Button(role: configuration.role, action: configuration.trigger) {
+            sized(configuration.label)
+                .padding(.vertical, -Self.systemVerticalInset)
+                .padding(.horizontal, -horizontalInset)
         }
+        .modifier(SystemGlassButton(tone: tone))
+        .buttonBorderShape(borderShape)
+        .controlSize(.regular)
     }
 
     private func sized(_ label: Configuration.Label) -> some View {
@@ -197,7 +154,6 @@ struct GlassControlStyle: PrimitiveButtonStyle {
         }
     }
 
-    @available(iOS 26.0, *)
     private var borderShape: ButtonBorderShape {
         switch shape {
         case .circle: return .circle
@@ -206,7 +162,6 @@ struct GlassControlStyle: PrimitiveButtonStyle {
     }
 }
 
-@available(iOS 26.0, *)
 private struct SystemGlassButton: ViewModifier {
     var tone: GlassTone
 
@@ -215,11 +170,7 @@ private struct SystemGlassButton: ViewModifier {
         case .regular, .inert:
             content.buttonStyle(.glass)
         case .clear:
-            if #available(iOS 26.1, *) {
-                content.buttonStyle(.glass(.clear))
-            } else {
-                content.buttonStyle(.glass)
-            }
+            content.buttonStyle(.glass(.clear))
         case .tinted(let color):
             content
                 .buttonStyle(.glassProminent)
@@ -228,67 +179,16 @@ private struct SystemGlassButton: ViewModifier {
     }
 }
 
-/// The pre-glass floor: the blurred pane, the warm outline, and the brand
-/// gradient under a primary label.
-private struct LegacyGlassButton: ButtonStyle {
-    var tone: GlassTone
-    var shape: GlassButtonShape
-    var legacyFill: Color?
-
-    func makeBody(configuration: Configuration) -> some View {
-        Group {
-            switch shape {
-            case .circle: pane(configuration.label, in: Circle())
-            case .capsule: pane(configuration.label, in: Capsule())
-            }
-        }
-        .scaleEffect(configuration.isPressed ? 0.985 : 1)
-        .opacity(configuration.isPressed ? 0.90 : 1)
-        .animation(Theme.Motion.spring, value: configuration.isPressed)
-    }
-
-    private func pane<S: InsettableShape>(_ label: Configuration.Label, in shape: S) -> some View {
-        label
-            .background {
-                if case .tinted = tone {
-                    shape.fill(Theme.primaryGradient)
-                }
-            }
-            .glassSurface(
-                tone,
-                in: shape,
-                border: isTinted ? Theme.Glassware.brightEdge : Theme.Glassware.edge,
-                legacyFill: legacyFill
-            )
-            .clipShape(shape)
-            .contentShape(shape)
-    }
-
-    private var isTinted: Bool {
-        if case .tinted = tone { return true }
-        return false
-    }
-}
-
 extension Theme {
     /// The glass palette: how much of the warm outline survives on top of a
     /// pane, and how strongly the brand colour is allowed to soak through one.
     enum Glassware {
         /// Real glass draws its own bright edge, so ours only has to hint.
-        static var edge: Color { Theme.border.opacity(supportsLiquidGlass ? 0.55 : 1) }
-        static var brightEdge: Color { Theme.primary.opacity(supportsLiquidGlass ? 0.45 : 0.8) }
-        /// The outline for a glass control that is not a button. System glass
-        /// draws its own rim, so a stroke on top of it only reads as a frame the
-        /// glass has been pushed into.
-        static var controlEdge: Color? { supportsLiquidGlass ? nil : Theme.border }
+        static var edge: Color { Theme.border.opacity(0.55) }
+        static var brightEdge: Color { Theme.primary.opacity(0.45) }
         /// The vertical warm gradient the primary control is known by, kept as
         /// a wash over the tint so glass never flattens the brand into one flat
         /// orange.
-        static var primaryWash: Double { supportsLiquidGlass ? 0.34 : 1 }
-
-        static var supportsLiquidGlass: Bool {
-            if #available(iOS 26.0, *) { return true }
-            return false
-        }
+        static var primaryWash: Double { 0.34 }
     }
 }

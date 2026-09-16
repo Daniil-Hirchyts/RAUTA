@@ -131,8 +131,7 @@ struct ProfileDashboard: View {
                     .glassSurface(
                         .regular,
                         in: Circle(),
-                        border: Theme.Glassware.edge,
-                        legacyFill: Theme.card.opacity(0.78)
+                        border: Theme.Glassware.edge
                     )
                     .allowsHitTesting(false)
 

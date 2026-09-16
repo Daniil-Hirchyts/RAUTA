@@ -114,11 +114,16 @@ struct WorkoutFormScreen: View {
     @State private var exerciseIds: [String] = []
     @State private var issue: String?
     @State private var saving = false
-    @State private var openRowId: String?
-    @StateObject private var reorder = CardReorder()
     @State private var showingDate = false
 
     private var workout: Workout? { workoutId.flatMap(store.workouts.workout) }
+
+    /// The rows to show. `reorderable()` needs one unconditional view per
+    /// element, so ids missing from the catalogue are dropped here rather than
+    /// inside the `ForEach` body — a conditional there traps the reorder lift.
+    private var resolvedExercises: [ExerciseSummary] {
+        exerciseIds.compactMap { ExerciseCatalogue.byId[$0] }
+    }
 
     var body: some View {
         ZStack {
@@ -130,34 +135,24 @@ struct WorkoutFormScreen: View {
                     VStack(spacing: 12) {
                         WorkoutFormDatePicker(selection: $date) { showingDate = true }
 
-                            ForEach(Array(exerciseIds.enumerated()), id: \.element) { index, id in
-                                if let exercise = ExerciseCatalogue.byId[id] {
-                                    EditableExerciseRow(
-                                        exercise: exercise,
-                                        index: index,
-                                        reorder: reorder,
-                                        exerciseIds: exerciseIds,
-                                        isOpen: Binding(
-                                            get: { openRowId == id },
-                                            set: { openRowId = $0 ? id : nil }
-                                        ),
-                                        onReorder: { ids, _ in exerciseIds = ids },
-                                        remove: {
-                                            exerciseIds.removeAll { $0 == id }
-                                            if openRowId == id { openRowId = nil }
-                                        }
-                                    )
-                                    .modifier(CardReorderPlacement(reorder: reorder, id: id, spacing: 12))
-                                }
+                            ForEach(resolvedExercises) { exercise in
+                                EditableExerciseRow(
+                                    exercise: exercise,
+                                    index: resolvedExercises.firstIndex(of: exercise) ?? 0,
+                                    remove: { exerciseIds.removeAll { $0 == exercise.id } }
+                                )
                             }
+                            .reorderable()
                             if let issue { InlineNotice(message: issue, isError: true) }
+                        }
+                        .reorderContainer(for: ExerciseSummary.self) { difference in
+                            exerciseIds = exerciseIds.applyingReorder(difference)
                         }
                         .padding(.horizontal, Theme.Metrics.contentInset)
                         .padding(.bottom, 24)
                 }
                 .pageScroll()
-                .scrollDisabled(reorder.active != nil)
-                .onDisappear { reorder.cancel() }
+                .swipeActionsContainer()
             } controls: {
                 HStack(spacing: 10) {
                     if focusMuscles != nil {
@@ -260,8 +255,7 @@ private struct NewWorkoutDestinationRow: View {
                     .glassSurface(
                         .tinted(Theme.primary),
                         in: Circle(),
-                        border: Theme.Glassware.brightEdge,
-                        legacyFill: Theme.primary
+                        border: Theme.Glassware.brightEdge
                     )
                     .overlay {
                         Circle()
@@ -381,76 +375,49 @@ private struct WorkoutFormDatePicker: View {
 private struct EditableExerciseRow: View {
     let exercise: ExerciseSummary
     let index: Int
-    @ObservedObject var reorder: CardReorder
-    let exerciseIds: [String]
-    private var isDragging: Bool { reorder.active == exercise.id }
-    @Binding var isOpen: Bool
-    let onReorder: ([String], String) -> Void
     let remove: () -> Void
 
     var body: some View {
-        SwipeableRow(isOpen: $isOpen, actionInset: 16, action: {
-            Button {
+        HStack(spacing: 0) {
+            Text(String(format: "%02d", index + 1))
+                .font(Theme.sans(16, weight: .bold))
+                .kerning(0.65)
+                .foregroundStyle(Theme.primary)
+                .frame(width: 50)
+                .frame(maxHeight: .infinity)
+
+            ExerciseMediaView(exerciseId: exercise.id)
+                .frame(width: 128, height: 128)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(exercise.name.capitalized)
+                    .font(Theme.sans(17, weight: .semibold))
+                    .foregroundStyle(Theme.foreground)
+                    .lineLimit(3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text(Wording.titleCase(exercise.equipment))
+                    .font(Theme.sans(14, weight: .medium))
+                    .foregroundStyle(Theme.mutedForeground)
+                    .lineLimit(1)
+            }
+            .padding(.leading, 16)
+            .padding(.trailing, 16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .frame(height: 136)
+        .background(Theme.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous))
+        .shadow(color: .black.opacity(0.08), radius: 3, y: 2)
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
                 Haptics.trigger(.warning)
                 remove()
             } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(Theme.primary)
+                Label("Remove", systemImage: "trash")
             }
-            .buttonStyle(
-                .glassControl(
-                    .tinted(Theme.primary.opacity(0.5)),
-                    .circle(diameter: 56),
-                    legacyFill: Theme.card
-                )
-            )
             .accessibilityLabel("Remove \(exercise.name)")
-        }) {
-            HStack(spacing: 0) {
-                Text(String(format: "%02d", index + 1))
-                    .font(Theme.sans(16, weight: .bold))
-                    .kerning(0.65)
-                    .foregroundStyle(Theme.primary)
-                    .frame(width: 50)
-                    .frame(maxHeight: .infinity)
-
-                ExerciseMediaView(exerciseId: exercise.id)
-                    .frame(width: 128, height: 128)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(exercise.name.capitalized)
-                        .font(Theme.sans(17, weight: .semibold))
-                        .foregroundStyle(Theme.foreground)
-                        .lineLimit(3)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(Wording.titleCase(exercise.equipment))
-                        .font(Theme.sans(14, weight: .medium))
-                        .foregroundStyle(Theme.mutedForeground)
-                        .lineLimit(1)
-                }
-                .padding(.leading, 16)
-                .padding(.trailing, 8)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-
-                CardReorderHandle(reorder: reorder, id: exercise.id,
-                    order: exerciseIds, name: exercise.name, height: 124, commit: onReorder)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .frame(height: 136)
-            .background(Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous))
-            .opacity(1)
-            .shadow(
-                color: .black.opacity(isDragging ? 0.30 : 0.08),
-                radius: isDragging ? 20 : 3,
-                y: isDragging ? 10 : 2
-            )
-            .overlay {
-                if isDragging { AppGrain().clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl2)) }
-            }
         }
     }
-
 }

@@ -11,18 +11,13 @@ enum WorkoutActivityBridge {
     /// False when the user has switched Live Activities off for the app, which
     /// makes every request throw.
     static var isSupported: Bool {
-        if #available(iOS 16.2, *) {
-            return ActivityAuthorizationInfo().areActivitiesEnabled
-        }
-        return false
+        ActivityAuthorizationInfo().areActivitiesEnabled
     }
 
-    @available(iOS 16.2, *)
     private static var activities: [Activity<WorkoutActivityAttributes>] {
         Activity<WorkoutActivityAttributes>.activities
     }
 
-    @available(iOS 16.2, *)
     private static func attributes(_ content: LiveActivityContent) -> WorkoutActivityAttributes {
         WorkoutActivityAttributes(
             workoutId: content.workoutId,
@@ -31,7 +26,6 @@ enum WorkoutActivityBridge {
         )
     }
 
-    @available(iOS 16.2, *)
     private static func state(_ content: LiveActivityContent) -> WorkoutActivityAttributes.ContentState {
         WorkoutActivityAttributes.ContentState(
             exerciseName: content.exerciseName,
@@ -50,7 +44,7 @@ enum WorkoutActivityBridge {
     /// adopted, so a session restored from storage reconnects to what the Lock
     /// Screen already shows instead of stacking a second card on top of it.
     static func start(_ content: LiveActivityContent) {
-        guard #available(iOS 16.2, *), isSupported else { return }
+        guard isSupported else { return }
         let attributes = attributes(content)
         let state = state(content)
 
@@ -71,7 +65,6 @@ enum WorkoutActivityBridge {
     }
 
     static func update(_ content: LiveActivityContent) {
-        guard #available(iOS 16.2, *) else { return }
         let state = state(content)
         for activity in activities {
             Task { await activity.update(ActivityContent(state: state, staleDate: nil)) }
@@ -81,7 +74,6 @@ enum WorkoutActivityBridge {
     /// A finished workout is worth a last glance; a discarded one is not, and
     /// lingering would leave a card the user has to dismiss by hand.
     static func end(_ content: LiveActivityContent, dismissImmediately: Bool) {
-        guard #available(iOS 16.2, *) else { return }
         let state = state(content)
         let policy: ActivityUIDismissalPolicy = dismissImmediately
             ? .immediate
@@ -99,7 +91,6 @@ enum WorkoutActivityBridge {
 
     /// Clears cards without touching their content — used when replacing one
     /// workout's activity with another's.
-    @available(iOS 16.2, *)
     private static func dismissAll() {
         for activity in activities {
             Task { await activity.end(nil, dismissalPolicy: .immediate) }

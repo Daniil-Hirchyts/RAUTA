@@ -780,9 +780,7 @@ struct RautaHeaderBadge: View {
                 .frame(width: 44, height: 44)
                 .glassSurface(
                     .regular,
-                    in: Circle(),
-                    border: Theme.Glassware.controlEdge,
-                    legacyFill: .clear
+                    in: Circle()
                 )
                 .allowsHitTesting(false)
 

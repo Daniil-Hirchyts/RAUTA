@@ -148,8 +148,7 @@ struct LikeButton: View {
                     .buttonStyle(
                         .glassControl(
                             liked ? .tinted(Theme.primary.opacity(0.28)) : .clear,
-                            .circle(diameter: size),
-                            legacyFill: Theme.card.opacity(0.78)
+                            .circle(diameter: size)
                         )
                     )
             }
@@ -219,8 +218,7 @@ struct FlowProgress: View {
                     .frame(width: step == stage ? 28 : 14, height: 4)
                     .glassSurface(
                         tone(step),
-                        in: Capsule(),
-                        legacyFill: legacyFill(step)
+                        in: Capsule()
                     )
                     .overlay {
                         if step == stage {
@@ -230,7 +228,7 @@ struct FlowProgress: View {
                         } else if step < stage {
                             Capsule()
                                 .fill(Theme.primary)
-                                .opacity(Theme.Glassware.supportsLiquidGlass ? 0.12 : 0.20)
+                                .opacity(0.12)
                         }
                     }
                     .clipShape(Capsule())
@@ -244,12 +242,6 @@ struct FlowProgress: View {
         if step == stage { return .tinted(Theme.primary) }
         if step < stage { return .tinted(Theme.primary.opacity(0.28)) }
         return .clear
-    }
-
-    private func legacyFill(_ step: Int) -> Color {
-        if step == stage { return Theme.primary }
-        if step < stage { return Theme.primary.opacity(0.35) }
-        return Theme.foreground.opacity(0.10)
     }
 }
 

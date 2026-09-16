@@ -179,8 +179,7 @@ struct ExerciseFilterBar: View {
         .glassSurface(
             open ? .regular : (musclesSelected ? .tinted(Theme.primary) : .clear),
             in: Capsule(),
-            interactive: true,
-            legacyFill: !open && musclesSelected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.24)
+            interactive: true
         )
         .frame(minWidth: 48, minHeight: 44)
         .accessibilityLabel(open ? "Return to filters" : "Muscles")
@@ -234,8 +233,7 @@ struct ExerciseFilterBar: View {
             interactive: true,
             // Present in both states, so the ring grows with the glass
             // instead of appearing at the field's final size.
-            border: open ? (searchFocused ? Theme.ring : Theme.Glassware.edge) : .clear,
-            legacyFill: Theme.card.opacity(0.24)
+            border: open ? (searchFocused ? Theme.ring : Theme.Glassware.edge) : .clear
         )
         .frame(minWidth: 48, minHeight: 48)
         .accessibilityElement(children: open ? .contain : .ignore)
@@ -285,8 +283,7 @@ struct ExerciseFilterChip: View {
         .glassSurface(
             selected ? .tinted(Theme.primary) : .clear,
             in: Capsule(),
-            interactive: true,
-            legacyFill: selected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.24)
+            interactive: true
         )
         .frame(minHeight: 44)
         .accessibilityLabel(title)

@@ -256,7 +256,7 @@ struct AppMenuSurface<Content: View>: View {
         .labelStyle(.titleAndIcon)
         .padding(8)
         .frame(minWidth: 232, idealWidth: 248, maxWidth: 280, alignment: .leading)
-        .glassSurface(.regular, in: shape, legacyFill: .clear)
+        .glassSurface(.regular, in: shape)
         .padding(6)
         .simultaneousGesture(
             TapGesture().onEnded {

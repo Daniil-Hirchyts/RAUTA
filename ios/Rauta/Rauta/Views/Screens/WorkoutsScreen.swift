@@ -173,17 +173,7 @@ struct WorkoutsScreen: View {
     }
 
     var body: some View {
-        Group {
-            if #available(iOS 27.0, *) {
-                activeWorkoutPlayerShell(nativeProminentTabView)
-            } else if #available(iOS 26.0, *) {
-                activeWorkoutPlayerShell(nativeAccessoryTabView)
-            } else if #available(iOS 18.4, *) {
-                nativeTabView
-            } else {
-                legacyTabView
-            }
-        }
+        activeWorkoutPlayerShell(nativeProminentTabView)
         .fullScreenCover(isPresented: $exercisePlayerOpen, onDismiss: {
             let next = afterExercisePlayer
             afterExercisePlayer = nil
@@ -289,7 +279,6 @@ struct WorkoutsScreen: View {
         }
     }
 
-    @available(iOS 26.0, *)
     private func activeWorkoutPlayerShell<Content: View>(_ content: Content) -> some View {
         content
             // The wrapped layout exists only while an exercise player exists.
@@ -304,7 +293,6 @@ struct WorkoutsScreen: View {
             )
     }
 
-    @available(iOS 27.0, *)
     private var nativeProminentTabView: some View {
         TabView(selection: nativeTabSelection) {
             Tab(value: NativeTabSelection.page(.summary)) {
@@ -347,101 +335,6 @@ struct WorkoutsScreen: View {
             }
         )
         .overlay { nativeRautaControl }
-    }
-
-    @available(iOS 26.0, *)
-    private var nativeAccessoryTabView: some View {
-        TabView(selection: nativeTabSelection) {
-            Tab(value: NativeTabSelection.page(.summary)) {
-                page(for: .summary)
-            } label: {
-                tabLabel(.summary)
-            }
-            Tab(value: NativeTabSelection.page(.workout)) {
-                workoutTabContent
-            } label: {
-                tabLabel(.workout)
-            }
-            Tab(value: NativeTabSelection.page(.library)) {
-                page(for: .library)
-            } label: {
-                tabLabel(.library)
-            }
-            Tab(value: NativeTabSelection.page(.profile)) {
-                page(for: .profile)
-            } label: {
-                tabLabel(.profile)
-            }
-            if !profileChrome {
-                Tab(value: NativeTabSelection.rauta, role: .search) {
-                    Color.clear
-                } label: {
-                    Image(uiImage: NativeTabIcons.transparentPlaceholder)
-                }
-            }
-        }
-        .tabViewStyle(.sidebarAdaptable)
-        .tint(Theme.primary)
-        .modifier(
-            ConditionalNativeBottomAccessory(isVisible: shouldShowNativeExerciseAccessory) {
-                nativeExerciseAccessory
-            }
-        )
-        .overlay { nativeRautaControl }
-    }
-
-    @available(iOS 18.4, *)
-    private var nativeTabView: some View {
-        TabView(selection: nativeTabSelection) {
-            Tab(value: NativeTabSelection.page(.summary)) {
-                page(for: .summary)
-            } label: {
-                tabLabel(.summary)
-            }
-            Tab(value: NativeTabSelection.page(.workout)) {
-                workoutTabContent
-            } label: {
-                tabLabel(.workout)
-            }
-            Tab(value: NativeTabSelection.page(.library)) {
-                page(for: .library)
-            } label: {
-                tabLabel(.library)
-            }
-            Tab(value: NativeTabSelection.page(.profile)) {
-                page(for: .profile)
-            } label: {
-                tabLabel(.profile)
-            }
-            if !profileChrome {
-                Tab(value: NativeTabSelection.rauta, role: .search) {
-                    Color.clear
-                } label: {
-                    Image(uiImage: NativeTabIcons.transparentPlaceholder)
-                }
-            }
-        }
-        .tabViewStyle(.sidebarAdaptable)
-        .tint(Theme.primary)
-        .overlay { nativeRautaControl }
-    }
-
-    private var legacyTabView: some View {
-        TabView(selection: $mainTab) {
-            page(for: .summary)
-                .tabItem { Label("Summary", systemImage: MainTab.summary.systemImage) }
-                .tag(MainTab.summary)
-            workoutTabContent
-                .tabItem { Label("Workout", systemImage: MainTab.workout.systemImage) }
-                .tag(MainTab.workout)
-            page(for: .library)
-                .tabItem { Label("Library", systemImage: MainTab.library.systemImage) }
-                .tag(MainTab.library)
-            page(for: .profile)
-                .tabItem { Label("Profile", systemImage: MainTab.profile.systemImage) }
-                .tag(MainTab.profile)
-        }
-        .tint(Theme.primary)
     }
 
     private var nativeTabSelection: Binding<NativeTabSelection> {
@@ -515,7 +408,6 @@ struct WorkoutsScreen: View {
         rautaMenuPresented = true
     }
 
-    @available(iOS 26.0, *)
     @ViewBuilder
     private var nativeExerciseAccessory: some View {
         if let session = activeWorkout.session {
@@ -813,7 +705,6 @@ struct WorkoutsScreen: View {
     }
 }
 
-@available(iOS 26.0, *)
 private struct ConditionalNativeBottomAccessory<Accessory: View>: ViewModifier {
     let isVisible: Bool
     let accessory: () -> Accessory
@@ -844,7 +735,6 @@ enum ExercisePlayerZoom {
     static let sourceID = "exercise-player"
 }
 
-@available(iOS 26.0, *)
 private struct NativeExerciseBottomAccessory: View {
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
     let exercise: ExerciseSummary
@@ -877,7 +767,6 @@ private struct NativeExerciseBottomAccessory: View {
     }
 }
 
-@available(iOS 26.0, *)
 private struct NativeWorkoutCompleteAccessory: View {
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
     let session: ActiveWorkoutSession
@@ -1511,8 +1400,7 @@ private struct WorkoutFilterChip: View {
         .buttonStyle(
             .glassControl(
                 selected ? .tinted(Theme.primary) : .clear,
-                .capsule(height: 40),
-                legacyFill: selected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.24)
+                .capsule(height: 40)
             )
         )
         .frame(minHeight: 44)

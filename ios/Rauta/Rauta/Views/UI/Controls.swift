@@ -84,12 +84,9 @@ private struct StepButton: View {
             .glassSurface(
                 isDisabled ? .inert : .regular,
                 in: shape,
-                interactive: !isDisabled,
-                border: Theme.Glassware.controlEdge,
-                legacyFill: Theme.card
+                interactive: !isDisabled
             )
             .opacity(isDisabled ? 0.35 : 1)
-            .scaleEffect(isPressed && !Theme.Glassware.supportsLiquidGlass ? 0.94 : 1)
             .animation(Theme.Motion.spring, value: isPressed)
             .contentShape(shape)
             .gesture(
@@ -255,8 +252,7 @@ struct SlidingTabs: View {
         .glassSurface(
             .regular,
             in: Capsule(),
-            border: Theme.Glassware.edge,
-            legacyFill: Theme.card.opacity(0.74)
+            border: Theme.Glassware.edge
         )
         .frame(minHeight: 42)
     }
@@ -341,14 +337,8 @@ struct GlassSegmentedPicker<Option: Hashable>: View {
 
     @ViewBuilder
     private var thumb: some View {
-        if #available(iOS 26.0, *) {
-            Color.clear
-                .glassEffect(.regular.tint(tint).interactive(), in: Capsule())
-        } else {
-            Capsule()
-                .fill(Theme.primaryGradient)
-                .shadow(color: tint.opacity(0.18), radius: 6, y: 2)
-        }
+        Color.clear
+            .glassEffect(.regular.tint(tint).interactive(), in: Capsule())
     }
 
     private func option(at x: CGFloat) -> Option {

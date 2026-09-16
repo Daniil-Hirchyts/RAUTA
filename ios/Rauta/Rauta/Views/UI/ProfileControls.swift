@@ -23,7 +23,7 @@ struct ProfileNameControl: View {
                     Button { draft = "" } label: {
                         Image(systemName: "xmark").font(.system(size: 14)).foregroundStyle(Theme.mutedForeground)
                     }
-                    .buttonStyle(.glassControl(.clear, .circle(diameter: 32), legacyFill: Theme.card))
+                    .buttonStyle(.glassControl(.clear, .circle(diameter: 32)))
                     .accessibilityLabel("Clear name").padding(.bottom, 12)
                 }
             }

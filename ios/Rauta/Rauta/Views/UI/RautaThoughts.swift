@@ -326,7 +326,7 @@ private struct ThoughtBubble: View {
                     let diameter = shown ? bubble.diameter : 0.5
                     Color.clear
                         .frame(width: diameter, height: diameter)
-                        .glassSurface(Self.glass, in: Circle(), legacyFill: Theme.card.opacity(0.9))
+                        .glassSurface(Self.glass, in: Circle())
                         .position(shown ? (bubble.large ? geometry.largeBubble : geometry.smallBubble) : geometry.origin)
                         .animation(Self.spring(delay: delay), value: shown)
                         .allowsHitTesting(false)
@@ -371,8 +371,7 @@ private struct ThoughtBubble: View {
         .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
         .glassSurface(
             Self.glass,
-            in: RoundedRectangle(cornerRadius: radius, style: .continuous),
-            legacyFill: Theme.card.opacity(0.9)
+            in: RoundedRectangle(cornerRadius: radius, style: .continuous)
         )
         // Picking a row puts the thought away; the row's own action still runs.
         .simultaneousGesture(TapGesture().onEnded { close() })

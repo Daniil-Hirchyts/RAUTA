@@ -16,12 +16,8 @@ struct WorkoutGlyph: View {
     var body: some View {
         if isPaused {
             Image(systemName: "pause.fill")
-        } else if #available(iOS 18.0, *) {
-            Image(systemName: "dumbbell.fill")
         } else {
-            // `dumbbell.fill` only arrived in iOS 18; below that a flame is
-            // the closest symbol that is not a person.
-            Image(systemName: "flame.fill")
+            Image(systemName: "dumbbell.fill")
         }
     }
 }

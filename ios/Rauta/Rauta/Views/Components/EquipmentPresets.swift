@@ -95,8 +95,7 @@ private struct PresetChip: View {
             .buttonStyle(
                 .glassControl(
                     selected ? .tinted(Theme.primary) : .clear,
-                    .capsule(height: 34),
-                    legacyFill: selected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.72)
+                    .capsule(height: 34)
                 )
             )
             .accessibilityAddTraits(selected ? [.isSelected] : [])
@@ -107,7 +106,7 @@ private struct PresetChip: View {
                         .foregroundStyle(Theme.primary)
                 }
                 .buttonStyle(
-                    .glassControl(.clear, .circle(diameter: 34), legacyFill: Theme.card.opacity(0.72))
+                    .glassControl(.clear, .circle(diameter: 34))
                 )
                 .accessibilityLabel("Delete \(name) preset")
             }
@@ -145,8 +144,7 @@ struct EquipmentPresetEditor: View {
                 .glassSurface(
                     .regular,
                     in: Capsule(),
-                    border: focused ? Theme.ring : Theme.Glassware.edge,
-                    legacyFill: Theme.card.opacity(0.78)
+                    border: focused ? Theme.ring : Theme.Glassware.edge
                 )
                 .shadow(color: .black.opacity(0.18), radius: 12, y: 8)
                 .accessibilityLabel("Preset name")
@@ -215,8 +213,7 @@ struct ExerciseSearchField: View {
             .glassSurface(
                 .regular,
                 in: Capsule(),
-                border: focused ? Theme.ring : Theme.Glassware.edge,
-                legacyFill: Theme.card.opacity(0.78)
+                border: focused ? Theme.ring : Theme.Glassware.edge
             )
             .shadow(color: .black.opacity(0.18), radius: 12, y: 8)
 

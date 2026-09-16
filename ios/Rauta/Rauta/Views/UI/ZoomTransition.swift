@@ -58,13 +58,15 @@ private struct AppZoomSource: ViewModifier {
     let cornerRadius: CGFloat
     @Environment(\.appZoomNamespace) private var namespace
 
+    /// Stands in when nothing set the shared namespace. No page names a source
+    /// in it, so the presentation is the plain one — and resolving to a
+    /// namespace either way keeps this modifier from rendering as conditional
+    /// content, which a reorder container cannot lift.
+    @Namespace private var unattached
+
     func body(content: Content) -> some View {
-        if #available(iOS 18.0, *), let namespace {
-            content.matchedTransitionSource(id: id, in: namespace) { source in
-                source.clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            }
-        } else {
-            content
+        content.matchedTransitionSource(id: id, in: namespace ?? unattached) { source in
+            source.clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         }
     }
 }
@@ -74,20 +76,11 @@ private struct AppZoomTransition: ViewModifier {
     @Environment(\.appZoomNamespace) private var namespace
 
     func body(content: Content) -> some View {
-        if #available(iOS 18.0, *), let namespace, let sourceID {
+        if let namespace, let sourceID {
             content.navigationTransition(.zoom(sourceID: sourceID, in: namespace))
         } else {
             content
         }
-    }
-}
-
-/// Whether zoomed presentations exist here, and so whether a page can leave
-/// dismissal by dragging to the system.
-enum AppZoom {
-    static var isAvailable: Bool {
-        if #available(iOS 18.0, *) { return true }
-        return false
     }
 }
 
@@ -130,14 +123,9 @@ private struct SwipeBackEnabler: UIViewRepresentable {
             guard let found = responder as? UINavigationController else { return }
             navigation = found
 
-            // From iOS 26 the swipe back is recognised across the whole page,
-            // and that recogniser is the one that receives an edge swipe.
-            let swipe: UIGestureRecognizer?
-            if #available(iOS 26.0, *) {
-                swipe = found.interactiveContentPopGestureRecognizer
-            } else {
-                swipe = found.interactivePopGestureRecognizer
-            }
+            // The swipe back is recognised across the whole page, and that
+            // recogniser is the one that receives an edge swipe.
+            let swipe: UIGestureRecognizer? = found.interactiveContentPopGestureRecognizer
             swipe?.isEnabled = true
             swipe?.delegate = SwipeBackDelegate.shared
             Self.assignLeadingEdge(in: found)

@@ -133,7 +133,7 @@ struct SettingsScreen: View {
                                             .font(.system(size: 17, weight: .semibold))
                                             .foregroundStyle(Theme.primary)
                                     }
-                                    .buttonStyle(.glassControl(.clear, .circle(diameter: 40), legacyFill: Theme.card))
+                                    .buttonStyle(.glassControl(.clear, .circle(diameter: 40)))
                                     .accessibilityLabel("Sync iCloud backup now")
                                 }
                             }

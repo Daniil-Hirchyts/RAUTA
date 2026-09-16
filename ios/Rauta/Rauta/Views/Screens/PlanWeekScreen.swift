@@ -266,8 +266,7 @@ struct WorkoutDateCalendarModal: View {
             .glassSurface(
                 .clear,
                 in: RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous),
-                border: Theme.Glassware.edge,
-                legacyFill: Theme.card.opacity(0.78)
+                border: Theme.Glassware.edge
             )
             .onChange(of: selectedDate) { _, newValue in
                 Haptics.trigger(.success)

@@ -165,8 +165,7 @@ struct SelectionChip: View {
         .buttonStyle(
             .glassControl(
                 selected ? .tinted(Theme.primary) : .clear,
-                .capsule(height: 34),
-                legacyFill: selected ? Theme.primary.opacity(0.76) : Theme.card.opacity(0.72)
+                .capsule(height: 34)
             )
         )
         .accessibilityAddTraits(selected ? .isSelected : [])
