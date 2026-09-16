@@ -7,7 +7,6 @@ struct RautaScreen<Content: View, Controls: View, Right: View>: View {
     var onTitleTap: (() -> Void)? = nil
     var backLabel: String?
     var onBack: (() -> Void)?
-    var progressStage: Int?
     var titleMultiline: Bool = false
     var fullScreen: Bool = false
     @ViewBuilder var right: () -> Right
@@ -35,11 +34,7 @@ struct RautaScreen<Content: View, Controls: View, Right: View>: View {
                         }
                     },
                     right: { right() },
-                    above: {
-                        if let progressStage {
-                            FlowProgress(stage: progressStage)
-                        }
-                    },
+                    above: { EmptyView() },
                     below: { EmptyView() }
                 )
             } content: {
@@ -59,7 +54,6 @@ extension RautaScreen where Right == EmptyView {
         onTitleTap: (() -> Void)? = nil,
         backLabel: String? = nil,
         onBack: (() -> Void)? = nil,
-        progressStage: Int? = nil,
         titleMultiline: Bool = false,
         fullScreen: Bool = false,
         @ViewBuilder content: @escaping () -> Content,
@@ -72,7 +66,6 @@ extension RautaScreen where Right == EmptyView {
             onTitleTap: onTitleTap,
             backLabel: backLabel,
             onBack: onBack,
-            progressStage: progressStage,
             titleMultiline: titleMultiline,
             fullScreen: fullScreen,
             right: { EmptyView() },
@@ -90,7 +83,6 @@ extension RautaScreen where Controls == EmptyView {
         onTitleTap: (() -> Void)? = nil,
         backLabel: String? = nil,
         onBack: (() -> Void)? = nil,
-        progressStage: Int? = nil,
         titleMultiline: Bool = false,
         fullScreen: Bool = false,
         @ViewBuilder right: @escaping () -> Right,
@@ -103,7 +95,6 @@ extension RautaScreen where Controls == EmptyView {
             onTitleTap: onTitleTap,
             backLabel: backLabel,
             onBack: onBack,
-            progressStage: progressStage,
             titleMultiline: titleMultiline,
             fullScreen: fullScreen,
             right: right,
@@ -121,7 +112,6 @@ extension RautaScreen where Controls == EmptyView, Right == EmptyView {
         onTitleTap: (() -> Void)? = nil,
         backLabel: String? = nil,
         onBack: (() -> Void)? = nil,
-        progressStage: Int? = nil,
         titleMultiline: Bool = false,
         fullScreen: Bool = false,
         @ViewBuilder content: @escaping () -> Content
@@ -133,7 +123,6 @@ extension RautaScreen where Controls == EmptyView, Right == EmptyView {
             onTitleTap: onTitleTap,
             backLabel: backLabel,
             onBack: onBack,
-            progressStage: progressStage,
             titleMultiline: titleMultiline,
             fullScreen: fullScreen,
             right: { EmptyView() },

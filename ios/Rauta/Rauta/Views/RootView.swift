@@ -121,16 +121,15 @@ struct AppPageView: View {
             MusclePrioritiesScreen()
         case .planWeek(let sourceProgramId):
             PlanWeekScreen(sourceProgramId: sourceProgramId)
-        case .muscles(let preferredWorkoutId):
-            ExercisePickerScreen(stage: .muscles, preferredWorkoutId: preferredWorkoutId)
-        case .equipment(let preferredWorkoutId):
-            ExercisePickerScreen(stage: .equipment, preferredWorkoutId: preferredWorkoutId)
-        case .exercises(let preferredWorkoutId):
-            ExercisePickerScreen(stage: .exercises, preferredWorkoutId: preferredWorkoutId)
+        case .addExercises(let preferredWorkoutId):
+            AddExercisesScreen(preferredWorkoutId: preferredWorkoutId)
         case .exerciseDetail(let exerciseId):
             ExerciseDetailScreen(exerciseId: exerciseId)
-        case .workoutDestination(let preferredWorkoutId):
-            WorkoutDestinationScreen(preferredWorkoutId: preferredWorkoutId)
+        case .workoutDestination(let exerciseIds, let preferredWorkoutId):
+            WorkoutDestinationScreen(
+                exerciseIds: exerciseIds,
+                preferredWorkoutId: preferredWorkoutId
+            )
         case .workoutForm(let exerciseIds, let workoutId, let focusMuscles):
             WorkoutFormScreen(
                 initialExerciseIds: exerciseIds,

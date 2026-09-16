@@ -381,9 +381,8 @@ struct WorkoutDetailScreen: View {
         store.filters.reset()
         store.filters.setEquipment(store.filters.gymEquipment)
         store.navigation.selectedIds = []
-        store.navigation.selectMode = false
         // Asked for from RAUTA's menu, so the flow grows out of RAUTA.
-        store.navigation.push(.muscles(preferredWorkoutId: preferredWorkoutId), from: RautaNativeTabControl.zoomSourceID)
+        store.navigation.push(.addExercises(preferredWorkoutId: preferredWorkoutId), from: RautaNativeTabControl.zoomSourceID)
     }
 
     private func move(_ id: String, from index: Int, by direction: Int) {

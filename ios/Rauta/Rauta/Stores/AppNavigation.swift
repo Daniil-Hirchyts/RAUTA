@@ -14,11 +14,9 @@ enum AppPage: Hashable {
     case profileLoadSteps
     case profilePriorities
     case planWeek(sourceProgramId: String?)
-    case muscles(preferredWorkoutId: String?)
-    case equipment(preferredWorkoutId: String?)
-    case exercises(preferredWorkoutId: String?)
+    case addExercises(preferredWorkoutId: String?)
     case exerciseDetail(exerciseId: String)
-    case workoutDestination(preferredWorkoutId: String?)
+    case workoutDestination(exerciseIds: [String], preferredWorkoutId: String?)
     case workoutForm(exerciseIds: [String], workoutId: String?, engineFocusMuscles: [MuscleId]?)
     case equipmentPreset
     case exerciseAlternatives(exerciseId: String, workoutId: String)
@@ -35,9 +33,7 @@ enum AppPage: Hashable {
         case .profileLoadSteps: return "profile-load-steps"
         case .profilePriorities: return "profile-priorities"
         case .planWeek: return "plan-week"
-        case .muscles: return "muscles"
-        case .equipment: return "equipment"
-        case .exercises: return "exercises"
+        case .addExercises: return "add-exercises"
         case .exerciseDetail: return "exercise-detail"
         case .workoutDestination: return "workout-destination"
         case .workoutForm: return "workout-form"
@@ -77,7 +73,7 @@ enum AppPage: Hashable {
     /// modal and is pushed within it.
     var opensAsModal: Bool {
         switch self {
-        case .settings, .planWeek, .muscles, .exerciseDetail, .exerciseAlternatives:
+        case .settings, .planWeek, .addExercises, .exerciseDetail, .exerciseAlternatives:
             return true
         default:
             return false
@@ -86,7 +82,7 @@ enum AppPage: Hashable {
 
     var hasControls: Bool {
         switch self {
-        case .settings, .workoutDestination, .exerciseAlternatives, .exerciseDetail:
+        case .settings, .workoutDestination, .exerciseAlternatives:
             return false
         default:
             return true
@@ -95,7 +91,7 @@ enum AppPage: Hashable {
 
     var preferredWorkoutId: String? {
         switch self {
-        case .muscles(let id), .equipment(let id), .exercises(let id), .workoutDestination(let id):
+        case .addExercises(let id), .workoutDestination(_, let id):
             return id
         default:
             return nil
@@ -110,8 +106,10 @@ enum AppPage: Hashable {
         case .workoutForm(let exerciseIds, let workoutId, let focus):
             let focusKey = focus.map { $0.map(\.rawValue).joined(separator: ",") } ?? "manual"
             return "workout-form:\(workoutId ?? "new"):\(exerciseIds.joined(separator: ",")):\(focusKey)"
-        case .muscles, .equipment, .exercises, .workoutDestination:
+        case .addExercises:
             return "\(typeName):\(preferredWorkoutId ?? "new")"
+        case .workoutDestination(let exerciseIds, let id):
+            return "\(typeName):\(id ?? "new"):\(exerciseIds.joined(separator: ","))"
         default:
             return typeName
         }
@@ -126,7 +124,10 @@ enum AppPage: Hashable {
             if let sourceProgramId { object["sourceProgramId"] = .string(sourceProgramId) }
         case .exerciseDetail(let exerciseId):
             object["exerciseId"] = .string(exerciseId)
-        case .muscles(let id), .equipment(let id), .exercises(let id), .workoutDestination(let id):
+        case .addExercises(let id):
+            object["preferredWorkoutId"] = id.map(JSONValue.string) ?? .null
+        case .workoutDestination(let exerciseIds, let id):
+            object["exerciseIds"] = .array(exerciseIds.map(JSONValue.string))
             object["preferredWorkoutId"] = id.map(JSONValue.string) ?? .null
         case .workoutForm(let exerciseIds, let workoutId, _):
             object["exerciseIds"] = .array(exerciseIds.map(JSONValue.string))
@@ -166,11 +167,15 @@ enum AppPage: Hashable {
         // First-run setup is decided from the profile at launch, never restored
         // from a session: whether it is due is the profile's answer to give.
         case "onboarding": return nil
-        case "muscles": return .muscles(preferredWorkoutId: optionalString("preferredWorkoutId"))
-        case "equipment": return .equipment(preferredWorkoutId: optionalString("preferredWorkoutId"))
-        case "exercises": return .exercises(preferredWorkoutId: optionalString("preferredWorkoutId"))
+        case "add-exercises":
+            return .addExercises(preferredWorkoutId: optionalString("preferredWorkoutId"))
         case "workout-destination":
-            return .workoutDestination(preferredWorkoutId: optionalString("preferredWorkoutId"))
+            return .workoutDestination(
+                exerciseIds: Sanitize.uniqueStrings(object["exerciseIds"]) {
+                    ExerciseCatalogue.has($0)
+                },
+                preferredWorkoutId: optionalString("preferredWorkoutId")
+            )
         case "exercise-detail":
             guard let exerciseId = optionalString("exerciseId"),
                   ExerciseCatalogue.has(exerciseId)
@@ -223,7 +228,6 @@ final class AppSessionStore: ObservableObject {
 
     @Published private(set) var pages: [AppPageEntry] = []
     @Published private(set) var direction: NavigationDirection = .forward
-    @Published var selectMode = false
     @Published var selectedIds: [String] = []
     /// A workout waiting to be shown on the Workout tab. Set by ``openWorkout(_:)``
     /// and cleared by the tab once it has opened it.

@@ -741,8 +741,8 @@ struct WorkoutsScreen: View {
     }
     private func startExerciseFlow() {
         filters.reset(); filters.setEquipment(filters.gymEquipment)
-        navigation.selectMode = false; navigation.selectedIds = []
-        navigation.push(.muscles(preferredWorkoutId: nil), from: RautaNativeTabControl.zoomSourceID)
+        navigation.selectedIds = []
+        navigation.push(.addExercises(preferredWorkoutId: nil), from: RautaNativeTabControl.zoomSourceID)
     }
     private func selectMainTab(_ tab: MainTab) {
         mainTab = tab

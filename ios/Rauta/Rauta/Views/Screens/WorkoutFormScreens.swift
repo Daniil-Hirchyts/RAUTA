@@ -1,23 +1,38 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+/// Where the exercises just picked should go.
+///
+/// A page rather than a menu: the list of open workouts is as long as it is,
+/// and a scrolling popover that closes on the wrong tap is a worse way to
+/// answer a one-tap question.
 struct WorkoutDestinationScreen: View {
     @ObservedObject private var store = AppStore.shared
+    /// The exercises being filed, carried by the page rather than read from the
+    /// selection — one exercise opened from the Library is the same question.
+    let exerciseIds: [String]
+    /// The workout the flow started from, offered first.
     let preferredWorkoutId: String?
 
+    /// Every workout still open to more exercises, soonest first, with the one
+    /// being worked on at the top: the workout this flow started from, or else
+    /// the one in progress.
     private var workouts: [Workout] {
-        store.workouts.workouts
+        let currentId = preferredWorkoutId ?? store.activeWorkout.session?.workoutId
+        let open = store.workouts.workouts
             .filter { $0.completion == nil }
-            .sorted {
-                if $0.id == preferredWorkoutId { return true }
-                if $1.id == preferredWorkoutId { return false }
-                return $0.date > $1.date
-            }
+            .soonestFirst()
+        guard let current = open.first(where: { $0.id == currentId }) else { return open }
+        return [current] + open.filter { $0.id != current.id }
+    }
+
+    private var currentId: String? {
+        preferredWorkoutId ?? store.activeWorkout.session?.workoutId
     }
 
     var body: some View {
         RautaScreen(
-            title: "Add \(Wording.countLabel(store.navigation.selectedIds.count, "exercise"))",
+            title: "Add \(Wording.countLabel(exerciseIds.count, "exercise"))",
             backLabel: "Back to exercises",
             onBack: store.navigation.pop
         ) {
@@ -28,16 +43,22 @@ struct WorkoutDestinationScreen: View {
                         .foregroundStyle(Theme.mutedForeground)
 
                     NewWorkoutDestinationRow {
+                        Haptics.trigger(.selection)
                         store.navigation.push(.workoutForm(
-                            exerciseIds: store.navigation.selectedIds,
+                            exerciseIds: exerciseIds,
                             workoutId: nil,
                             engineFocusMuscles: nil
                         ))
                     }
                     .padding(.top, 20)
 
-                    if !workouts.isEmpty {
-                        Text("EXISTING WORKOUTS")
+                    if workouts.isEmpty {
+                        Text("No planned workouts yet.")
+                            .font(Theme.sans(14))
+                            .foregroundStyle(Theme.mutedForeground)
+                            .padding(.top, 20)
+                    } else {
+                        Text("PLANNED WORKOUTS")
                             .font(Theme.sans(12, weight: .bold))
                             .kerning(1.55)
                             .foregroundStyle(Theme.mutedForeground)
@@ -49,7 +70,7 @@ struct WorkoutDestinationScreen: View {
                         ForEach(workouts) { workout in
                             ExistingWorkoutDestinationRow(
                                 workout: workout,
-                                current: workout.id == preferredWorkoutId,
+                                current: workout.id == currentId,
                                 action: { add(to: workout) }
                             )
                             .padding(.bottom, 8)
@@ -65,7 +86,7 @@ struct WorkoutDestinationScreen: View {
 
     private func add(to workout: Workout) {
         var seen = Set<String>()
-        let ids = (workout.exerciseIds + store.navigation.selectedIds)
+        let ids = (workout.exerciseIds + exerciseIds)
             .filter { seen.insert($0).inserted }
         do {
             if store.activeWorkout.session?.workoutId == workout.id {
@@ -74,7 +95,6 @@ struct WorkoutDestinationScreen: View {
             } else {
                 try TrainingEdits.updateScheduledWorkoutExercises(workout.id, ids)
             }
-            store.navigation.selectMode = false
             store.navigation.selectedIds = []
             store.navigation.openWorkout(workout.id)
             Haptics.trigger(.success)
@@ -215,7 +235,6 @@ struct WorkoutFormScreen: View {
                     focusMuscles: focusMuscles
                 )
             }
-            store.navigation.selectMode = false
             store.navigation.selectedIds = []
             store.navigation.openWorkout(id)
             Haptics.trigger(.success)

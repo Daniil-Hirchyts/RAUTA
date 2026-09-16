@@ -59,9 +59,8 @@ struct ExerciseMediaStyle: Hashable, Sendable {
 /// Decodes still and animated WebP through ImageIO, then applies the app's
 /// treatment for the current theme.
 ///
-/// The source animations sit on a white canvas. Converting that canvas to alpha
-/// and recolouring the figure is what makes them read as part of the app rather
-/// than as pasted-in clip art.
+/// The source animations carry a pre-baked alpha channel; recolouring the figure
+/// is what makes them read as part of the app rather than as pasted-in clip art.
 enum ExerciseMedia {
     private static let srgbSpace = CGColorSpace(name: CGColorSpace.sRGB)!
     private static let context = CIContext(options: [
@@ -79,10 +78,9 @@ enum ExerciseMedia {
         return cache
     }()
 
-    /// The treatment for the white-background exercise animations.
+    /// The treatment for the exercise animations.
     ///
-    /// The first step turns the near-white canvas into transparency. On a dark
-    /// theme the rest invert and recolour the figure, and the rotation lands the
+    /// On a dark theme these invert and recolour the figure, and the rotation lands the
     /// source red on the app's primary orange. On a light theme the figure keeps
     /// its own greys, which already read on paper, and only its red is turned a
     /// little towards the orange. Either way the highlight is then turned on by
@@ -90,26 +88,18 @@ enum ExerciseMedia {
     /// colour.
     private static func treated(_ input: CIImage, style: ExerciseMediaStyle) -> CIImage? {
         let shift = Double(style.hueShift)
-        // Background key: everything near white becomes transparent, matching
-        // the `feColorMatrix` the web build used.
-        let keyed = input.applyingFilter("CIColorMatrix", parameters: [
-            "inputRVector": CIVector(x: 1, y: 0, z: 0, w: 0),
-            "inputGVector": CIVector(x: 0, y: 1, z: 0, w: 0),
-            "inputBVector": CIVector(x: 0, y: 0, z: 1, w: 0),
-            "inputAVector": CIVector(x: -5, y: -5, z: -5, w: 14.7),
-            "inputBiasVector": CIVector(x: 0, y: 0, z: 0, w: 0),
-        ])
-
-        // Clamping components to [0, 1] is required: in Core Image's unclamped half-float
-        // pipeline, alpha became ~14.7, which scaled premultiplied RGB to >1.0, blowing out
-        // the output to solid white.
-        let clamped = keyed.applyingFilter("CIColorClamp", parameters: [
-            "inputMinComponents": CIVector(x: 0, y: 0, z: 0, w: 0),
-            "inputMaxComponents": CIVector(x: 1, y: 1, z: 1, w: 1),
-        ])
+        // The artwork arrives already cut out, so nothing here separates figure
+        // from ground; this is only a recolouring.
+        //
+        // Core Image hands us premultiplied components, and two of the steps
+        // below are not safe on those: inverting a half-covered edge pixel would
+        // invert a value already scaled by its own coverage, and contrast pivots
+        // around 0.5 rather than scaling. Both come back as a fringe along every
+        // edge. Hue and saturation are linear and would survive either way.
+        let straight = input.applyingFilter("CIUnpremultiply")
 
         if style.tone == .light {
-            let warmed = clamped
+            let warmed = straight
                 .applyingFilter("CIHueAdjust", parameters: [
                     kCIInputAngleKey: (20.0 + shift) * .pi / 180.0,
                 ])
@@ -118,14 +108,11 @@ enum ExerciseMedia {
                     kCIInputContrastKey: 1.04,
                     kCIInputBrightnessKey: 0.0,
                 ])
-            return warmed.applyingFilter("CISourceInCompositing", parameters: [
-                kCIInputImageKey: warmed,
-                kCIInputBackgroundImageKey: clamped,
-            ])
+            return warmed.applyingFilter("CIPremultiply")
         }
 
         guard let inverted = CIFilter(name: "CIColorInvert", parameters: [
-            kCIInputImageKey: clamped,
+            kCIInputImageKey: straight,
         ])?.outputImage else { return nil }
 
         // 188 degrees, expressed in radians, as the web filter chain asked for.
@@ -139,11 +126,9 @@ enum ExerciseMedia {
             kCIInputBrightnessKey: 0.0,
         ])
 
-        // Mask with the clamped alpha so the transparent canvas remains 100% clean.
-        return controls.applyingFilter("CISourceInCompositing", parameters: [
-            kCIInputImageKey: controls,
-            kCIInputBackgroundImageKey: clamped,
-        ])
+        // Back to premultiplied: the colour filters above all pass alpha through
+        // untouched, so the asset's own coverage is still intact here.
+        return controls.applyingFilter("CIPremultiply")
     }
 
     private static func render(_ image: CIImage, size: CGSize, style: ExerciseMediaStyle) -> UIImage? {

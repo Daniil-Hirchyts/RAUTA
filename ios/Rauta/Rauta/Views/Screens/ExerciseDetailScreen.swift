@@ -25,10 +25,15 @@ struct ExerciseDetailScreen: View {
             ) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
+                        // No clip shape: the artwork is already cut out, and a
+                        // rounded rect here would crop the shadow.
                         ExerciseMediaView(exerciseId: exercise.id, animated: true)
                             .aspectRatio(1, contentMode: .fit)
                             .frame(maxWidth: .infinity)
-                            .clipShape(RoundedRectangle(cornerRadius: Theme.Metrics.cardRadius))
+                            // Falls along the figure's own outline, which only
+                            // works now the artwork carries alpha. Same tone the
+                            // body map rests its muscles on, at hero scale.
+                            .shadow(color: Theme.palette.bodyRestingShadow, radius: 14, y: 6)
                         if !exercise.instructions.isEmpty {
                             VStack(alignment: .leading, spacing: 10) {
                                 ForEach(Array(exercise.instructions.enumerated()), id: \.offset) { index, instruction in
@@ -50,6 +55,19 @@ struct ExerciseDetailScreen: View {
                     .padding(.bottom, 24)
                 }
                 .pageScroll()
+            } controls: {
+                // Looking an exercise up and wanting it are a step apart,
+                // wherever the page was opened from: the Library, a browse, a
+                // replacement. So the page that shows one always offers it.
+                AppButton("Add to workout", size: .cta, expands: true) {
+                    Haptics.trigger(.selection)
+                    store.navigation.push(
+                        .workoutDestination(
+                            exerciseIds: [exercise.id],
+                            preferredWorkoutId: nil
+                        )
+                    )
+                }
             }
         } else {
             Color.clear.onAppear(perform: store.navigation.pop)

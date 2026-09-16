@@ -150,6 +150,7 @@ final class RautaPerformer: ObservableObject {
     // What it has been doing.
     private var activity = RautaActivity(now: RautaPerformer.nowMs)
     private var previousIdle: RautaIdleBeat?
+    private var previousGazeDirection: RautaGazeDirection?
     private var tapTimes: [Date] = []
     private var acknowledgementIndex = 0
     /// Triggers waiting for a mood crossfade to settle, fired on the frame.
@@ -177,6 +178,8 @@ final class RautaPerformer: ObservableObject {
 
     private var idleTask: Task<Void, Never>?
     private var gazeReturnTask: Task<Void, Never>?
+    /// A look with more than one stop, still walking through them.
+    private var glanceTask: Task<Void, Never>?
     private var pressTask: Task<Void, Never>?
     private var playbackTask: Task<Void, Never>?
     private var sulkTask: Task<Void, Never>?
@@ -281,10 +284,11 @@ final class RautaPerformer: ObservableObject {
     }
 
     private func stopPerforming() {
-        for task in [idleTask, gazeReturnTask, pressTask, playbackTask, sulkTask] {
+        for task in [idleTask, gazeReturnTask, glanceTask, pressTask, playbackTask, sulkTask] {
             task?.cancel()
         }
         gazeReturnTask = nil
+        glanceTask = nil
         pendingTriggers.removeAll()
         playingLively = false
         director.leave(id)
@@ -364,6 +368,15 @@ final class RautaPerformer: ObservableObject {
         }
     }
 
+    /// A tap on the character itself also moves its eyes: they go to the finger
+    /// first, and only then does the body answer.
+    private func lookAtSelf(_ location: CGPoint) {
+        glanceTask?.cancel()
+        glanceTask = nil
+        aim(at: RautaGaze.toward(location, from: CGRect(origin: .zero, size: frame.size)), speed: 34)
+        returnGaze(after: 1.1)
+    }
+
     // MARK: Idle
 
     private func startIdle() {
@@ -395,20 +408,38 @@ final class RautaPerformer: ObservableObject {
             placement: placement,
             reducedMotion: reducedMotion,
             previous: previousIdle,
+            previousDirection: previousGazeDirection,
             random: Self.random
         )
         previousIdle = beat
         // Every thought is also a moment of the mood loop moving again.
         enliven(for: 1.8)
         switch beat {
-        case let .glance(x, y, hold):
+        case let .glance(glance):
             // Never pull the eyes off something the person is doing.
-            guard gazeReturnTask == nil else { return false }
-            aim(at: (x, y), speed: 14)
-            returnGaze(after: hold)
+            guard gazeReturnTask == nil, glanceTask == nil else { return false }
+            previousGazeDirection = glance.direction
+            look(through: glance)
             return true
         case let .play(reaction):
             return play(reaction, source: .ambient)
+        }
+    }
+
+    /// Walks the eyes through a look's stops, then lets them come home. A look
+    /// that is interrupted — by a finger, by a cue — is simply cancelled where
+    /// it stands.
+    private func look(through glance: RautaGlance) {
+        glanceTask?.cancel()
+        glanceTask = Task { @MainActor [weak self] in
+            for stop in glance.stops {
+                guard !Task.isCancelled, let self, self.performing else { return }
+                self.aim(at: (stop.x, stop.y), speed: stop.speed)
+                try? await Task.sleep(for: .seconds(stop.hold))
+            }
+            guard !Task.isCancelled, let self else { return }
+            self.glanceTask = nil
+            self.returnGaze(after: 0)
         }
     }
 
@@ -419,10 +450,19 @@ final class RautaPerformer: ObservableObject {
         // A touch on the character itself is handled as touch, not as something
         // to look at.
         if frame.insetBy(dx: -6, dy: -6).contains(touch.point) { return }
+        let distance = Double(hypot(touch.point.x - frame.midX, touch.point.y - frame.midY))
         switch touch.phase {
         case .began:
-            look(toward: touch.point, hold: 1.6)
-            if Self.random() < 0.2 { fire(.blink) }
+            look(toward: touch.point, hold: RautaTouch.noticeHold(distance: distance))
+            // Where the finger went is the answer; now and then the character
+            // has something to say about it too.
+            if let reaction = RautaTouch.noticeReaction(distance: distance, random: Self.random) {
+                if reaction.isEyesOnly {
+                    fire(reaction)
+                } else {
+                    play(reaction, source: .ambient)
+                }
+            }
         case .moved:
             look(toward: touch.point, hold: 1.4)
         case .ended:
@@ -430,7 +470,12 @@ final class RautaPerformer: ObservableObject {
         }
     }
 
+    /// The eyes go to a point on screen. Whatever look was in progress gives
+    /// way: what the person is doing always wins over the character's own
+    /// thoughts.
     private func look(toward point: CGPoint, hold: TimeInterval) {
+        glanceTask?.cancel()
+        glanceTask = nil
         aim(at: RautaGaze.toward(point, from: frame), speed: 30)
         returnGaze(after: hold)
     }
@@ -448,7 +493,7 @@ final class RautaPerformer: ObservableObject {
             try? await Task.sleep(for: .seconds(delay))
             guard !Task.isCancelled, let self else { return }
             self.gazeReturnTask = nil
-            self.aim(at: (0, 0), speed: 7)
+            self.aim(at: RautaGaze.rest(random: RautaPerformer.random), speed: 7)
         }
     }
 
@@ -528,6 +573,8 @@ final class RautaPerformer: ObservableObject {
         guard performing else { return .zero }
         if touchBegan == nil {
             touchBegan = value.time
+            // The eyes find the finger before the body answers it.
+            lookAtSelf(value.location)
             pressTask?.cancel()
             // Held still for a moment, the character is being pressed: it
             // squashes under the finger and stays squashed.
@@ -582,6 +629,8 @@ final class RautaPerformer: ObservableObject {
     private func beginDrag() {
         dragging = true
         pressTask?.cancel()
+        glanceTask?.cancel()
+        glanceTask = nil
         gazeReturnTask?.cancel()
         gazeReturnTask = nil
         if !pressing {
