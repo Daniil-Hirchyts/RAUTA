@@ -68,11 +68,3 @@ so builds skip the export-compliance prompt.
 The iPhone and watch icons are Icon Composer documents at
 `ios/Rauta/Rauta/Resources/AppIcon.icon` and `ios/Rauta/RautaWatch/AppIcon.icon`.
 The source document and its exports are in `icon/`.
-
-## Training engine
-
-The deterministic training engine is in `ios/Rauta/Rauta/Training`. Its
-evidence register, formulas and support boundaries are in
-[EVIDENCE.md](docs/training-engine/EVIDENCE.md),
-[MATH.md](docs/training-engine/MATH.md) and
-[LIMITATIONS.md](docs/training-engine/LIMITATIONS.md).
