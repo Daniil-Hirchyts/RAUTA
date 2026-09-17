@@ -32,7 +32,12 @@ extension UIColor {
 
 extension UIColor {
     /// A colour that follows the interface style.
-    convenience init(light: UIColor, dark: UIColor) {
+    ///
+    /// `nonisolated`: UIKit calls the provider wherever the colour is resolved,
+    /// including SwiftUI's asynchronous render thread. Under main-actor default
+    /// isolation the closure would otherwise inherit `@MainActor`, and the
+    /// runtime isolation check traps the first time it is resolved off-main.
+    nonisolated convenience init(light: UIColor, dark: UIColor) {
         self.init { traits in traits.userInterfaceStyle == .dark ? dark : light }
     }
 }
@@ -115,7 +120,13 @@ extension Theme {
         let a = UIColor(base)
         let b = UIColor(other)
         let t = CGFloat(max(0, min(1, amount)))
-        return Color(uiColor: UIColor { traits in
+        return Color(uiColor: Self.blended(a, b, t))
+    }
+
+    /// Built outside the main actor so its provider can run on the render
+    /// thread; see `UIColor.init(light:dark:)`.
+    private nonisolated static func blended(_ a: UIColor, _ b: UIColor, _ t: CGFloat) -> UIColor {
+        UIColor { traits in
             var r1: CGFloat = 0, g1: CGFloat = 0, b1: CGFloat = 0, a1: CGFloat = 0
             var r2: CGFloat = 0, g2: CGFloat = 0, b2: CGFloat = 0, a2: CGFloat = 0
             a.resolvedColor(with: traits).getRed(&r1, green: &g1, blue: &b1, alpha: &a1)
@@ -126,7 +137,7 @@ extension Theme {
                 blue: b1 + (b2 - b1) * t,
                 alpha: a1 + (a2 - a1) * t
             )
-        })
+        }
     }
 }
 

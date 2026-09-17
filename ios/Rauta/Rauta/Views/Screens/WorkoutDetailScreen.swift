@@ -604,8 +604,7 @@ struct CurrentExerciseAccessory: View {
     var body: some View {
         Button(action: onOpen) {
             HStack(spacing: compact ? 8 : 10) {
-                // Always on screen with the tab bar: a still, not a loop.
-                ExerciseMediaView(exerciseId: exercise.id)
+                ExerciseMediaView(exerciseId: exercise.id, animated: true)
                     .frame(width: compact ? 30 : 42, height: compact ? 30 : 42)
                     .clipShape(RoundedRectangle(cornerRadius: compact ? 7 : 10, style: .continuous))
 
@@ -690,6 +689,10 @@ struct ActiveExerciseDrawer: View {
     let onFinish: () -> Void
     let onDismiss: () -> Void
     @State private var revealDetails = false
+    // `.ignoresSafeArea()` below zeroes out the geometry proxy's own
+    // safeAreaInsets, so the top clearance comes from the app-wide value
+    // captured before anything here started ignoring the safe area.
+    @Environment(\.appSafeAreaInsets) private var appSafeAreaInsets
 
     var body: some View {
         Group {
@@ -743,7 +746,7 @@ struct ActiveExerciseDrawer: View {
                     .accessibilityLabel("Open \(exercise.name) details")
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             }
-            .padding(.top, Swift.max(proxy.safeAreaInsets.top, 18) + 24)
+            .padding(.top, Swift.max(appSafeAreaInsets.top, 18) + 32)
             .frame(maxWidth: .infinity)
             .layoutPriority(-1)
 
@@ -1249,9 +1252,7 @@ private struct WorkoutExerciseRow: View {
                 .frame(maxHeight: .infinity)
 
                 Button(action: onOpen) {
-                    // A list row shows the poster; the demonstration plays
-                    // when the exercise is opened.
-                    ExerciseMediaView(exerciseId: exercise.id)
+                    ExerciseMediaView(exerciseId: exercise.id, animated: true)
                         .frame(width: 136, height: 136)
                 }
                 .buttonStyle(.plain)

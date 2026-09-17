@@ -238,10 +238,6 @@ private struct OnboardingPill: View {
             Theme.card.opacity(0.82),
             in: RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
-                .strokeBorder(Theme.border)
-        )
     }
 }
 
@@ -307,10 +303,6 @@ private struct OnboardingReadyView: View {
             .background(
                 Theme.card.opacity(0.88),
                 in: RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
-                    .strokeBorder(Theme.border)
             )
 
             Spacer(minLength: 4)

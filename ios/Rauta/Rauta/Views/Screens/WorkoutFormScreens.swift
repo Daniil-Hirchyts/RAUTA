@@ -363,7 +363,7 @@ private struct ExistingWorkoutDestinationRow: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
-                    .strokeBorder(current ? Theme.primary.opacity(0.5) : Theme.border, lineWidth: 1)
+                    .strokeBorder(current ? Theme.primary.opacity(0.5) : .clear, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)

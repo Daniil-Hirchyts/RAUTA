@@ -233,10 +233,6 @@ private struct ProfileRecordCard: View {
         .padding(16)
         .frame(maxWidth: .infinity, minHeight: 122, alignment: .leading)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .strokeBorder(Theme.border, lineWidth: 1)
-        }
         .accessibilityElement(children: .combine)
     }
 }

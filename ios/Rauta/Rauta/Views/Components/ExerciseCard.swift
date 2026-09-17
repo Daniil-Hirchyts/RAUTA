@@ -81,9 +81,7 @@ struct ExerciseCard: View {
                 Color.clear
                     .aspectRatio(1, contentMode: .fit)
                     .overlay {
-                        // A grid of hundreds shows posters; the demonstration
-                        // plays on the detail page.
-                        ExerciseMediaView(exerciseId: exercise.id)
+                        ExerciseMediaView(exerciseId: exercise.id, animated: true)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
 

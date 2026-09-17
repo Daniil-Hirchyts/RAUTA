@@ -331,7 +331,6 @@ struct SettingsScreen: View {
             VStack(spacing: 0) { content() }
                 .background(Theme.card)
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
                 .shadow(color: .black.opacity(0.10), radius: 3, y: 1)
         }
     }

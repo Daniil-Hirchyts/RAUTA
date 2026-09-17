@@ -51,4 +51,21 @@ struct InterfaceStateTests {
         tracker.update(offset: 300, isScrollable: false)
         #expect(tracker.hidden == false)
     }
+
+    /// SwiftUI's asynchronous renderer resolves colours off the main thread;
+    /// a provider isolated to the main actor traps there. Resolving the theme
+    /// colours from a concurrent function is that render path in miniature.
+    @Test func themeColoursResolveOffTheMainActor() async {
+        let adaptive = UIColor(light: .white, dark: .black)
+        let mixed = UIColor(Theme.mix(Theme.primary, Theme.card, 0.5))
+        let (dark, blend) = await Self.resolveOffMain(adaptive, mixed)
+        #expect(dark == UIColor.black.resolvedColor(with: UITraitCollection(userInterfaceStyle: .dark)))
+        #expect(blend.cgColor.alpha > 0)
+    }
+
+    @concurrent
+    private static func resolveOffMain(_ adaptive: UIColor, _ mixed: UIColor) async -> (UIColor, UIColor) {
+        let traits = UITraitCollection(userInterfaceStyle: .dark)
+        return (adaptive.resolvedColor(with: traits), mixed.resolvedColor(with: traits))
+    }
 }

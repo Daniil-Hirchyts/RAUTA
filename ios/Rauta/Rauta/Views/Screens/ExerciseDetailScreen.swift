@@ -126,8 +126,7 @@ private struct FlowLayout: View {
                     .foregroundStyle(Theme.mutedForeground)
                     .padding(.horizontal, 11)
                     .padding(.vertical, 8)
-                    .background(Theme.card, in: Capsule())
-                    .overlay(Capsule().strokeBorder(Theme.border))
+                    .background(Theme.muted.opacity(0.6), in: Capsule())
             }
         }
     }

@@ -177,7 +177,7 @@ struct CoverflowCarousel<ID: Hashable, Media: View>: View {
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .strokeBorder(selected ? Theme.primary.opacity(0.72) : Theme.border, lineWidth: 1)
+                    .strokeBorder(selected ? Theme.primary.opacity(0.72) : .clear, lineWidth: 1)
             )
             .shadow(
                 color: .black.opacity(selected ? 0.46 : 0.28),

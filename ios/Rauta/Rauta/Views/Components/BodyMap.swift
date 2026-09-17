@@ -1,13 +1,13 @@
 import SwiftUI
 
 /// The anatomy outlines, as they ship in `body-paths.generated.json`.
-struct BodyPart {
+nonisolated struct BodyPart: Sendable {
     var slug: String
     var paths: [Path]
     var muscle: MuscleId?
 }
 
-struct BodyView_Model {
+nonisolated struct BodyView_Model: Sendable {
     var viewBox: CGRect
     var parts: [BodyPart]
 }
@@ -289,20 +289,32 @@ struct BodyPreview: View {
     private static var silhouetteFill: Color { BodyFigure.silhouetteFill }
 
     var body: some View {
-        // Read here, not only inside the drawing, so the preview is redrawn
-        // when the accent changes.
-        let _ = Theme.palette.primary
+        // The canvas draws on a background thread, so everything it needs is
+        // read here on the main actor and handed in. Reading the palette here
+        // also redraws the preview when the accent changes.
+        let fills = Fills(
+            selected: Theme.primary,
+            resting: Self.restingFill,
+            silhouette: Self.silhouetteFill
+        )
+        let selected = Set(selectedMuscles)
+        let front = BodyPaths.front
+        let back = BodyPaths.back
         Canvas(rendersAsynchronously: true) { context, size in
             let gap: CGFloat = 2
             let figureWidth = max(1, (size.width - gap) / 2)
-            draw(
-                BodyPaths.front,
+            Self.draw(
+                front,
                 in: CGRect(x: 0, y: 0, width: figureWidth, height: size.height),
+                selected: selected,
+                fills: fills,
                 context: &context
             )
-            draw(
-                BodyPaths.back,
+            Self.draw(
+                back,
                 in: CGRect(x: figureWidth + gap, y: 0, width: figureWidth, height: size.height),
+                selected: selected,
+                fills: fills,
                 context: &context
             )
         }
@@ -314,7 +326,19 @@ struct BodyPreview: View {
         )
     }
 
-    private func draw(_ model: BodyView_Model, in rect: CGRect, context: inout GraphicsContext) {
+    private nonisolated struct Fills: Sendable {
+        var selected: Color
+        var resting: Color
+        var silhouette: Color
+    }
+
+    private nonisolated static func draw(
+        _ model: BodyView_Model,
+        in rect: CGRect,
+        selected: Set<MuscleId>,
+        fills: Fills,
+        context: inout GraphicsContext
+    ) {
         let scale = Swift.min(
             rect.width / model.viewBox.width,
             rect.height / model.viewBox.height
@@ -330,13 +354,12 @@ struct BodyPreview: View {
             for source in part.paths {
                 let path = source.applying(transform)
                 if let muscle = part.muscle {
-                    let selected = selectedMuscles.contains(muscle)
                     context.fill(
                         path,
-                        with: .color(selected ? Theme.primary : Self.restingFill)
+                        with: .color(selected.contains(muscle) ? fills.selected : fills.resting)
                     )
                 } else {
-                    context.fill(path, with: .color(Self.silhouetteFill))
+                    context.fill(path, with: .color(fills.silhouette))
                 }
             }
         }

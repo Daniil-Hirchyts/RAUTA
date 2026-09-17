@@ -110,7 +110,7 @@ struct ExerciseAlternativesScreen: View {
                                 ForEach(visibleAlternatives) { alternative in
                                     Button { swap(to: alternative) } label: {
                                         HStack(spacing: 16) {
-                                            ExerciseMediaView(exerciseId: alternative.id)
+                                            ExerciseMediaView(exerciseId: alternative.id, animated: true)
                                                 .frame(width: 128, height: 128)
                                             VStack(alignment: .leading, spacing: 6) {
                                                 Text(alternative.name.capitalized)

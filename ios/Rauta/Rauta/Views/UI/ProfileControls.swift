@@ -64,7 +64,7 @@ struct ProfileExperienceControl: View {
                             )
                             .overlay(
                                 RoundedRectangle(cornerRadius: Theme.Radius.xl3, style: .continuous)
-                                    .strokeBorder(selected ? Theme.primary.opacity(0.6) : Theme.border)
+                                    .strokeBorder(selected ? Theme.primary.opacity(0.6) : .clear)
                             )
                     }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
                 }
@@ -145,7 +145,6 @@ struct ProfileHealthControl: View {
                     }
                 }
             }.background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.xl2))
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.xl2).strokeBorder(Theme.border))
         }
     }
     private func healthRow(_ title: String, checked: Bool, action: @escaping () -> Void) -> some View {

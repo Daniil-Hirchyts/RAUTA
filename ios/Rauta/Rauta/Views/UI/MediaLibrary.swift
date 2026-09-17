@@ -74,7 +74,9 @@ nonisolated enum ExerciseMedia {
         .workingColorSpace: srgbSpace,
     ])
     private static let posterCache = Mutex(makeCache(limit: 120))
-    private static let animationCache = Mutex(makeCache(limit: 60))
+    // Only what is on screen needs its frames; a grid scrolled past decodes
+    // again rather than holding every loop it has shown.
+    private static let animationCache = Mutex(makeCache(limit: 24))
 
     private static func makeCache(limit: Int) -> NSCache<NSString, UIImage> {
         let cache = NSCache<NSString, UIImage>()
@@ -307,14 +309,17 @@ struct ExerciseMediaView: View {
     var exerciseId: String
     var animated: Bool = false
     @Environment(\.colorScheme) private var colorScheme
-    /// Settings › Accessibility › Motion › Auto-Play Animated Images.
-    @Environment(\.accessibilityPlayAnimatedImages) private var playAnimatedImages
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var poster: UIImage?
     @State private var animatedImage: UIImage?
 
     /// Off, a demonstration rests on its first frame like every list poster.
-    private var plays: Bool { animated && playAnimatedImages }
+    /// Reduce Motion is the setting that applies here, not video autoplay
+    /// (`accessibilityPlayAnimatedImages` mirrors `isVideoAutoplayEnabled`,
+    /// which governs App Store/TV previews, not these demonstrations, and
+    /// reads false when the person has never touched it).
+    private var plays: Bool { animated && !reduceMotion }
 
     var body: some View {
         ZStack {

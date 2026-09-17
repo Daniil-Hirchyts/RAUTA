@@ -148,7 +148,7 @@ extension AppButton where Label == Text {
 }
 
 /// A short horizontal refusal, three swings and out.
-struct ShakeEffect: GeometryEffect {
+nonisolated struct ShakeEffect: GeometryEffect {
     var phase: Int
     var amplitude: CGFloat = 6
 

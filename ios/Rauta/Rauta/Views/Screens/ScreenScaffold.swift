@@ -143,10 +143,6 @@ struct SurfaceCard<Content: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.card.opacity(0.88))
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(Theme.border, lineWidth: 1)
-            )
     }
 }
 
