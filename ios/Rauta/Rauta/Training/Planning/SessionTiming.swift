@@ -1,6 +1,6 @@
 import Foundation
 
-enum SessionTiming {
+nonisolated enum SessionTiming {
     static func estimateSession(
         _ exercises: [PlannedExercise],
         _ index: ExerciseIndex,

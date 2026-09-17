@@ -11,6 +11,9 @@ enum AppleHealthConnectionResult {
 /// Apple Health, as much of it as RAUTA uses: it writes finished workouts and
 /// their active energy, and reads body weight so calorie estimates and the
 /// engine's load reasoning have a real number to work from.
+///
+/// A workout the watch recorded is the watch's to save — see
+/// ``RautaHealthWorkout`` for the rule both devices follow.
 @MainActor
 final class HealthService {
     static let shared = HealthService()
@@ -19,7 +22,19 @@ final class HealthService {
     private var cancellable: AnyCancellable?
     private var previousSession: ActiveWorkoutSession?
 
-    private init() {}
+    private let watchClaimsKey = "rauta-health-watch-claims"
+    /// Workouts the watch said it is recording, newest last.
+    private(set) var watchClaims: [String]
+
+    private init() {
+        watchClaims = UserDefaults.standard.stringArray(forKey: watchClaimsKey) ?? []
+    }
+
+    /// The watch is recording `workoutId` and will save it.
+    func recordWatchClaim(workoutId: String) {
+        watchClaims = RecentIDs.recording(workoutId, in: watchClaims, limit: 32)
+        UserDefaults.standard.set(watchClaims, forKey: watchClaimsKey)
+    }
 
     var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
@@ -83,6 +98,23 @@ final class HealthService {
         var workoutName: String
     }
 
+    /// Whether Health already holds the workout saved for `workoutId`, by
+    /// either device.
+    func hasSavedWorkout(workoutId: String) async -> Bool {
+        guard isAvailable else { return false }
+        let predicate = HKQuery.predicateForObjects(
+            withMetadataKey: HKMetadataKeyExternalUUID,
+            allowedValues: [RautaHealthWorkout.externalID(forWorkout: workoutId)]
+        )
+        let descriptor = HKSampleQueryDescriptor(
+            predicates: [.workout(predicate)],
+            sortDescriptors: [],
+            limit: 1
+        )
+        let results = (try? await descriptor.result(for: store)) ?? []
+        return !results.isEmpty
+    }
+
     @discardableResult
     func saveCompletedWorkout(_ input: WorkoutExport) async -> Bool {
         guard isAvailable else { return false }
@@ -108,6 +140,7 @@ final class HealthService {
             }
 
             try await builder.addMetadata([
+                HKMetadataKeyExternalUUID: RautaHealthWorkout.externalID(forWorkout: input.workoutId),
                 "gymLibWorkoutId": input.workoutId,
                 "workoutName": input.workoutName,
             ])
@@ -154,6 +187,18 @@ final class HealthService {
             ?? WorkoutStats.estimateStrengthCalories(
                 durationMs, bodyWeightKg: settings.healthBodyWeightKg
             )
+
+        let decision = RautaHealthWorkout.phoneDecision(
+            workoutId: session.workoutId,
+            watchClaims: Set(watchClaims),
+            alreadyInHealth: await hasSavedWorkout(workoutId: session.workoutId)
+        )
+        guard decision == .save else {
+            // The watch saves what it recorded; a workout already in Health
+            // needs nothing more. Either way it is in Health, not pending.
+            WorkoutsStore.shared.setHealthSyncStatus(session.workoutId, .synced)
+            return
+        }
 
         let success = await saveCompletedWorkout(WorkoutExport(
             startDate: Date(timeIntervalSince1970: session.startedAt / 1000),

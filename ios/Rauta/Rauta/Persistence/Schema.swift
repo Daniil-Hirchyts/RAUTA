@@ -1,13 +1,13 @@
 import Foundation
 
-let TRAINING_PERSISTENCE_SCHEMA_VERSION = 1
+nonisolated let TRAINING_PERSISTENCE_SCHEMA_VERSION = 1
 
 // MARK: - Program snapshot
 
 /// The program exactly as it was generated. The policy is kept as an opaque
 /// JSON object so a restored snapshot is the one that was written, never the
 /// current default silently substituted for it.
-struct PersistedProgramSnapshot: Codable, Hashable, Sendable {
+nonisolated struct PersistedProgramSnapshot: Codable, Hashable, Sendable {
     var id: String
     var engineVersion: String
     var policyVersion: String
@@ -21,7 +21,7 @@ struct PersistedProgramSnapshot: Codable, Hashable, Sendable {
     var adaptation: ProgramAdaptation?
 }
 
-struct PersistedProgramRevision: Codable, Hashable, Sendable {
+nonisolated struct PersistedProgramRevision: Codable, Hashable, Sendable {
     enum Reason: String, Codable, Hashable, Sendable {
         case remainingWeek = "remaining_week"
         case nextWeek = "next_week"
@@ -36,7 +36,7 @@ struct PersistedProgramRevision: Codable, Hashable, Sendable {
     var replacedSessionIds: [String]?
 }
 
-struct PersistedProgramRecord: Codable, Hashable, Sendable {
+nonisolated struct PersistedProgramRecord: Codable, Hashable, Sendable {
     enum Kind: String, Codable, Hashable, Sendable { case plan, workout }
     enum Lifecycle: String, Codable, Hashable, Sendable { case active, completed, archived }
 
@@ -54,7 +54,7 @@ struct PersistedProgramRecord: Codable, Hashable, Sendable {
 
 // MARK: - Completed work
 
-struct PersistedCompletedExercise: Codable, Hashable, Sendable {
+nonisolated struct PersistedCompletedExercise: Codable, Hashable, Sendable {
     /// Persistence identity for this performed exercise segment.
     var id: String
     /// Canonical exercise catalogue identity actually performed.
@@ -66,7 +66,7 @@ struct PersistedCompletedExercise: Codable, Hashable, Sendable {
     var sets: [CompletedSet]
 }
 
-struct PersistedCompletedSession: Codable, Hashable, Sendable {
+nonisolated struct PersistedCompletedSession: Codable, Hashable, Sendable {
     /// Actual workout identity; never a planned-session ID.
     var id: String
     /// The application workout record this session was performed from, when one
@@ -83,13 +83,13 @@ struct PersistedCompletedSession: Codable, Hashable, Sendable {
 
 // MARK: - Active draft
 
-struct PersistedSetTarget: Codable, Hashable, Sendable {
+nonisolated struct PersistedSetTarget: Codable, Hashable, Sendable {
     var reps: RepRange
     var rir: Double
     var resistance: ResistanceValue
 }
 
-struct PersistedSetObservation: Codable, Hashable, Sendable {
+nonisolated struct PersistedSetObservation: Codable, Hashable, Sendable {
     var reps: Double?
     var resistance: ResistanceValue?
     var rir: Double?
@@ -114,7 +114,7 @@ struct PersistedSetObservation: Codable, Hashable, Sendable {
     }
 }
 
-struct PersistedActiveSetDraft: Codable, Hashable, Sendable, Identifiable {
+nonisolated struct PersistedActiveSetDraft: Codable, Hashable, Sendable, Identifiable {
     /// Draft identity; distinct from both `plannedSetId` and the later
     /// completed-set ID.
     var id: String
@@ -125,7 +125,7 @@ struct PersistedActiveSetDraft: Codable, Hashable, Sendable, Identifiable {
     var observation: PersistedSetObservation?
 }
 
-struct PersistedActiveExerciseDraft: Codable, Hashable, Sendable, Identifiable {
+nonisolated struct PersistedActiveExerciseDraft: Codable, Hashable, Sendable, Identifiable {
     var id: String
     var exerciseId: String
     var plannedExerciseId: String?
@@ -133,7 +133,7 @@ struct PersistedActiveExerciseDraft: Codable, Hashable, Sendable, Identifiable {
     var sets: [PersistedActiveSetDraft]
 }
 
-struct PersistedActiveWorkoutDraft: Codable, Hashable, Sendable {
+nonisolated struct PersistedActiveWorkoutDraft: Codable, Hashable, Sendable {
     var id: String
     /// The application workout being performed, carried into the completed
     /// session so the two histories never count it twice.
@@ -146,7 +146,7 @@ struct PersistedActiveWorkoutDraft: Codable, Hashable, Sendable {
 
 // MARK: - Settings
 
-struct PersistedLoadConfiguration: Codable, Hashable, Sendable, Identifiable {
+nonisolated struct PersistedLoadConfiguration: Codable, Hashable, Sendable, Identifiable {
     enum Mode: String, Codable, Hashable, Sendable {
         case externalLoad = "external_load"
         case assistance
@@ -164,7 +164,7 @@ struct PersistedLoadConfiguration: Codable, Hashable, Sendable, Identifiable {
     var effectiveMode: Mode { mode ?? .externalLoad }
 }
 
-struct PersistedHistoryCoverage: Codable, Hashable, Sendable {
+nonisolated struct PersistedHistoryCoverage: Codable, Hashable, Sendable {
     enum Status: String, Codable, Hashable, Sendable { case unknown, complete }
     var status: Status
     var coverageStart: String?
@@ -172,7 +172,7 @@ struct PersistedHistoryCoverage: Codable, Hashable, Sendable {
     static let unknown = PersistedHistoryCoverage(status: .unknown, coverageStart: nil)
 }
 
-struct PersistedTrainingSettings: Codable, Hashable, Sendable {
+nonisolated struct PersistedTrainingSettings: Codable, Hashable, Sendable {
     var historyCoverage: PersistedHistoryCoverage
     var loadConfigurations: [PersistedLoadConfiguration]
     /// The station each exercise is currently trained at, by exercise ID. A
@@ -186,7 +186,7 @@ struct PersistedTrainingSettings: Codable, Hashable, Sendable {
 /// The legacy completion a finish transition intends to write. Held in the
 /// intent rather than recomputed during recovery: a clock read on the way back
 /// would give a resumed finish a different duration than the one the person saw.
-struct PersistedLegacyCompletionIntent: Codable, Hashable, Sendable {
+nonisolated struct PersistedLegacyCompletionIntent: Codable, Hashable, Sendable {
     enum SyncStatus: String, Codable, Hashable, Sendable {
         case notRequested = "not-requested"
         case pending
@@ -199,12 +199,12 @@ struct PersistedLegacyCompletionIntent: Codable, Hashable, Sendable {
     var healthSyncStatus: SyncStatus
 }
 
-struct PersistedPlannedReference: Codable, Hashable, Sendable {
+nonisolated struct PersistedPlannedReference: Codable, Hashable, Sendable {
     var programId: String
     var sessionId: String
 }
 
-struct PersistedTransitionShell: Codable, Hashable, Sendable {
+nonisolated struct PersistedTransitionShell: Codable, Hashable, Sendable {
     var workoutName: String
     var workoutDate: String
     var exerciseIds: [String]
@@ -214,7 +214,7 @@ struct PersistedTransitionShell: Codable, Hashable, Sendable {
 /// One workout transition that spans stores, written down before it starts, so
 /// recovery can carry the same transition forward to the same result instead of
 /// guessing at the wreckage.
-struct PersistedTransitionIntent: Codable, Hashable, Sendable {
+nonisolated struct PersistedTransitionIntent: Codable, Hashable, Sendable {
     enum Kind: String, Codable, Hashable, Sendable { case start, finish, cancel }
 
     /// Stable identity for the transition itself, so a retry is recognisable.
@@ -243,7 +243,7 @@ struct PersistedTransitionIntent: Codable, Hashable, Sendable {
 
 // MARK: - State
 
-struct PersistedTrainingState: Codable, Hashable, Sendable {
+nonisolated struct PersistedTrainingState: Codable, Hashable, Sendable {
     var schemaVersion: Int
     var programs: [PersistedProgramRecord]
     var sessions: [PersistedCompletedSession]
@@ -270,13 +270,13 @@ struct PersistedTrainingState: Codable, Hashable, Sendable {
     }
 }
 
-struct TrainingPersistenceIssue: Hashable, Sendable {
+nonisolated struct TrainingPersistenceIssue: Hashable, Sendable {
     var path: String
     var message: String
 }
 
 /// Raised when a write would leave the persisted state invalid.
-struct TrainingPersistenceValidationError: Error {
+nonisolated struct TrainingPersistenceValidationError: Error {
     var issues: [TrainingPersistenceIssue]
 
     var localizedDescription: String {
@@ -286,7 +286,7 @@ struct TrainingPersistenceValidationError: Error {
 
 /// Every other failure the persistence layer raises, kept as plain messages so
 /// the surfaces that show them read the same text the web app did.
-struct TrainingPersistenceError: Error {
+nonisolated struct TrainingPersistenceError: Error {
     var message: String
 
     init(_ message: String) { self.message = message }

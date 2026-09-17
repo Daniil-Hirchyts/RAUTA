@@ -3,7 +3,13 @@ import Foundation
 import UserNotifications
 import WatchConnectivity
 
+/// The watch's side of the workout link. Its state is the UI's, so it lives on
+/// the main actor; WatchConnectivity calls the delegate on a queue of its own,
+/// and each callback copies out the `Data` it carries before hopping over.
+@MainActor
 final class WatchSessionModel: NSObject, ObservableObject, WCSessionDelegate {
+    static let shared = WatchSessionModel()
+
     @Published private(set) var snapshot: RautaWatchWorkoutSnapshot?
     @Published var loadKg: Double = 0
     @Published var reps: Int = 10
@@ -13,11 +19,17 @@ final class WatchSessionModel: NSObject, ObservableObject, WCSessionDelegate {
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     private let pendingActionsKey = "rauta-watch-pending-actions"
+    private let pendingClaimKey = "rauta-watch-pending-health-claim"
     private var started = false
+    /// The set last sent, until the phone says what became of it.
+    private var awaitingResult: String?
+    /// Bumped each time the phone confirms a set, for the view's haptic.
+    @Published private(set) var confirmedSets = 0
+    /// Bumped each time a set could not be saved, for the view's haptic.
+    @Published private(set) var failedSets = 0
 
-    override init() {
+    private override init() {
         super.init()
-        start()
     }
 
     func start() {
@@ -26,7 +38,7 @@ final class WatchSessionModel: NSObject, ObservableObject, WCSessionDelegate {
         let session = WCSession.default
         session.delegate = self
         session.activate()
-        applyContext(session.receivedApplicationContext)
+        apply(Incoming(session.receivedApplicationContext))
     }
 
     func elapsedSeconds(at date: Date = Date()) -> TimeInterval {
@@ -57,41 +69,73 @@ final class WatchSessionModel: NSObject, ObservableObject, WCSessionDelegate {
 
         isSaving = true
         connectionIssue = nil
-        let message: [String: Any] = [RautaWatchMessageKey.action: data]
+        awaitingResult = action.id
+        let restSeconds = snapshot.restSeconds
         let session = WCSession.default
 
         guard session.activationState == .activated else {
             persistPending(data)
-            isSaving = false
-            connectionIssue = "Set queued for iPhone"
-            scheduleLocalRest(seconds: snapshot.restSeconds)
+            scheduleLocalRest(seconds: restSeconds)
+            markQueued()
             return
         }
 
         if session.isReachable {
-            session.sendMessage(message, replyHandler: { [weak self] reply in
-                DispatchQueue.main.async {
-                    self?.applyContext(reply)
-                    self?.isSaving = false
-                    if reply[RautaWatchMessageKey.ok] as? Bool != true {
-                        self?.connectionIssue = "Could not save set"
+            // The reply only confirms delivery; the phone sends what became of
+            // the set as a message of its own (see `apply(_:)`).
+            session.sendMessage(
+                [RautaWatchMessageKey.action: data],
+                replyHandler: { [weak self] _ in
+                    Task { @MainActor in self?.isSaving = false }
+                },
+                errorHandler: { [weak self] _ in
+                    Task { @MainActor in
+                        guard let self else { return }
+                        self.queue(data, restSeconds: restSeconds)
+                        self.markQueued()
                     }
                 }
-            }, errorHandler: { [weak self] _ in
-                self?.queue(message, on: session, restSeconds: snapshot.restSeconds)
-                DispatchQueue.main.async {
-                    self?.isSaving = false
-                    self?.connectionIssue = "Set queued for iPhone"
-                }
-            })
+            )
         } else {
-            queue(message, on: session, restSeconds: snapshot.restSeconds)
-            isSaving = false
-            connectionIssue = "Set queued for iPhone"
+            queue(data, restSeconds: restSeconds)
+            markQueued()
         }
     }
 
-    private func queue(_ message: [String: Any], on session: WCSession, restSeconds: Double) {
+    /// The set is kept for the phone and will reach it; for the person that is
+    /// a logged set, with a note that the phone has not seen it yet.
+    private func markQueued() {
+        awaitingResult = nil
+        isSaving = false
+        confirmedSets += 1
+        connectionIssue = "Set queued for iPhone"
+    }
+
+    /// Tells the phone the watch is recording `workoutId` in HealthKit and will
+    /// save it. User info is queued and delivered even if the phone is away.
+    func claimHealthWorkout(_ workoutId: String) {
+        let claim = RautaWatchHealthClaim(
+            workoutId: workoutId,
+            claimedAtMilliseconds: Date().timeIntervalSince1970 * 1000
+        )
+        guard WCSession.isSupported(), let data = try? encoder.encode(claim) else { return }
+        guard WCSession.default.activationState == .activated else {
+            // Sent once the session activates.
+            UserDefaults.standard.set(data, forKey: pendingClaimKey)
+            return
+        }
+        WCSession.default.transferUserInfo([RautaWatchMessageKey.healthClaim: data])
+    }
+
+    private func flushPendingClaim() {
+        guard let data = UserDefaults.standard.data(forKey: pendingClaimKey) else { return }
+        WCSession.default.transferUserInfo([RautaWatchMessageKey.healthClaim: data])
+        UserDefaults.standard.removeObject(forKey: pendingClaimKey)
+    }
+
+    private func queue(_ data: Data, restSeconds: Double) {
+        let session = WCSession.default
+        let message: [String: Any] = [RautaWatchMessageKey.action: data]
         try? session.updateApplicationContext(message)
         session.transferUserInfo(message)
         scheduleLocalRest(seconds: restSeconds)
@@ -103,7 +147,8 @@ final class WatchSessionModel: NSObject, ObservableObject, WCSessionDelegate {
         UserDefaults.standard.set(Array(pending.suffix(32)), forKey: pendingActionsKey)
     }
 
-    private func flushPendingActions(on session: WCSession) {
+    private func flushPendingActions() {
+        let session = WCSession.default
         let pending = UserDefaults.standard.array(forKey: pendingActionsKey) as? [Data] ?? []
         guard !pending.isEmpty else { return }
 
@@ -142,15 +187,44 @@ final class WatchSessionModel: NSObject, ObservableObject, WCSessionDelegate {
         guard session.activationState == .activated, session.isReachable else { return }
         session.sendMessage(
             [RautaWatchMessageKey.requestSnapshot: true],
-            replyHandler: { [weak self] reply in
-                DispatchQueue.main.async { self?.applyContext(reply) }
-            },
+            // The phone answers with a snapshot message of its own.
+            replyHandler: nil,
             errorHandler: { _ in }
         )
     }
 
-    private func applyContext(_ context: [String: Any]) {
-        guard let data = context[RautaWatchMessageKey.snapshot] as? Data,
+    /// The parts of a WatchConnectivity dictionary the watch reads, as values
+    /// that can cross to the main actor.
+    private struct Incoming: Sendable {
+        var snapshot: Data?
+        var actionResult: Data?
+
+        nonisolated init(_ dictionary: [String: Any]) {
+            snapshot = dictionary[RautaWatchMessageKey.snapshot] as? Data
+            actionResult = dictionary[RautaWatchMessageKey.actionResult] as? Data
+        }
+    }
+
+    private func apply(_ incoming: Incoming) {
+        if let data = incoming.actionResult,
+           let result = try? decoder.decode(RautaWatchActionResult.self, from: data),
+           result.actionId == awaitingResult {
+            awaitingResult = nil
+            isSaving = false
+            applySnapshot(incoming.snapshot)
+            if result.ok {
+                confirmedSets += 1
+            } else {
+                failedSets += 1
+                connectionIssue = "Could not save set"
+            }
+            return
+        }
+        applySnapshot(incoming.snapshot)
+    }
+
+    private func applySnapshot(_ data: Data?) {
+        guard let data,
               let envelope = try? decoder.decode(RautaWatchSnapshotEnvelope.self, from: data)
         else { return }
 
@@ -164,28 +238,35 @@ final class WatchSessionModel: NSObject, ObservableObject, WCSessionDelegate {
         connectionIssue = nil
     }
 
-    func session(
+    // MARK: WCSessionDelegate
+
+    nonisolated func session(
         _ session: WCSession,
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?
     ) {
         guard activationState == .activated else { return }
-        DispatchQueue.main.async { [weak self] in
-            self?.flushPendingActions(on: session)
-            self?.applyContext(session.receivedApplicationContext)
-            self?.requestSnapshot()
+        let incoming = Incoming(session.receivedApplicationContext)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.flushPendingActions()
+            self.flushPendingClaim()
+            self.apply(incoming)
+            self.requestSnapshot()
         }
     }
 
-    func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
-        DispatchQueue.main.async { [weak self] in self?.applyContext(applicationContext) }
+    nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+        let incoming = Incoming(applicationContext)
+        Task { @MainActor [weak self] in self?.apply(incoming) }
     }
 
-    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
-        DispatchQueue.main.async { [weak self] in self?.applyContext(message) }
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        let incoming = Incoming(message)
+        Task { @MainActor [weak self] in self?.apply(incoming) }
     }
 
-    func sessionReachabilityDidChange(_ session: WCSession) {
-        DispatchQueue.main.async { [weak self] in self?.requestSnapshot() }
+    nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
+        Task { @MainActor [weak self] in self?.requestSnapshot() }
     }
 }

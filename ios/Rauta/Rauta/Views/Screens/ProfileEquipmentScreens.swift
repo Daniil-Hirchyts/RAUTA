@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ProfileEquipmentScreen: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     @State private var presetEditorOpen = false
 
     private var subtitle: String? {
@@ -91,7 +91,7 @@ struct ProfileEquipmentScreen: View {
 }
 
 struct EquipmentLoadScreen: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     @State private var selectedEquipment = ""
 
     private var equipment: [String] {
@@ -228,7 +228,7 @@ struct EquipmentLoadScreen: View {
 }
 
 struct MusclePrioritiesScreen: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     @State private var side: BodySide = .front
 
     private var priorities: [MusclePriority] {
@@ -277,7 +277,7 @@ struct MusclePrioritiesScreen: View {
 /// The body map priorities are painted on, with the scale that reads it. A tap
 /// on a muscle steps it up through the priority levels and back to normal.
 struct ProfilePrioritiesMap: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     @Binding var side: BodySide
     /// Off where the page carries its own flip control.
     var showsFlipButton = false

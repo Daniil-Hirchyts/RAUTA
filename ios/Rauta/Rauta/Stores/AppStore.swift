@@ -3,14 +3,13 @@ import SwiftUI
 
 /// The one object every screen reaches for. It owns nothing itself: each store
 /// remains the authority on its own slice, and this is the wiring that starts
-/// them, keeps them observing one another, and hands SwiftUI a single publisher
-/// to redraw from.
+/// them and keeps them observing one another.
+///
+/// The stores are `@Observable`, so a screen redraws for the properties it
+/// actually reads, not for every change anywhere in the app.
 @MainActor
-final class AppStore: ObservableObject {
+final class AppStore {
     static let shared = AppStore()
-    // This aggregator has no @Published storage to anchor the synthesized
-    // publisher. Keep a stable instance for forwarding child-store changes.
-    nonisolated(unsafe) let objectWillChange = ObservableObjectPublisher()
 
     let navigation = AppSessionStore.shared
     let filters = FiltersStore.shared
@@ -25,30 +24,7 @@ final class AppStore: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var bootstrapped = false
 
-    private init() {
-        // One publisher for the whole app: SwiftUI's `@ObservedObject` on a child
-        // store would work, but every screen reads across two or three of them.
-        for store in [
-            navigation.objectWillChange,
-            filters.objectWillChange,
-            favorites.objectWillChange,
-            settings.objectWillChange,
-            workouts.objectWillChange,
-            trainingProfile.objectWillChange,
-            trainingRecords.objectWillChange,
-            activeWorkout.objectWillChange,
-            iCloud.objectWillChange,
-        ] {
-            store
-                // Child ObservableObjects emit before their @Published value is
-                // assigned. Forward on the next run-loop turn so screens that
-                // observe this aggregate read the new value, and so a child
-                // mutation never re-enters SwiftUI's current AttributeGraph pass.
-                .receive(on: RunLoop.main)
-                .sink { [weak self] in self?.objectWillChange.send() }
-                .store(in: &cancellables)
-        }
-    }
+    private init() {}
 
     func bootstrap() {
         guard !bootstrapped else { return }

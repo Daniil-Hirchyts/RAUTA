@@ -10,13 +10,15 @@ import SwiftUI
 /// The selection lives in the session store because the pages this flow ends on
 /// — a new workout, or an existing one — are the ones that spend it.
 struct AddExercisesScreen: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     /// The workout this was started from, offered first when the exercises are
     /// finally filed somewhere.
     let preferredWorkoutId: String?
 
     @State private var browse = ExerciseBrowseState()
     @State private var resultsMemo = Memo<ExerciseBrowseQuery, [ExerciseSummary]>()
+    /// A workout being proposed, off the main actor.
+    @State private var proposal: Task<Void, Never>?
 
     private static let zoomPrefix = "picker"
 
@@ -162,7 +164,7 @@ struct AddExercisesScreen: View {
             Button(action: buildWorkoutWithRauta) {
                 Label("Build workout with RAUTA", systemImage: "sparkles")
             }
-            .disabled(store.filters.selectedMuscles.isEmpty)
+            .disabled(store.filters.selectedMuscles.isEmpty || proposal != nil)
         }
 
         if !selectedIds.isEmpty {
@@ -201,26 +203,28 @@ struct AddExercisesScreen: View {
     }
 
     private func buildWorkoutWithRauta() {
-        do {
-            let exerciseIds = try EngineWorkout.propose(
-                date: CalendarDate.today,
-                focusMuscles: store.filters.selectedMuscles,
-                availableEquipment: store.filters.selectedEquipment
-            )
-            guard !exerciseIds.isEmpty else {
-                Haptics.trigger(.warning)
-                return
-            }
-            Haptics.trigger(.medium)
-            store.navigation.push(
-                .workoutForm(
-                    exerciseIds: exerciseIds,
-                    workoutId: nil,
-                    engineFocusMuscles: store.filters.selectedMuscles
+        guard proposal == nil else { return }
+        let focus = store.filters.selectedMuscles
+        proposal = Task {
+            defer { proposal = nil }
+            do {
+                let exerciseIds = try await EngineWorkout.propose(
+                    date: CalendarDate.today,
+                    focusMuscles: focus,
+                    availableEquipment: store.filters.selectedEquipment
                 )
-            )
-        } catch {
-            Haptics.trigger(.warning)
+                guard !exerciseIds.isEmpty else {
+                    Haptics.trigger(.warning)
+                    return
+                }
+                Haptics.trigger(.medium)
+                store.navigation.push(
+                    .workoutForm(exerciseIds: exerciseIds, workoutId: nil, engineFocusMuscles: focus)
+                )
+            } catch is CancellationError {
+            } catch {
+                Haptics.trigger(.warning)
+            }
         }
     }
 

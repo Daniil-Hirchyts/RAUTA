@@ -855,8 +855,10 @@ enum RautaCues {
         ],
     ]
 
-    private static var previousChoice: [RautaCue: Int] = [:]
+    /// Only the director picks, and it lives on the main actor.
+    @MainActor private static var previousChoice: [RautaCue: Int] = [:]
 
+    @MainActor
     static func pick(
         _ cue: RautaCue,
         previous: Int? = nil,

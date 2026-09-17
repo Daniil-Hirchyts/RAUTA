@@ -1,12 +1,12 @@
 import Foundation
 
-struct WorkoutActivityColor {
+nonisolated struct WorkoutActivityColor: Sendable {
     let red: Double
     let green: Double
     let blue: Double
 }
 
-extension WorkoutActivityColor {
+nonisolated extension WorkoutActivityColor {
     init(hex: Int) {
         self.init(
             red: Double((hex >> 16) & 0xFF) / 255,
@@ -18,7 +18,7 @@ extension WorkoutActivityColor {
 
 /// The app's dark palette, resolved out of the OKLCH tokens in `index.css` so
 /// the Lock Screen card and the Dynamic Island are recognisably the same app.
-enum WorkoutActivityPalette {
+nonisolated enum WorkoutActivityPalette {
     /// `#0e0e0f` — the shell behind every screen.
     static let background = WorkoutActivityColor(red: 0.055, green: 0.055, blue: 0.059)
     /// `--primary`, `oklch(0.715 0.245 42.5)`, `#FF6200`.

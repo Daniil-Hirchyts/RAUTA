@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import Combine
 
 /// Why the last session stopped. Read by the Live Activity sync to decide
@@ -8,14 +9,15 @@ enum ActiveWorkoutOutcome: String, Sendable {
 }
 
 @MainActor
-final class ActiveWorkoutStore: ObservableObject {
+@Observable
+final class ActiveWorkoutStore {
     static let shared = ActiveWorkoutStore()
 
     static let storageKey = "gym-lib-active-workout"
     static let version = 1
 
-    @Published private(set) var session: ActiveWorkoutSession?
-    @Published private(set) var lastOutcome: ActiveWorkoutOutcome?
+    private(set) var session: ActiveWorkoutSession?
+    private(set) var lastOutcome: ActiveWorkoutOutcome?
     let changed = PassthroughSubject<Void, Never>()
 
     private var cancellables = Set<AnyCancellable>()

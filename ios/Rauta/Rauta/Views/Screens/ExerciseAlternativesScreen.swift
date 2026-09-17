@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ExerciseAlternativesScreen: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     let exerciseId: String
     let workoutId: String
 
@@ -110,7 +110,7 @@ struct ExerciseAlternativesScreen: View {
                                 ForEach(visibleAlternatives) { alternative in
                                     Button { swap(to: alternative) } label: {
                                         HStack(spacing: 16) {
-                                            ExerciseMediaView(exerciseId: alternative.id, animated: true)
+                                            ExerciseMediaView(exerciseId: alternative.id)
                                                 .frame(width: 128, height: 128)
                                             VStack(alignment: .leading, spacing: 6) {
                                                 Text(alternative.name.capitalized)

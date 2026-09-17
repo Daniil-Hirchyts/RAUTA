@@ -1,6 +1,6 @@
 import Foundation
 
-enum Generate {
+nonisolated enum Generate {
     static func preparation(
         _ request: ProgramGenerationRequest,
         previousProgram: TrainingProgram? = nil,

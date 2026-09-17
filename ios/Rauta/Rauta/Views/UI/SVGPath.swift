@@ -6,7 +6,7 @@ import SwiftUI
 /// The anatomy map ships as path data, so the outlines have to be read the way a
 /// browser reads them: every command the generator emits, absolute and relative,
 /// including the shorthand curves and the elliptical arc.
-enum SVGPath {
+nonisolated enum SVGPath {
     static func parse(_ definition: String) -> Path? {
         var scanner = Scanner(definition)
         var path = Path()
@@ -255,7 +255,7 @@ enum SVGPath {
 }
 
 /// A small forward-only reader over the path data.
-private struct Scanner {
+private nonisolated struct Scanner {
     private let characters: [Character]
     private var index: Int = 0
 

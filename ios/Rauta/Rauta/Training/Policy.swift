@@ -1,8 +1,8 @@
 import Foundation
 
-let ENGINE_VERSION = "1.3.0"
+nonisolated let ENGINE_VERSION = "1.3.0"
 
-struct GoalPolicy: Codable, Hashable, Sendable {
+nonisolated struct GoalPolicy: Codable, Hashable, Sendable {
     var volume: VolumeRange
     var compoundReps: RepRange
     var isolationReps: RepRange
@@ -12,7 +12,7 @@ struct GoalPolicy: Codable, Hashable, Sendable {
     var specificityWeight: Double
 }
 
-struct SimilarityWeights: Codable, Hashable, Sendable {
+nonisolated struct SimilarityWeights: Codable, Hashable, Sendable {
     var family: Double
     var patterns: Double
     var directMuscles: Double
@@ -22,7 +22,7 @@ struct SimilarityWeights: Codable, Hashable, Sendable {
     var equipment: Double
 }
 
-struct OrderingWeights: Codable, Hashable, Sendable {
+nonisolated struct OrderingWeights: Codable, Hashable, Sendable {
     var specific: Double
     var priority: Double
     var compound: Double
@@ -32,7 +32,7 @@ struct OrderingWeights: Codable, Hashable, Sendable {
 ///
 /// Weight bags stay keyed by `String` so a persisted program snapshot is
 /// byte-identical to the one the TypeScript engine wrote.
-struct TrainingPolicy: Codable, Hashable, Sendable {
+nonisolated struct TrainingPolicy: Codable, Hashable, Sendable {
     var version: String
     var goals: [String: GoalPolicy]
     var indirectCredit: Double
@@ -85,7 +85,7 @@ struct TrainingPolicy: Codable, Hashable, Sendable {
 
 }
 
-let DEFAULT_POLICY = TrainingPolicy(
+nonisolated let DEFAULT_POLICY = TrainingPolicy(
     version: "1.3.0",
     goals: [
         "hypertrophy": GoalPolicy(
@@ -181,14 +181,14 @@ let DEFAULT_POLICY = TrainingPolicy(
 )
 
 /// The tracking modes the planner knows how to prescribe against.
-let PLANNER_SUPPORTED_TRACKING: [TrackingMode] = [
+nonisolated let PLANNER_SUPPORTED_TRACKING: [TrackingMode] = [
     .externalLoad, .assistance, .bodyweight, .bandResistance,
 ]
 
-func plannerSupportsTracking(_ tracking: TrackingMode) -> Bool {
+nonisolated func plannerSupportsTracking(_ tracking: TrackingMode) -> Bool {
     PLANNER_SUPPORTED_TRACKING.contains(tracking)
 }
 
-func plannerSupportsExercise(_ metadata: ExerciseMetadata) -> Bool {
+nonisolated func plannerSupportsExercise(_ metadata: ExerciseMetadata) -> Bool {
     metadata.exerciseType == .resistance && plannerSupportsTracking(metadata.tracking)
 }

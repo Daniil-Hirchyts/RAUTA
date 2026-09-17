@@ -6,7 +6,7 @@ import Foundation
 /// what it guards is data that came back from storage and may be anything at
 /// all. A typed value is checked by encoding it first, which drops `nil` fields
 /// exactly the way `undefined` was dropped in the original.
-enum PersistenceValidation {
+nonisolated enum PersistenceValidation {
     private static let setTypes: Set<String> = ["warmup", "working", "backoff", "drop", "other"]
     private static let plannedSetTypes: Set<String> = ["warmup", "working", "backoff"]
     private static let sides: Set<String> = ["both", "left", "right"]

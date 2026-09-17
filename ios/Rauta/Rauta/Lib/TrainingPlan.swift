@@ -263,11 +263,13 @@ enum TrainingPlan {
 
     /// Creates one plan from exact calendar dates. Dates may span several weeks;
     /// each week is solved by the engine, then stored as one immutable plan.
+    /// Nil when the caller went away before the plan was ready; nothing is
+    /// saved then.
     static func createTrainingPlanForDates(
         dates rawDates: [String],
         now: String? = nil,
         sourceProgramId: String? = nil
-    ) -> TrainingWeekOutcome {
+    ) async -> TrainingWeekOutcome? {
         let now = now ?? ISOTime.now()
         let today = String(now.prefix(10))
         var seen = Set<String>()
@@ -296,22 +298,22 @@ enum TrainingPlan {
             groups[monday, default: []].append(date)
         }
 
-        var programs: [TrainingProgram] = []
-        var issues: [PlanningIssue] = []
-        for weekStart in groupOrder {
+        // Requests are read from the stores here; the engine's search — seconds
+        // of work — runs off the main actor, one week after another.
+        let requests = groupOrder.map { weekStart -> ProgramGenerationRequest in
             let weekDates = groups[weekStart] ?? []
             let weekStartMillis = ISOTime.parse(weekStart) ?? 0
             let offsets = weekDates.map { date -> Int in
                 let at = ISOTime.parse("\(date)T00:00:00.000Z") ?? 0
                 return Int(((at - weekStartMillis) / DAY_MS).rounded())
             }
-            var request = TrainingWorkflow.buildTrainingRequest(
-                TrainingEngineAdapter.buildEngineInputs(),
-                now: now,
-                availableDays: offsets
-            )
-            request.schedule.weekStart = weekStart
-            let result = Generate.generateTrainingProgram(request)
+            return PlanGeneration.request(weekStart: weekStart, offsets: offsets, now: now)
+        }
+        guard let results = await PlanGeneration.generate(requests) else { return nil }
+
+        var programs: [TrainingProgram] = []
+        var issues: [PlanningIssue] = []
+        for result in results {
             guard let program = result.program else { return .blocked(toPlanBlock(result.issues)) }
             programs.append(program)
             issues += result.issues
@@ -377,4 +379,35 @@ enum TrainingPlan {
         return .created(programId: program.id, sessions: sessions, issues: issues)
     }
 
+}
+
+/// Plan generation, split at the actor boundary: the request is read from the
+/// stores on the main actor, and the engine's search runs away from it on a
+/// value copy.
+enum PlanGeneration {
+    /// One week's request, from the profile, equipment and history as they are
+    /// now.
+    static func request(weekStart: String?, offsets: [Int], now: String) -> ProgramGenerationRequest {
+        var request = TrainingWorkflow.buildTrainingRequest(
+            TrainingEngineAdapter.buildEngineInputs(),
+            now: now,
+            availableDays: offsets
+        )
+        if let weekStart { request.schedule.weekStart = weekStart }
+        return request
+    }
+
+    /// Generates the weeks in order, stopping at the first that cannot be
+    /// planned. Nil when the caller has gone.
+    @concurrent
+    static func generate(_ requests: [ProgramGenerationRequest]) async -> [ProgramGenerationResult]? {
+        var results: [ProgramGenerationResult] = []
+        for request in requests {
+            if Task.isCancelled { return nil }
+            let result = Generate.generateTrainingProgram(request)
+            results.append(result)
+            if result.program == nil { break }
+        }
+        return Task.isCancelled ? nil : results
+    }
 }

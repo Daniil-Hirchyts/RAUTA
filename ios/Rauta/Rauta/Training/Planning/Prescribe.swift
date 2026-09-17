@@ -1,6 +1,6 @@
 import Foundation
 
-enum Prescribe {
+nonisolated enum Prescribe {
     static func exercise(
         _ item: IndexedExercise,
         count: Int,
@@ -97,7 +97,7 @@ enum Prescribe {
     }
 }
 
-enum Ranking {
+nonisolated enum Ranking {
     struct Candidate: Sendable {
         var exerciseId: String
         var score: Score

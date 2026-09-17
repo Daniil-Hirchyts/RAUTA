@@ -5,8 +5,7 @@ import Foundation
 /// of an activity, so anything that changes while exercising belongs in
 /// ``ContentState`` instead — and starting a *different* workout has to end the
 /// card and request a new one (see `WorkoutLiveActivity.start`).
-@available(iOS 16.1, *)
-struct WorkoutActivityAttributes: ActivityAttributes {
+nonisolated struct WorkoutActivityAttributes: ActivityAttributes {
     /// One frame of a workout in progress. Kept small and `Hashable` so the
     /// system can tell two consecutive updates apart cheaply; the web layer
     /// already skips updates that would not change anything here.
@@ -32,8 +31,7 @@ struct WorkoutActivityAttributes: ActivityAttributes {
     var workoutDate: String
 }
 
-@available(iOS 16.1, *)
-extension WorkoutActivityAttributes.ContentState {
+nonisolated extension WorkoutActivityAttributes.ContentState {
     var progressText: String { "\(completedCount) of \(totalCount) done" }
 
     var accent: WorkoutActivityColor { WorkoutActivityPalette.accent(accentHex) }

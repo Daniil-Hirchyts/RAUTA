@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import Combine
 
 enum HealthStatus: String, Codable, Hashable, Sendable {
@@ -40,13 +41,14 @@ struct SettingsPreferences: Codable, Hashable, Sendable {
 }
 
 @MainActor
-final class SettingsStore: ObservableObject {
+@Observable
+final class SettingsStore {
     static let shared = SettingsStore()
 
     static let storageKey = "gym-lib-settings"
     static let version = 3
 
-    @Published private(set) var preferences: SettingsPreferences = .defaults
+    private(set) var preferences: SettingsPreferences = .defaults
     let changed = PassthroughSubject<Void, Never>()
 
     private init() { load() }

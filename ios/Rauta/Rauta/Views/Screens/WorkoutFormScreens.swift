@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 /// and a scrolling popover that closes on the wrong tap is a worse way to
 /// answer a one-tap question.
 struct WorkoutDestinationScreen: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     /// The exercises being filed, carried by the page rather than read from the
     /// selection — one exercise opened from the Library is the same question.
     let exerciseIds: [String]
@@ -105,7 +105,7 @@ struct WorkoutDestinationScreen: View {
 }
 
 struct WorkoutFormScreen: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     let initialExerciseIds: [String]
     let workoutId: String?
     let focusMuscles: [MuscleId]?
@@ -114,7 +114,10 @@ struct WorkoutFormScreen: View {
     @State private var exerciseIds: [String] = []
     @State private var issue: String?
     @State private var saving = false
+    @State private var regenerating = false
     @State private var showingDate = false
+    /// Proposing or saving: the session is composed off the main actor.
+    @State private var work: Task<Void, Never>?
 
     private var workout: Workout? { workoutId.flatMap(store.workouts.workout) }
 
@@ -139,7 +142,8 @@ struct WorkoutFormScreen: View {
                                 EditableExerciseRow(
                                     exercise: exercise,
                                     index: resolvedExercises.firstIndex(of: exercise) ?? 0,
-                                    remove: { exerciseIds.removeAll { $0 == exercise.id } }
+                                    remove: { exerciseIds.removeAll { $0 == exercise.id } },
+                                    move: { move(exercise.id, by: $0) }
                                 )
                             }
                             .reorderable()
@@ -156,12 +160,17 @@ struct WorkoutFormScreen: View {
             } controls: {
                 HStack(spacing: 10) {
                     if focusMuscles != nil {
-                        AppControlButton(systemImage: "arrow.clockwise", label: "Regenerate workout", action: regenerate)
+                        AppControlButton(
+                            systemImage: "arrow.clockwise",
+                            label: "Regenerate workout",
+                            isDisabled: regenerating || saving,
+                            action: regenerate
+                        )
                     }
                     AppButton(
                         saveButtonTitle,
                         size: .cta,
-                        isDisabled: exerciseIds.isEmpty || saving,
+                        isDisabled: exerciseIds.isEmpty || saving || regenerating,
                         expands: true,
                         action: save
                     )
@@ -179,6 +188,17 @@ struct WorkoutFormScreen: View {
             .zIndex(9)
         }
         .onAppear(perform: load)
+        .onDisappear { work?.cancel() }
+    }
+
+    /// One place up or down: the accessible form of dragging a row.
+    private func move(_ id: String, by offset: Int) {
+        let rows = resolvedExercises
+        let next = exerciseIds.movingElement(id, by: offset, visible: Set(rows.map(\.id)))
+        guard next != exerciseIds else { return }
+        exerciseIds = next
+        let position = next.filter { id in rows.contains { $0.id == id } }.firstIndex(of: id).map { $0 + 1 } ?? 0
+        AccessibilityNotification.Announcement("Moved to position \(position) of \(rows.count)").post()
     }
 
     private func load() {
@@ -198,42 +218,51 @@ struct WorkoutFormScreen: View {
     }
 
     private func regenerate() {
-        guard let focusMuscles else { return }
-        do {
-            exerciseIds = try EngineWorkout.propose(
-                date: CalendarDate.toISO(date),
-                focusMuscles: focusMuscles,
-                previousExerciseIds: exerciseIds,
-                availableEquipment: store.filters.selectedEquipment
-            )
-            issue = nil
-            Haptics.trigger(.medium)
-        } catch { capture(error) }
+        guard let focusMuscles, !regenerating, !saving else { return }
+        regenerating = true
+        work = Task {
+            defer { regenerating = false }
+            do {
+                let proposal = try await EngineWorkout.propose(
+                    date: CalendarDate.toISO(date),
+                    focusMuscles: focusMuscles,
+                    previousExerciseIds: exerciseIds,
+                    availableEquipment: store.filters.selectedEquipment
+                )
+                exerciseIds = proposal
+                issue = nil
+                Haptics.trigger(.medium)
+            } catch is CancellationError {
+            } catch { capture(error) }
+        }
     }
 
     private func save() {
-        guard !exerciseIds.isEmpty, !saving else { return }
+        guard !exerciseIds.isEmpty, !saving, !regenerating else { return }
         saving = true
-        defer { saving = false }
-        do {
-            let id: String
-            if let workout {
-                if workout.date != CalendarDate.toISO(date) {
-                    try TrainingEdits.rescheduleWorkout(workout.id, date: CalendarDate.toISO(date))
+        work = Task {
+            defer { saving = false }
+            do {
+                let id: String
+                if let workout {
+                    if workout.date != CalendarDate.toISO(date) {
+                        try TrainingEdits.rescheduleWorkout(workout.id, date: CalendarDate.toISO(date))
+                    }
+                    try TrainingEdits.updateScheduledWorkoutExercises(workout.id, exerciseIds)
+                    id = workout.id
+                } else {
+                    id = try await EngineWorkout.createWorkout(
+                        date: CalendarDate.toISO(date),
+                        exerciseIds: exerciseIds,
+                        focusMuscles: focusMuscles
+                    )
                 }
-                try TrainingEdits.updateScheduledWorkoutExercises(workout.id, exerciseIds)
-                id = workout.id
-            } else {
-                id = try EngineWorkout.createWorkout(
-                    date: CalendarDate.toISO(date),
-                    exerciseIds: exerciseIds,
-                    focusMuscles: focusMuscles
-                )
-            }
-            store.navigation.selectedIds = []
-            store.navigation.openWorkout(id)
-            Haptics.trigger(.success)
-        } catch { capture(error) }
+                store.navigation.selectedIds = []
+                store.navigation.openWorkout(id)
+                Haptics.trigger(.success)
+            } catch is CancellationError {
+            } catch { capture(error) }
+        }
     }
 
     private func capture(_ error: Error) {
@@ -376,6 +405,8 @@ private struct EditableExerciseRow: View {
     let exercise: ExerciseSummary
     let index: Int
     let remove: () -> Void
+    /// Moves the row one place (-1 up, +1 down).
+    let move: (Int) -> Void
 
     var body: some View {
         HStack(spacing: 0) {
@@ -418,6 +449,11 @@ private struct EditableExerciseRow: View {
                 Label("Remove", systemImage: "trash")
             }
             .accessibilityLabel("Remove \(exercise.name)")
+        }
+        // Dragging to reorder has no VoiceOver form of its own.
+        .accessibilityActions {
+            Button("Move up") { move(-1) }
+            Button("Move down") { move(1) }
         }
     }
 }

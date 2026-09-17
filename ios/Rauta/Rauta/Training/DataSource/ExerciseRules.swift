@@ -1,10 +1,10 @@
 import Foundation
 
-let RULE_VERSION = "1.2.0"
+nonisolated let RULE_VERSION = "1.2.0"
 
 /// Roles are explicit anatomical programming approximations, independent of
 /// source weights.
-struct PatternRule {
+nonisolated struct PatternRule {
     var match: Pattern
     var exclude: Pattern?
     var pattern: MovementPattern
@@ -14,7 +14,7 @@ struct PatternRule {
     var familyId: String?
 }
 
-let CLASSIFICATION_RULES: [PatternRule] = [
+nonisolated let CLASSIFICATION_RULES: [PatternRule] = [
     PatternRule(
         match: Pattern(#"\b(calf|calves|heel) (raise|press)|calf.*raise"#),
         pattern: .calfRaise, direct: [.calves], indirect: []
@@ -113,7 +113,7 @@ let CLASSIFICATION_RULES: [PatternRule] = [
     ),
 ]
 
-private enum InferencePatterns {
+private nonisolated enum InferencePatterns {
     static let stretch = Pattern(#"\bstretch"#)
     static let isometric = Pattern(#"\b(isometric|static hold|hold)\b|\bplank\b"#)
     static let power = Pattern(#"\b(snatch|clean|jerk|jump|plyo|throw)\b"#)
@@ -155,7 +155,7 @@ private enum InferencePatterns {
     static let alternating = Pattern(#"alternat|lunge"#)
 }
 
-enum ExerciseClassifier {
+nonisolated enum ExerciseClassifier {
     static func inferMetadata(_ exercise: ExerciseSummary) -> ExerciseMetadata {
         let name = exercise.name.lowercased()
         let instructions = exercise.instructions.joined(separator: " ").lowercased()

@@ -2,7 +2,7 @@ import Foundation
 
 /// A compiled pattern with JavaScript's `\b` semantics, cached because the
 /// classification rules run over the whole catalogue.
-struct Pattern {
+nonisolated struct Pattern: Sendable {
     private let regex: NSRegularExpression
 
     init(_ pattern: String, caseInsensitive: Bool = false) {

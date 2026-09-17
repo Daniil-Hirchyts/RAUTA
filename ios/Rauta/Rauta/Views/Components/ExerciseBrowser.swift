@@ -97,9 +97,12 @@ struct ExerciseFilterBar: View {
     var zoomPrefix: String
 
     @FocusState private var searchFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Chips that make way for the field shrink into the glass beside them.
-    private static let chipMelt = AnyTransition.scale(scale: 0.6).combined(with: .opacity)
+    private var chipMelt: AnyTransition {
+        .motion(.scale(scale: 0.6).combined(with: .opacity), reduced: reduceMotion)
+    }
     /// Glass moves best on a spring with a touch of give.
     private static let searchMorphAnimation = Animation.spring(response: 0.42, dampingFraction: 0.82)
 
@@ -118,13 +121,13 @@ struct ExerciseFilterBar: View {
                         state.presentedFilter = .equipment
                     }
                     .appZoomSource(ExerciseFilterKind.equipment.zoomSourceID(zoomPrefix), cornerRadius: 20)
-                    .transition(Self.chipMelt)
+                    .transition(chipMelt)
 
                     ExerciseFilterChip(title: "Favorites", selected: state.favoritesOnly) {
                         Haptics.trigger(.selection)
                         state.favoritesOnly.toggle()
                     }
-                    .transition(Self.chipMelt)
+                    .transition(chipMelt)
 
                     Spacer(minLength: 0)
                 }
@@ -135,6 +138,9 @@ struct ExerciseFilterBar: View {
             }
             .frame(height: 48)
         }
+        // One row of fixed-height glass controls: labels grow with Dynamic
+        // Type while all three still fit beside the search button.
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
     }
 
     /// Muscles while browsing; the round way back to the filters while
@@ -154,7 +160,7 @@ struct ExerciseFilterBar: View {
                     Image(systemName: "circle.grid.2x2.fill")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(Theme.secondaryForeground)
-                        .transition(.scale(scale: 0.5).combined(with: .opacity))
+                        .transition(.motion(.scale(scale: 0.5).combined(with: .opacity), reduced: reduceMotion))
                 } else {
                     Text("Muscles")
                         .font(Theme.sans(13, weight: .semibold))

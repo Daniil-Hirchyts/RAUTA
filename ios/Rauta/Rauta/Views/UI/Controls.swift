@@ -4,8 +4,8 @@ import SwiftUI
 
 /// The system switch, in the brand's colour.
 ///
-/// On iOS 26 its thumb is Liquid Glass: it lifts into a lens under a finger and
-/// can be dragged across. A drawn imitation can only fake the resting state.
+/// Its thumb is Liquid Glass: it lifts into a lens under a finger and can be
+/// dragged across. A drawn imitation can only fake the resting state.
 struct AppSwitch: View {
     @Binding var isOn: Bool
     var isDisabled: Bool = false
@@ -73,6 +73,9 @@ private struct StepButton: View {
 
     @State private var repeatTask: Task<Void, Never>?
     @State private var isPressed = false
+    /// Resets on its own when the press ends *or is cancelled* — a scroll
+    /// taking the touch never calls `onEnded`, and the repeat must stop then too.
+    @GestureState private var isTouching = false
 
     var body: some View {
         let shape = Circle()
@@ -91,6 +94,7 @@ private struct StepButton: View {
             .contentShape(shape)
             .gesture(
                 DragGesture(minimumDistance: 0)
+                    .updating($isTouching) { _, touching, _ in touching = true }
                     .onChanged { _ in
                         guard !isDisabled, repeatTask == nil else { return }
                         isPressed = true
@@ -101,8 +105,20 @@ private struct StepButton: View {
                         stop()
                     }
             )
+            .onChange(of: isTouching) { _, touching in
+                guard !touching else { return }
+                isPressed = false
+                stop()
+            }
+            .onDisappear(perform: stop)
             .accessibilityLabel(label)
             .accessibilityAddTraits(.isButton)
+            // A drag gesture has no activation of its own for VoiceOver or
+            // Switch Control; one step per activation.
+            .accessibilityAction {
+                guard !isDisabled else { return }
+                step()
+            }
     }
 
     private func start() {
@@ -110,9 +126,9 @@ private struct StepButton: View {
         repeatTask = Task {
             var delay = firstRepeatSeconds
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                try? await Task.sleep(for: .seconds(delay))
                 if Task.isCancelled { break }
-                await MainActor.run { step() }
+                step()
                 delay = Swift.max(fastestRepeatSeconds, delay * repeatDecay)
             }
         }
@@ -185,8 +201,18 @@ struct AppStepper: View {
             RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
                 .strokeBorder(Theme.border, lineWidth: 1)
         )
-        .accessibilityElement(children: .contain)
+        // One adjustable element, as the system stepper reads: swipe up or
+        // down to change the value.
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
+        .accessibilityValue(unit.map { "\(display) \($0)" } ?? display)
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: onStep(1)
+            case .decrement: if canDecrement { onStep(-1) }
+            @unknown default: break
+            }
+        }
     }
 }
 
@@ -206,6 +232,7 @@ struct SlidingTabs: View {
     var tabs: [TabDefinition]
     @Binding var activeIndex: Int
     @Namespace private var selectionNamespace
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 0) {
@@ -214,14 +241,18 @@ struct SlidingTabs: View {
                 Button {
                     guard index != activeIndex else { return }
                     Haptics.trigger(.selection)
-                    withAnimation(Theme.Motion.spring) { activeIndex = index }
+                    withAnimation(reduceMotion ? .easeOut(duration: Theme.Duration.textSwap) : Theme.Motion.spring) {
+                        activeIndex = index
+                    }
                 } label: {
                     ZStack {
                         if selected {
                             Capsule()
                                 .fill(Theme.primaryGradient)
+                                // Reduce Motion: each tab has a pill of its own,
+                                // so the selection crossfades instead of sliding.
                                 .matchedGeometryEffect(
-                                    id: "active-tab",
+                                    id: reduceMotion ? "active-tab-\(index)" : "active-tab",
                                     in: selectionNamespace
                                 )
                                 .shadow(color: Theme.primary.opacity(0.18), radius: 8, y: 3)
@@ -246,6 +277,7 @@ struct SlidingTabs: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
         .padding(3)
@@ -265,9 +297,8 @@ struct SlidingTabs: View {
 ///
 /// The system segmented control is glass too, but it cannot be tinted or made
 /// this small. Here the track is a quiet fill and only the selection is glass —
-/// tinted, and flexing under a finger on iOS 26 — so it reads as the one thing
-/// that moves. Drag across to scrub; the choice is made where the finger lifts.
-/// Before iOS 26 the selection is the brand gradient.
+/// tinted, and flexing under a finger — so it reads as the one thing that
+/// moves. Drag across to scrub; the choice is made where the finger lifts.
 struct GlassSegmentedPicker<Option: Hashable>: View {
     var title: String
     var options: [Option]
@@ -278,6 +309,8 @@ struct GlassSegmentedPicker<Option: Hashable>: View {
     @Namespace private var selectionNamespace
     @State private var scrubbing: Option?
     @State private var width: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @GestureState private var isTouching = false
 
     private static var height: CGFloat { 30 }
     private var shown: Option { scrubbing ?? selection }
@@ -294,7 +327,10 @@ struct GlassSegmentedPicker<Option: Hashable>: View {
                     .frame(height: Self.height)
                     .background {
                         if active {
-                            thumb.matchedGeometryEffect(id: "selection", in: selectionNamespace)
+                            thumb.matchedGeometryEffect(
+                                id: reduceMotion ? AnyHashable(option) : AnyHashable("selection"),
+                                in: selectionNamespace
+                            )
                         }
                     }
             }
@@ -309,6 +345,7 @@ struct GlassSegmentedPicker<Option: Hashable>: View {
         }
         .gesture(
             DragGesture(minimumDistance: 0)
+                .updating($isTouching) { _, touching, _ in touching = true }
                 .onChanged { value in
                     let option = option(at: value.location.x)
                     guard option != shown else { return }
@@ -323,6 +360,12 @@ struct GlassSegmentedPicker<Option: Hashable>: View {
                     }
                 }
         )
+        // A cancelled scrub never reaches `onEnded`: drop the preview so the
+        // thumb returns to the real selection.
+        .onChange(of: isTouching) { _, touching in
+            guard !touching, scrubbing != nil else { return }
+            withAnimation(Theme.Motion.spring(0.32)) { scrubbing = nil }
+        }
         // VoiceOver gets the system control's own semantics: a picker whose
         // value can be swiped through.
         .accessibilityRepresentation {
@@ -409,7 +452,7 @@ struct MatrixLoader: View {
     var dot: CGFloat = 2
     var gap: CGFloat = 2
 
-    @State private var phase: Double = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private static let twinkleOrder = [7, 2, 11, 5, 14, 9, 0, 12, 3, 15, 6, 10, 13, 1, 8, 4]
     private static let orbitRing = [1, 2, 7, 11, 14, 13, 8, 4]
@@ -437,27 +480,33 @@ struct MatrixLoader: View {
     }
 
     var body: some View {
-        VStack(spacing: gap) {
-            ForEach(0..<4, id: \.self) { row in
-                HStack(spacing: gap) {
-                    ForEach(0..<4, id: \.self) { column in
-                        let index = row * 4 + column
-                        Circle()
-                            .fill(cellColor(index))
-                            .frame(width: dot, height: dot)
+        // The cycle is read off the display clock: a colour computed in `body`
+        // is not interpolated by an animation, so a `repeatForever` on a phase
+        // value would never show the sweep. Reduce Motion holds it still.
+        TimelineView(.animation(paused: reduceMotion)) { context in
+            let cycle = Theme.Duration.matrixCycle
+            let phase = reduceMotion
+                ? 0.5
+                : context.date.timeIntervalSinceReferenceDate
+                    .truncatingRemainder(dividingBy: cycle) / cycle
+            VStack(spacing: gap) {
+                ForEach(0..<4, id: \.self) { row in
+                    HStack(spacing: gap) {
+                        ForEach(0..<4, id: \.self) { column in
+                            let index = row * 4 + column
+                            Circle()
+                                .fill(cellColor(index, phase: phase))
+                                .frame(width: dot, height: dot)
+                        }
                     }
                 }
             }
         }
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
-        .onAppear {
-            withAnimation(.linear(duration: Theme.Duration.matrixCycle).repeatForever(autoreverses: false)) {
-                phase = 1
-            }
-        }
     }
 
-    private func cellColor(_ index: Int) -> Color {
+    private func cellColor(_ index: Int, phase: Double) -> Color {
         guard let delay = delay(index) else { return Theme.primary.opacity(0.25) }
         let position = (phase + 1 - delay).truncatingRemainder(dividingBy: 1)
         // A short bright window, softening back into the base tint.

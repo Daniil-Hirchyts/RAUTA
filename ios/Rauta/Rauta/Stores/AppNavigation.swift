@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import Combine
 
 /// The pages the training profile is edited on. Grouped the way Settings groups
@@ -220,18 +221,19 @@ enum NavigationDirection { case forward, back }
 /// data belongs to its own stores; a fresh process always starts from the app
 /// root (or first-run onboarding) and builds a new navigation stack.
 @MainActor
-final class AppSessionStore: ObservableObject {
+@Observable
+final class AppSessionStore {
     static let shared = AppSessionStore()
 
     static let storageKey = "gym-lib-app-session"
     static let version = 3
 
-    @Published private(set) var pages: [AppPageEntry] = []
-    @Published private(set) var direction: NavigationDirection = .forward
-    @Published var selectedIds: [String] = []
+    private(set) var pages: [AppPageEntry] = []
+    private(set) var direction: NavigationDirection = .forward
+    var selectedIds: [String] = []
     /// A workout waiting to be shown on the Workout tab. Set by ``openWorkout(_:)``
     /// and cleared by the tab once it has opened it.
-    @Published var requestedWorkoutId: String?
+    var requestedWorkoutId: String?
 
     private var sequence = 0
 

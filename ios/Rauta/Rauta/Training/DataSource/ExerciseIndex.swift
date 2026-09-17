@@ -1,7 +1,7 @@
 import Foundation
 
 /// Every lookup the planner needs over the catalogue, built once and shared.
-struct ExerciseIndex: Sendable {
+nonisolated struct ExerciseIndex: Sendable {
     var byId: [String: IndexedExercise] = [:]
     var byMuscle: [MuscleId: [IndexedExercise]] = [:]
     var byDirectMuscle: [MuscleId: [IndexedExercise]] = [:]
@@ -17,7 +17,7 @@ struct ExerciseIndex: Sendable {
     var fingerprint: String = ""
 }
 
-enum ExerciseData {
+nonisolated enum ExerciseData {
     static func validateExerciseData(_ exercises: [ExerciseSummary]) -> [PlanningIssue] {
         var ids = Set<String>()
         var issues: [PlanningIssue] = []

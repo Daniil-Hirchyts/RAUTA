@@ -9,7 +9,7 @@ import SwiftUI
 /// inside a modal stack on top of it.
 @MainActor
 struct RootView: View {
-    @ObservedObject private var navigation = AppSessionStore.shared
+    private let navigation = AppSessionStore.shared
     @Namespace private var zoomNamespace
 
     var body: some View {
@@ -35,7 +35,7 @@ struct RootView: View {
 /// is attached to.
 private struct ModalPresenter: ViewModifier {
     let index: Int
-    @ObservedObject private var navigation = AppSessionStore.shared
+    private let navigation = AppSessionStore.shared
 
     func body(content: Content) -> some View {
         content.fullScreenCover(
@@ -55,7 +55,7 @@ private struct ModalPresenter: ViewModifier {
 private struct ModalStack: View {
     let index: Int
     let root: AppPageEntry
-    @ObservedObject private var navigation = AppSessionStore.shared
+    private let navigation = AppSessionStore.shared
 
     private var steps: Binding<[AppPageEntry]> {
         Binding(
@@ -84,7 +84,7 @@ private struct ModalStack: View {
 /// A page, as the navigation shows it.
 struct AppPageView: View {
     let entry: AppPageEntry
-    @ObservedObject private var navigation = AppSessionStore.shared
+    private let navigation = AppSessionStore.shared
 
     var body: some View {
         page

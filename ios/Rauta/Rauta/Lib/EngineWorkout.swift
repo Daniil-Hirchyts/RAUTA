@@ -4,7 +4,7 @@ import Foundation
 /// rules the weekly planner uses.
 @MainActor
 enum EngineWorkout {
-    struct Input {
+    struct Input: Sendable {
         var date: String
         var exerciseIds: [String]?
         var focusMuscles: [MuscleId]?
@@ -29,7 +29,7 @@ enum EngineWorkout {
         }
     }
 
-    static func mondayFor(_ date: String) -> String {
+    nonisolated static func mondayFor(_ date: String) -> String {
         guard let millis = ISOTime.parse("\(date)T00:00:00.000Z") else { return date }
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
@@ -40,7 +40,7 @@ enum EngineWorkout {
         return ISOTime.string(from: monday)
     }
 
-    private static func focusFor(
+    nonisolated private static func focusFor(
         _ exerciseIds: [String],
         _ requested: [MuscleId]?
     ) -> [MuscleId] {
@@ -58,7 +58,14 @@ enum EngineWorkout {
         return result
     }
 
-    static func buildProgram(_ input: Input) throws -> TrainingProgram {
+    /// What composing a session needs from the stores, read on the main actor.
+    struct Prepared: Sendable {
+        var request: ProgramGenerationRequest
+        var index: ExerciseIndex
+        var now: String
+    }
+
+    static func prepare(_ input: Input) -> Prepared {
         let now = input.now ?? ISOTime.now()
         var overrides = TrainingEngineAdapter.PreferenceOverrides()
         if let availableEquipment = input.availableEquipment {
@@ -74,9 +81,28 @@ enum EngineWorkout {
             sessionDays: nil,
             durationWeeks: 1
         )
+        return Prepared(request: request, index: TrainingWorkflow.trainingIndex(), now: now)
+    }
 
+    /// Builds the session where it is asked for — for the prescription of a
+    /// single exercise added mid-workout, which is small.
+    static func buildProgram(_ input: Input) throws -> TrainingProgram {
+        try compose(input, prepare(input))
+    }
+
+    /// Builds the session away from the main actor: ranking the catalogue is
+    /// the expensive part of proposing a workout.
+    @concurrent
+    static func buildProgramInBackground(_ input: Input, _ prepared: Prepared) async throws -> TrainingProgram {
+        try Task.checkCancellation()
+        return try compose(input, prepared)
+    }
+
+    nonisolated private static func compose(_ input: Input, _ prepared: Prepared) throws -> TrainingProgram {
+        let now = prepared.now
+        let request = prepared.request
         let optimization = Generate.preparation(
-            request, previousProgram: nil, index: TrainingWorkflow.trainingIndex()
+            request, previousProgram: nil, index: prepared.index
         )
         let focus = focusFor(input.exerciseIds ?? [], input.focusMuscles)
         let ranked = Ranking.rankExerciseCandidates(request, focus: focus)
@@ -191,16 +217,18 @@ enum EngineWorkout {
         focusMuscles: [MuscleId],
         previousExerciseIds: [String]? = nil,
         availableEquipment: [String]? = nil
-    ) throws -> [String] {
-        let program = try buildProgram(Input(
+    ) async throws -> [String] {
+        let input = Input(
             date: date,
             focusMuscles: focusMuscles,
             avoidExerciseIds: previousExerciseIds,
             availableEquipment: availableEquipment
-        ))
+        )
+        let program = try await buildProgramInBackground(input, prepare(input))
         return program.weeks.first?.sessions.first?.exercises.map(\.exerciseId) ?? []
     }
 
+    /// Builds the workout's session off the main actor, then records it.
     @discardableResult
     static func createWorkout(
         date: String,
@@ -209,13 +237,29 @@ enum EngineWorkout {
         focusMuscles: [MuscleId]? = nil,
         workoutId: String? = nil,
         now: String? = nil
+    ) async throws -> String {
+        let input = Input(date: date, exerciseIds: exerciseIds, focusMuscles: focusMuscles, now: now)
+        let program = try await buildProgramInBackground(input, prepare(input))
+        return try record(program, date: date, name: name, workoutId: workoutId)
+    }
+
+    /// The same, in place — for migrating one legacy workout as it is opened.
+    private static func createWorkoutNow(
+        date: String,
+        name: String?,
+        exerciseIds: [String],
+        workoutId: String
     ) throws -> String {
-        let program = try buildProgram(Input(
-            date: date,
-            exerciseIds: exerciseIds,
-            focusMuscles: focusMuscles,
-            now: now
-        ))
+        let program = try buildProgram(Input(date: date, exerciseIds: exerciseIds))
+        return try record(program, date: date, name: name, workoutId: workoutId)
+    }
+
+    private static func record(
+        _ program: TrainingProgram,
+        date: String,
+        name: String?,
+        workoutId: String?
+    ) throws -> String {
         try TrainingRecordsStore.shared.saveProgram(program, activate: false, kind: .workout)
         guard let view = TrainingPlan.sessionViews(program).first else {
             throw TrainingPersistenceError("The generated workout had no session.")
@@ -242,11 +286,11 @@ enum EngineWorkout {
         )
     }
 
-    static func duplicateWithEngine(_ workoutId: String, date: String) throws -> String {
+    static func duplicateWithEngine(_ workoutId: String, date: String) async throws -> String {
         guard let source = WorkoutsStore.shared.workout(workoutId) else {
             throw TrainingPersistenceError("Workout not found.")
         }
-        return try createWorkout(
+        return try await createWorkout(
             date: date,
             name: "\(source.name) copy",
             exerciseIds: source.exerciseIds
@@ -263,7 +307,7 @@ enum EngineWorkout {
               TrainingRecordsStore.shared.data.activeWorkout?.sourceWorkoutId != workoutId
         else { return workoutId }
 
-        return (try? createWorkout(
+        return (try? createWorkoutNow(
             date: workout.date,
             name: workout.name,
             exerciseIds: workout.exerciseIds,

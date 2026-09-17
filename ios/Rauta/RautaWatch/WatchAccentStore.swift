@@ -3,8 +3,9 @@ import Observation
 
 /// The accent chosen on iPhone, remembered on the watch so the app opens in it
 /// before the phone is in reach.
+@MainActor
 @Observable
-final class WatchAccentStore: @unchecked Sendable {
+final class WatchAccentStore {
     static let shared = WatchAccentStore()
 
     private(set) var accent: RautaWatchAccent

@@ -1,6 +1,6 @@
 import Foundation
 
-private let SUBSTITUTION_SIMILARITY_WEIGHTS = SimilarityWeights(
+private nonisolated let SUBSTITUTION_SIMILARITY_WEIGHTS = SimilarityWeights(
     family: 0.2,
     patterns: 0.25,
     directMuscles: 0.25,
@@ -10,7 +10,7 @@ private let SUBSTITUTION_SIMILARITY_WEIGHTS = SimilarityWeights(
     equipment: 0.05
 )
 
-enum Substitutions {
+nonisolated enum Substitutions {
     struct Candidate {
         var exerciseId: String
         var score: Score
@@ -95,7 +95,7 @@ enum Substitutions {
 }
 
 /// Structural adapter for workouts recorded before structured set logging.
-enum LegacyWorkouts {
+nonisolated enum LegacyWorkouts {
     struct LegacyCompletion {
         var startedAt: String
         var completedAt: String

@@ -1,8 +1,8 @@
 import Foundation
 
-enum RoundDirection { case nearest, up, down }
+nonisolated enum RoundDirection { case nearest, up, down }
 
-enum Progression {
+nonisolated enum Progression {
     static func roundLoad(
         _ load: Double,
         _ grid: LoadGrid,

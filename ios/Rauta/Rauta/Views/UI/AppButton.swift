@@ -91,8 +91,12 @@ struct AppButton<Label: View>: View {
             minHeight: size.hitHeight
         )
         .modifier(ShakeEffect(phase: shakePhase))
-        .accessibilityLabel(accessibilityLabel ?? "")
-        .accessibilityAddTraits(isDisabled ? [] : [])
+        // Without an explicit label the button keeps the one its content
+        // gives it, rather than being overridden with an empty string.
+        .accessibilityLabel(accessibilityLabel ?? "", isEnabled: accessibilityLabel != nil)
+        // Presses still reach a disabled button (to explain the refusal), so
+        // the dimmed state has to be spoken rather than taken from `.disabled`.
+        .accessibilityValue(isDisabled ? "Unavailable" : "", isEnabled: isDisabled)
     }
 
     private var horizontalPadding: CGFloat {

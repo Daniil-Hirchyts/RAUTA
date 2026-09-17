@@ -1,4 +1,5 @@
 import CoreImage
+import Synchronization
 import ImageIO
 import SwiftUI
 import UIKit
@@ -6,7 +7,7 @@ import UniformTypeIdentifiers
 
 /// The bundled artwork: equipment photographs, goal cards, the grain overlay and
 /// the animated exercise demonstrations.
-enum MediaLibrary {
+nonisolated enum MediaLibrary {
     private static let root = Bundle.main.bundleURL.appendingPathComponent("Media")
 
     static func equipmentURL(_ equipment: String) -> URL {
@@ -34,7 +35,7 @@ enum MediaLibrary {
 }
 
 /// Which theme an exercise demonstration is prepared for.
-enum ExerciseMediaTone: String, Sendable {
+nonisolated enum ExerciseMediaTone: String, Sendable {
     case light, dark
 
     init(_ scheme: ColorScheme) {
@@ -44,7 +45,7 @@ enum ExerciseMediaTone: String, Sendable {
 
 /// How a demonstration is drawn: for which theme, and how far its highlight is
 /// turned from the brand orange to the accent in use.
-struct ExerciseMediaStyle: Hashable, Sendable {
+nonisolated struct ExerciseMediaStyle: Hashable, Sendable {
     var tone: ExerciseMediaTone
     /// Whole degrees, so a colour dragged across the picker does not render a
     /// new set of frames for every fraction of a degree.
@@ -61,22 +62,41 @@ struct ExerciseMediaStyle: Hashable, Sendable {
 ///
 /// The source animations carry a pre-baked alpha channel; recolouring the figure
 /// is what makes them read as part of the app rather than as pasted-in clip art.
-enum ExerciseMedia {
+///
+/// Decoding runs off the main actor (``loadPoster(for:style:)``,
+/// ``loadAnimation(for:style:)``); only the cache lookups are cheap enough for
+/// the main thread. The caches are `NSCache`, kept for its memory-pressure
+/// eviction, and reached only under their locks.
+nonisolated enum ExerciseMedia {
     private static let srgbSpace = CGColorSpace(name: CGColorSpace.sRGB)!
     private static let context = CIContext(options: [
         .useSoftwareRenderer: false,
         .workingColorSpace: srgbSpace,
     ])
-    private static let posterCache: NSCache<NSString, UIImage> = {
+    private static let posterCache = Mutex(makeCache(limit: 120))
+    private static let animationCache = Mutex(makeCache(limit: 60))
+
+    private static func makeCache(limit: Int) -> NSCache<NSString, UIImage> {
         let cache = NSCache<NSString, UIImage>()
-        cache.countLimit = 120
+        cache.countLimit = limit
         return cache
-    }()
-    private static let animationCache: NSCache<NSString, UIImage> = {
-        let cache = NSCache<NSString, UIImage>()
-        cache.countLimit = 60
-        return cache
-    }()
+    }
+
+    /// Decodes the first frame away from the main actor. Nil when the bundle
+    /// has no artwork, or when the view that asked has gone.
+    @concurrent
+    static func loadPoster(for exerciseId: String, style: ExerciseMediaStyle) async -> UIImage? {
+        guard !Task.isCancelled else { return nil }
+        return poster(for: exerciseId, style: style)
+    }
+
+    /// Decodes the whole demonstration away from the main actor, stopping
+    /// between frames if the view that asked has gone.
+    @concurrent
+    static func loadAnimation(for exerciseId: String, style: ExerciseMediaStyle) async -> UIImage? {
+        guard !Task.isCancelled else { return nil }
+        return animation(for: exerciseId, style: style)
+    }
 
     /// The treatment for the exercise animations.
     ///
@@ -147,7 +167,7 @@ enum ExerciseMedia {
     /// bundle carries no artwork for it.
     static func animation(for exerciseId: String, style: ExerciseMediaStyle, maxFrames: Int = 40) -> UIImage? {
         let key = cacheKey(exerciseId, style)
-        if let cached = animationCache.object(forKey: key) { return cached }
+        if let cached = cachedAnimation(for: exerciseId, style: style) { return cached }
 
         let url = MediaLibrary.exerciseAnimationURL(exerciseId)
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
@@ -167,6 +187,9 @@ enum ExerciseMedia {
         let timingQuantum: TimeInterval = 0.1
 
         for index in Swift.stride(from: 0, to: count, by: stride) {
+            // A card scrolled away mid-decode leaves the rest undone and
+            // uncached; the next appearance starts again.
+            if Task.isCancelled { return nil }
             guard let cgImage = CGImageSourceCreateImageAtIndex(source, index, nil)
             else { continue }
             let size = CGSize(width: cgImage.width, height: cgImage.height)
@@ -178,8 +201,10 @@ enum ExerciseMedia {
             }
             let repeats = Swift.max(1, Int((sourceDuration / timingQuantum).rounded()))
             frames.append(contentsOf: repeatElement(rendered, count: repeats))
-            if index == 0 && posterCache.object(forKey: key) == nil {
-                posterCache.setObject(rendered, forKey: key)
+            if index == 0 {
+                posterCache.withLock { cache in
+                    if cache.object(forKey: key as NSString) == nil { cache.setObject(rendered, forKey: key as NSString) }
+                }
             }
             duration += Double(repeats) * timingQuantum
         }
@@ -187,18 +212,20 @@ enum ExerciseMedia {
         let animated = frames.count == 1
             ? frames[0]
             : (UIImage.animatedImage(with: frames, duration: Swift.max(duration, 0.1)) ?? frames[0])
-        animationCache.setObject(animated, forKey: key)
+        animationCache.withLock { $0.setObject(animated, forKey: key as NSString) }
         return animated
     }
 
     static func cachedAnimation(for exerciseId: String, style: ExerciseMediaStyle) -> UIImage? {
-        animationCache.object(forKey: cacheKey(exerciseId, style))
+        let key = cacheKey(exerciseId, style)
+        return animationCache.withLock { $0.object(forKey: key as NSString) }
     }
 
     /// Each theme and accent is cached on its own, so switching back and forth
     /// never re-decodes what has already been drawn once.
-    private static func cacheKey(_ exerciseId: String, _ style: ExerciseMediaStyle) -> NSString {
-        "\(exerciseId)|\(style.tone.rawValue)|\(style.hueShift)" as NSString
+    /// A `String`, turned into the cache's `NSString` only inside its lock.
+    private static func cacheKey(_ exerciseId: String, _ style: ExerciseMediaStyle) -> String {
+        "\(exerciseId)|\(style.tone.rawValue)|\(style.hueShift)"
     }
 
     /// A single treated frame, cached — what a grid of hundreds of cards can
@@ -207,10 +234,9 @@ enum ExerciseMedia {
     /// safe on the main thread.
     static func cachedPoster(for exerciseId: String, style: ExerciseMediaStyle) -> UIImage? {
         let key = cacheKey(exerciseId, style)
-        if let cached = posterCache.object(forKey: key) { return cached }
-        if let cachedAnim = animationCache.object(forKey: key),
-           let firstFrame = cachedAnim.images?.first {
-            posterCache.setObject(firstFrame, forKey: key)
+        if let cached = posterCache.withLock({ $0.object(forKey: key as NSString) }) { return cached }
+        if let firstFrame = cachedAnimation(for: exerciseId, style: style)?.images?.first {
+            posterCache.withLock { $0.setObject(firstFrame, forKey: key as NSString) }
             return firstFrame
         }
         return nil
@@ -229,7 +255,7 @@ enum ExerciseMedia {
         let size = CGSize(width: cgImage.width, height: cgImage.height)
         let ciImage = CIImage(cgImage: cgImage, options: [.colorSpace: srgbSpace])
         guard let rendered = render(ciImage, size: size, style: style) else { return nil }
-        posterCache.setObject(rendered, forKey: key)
+        posterCache.withLock { $0.setObject(rendered, forKey: key as NSString) }
         return rendered
     }
 
@@ -281,13 +307,18 @@ struct ExerciseMediaView: View {
     var exerciseId: String
     var animated: Bool = false
     @Environment(\.colorScheme) private var colorScheme
+    /// Settings › Accessibility › Motion › Auto-Play Animated Images.
+    @Environment(\.accessibilityPlayAnimatedImages) private var playAnimatedImages
 
     @State private var poster: UIImage?
     @State private var animatedImage: UIImage?
 
+    /// Off, a demonstration rests on its first frame like every list poster.
+    private var plays: Bool { animated && playAnimatedImages }
+
     var body: some View {
         ZStack {
-            if animated, let animatedImage {
+            if plays, let animatedImage {
                 AnimatedImageView(image: animatedImage)
             } else if let poster {
                 Image(uiImage: poster)
@@ -297,14 +328,14 @@ struct ExerciseMediaView: View {
                 Color.clear
             }
         }
-        .task(id: "\(exerciseId)-\(animated)-\(colorScheme)-\(Int(Theme.palette.hueShift.rounded()))") {
+        .task(id: "\(exerciseId)-\(plays)-\(colorScheme)-\(Int(Theme.palette.hueShift.rounded()))") {
             await load()
         }
     }
 
     private func load() async {
         let id = exerciseId
-        let wantsAnimation = animated
+        let wantsAnimation = plays
         let style = ExerciseMediaStyle(tone: ExerciseMediaTone(colorScheme), hueShift: Theme.palette.hueShift)
 
         // Decoding and recolouring a frame is real work: only a cache hit is taken
@@ -313,9 +344,7 @@ struct ExerciseMediaView: View {
             poster = existing
         } else {
             guard !Task.isCancelled else { return }
-            let rendered = await Task.detached(priority: .userInitiated) {
-                ExerciseMedia.poster(for: id, style: style)
-            }.value
+            let rendered = await ExerciseMedia.loadPoster(for: id, style: style)
             guard id == exerciseId else { return }
             poster = rendered
         }
@@ -329,10 +358,8 @@ struct ExerciseMediaView: View {
             animatedImage = existingAnim
         } else {
             guard !Task.isCancelled else { return }
-            let decoded = await Task.detached(priority: .userInitiated) {
-                ExerciseMedia.animation(for: id, style: style)
-            }.value
-            guard id == exerciseId, animated else { return }
+            let decoded = await ExerciseMedia.loadAnimation(for: id, style: style)
+            guard id == exerciseId, plays else { return }
             animatedImage = decoded
         }
     }

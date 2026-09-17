@@ -14,7 +14,6 @@ struct AnimatedNumber: View {
     /// number stays put and legible.
     var still: Bool = false
 
-    @State private var shown: Int?
     @State private var changed = false
 
     private var text: String { format(value) }
@@ -33,12 +32,13 @@ struct AnimatedNumber: View {
                     .id("\(text)-\(index)")
             }
         }
+        // One element for the whole number: a label on a plain stack is handed
+        // to every digit in it.
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(text)
         .onChange(of: value) { _, _ in
             changed = !still
-            shown = value
         }
-        .onAppear { shown = value }
     }
 
     private func staggerDelay(_ index: Int) -> Double {
@@ -53,20 +53,23 @@ private struct DigitPop: ViewModifier {
     var active: Bool
     var delay: Double
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var progress: Double = 1
 
     func body(content: Content) -> some View {
+        // A count can change many times in a row, so the pop is small and
+        // short, and settles without overshoot. Reduce Motion keeps the fade
+        // and drops the rise and the blur.
         content
-            .offset(y: (1 - progress) * 8)
+            .offset(y: reduceMotion ? 0 : (1 - progress) * 4)
             .opacity(progress)
-            .blur(radius: (1 - progress) * 2)
+            .blur(radius: reduceMotion ? 0 : (1 - progress) * 1)
             .onAppear {
                 guard active else { return }
                 progress = 0
-                withAnimation(
-                    .timingCurve(0.34, 1.45, 0.64, 1, duration: Theme.Duration.digit)
-                        .delay(delay)
-                ) { progress = 1 }
+                withAnimation(.spring(duration: Theme.Duration.fast, bounce: 0).delay(delay)) {
+                    progress = 1
+                }
             }
     }
 }
@@ -99,7 +102,7 @@ struct AnimatedCheck: View {
     }
 }
 
-private struct CheckMark: Shape {
+private nonisolated struct CheckMark: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         path.move(to: CGPoint(x: rect.minX, y: rect.midY))
@@ -121,7 +124,11 @@ struct LikeButton: View {
     var chromeless: Bool = false
     var action: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var bursting = false
+    /// Flips once the particles are on screen, so their spread animates from
+    /// the heart outward instead of the particles appearing already spent.
+    @State private var spread = false
     @State private var pop: CGFloat = 1
 
     private static let particles: [(x: CGFloat, y: CGFloat, delay: Double, size: CGFloat)] = [
@@ -132,7 +139,7 @@ struct LikeButton: View {
 
     var body: some View {
         let button = Button {
-            if !liked && animated { burst() }
+            if !liked && animated && !reduceMotion { burst() }
             Haptics.trigger(.selection)
             action()
         } label: {
@@ -166,19 +173,23 @@ struct LikeButton: View {
                     .scaleEffect(pop)
 
                 if bursting {
-                    ForEach(Array(Self.particles.enumerated()), id: \.offset) { _, particle in
-                        Circle()
-                            .fill(Theme.primary)
-                            .frame(width: 2.5 * particle.size, height: 2.5 * particle.size)
-                            .offset(
-                                x: bursting ? particle.x : 0,
-                                y: bursting ? particle.y : 0
-                            )
-                            .opacity(bursting ? 0 : 1)
-                            .animation(
-                                .easeOut(duration: 0.6).delay(particle.delay), value: bursting
-                            )
+                    ZStack {
+                        ForEach(Array(Self.particles.enumerated()), id: \.offset) { _, particle in
+                            Circle()
+                                .fill(Theme.primary)
+                                .frame(width: 2.5 * particle.size, height: 2.5 * particle.size)
+                                .offset(
+                                    x: spread ? particle.x : 0,
+                                    y: spread ? particle.y : 0
+                                )
+                                .opacity(spread ? 0 : 1)
+                                .animation(
+                                    .easeOut(duration: 0.6).delay(particle.delay), value: spread
+                                )
+                        }
                     }
+                    .onAppear { spread = true }
+                    .onDisappear { spread = false }
                 }
             }
 
@@ -196,9 +207,9 @@ struct LikeButton: View {
         bursting = true
         withAnimation(.timingCurve(0.34, 1.96, 0.64, 1, duration: 0.35)) { pop = 1.35 }
         Task {
-            try? await Task.sleep(nanoseconds: 180_000_000)
+            try? await Task.sleep(for: .milliseconds(180))
             withAnimation(Theme.Motion.spring) { pop = 1 }
-            try? await Task.sleep(nanoseconds: 500_000_000)
+            try? await Task.sleep(for: .milliseconds(500))
             bursting = false
         }
     }

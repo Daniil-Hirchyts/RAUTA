@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import Combine
 
 let TRAINING_PROFILE_STORAGE_KEY = "gym-lib-training-profile"
@@ -55,11 +56,12 @@ struct OnboardingRecord: Codable, Hashable, Sendable {
 }
 
 @MainActor
-final class TrainingProfileStore: ObservableObject {
+@Observable
+final class TrainingProfileStore {
     static let shared = TrainingProfileStore()
 
-    @Published private(set) var profile: TrainingProfile = .createDefault()
-    @Published private(set) var onboarding: OnboardingRecord = .empty
+    private(set) var profile: TrainingProfile = .createDefault()
+    private(set) var onboarding: OnboardingRecord = .empty
     let changed = PassthroughSubject<Void, Never>()
 
     private init() { load() }

@@ -1,14 +1,14 @@
 import Foundation
 
-let CURATION_VERSION = "2.0.0"
+nonisolated let CURATION_VERSION = "2.0.0"
 
-enum ExerciseReviewSource: String, Codable, Hashable, Sendable {
+nonisolated enum ExerciseReviewSource: String, Codable, Hashable, Sendable {
     case name, instructions
     case sampledFrames = "sampled_frames"
     case video
 }
 
-let CORE_PROGRAMMING_FIELDS = [
+nonisolated let CORE_PROGRAMMING_FIELDS = [
     "exerciseType", "movementPatterns", "mechanics", "laterality", "tracking",
     "requiredEquipment", "setRoles", "classificationConfidence", "skill",
     "setupSeconds", "automaticProgramming",
@@ -16,7 +16,7 @@ let CORE_PROGRAMMING_FIELDS = [
 
 /// One curated review of an exercise. `metadata` is a partial patch over the
 /// inferred record, so it stays in loosely typed JSON until it is merged.
-struct CuratedExerciseReview: Sendable {
+nonisolated struct CuratedExerciseReview: Sendable {
     var exerciseId: String
     var reviewedFrom: [ExerciseReviewSource]
     var reviewedFields: [String]
@@ -44,7 +44,7 @@ struct CuratedExerciseReview: Sendable {
     }
 }
 
-struct CurationFreshness {
+nonisolated struct CurationFreshness {
     var sourceCurrent: Bool
     var mediaCurrent: Bool?
     var sourceFingerprintMissing: Bool
@@ -53,7 +53,7 @@ struct CurationFreshness {
     var staleMedia: Bool
 }
 
-enum CuratedExercises {
+nonisolated enum CuratedExercises {
     private static let store: (reviews: [String: CuratedExerciseReview], media: [String: String]) = {
         let reviews = (BundledData.json("exercise-metadata.curated.complete")?.arrayValue ?? [])
             .compactMap(CuratedExerciseReview.init)

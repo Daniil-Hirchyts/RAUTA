@@ -24,7 +24,7 @@ import UserNotifications
 final class RestAlerts {
     static let shared = RestAlerts()
 
-    static let notificationID = "rauta-rest-timer-complete"
+    nonisolated static let notificationID = "rauta-rest-timer-complete"
 
     private(set) var deadline: Date?
     private var exerciseName: String?
@@ -163,7 +163,22 @@ final class RestAlerts {
 
     private func post(_ content: UNMutableNotificationContent, trigger: UNNotificationTrigger?) {
         let request = UNNotificationRequest(identifier: Self.notificationID, content: content, trigger: trigger)
-        Task { try? await center.add(request) }
+        let scheduledFor = deadline
+        Task {
+            try? await center.add(request)
+            guard Self.isStale(scheduledFor: scheduledFor, now: deadline, hasTrigger: trigger != nil)
+            else { return }
+            center.removePendingNotificationRequests(withIdentifiers: [Self.notificationID])
+            if deadline != nil { arm() }
+        }
+    }
+
+    /// Whether a scheduled notification that has just finished being added
+    /// belongs to a rest that is no longer the current one. A rest skipped or
+    /// replaced while the add was in flight has already cleared the pending
+    /// request — before this one existed — so this one must go too.
+    nonisolated static func isStale(scheduledFor: Date?, now current: Date?, hasTrigger: Bool) -> Bool {
+        hasTrigger && scheduledFor != current
     }
 
     private func requestPermissionIfNeeded() {

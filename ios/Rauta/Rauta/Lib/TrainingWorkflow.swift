@@ -194,14 +194,15 @@ enum TrainingWorkflow {
     }
 
     /// Asks the engine for a week and hands back exactly what it said, refusals
-    /// included. Nothing is persisted here.
+    /// included. Nothing is persisted here. The request is read from the stores
+    /// here; the engine's search runs off the main actor.
     static func planTrainingWeek(
         setup: TrainingEngineAdapter.PlanSetup? = nil,
         now: String = ISOTime.now(),
         source: PersistedProgramRecord? = nil,
         availableDays: [Int] = DEFAULT_TRAINING_DAYS,
         adaptationMode: TrainingAdaptationMode = .remainingWeek
-    ) throws -> PlanAttempt {
+    ) async throws -> PlanAttempt {
         let setup = setup ?? TrainingEngineAdapter.buildEngineInputs()
         let request = buildTrainingRequest(
             setup,
@@ -217,17 +218,25 @@ enum TrainingWorkflow {
             )
         }
 
-        let result: ProgramGenerationResult
-        if let source {
-            result = Adapt.adaptTrainingProgram(AdaptationRequest(
+        let adaptation = source.map { source in
+            AdaptationRequest(
                 previousProgram: ProgramRecords.toEngineProgram(source.snapshot),
                 request: request,
                 mode: adaptationMode == .remainingWeek ? .remainingWeek : .nextWeek
-            ))
-        } else {
-            result = Generate.generateTrainingProgram(request)
+            )
         }
+        let result = try await search(request, adaptation: adaptation)
         return PlanAttempt(request: request, result: result)
+    }
+
+    @concurrent
+    private static func search(
+        _ request: ProgramGenerationRequest,
+        adaptation: AdaptationRequest?
+    ) async throws -> ProgramGenerationResult {
+        try Task.checkCancellation()
+        if let adaptation { return Adapt.adaptTrainingProgram(adaptation) }
+        return Generate.generateTrainingProgram(request)
     }
 
     @discardableResult
@@ -236,8 +245,8 @@ enum TrainingWorkflow {
         now: String = ISOTime.now(),
         source: PersistedProgramRecord? = nil,
         availableDays: [Int] = DEFAULT_TRAINING_DAYS
-    ) throws -> PlanAttempt {
-        let attempt = try planTrainingWeek(
+    ) async throws -> PlanAttempt {
+        let attempt = try await planTrainingWeek(
             setup: setup, now: now, source: source, availableDays: availableDays
         )
         guard let program = attempt.result.program else {

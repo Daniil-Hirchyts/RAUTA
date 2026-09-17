@@ -17,6 +17,9 @@ struct RautaCharacter: View {
     @Environment(\.rautaOnStage) private var onStage
     @StateObject private var performer = RautaPerformer()
     @State private var leash = CGSize.zero
+    /// Resets when the touch ends *or is cancelled*; only a cancel reaches
+    /// `touchCancelled`, since `onEnded` has already settled a normal lift.
+    @GestureState private var touching = false
 
     var body: some View {
         performer.rig.view()
@@ -42,6 +45,7 @@ struct RautaCharacter: View {
                 // a drag are told apart by what the finger did rather than by
                 // which recognizer won.
                 DragGesture(minimumDistance: 0)
+                    .updating($touching) { _, active, _ in active = true }
                     .onChanged { value in leash = performer.touchChanged(value) }
                     .onEnded { value in
                         if performer.touchEnded(value) {
@@ -51,6 +55,10 @@ struct RautaCharacter: View {
                         withAnimation(.spring(response: 0.42, dampingFraction: 0.5)) { leash = .zero }
                     }
             )
+            .onChange(of: touching) { _, active in
+                guard !active, performer.touchCancelled() else { return }
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.5)) { leash = .zero }
+            }
             .accessibilityLabel(onActivate == nil ? "Interact with RAUTA" : "Open RAUTA actions")
             .accessibilityAddTraits(.isButton)
             .accessibilityAction {
@@ -102,10 +110,14 @@ private enum RautaArtwork {
 /// The rig, with a heartbeat. The runtime reports every frame it advances, and
 /// the performer moves the eyes and the turn on that beat — in step with what is
 /// drawn, and only while anything is drawn at all.
-final class RautaRig: RiveViewModel {
-    var onAdvance: (@MainActor (Double) -> Void)?
+///
+/// Nonisolated like the runtime class it extends. The runtime reports frames
+/// from its main-thread display link, which the assertion below checks.
+nonisolated final class RautaRig: RiveViewModel {
+    var onAdvance: (@MainActor @Sendable (Double) -> Void)?
 
     override func player(didAdvanceby seconds: Double, riveModel: RiveModel?) {
+        let onAdvance = onAdvance
         MainActor.assumeIsolated { onAdvance?(seconds) }
     }
 }
@@ -623,6 +635,29 @@ final class RautaPerformer: ObservableObject {
             return false
         }
         tap()
+        return true
+    }
+
+    /// A touch the system took away — a scroll, an edge swipe, a presentation.
+    /// Puts the body back the way a release would, without reacting to it as
+    /// a tap or a throw. Returns whether a touch was actually in progress.
+    func touchCancelled() -> Bool {
+        guard touchBegan != nil else { return false }
+        pressTask?.cancel()
+        touchBegan = nil
+        if dragging {
+            dragging = false
+            borrowedMood = nil
+            applyMood()
+            springing = true
+            facingVelocity = 0
+        }
+        if pressing {
+            pressing = false
+            if performing { write("pressed", false) }
+        }
+        returnGaze(after: 0.35)
+        refreshPlayback()
         return true
     }
 

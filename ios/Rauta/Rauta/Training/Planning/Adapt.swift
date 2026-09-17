@@ -1,12 +1,12 @@
 import Foundation
 
-struct AdaptationRequest {
+nonisolated struct AdaptationRequest {
     var previousProgram: TrainingProgram
     var request: ProgramGenerationRequest
     var mode: ProgramAdaptation.Mode
 }
 
-enum Adapt {
+nonisolated enum Adapt {
     /// The structural guard the TypeScript `validSource` applied to an untyped
     /// program; what survives in Swift is the semantic half.
     private static func validSource(_ program: TrainingProgram) -> Bool {

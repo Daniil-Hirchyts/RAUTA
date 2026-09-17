@@ -1,14 +1,19 @@
 import Foundation
+import Observation
 import Combine
 
 let TRAINING_STORAGE_KEY = "gym-lib-training"
+/// The file the training history is kept in; `TRAINING_STORAGE_KEY` is where
+/// earlier builds kept it, read once and moved.
+let TRAINING_STORAGE_FILE = "training"
 
 @MainActor
-final class TrainingRecordsStore: ObservableObject {
+@Observable
+final class TrainingRecordsStore {
     static let shared = TrainingRecordsStore()
 
-    @Published private(set) var data: PersistedTrainingState = .empty()
-    @Published private(set) var persistenceIssues: [TrainingPersistenceIssue] = []
+    private(set) var data: PersistedTrainingState = .empty()
+    private(set) var persistenceIssues: [TrainingPersistenceIssue] = []
     let changed = PassthroughSubject<Void, Never>()
 
     private init() { load() }
@@ -16,7 +21,8 @@ final class TrainingRecordsStore: ObservableObject {
     // MARK: Hydration
 
     private func load() {
-        guard let envelope = Storage.readEnvelope(TRAINING_STORAGE_KEY) else { return }
+        guard let envelope = Storage.readEnvelopeFile(TRAINING_STORAGE_FILE, migratingKey: TRAINING_STORAGE_KEY)
+        else { return }
         // Zustand wrapped the payload in `{ data: … }`; unwrap either shape.
         let payload = envelope.state["data"] ?? envelope.state
         let recovered = PersistenceValidation.recover(payload)
@@ -25,8 +31,8 @@ final class TrainingRecordsStore: ObservableObject {
     }
 
     func persist() {
-        Storage.writeEnvelope(
-            TRAINING_STORAGE_KEY,
+        Storage.writeEnvelopeFile(
+            TRAINING_STORAGE_FILE,
             state: .object(["data": data.jsonTree]),
             version: TRAINING_PERSISTENCE_SCHEMA_VERSION
         )

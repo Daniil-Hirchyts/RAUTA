@@ -2,10 +2,9 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct SettingsScreen: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     @State private var clearing = false
     @State private var importing = false
-    @State private var exportURL: URL?
     @State private var notice: String?
     @State private var connectingHealth = false
 
@@ -138,27 +137,17 @@ struct SettingsScreen: View {
                                 }
                             }
 
-                            if let exportURL {
-                                ShareLink(item: exportURL) {
-                                    settingsActionLabel(
-                                        title: "Export data",
-                                        detail: "Save one backup file",
-                                        icon: "arrow.down.to.line",
-                                        showsDivider: true
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                            } else {
-                                Button(action: prepareExport) {
-                                    settingsActionLabel(
-                                        title: "Export data",
-                                        detail: "Save one backup file",
-                                        icon: "arrow.down.to.line",
-                                        showsDivider: true
-                                    )
-                                }
-                                .buttonStyle(.plain)
+                            // The backup is written when the share sheet asks for
+                            // it, not every time Settings opens.
+                            ShareLink(item: BackupExport(), preview: SharePreview("RAUTA backup")) {
+                                settingsActionLabel(
+                                    title: "Export data",
+                                    detail: "Save one backup file",
+                                    icon: "arrow.down.to.line",
+                                    showsDivider: true
+                                )
                             }
+                            .buttonStyle(.plain)
 
                             Button { importing = true } label: {
                                 settingsActionLabel(
@@ -203,9 +192,6 @@ struct SettingsScreen: View {
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
             importBackup(result)
-        }
-        .task {
-            if exportURL == nil { exportURL = try? AppBackup.exportFileURL() }
         }
     }
 
@@ -496,17 +482,6 @@ struct SettingsScreen: View {
         if store.iCloud.syncNow() { Haptics.trigger(.success) }
     }
 
-    private func prepareExport() {
-        Haptics.trigger(.light)
-        do {
-            exportURL = try AppBackup.exportFileURL()
-            notice = "Backup ready to save or share."
-            Haptics.trigger(.success)
-        } catch {
-            notice = "The backup could not be written. Check the space left on this device, or leave iCloud backup on instead."
-        }
-    }
-
     private func importBackup(_ result: Result<URL, Error>) {
         do {
             let url = try result.get()
@@ -537,6 +512,8 @@ private struct AccentSwatch: View {
     var selected: Bool
     var action: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         Button(action: action) {
             ZStack {
@@ -547,7 +524,7 @@ private struct AccentSwatch: View {
                     Image(systemName: "checkmark")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(Theme.primaryForeground)
-                        .transition(.scale.combined(with: .opacity))
+                        .transition(.motion(.scale.combined(with: .opacity), reduced: reduceMotion))
                 }
             }
             .frame(width: 42, height: 42)
@@ -580,5 +557,14 @@ private struct CustomAccentWell: View {
                     .allowsHitTesting(false)
             )
             .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+/// A backup that exists only once something asks for its file.
+private struct BackupExport: Transferable {
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(exportedContentType: .json) { _ in
+            SentTransferredFile(try await AppBackup.exportFileURL())
+        }
     }
 }

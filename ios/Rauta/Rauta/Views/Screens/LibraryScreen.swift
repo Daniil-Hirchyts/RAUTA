@@ -4,7 +4,7 @@ import SwiftUI
 /// filters. Browse state is isolated from the app shell so typing and filtering
 /// cannot invalidate the native tab host.
 struct LibraryScreen: View {
-    @ObservedObject private var favorites = FavoritesStore.shared
+    private let favorites = FavoritesStore.shared
     private let navigation = AppSessionStore.shared
     @State private var browse = ExerciseBrowseState()
     @State private var selectedMuscles: [MuscleId] = []

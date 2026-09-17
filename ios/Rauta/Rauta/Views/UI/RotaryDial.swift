@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ProfileDial: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     var duration: Bool
     var body: some View {
         RotaryDial(
@@ -26,6 +26,7 @@ struct RotaryDial: View {
     var compact = false
     let onChange: (Double) -> Void
     @State private var dragStart: Double?
+    @GestureState private var dragging = false
     private var tickDegrees: Double { min(9, max(3, 96 / ((scale.max - scale.min) / range.step))) }
     private var notch: Double { ((value - scale.min) / range.step).rounded() }
     var body: some View {
@@ -42,11 +43,16 @@ struct RotaryDial: View {
                         ctx.scaleBy(x: size.width / 240, y: size.width / 240)
                         draw(in: ctx)
                     }.contentShape(Rectangle())
-                        .gesture(DragGesture(minimumDistance: 3).onChanged { gesture in
+                        .gesture(DragGesture(minimumDistance: 3).updating($dragging) { _, active, _ in
+                            active = true
+                        }.onChanged { gesture in
                             if dragStart == nil { dragStart = value }
                             let pixels = max(10, 162 * proxy.size.width / 240 * tickDegrees * .pi / 180)
                             commit((dragStart ?? value) - gesture.translation.width / pixels * range.step)
                         }.onEnded { _ in dragStart = nil })
+                        // A drag taken over by a scroll is cancelled without
+                        // `onEnded`; the next turn must not start from its origin.
+                        .onChange(of: dragging) { _, active in if !active { dragStart = nil } }
                     HStack(spacing: 0) { nudge(-1); nudge(1) }.frame(height: proxy.size.height * 0.48)
                 }
             }.aspectRatio(240.0 / 84, contentMode: .fit).frame(maxWidth: compact ? 240 : 480)

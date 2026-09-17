@@ -1,7 +1,7 @@
 import Foundation
 
 /// Everything the optimizer scores a candidate week against.
-struct OptimizationInput: Sendable {
+nonisolated struct OptimizationInput: Sendable {
     struct Adaptation: Sendable {
         var baselineCompletedWorkingSets: Double
         var baselineMuscleVolume: [MuscleId: Double]
@@ -19,7 +19,7 @@ struct OptimizationInput: Sendable {
     var adaptation: Adaptation?
 }
 
-struct OptimizationResult: Sendable {
+nonisolated struct OptimizationResult: Sendable {
     var week: TrainingWeek?
     var split: String
     var candidates: Int
@@ -27,7 +27,7 @@ struct OptimizationResult: Sendable {
     var splits: [SplitDiagnostic]
 }
 
-enum Scoring {
+nonisolated enum Scoring {
     static func skillSuitability(
         _ experience: Experience,
         _ skill: Skill,

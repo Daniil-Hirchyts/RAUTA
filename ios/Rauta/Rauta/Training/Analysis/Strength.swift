@@ -1,12 +1,12 @@
 import Foundation
 
-struct ExerciseExposure {
+nonisolated struct ExerciseExposure {
     var session: CompletedSession
     var sets: [CompletedSet]
     var allSets: [CompletedSet]
 }
 
-enum Strength {
+nonisolated enum Strength {
     /// Effort as reps in reserve, however the set recorded it.
     static func observedRir(_ set: CompletedSet) -> Double? {
         if let rir = set.rir { return rir }

@@ -30,7 +30,7 @@ struct EquipmentPresets: View {
     var value: [String]?
     var onChange: (([String]) -> Void)?
 
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
 
     private var selectedEquipment: [String] { value ?? store.filters.selectedEquipment }
 
@@ -121,7 +121,7 @@ struct EquipmentPresetEditor: View {
     var equipment: [String]?
     var onSaved: () -> Void
 
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     @State private var name = ""
     @FocusState private var focused: Bool
 

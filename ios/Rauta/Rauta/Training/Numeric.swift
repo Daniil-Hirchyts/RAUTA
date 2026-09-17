@@ -1,8 +1,9 @@
 import Foundation
+import Synchronization
 
-let DAY_MS: Double = 86_400_000
+nonisolated let DAY_MS: Double = 86_400_000
 
-enum Num {
+nonisolated enum Num {
     static func clamp(_ n: Double, _ min: Double = 0, _ max: Double = 1) -> Double {
         Swift.min(max, Swift.max(min, n))
     }
@@ -41,22 +42,28 @@ enum Num {
 
 // MARK: - ISO time
 
-enum ISOTime {
+nonisolated enum ISOTime {
     /// Milliseconds since epoch for an ISO-8601 instant, or nil.
     static func parse(_ iso: String) -> Double? {
-        if let date = Formatter.withFraction.date(from: iso) { return date.timeIntervalSince1970 * 1000 }
-        if let date = Formatter.plain.date(from: iso) { return date.timeIntervalSince1970 * 1000 }
-        if let date = Formatter.calendarDay.date(from: iso) { return date.timeIntervalSince1970 * 1000 }
+        if let date = Formatter.withFraction.withLock({ $0.date(from: iso) }) {
+            return date.timeIntervalSince1970 * 1000
+        }
+        if let date = Formatter.plain.withLock({ $0.date(from: iso) }) {
+            return date.timeIntervalSince1970 * 1000
+        }
+        if let date = Formatter.calendarDay.withLock({ $0.date(from: iso) }) {
+            return date.timeIntervalSince1970 * 1000
+        }
         return nil
     }
 
     /// `2026-01-02T03:04:05.678Z` — the shape every stored instant uses.
     static func string(fromMillis millis: Double) -> String {
-        Formatter.withFraction.string(from: Date(timeIntervalSince1970: millis / 1000))
+        string(from: Date(timeIntervalSince1970: millis / 1000))
     }
 
     static func string(from date: Date) -> String {
-        Formatter.withFraction.string(from: date)
+        Formatter.withFraction.withLock { $0.string(from: date) }
     }
 
     static func now() -> String { string(from: Date()) }
@@ -74,32 +81,31 @@ enum ISOTime {
         return value.count == 20 ? canonical == value.replacingOccurrences(of: "Z", with: ".000Z") : canonical == value
     }
 
+    /// Formatters are reference types that are not `Sendable`; the engine
+    /// runs off the main actor, so each is reached only under its lock.
     enum Formatter {
-        static let withFraction: ISO8601DateFormatter = {
+        static let withFraction = Mutex(isoFormatter([.withInternetDateTime, .withFractionalSeconds]))
+        static let plain = Mutex(isoFormatter([.withInternetDateTime]))
+        static let calendarDay = Mutex(calendarDayFormatter())
+
+        private static func isoFormatter(_ options: ISO8601DateFormatter.Options) -> ISO8601DateFormatter {
             let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            formatter.formatOptions = options
             formatter.timeZone = TimeZone(secondsFromGMT: 0)
             return formatter
-        }()
+        }
 
-        static let plain: ISO8601DateFormatter = {
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime]
-            formatter.timeZone = TimeZone(secondsFromGMT: 0)
-            return formatter
-        }()
-
-        static let calendarDay: DateFormatter = {
+        private static func calendarDayFormatter() -> DateFormatter {
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd"
             formatter.locale = Locale(identifier: "en_US_POSIX")
             formatter.timeZone = TimeZone(secondsFromGMT: 0)
             return formatter
-        }()
+        }
     }
 }
 
-func compareIds(_ a: String, _ b: String) -> Int {
+nonisolated func compareIds(_ a: String, _ b: String) -> Int {
     a < b ? -1 : (a > b ? 1 : 0)
 }
 
@@ -107,7 +113,7 @@ func compareIds(_ a: String, _ b: String) -> Int {
 
 /// A loosely typed JSON tree, used for canonical serialisation, fingerprints
 /// and the persisted-state validator that has to inspect unknown shapes.
-indirect enum JSONValue: Hashable, Sendable, Codable {
+nonisolated indirect enum JSONValue: Hashable, Sendable, Codable {
     case null
     case bool(Bool)
     case number(Double)
@@ -178,7 +184,7 @@ indirect enum JSONValue: Hashable, Sendable, Codable {
     }
 }
 
-extension JSONValue {
+nonisolated extension JSONValue {
     /// `JSON.stringify` with object keys sorted and `undefined` dropped, which
     /// is what the engine's fingerprints are taken over.
     var canonical: String {
@@ -220,7 +226,7 @@ extension JSONValue {
 }
 
 /// Non-cryptographic reproducibility identifier, not a security or privacy primitive.
-func fingerprint(_ value: JSONValue) -> String {
+nonisolated func fingerprint(_ value: JSONValue) -> String {
     var hash: UInt32 = 2_166_136_261
     for character in value.canonical.unicodeScalars {
         // The TypeScript original hashes UTF-16 code units.
@@ -234,7 +240,7 @@ func fingerprint(_ value: JSONValue) -> String {
 
 // MARK: - Codable bridging
 
-enum JSONCoding {
+nonisolated enum JSONCoding {
     static let encoder: JSONEncoder = {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
@@ -267,6 +273,6 @@ enum JSONCoding {
     static func string(_ tree: JSONValue) -> String { tree.canonical }
 }
 
-extension Encodable {
+nonisolated extension Encodable {
     var jsonTree: JSONValue { JSONCoding.tree(self) }
 }

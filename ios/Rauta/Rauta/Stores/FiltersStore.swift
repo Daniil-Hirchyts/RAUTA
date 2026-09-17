@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import Combine
 
 struct EquipmentPreset: Codable, Hashable, Sendable, Identifiable {
@@ -8,24 +9,25 @@ struct EquipmentPreset: Codable, Hashable, Sendable, Identifiable {
 }
 
 @MainActor
-final class FiltersStore: ObservableObject {
+@Observable
+final class FiltersStore {
     static let shared = FiltersStore()
 
     static let storageKey = "gym-lib-filters"
     static let version = 1
 
-    @Published private(set) var selectedMuscles: [MuscleId] = []
-    @Published private(set) var selectedEquipment: [String] = []
+    private(set) var selectedMuscles: [MuscleId] = []
+    private(set) var selectedEquipment: [String] = []
     /// The equipment you actually have, as opposed to `selectedEquipment`, which
     /// filters one browse and is cleared whenever a new one starts. Kept in this
     /// store so there is one equipment vocabulary, one preset list, and one
     /// place either selection is sanitised.
-    @Published private(set) var gymEquipment: [String] = []
-    @Published private(set) var equipmentPresets: [EquipmentPreset] = []
+    private(set) var gymEquipment: [String] = []
+    private(set) var equipmentPresets: [EquipmentPreset] = []
     /// Physical load step offered by the user's actual equipment. The basis
     /// (total vs each) remains catalogue-defined; this only describes the rack,
     /// stack or plates the person has access to.
-    @Published private(set) var equipmentLoadIncrements: [String: Double] = [:]
+    private(set) var equipmentLoadIncrements: [String: Double] = [:]
 
     let changed = PassthroughSubject<Void, Never>()
 
@@ -222,13 +224,14 @@ final class FiltersStore: ObservableObject {
 }
 
 @MainActor
-final class FavoritesStore: ObservableObject {
+@Observable
+final class FavoritesStore {
     static let shared = FavoritesStore()
 
     static let storageKey = "gym-lib-favorites"
     static let version = 1
 
-    @Published private(set) var favoriteIds: [String] = []
+    private(set) var favoriteIds: [String] = []
     let changed = PassthroughSubject<Void, Never>()
 
     private init() { load() }

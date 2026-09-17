@@ -7,7 +7,56 @@ import Foundation
 ///
 /// A Live Activity is an accessory to the workout, never a reason to break it,
 /// so every failure here is swallowed.
+@MainActor
 enum WorkoutActivityBridge {
+    /// One thing to do to the cards on screen, described in values only.
+    /// ActivityKit's `Activity` is not `Sendable`, so a change names the
+    /// cards it is for, and the cards are looked up where it is applied.
+    enum Change: Sendable {
+        case update(ids: [String], state: WorkoutActivityAttributes.ContentState, at: Date)
+        case end(
+            ids: [String],
+            state: WorkoutActivityAttributes.ContentState?,
+            policy: ActivityUIDismissalPolicy,
+            at: Date
+        )
+    }
+
+    /// The last change handed off. Each new one waits for it, so frames reach
+    /// the card in the order they were made; the timestamp also lets the
+    /// system drop a frame older than one it already shows.
+    private static var pending: Task<Void, Never>?
+
+    private static func enqueue(_ change: Change) {
+        let previous = pending
+        pending = Task {
+            await previous?.value
+            await apply(change)
+        }
+    }
+
+    @concurrent
+    private static func apply(_ change: Change) async {
+        switch change {
+        case let .update(ids, state, date):
+            for activity in Activity<WorkoutActivityAttributes>.activities where ids.contains(activity.id) {
+                await activity.update(
+                    ActivityContent(state: state, staleDate: nil),
+                    alertConfiguration: nil,
+                    timestamp: date
+                )
+            }
+        case let .end(ids, state, policy, date):
+            for activity in Activity<WorkoutActivityAttributes>.activities where ids.contains(activity.id) {
+                await activity.end(
+                    state.map { ActivityContent(state: $0, staleDate: nil) },
+                    dismissalPolicy: policy,
+                    timestamp: date
+                )
+            }
+        }
+    }
+
     /// False when the user has switched Live Activities off for the app, which
     /// makes every request throw.
     static var isSupported: Bool {
@@ -65,10 +114,7 @@ enum WorkoutActivityBridge {
     }
 
     static func update(_ content: LiveActivityContent) {
-        let state = state(content)
-        for activity in activities {
-            Task { await activity.update(ActivityContent(state: state, staleDate: nil)) }
-        }
+        enqueue(.update(ids: activities.map(\.id), state: state(content), at: Date()))
     }
 
     /// A finished workout is worth a last glance; a discarded one is not, and
@@ -79,21 +125,13 @@ enum WorkoutActivityBridge {
             ? .immediate
             : .after(Date().addingTimeInterval(120))
 
-        for activity in activities {
-            Task {
-                await activity.end(
-                    ActivityContent(state: state, staleDate: nil),
-                    dismissalPolicy: policy
-                )
-            }
-        }
+        enqueue(.end(ids: activities.map(\.id), state: state, policy: policy, at: Date()))
     }
 
     /// Clears cards without touching their content — used when replacing one
     /// workout's activity with another's.
     private static func dismissAll() {
-        for activity in activities {
-            Task { await activity.end(nil, dismissalPolicy: .immediate) }
-        }
+        // The cards on screen now, not the one about to be requested.
+        enqueue(.end(ids: activities.map(\.id), state: nil, policy: .immediate, at: Date()))
     }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-enum ProgramRecords {
+nonisolated enum ProgramRecords {
     /// The snapshot keeps the policy as raw JSON so it is restored verbatim,
     /// never replaced by the current default.
     static func toPersistedSnapshot(_ program: TrainingProgram) -> PersistedProgramSnapshot {
@@ -146,12 +146,12 @@ enum ProgramRecords {
 
 // MARK: - History
 
-struct LegacyWorkoutObservation {
+nonisolated struct LegacyWorkoutObservation {
     var id: String
     var completion: LegacyWorkouts.LegacyCompletion?
 }
 
-enum PersistedHistory {
+nonisolated enum PersistedHistory {
     private static func toEngineSession(_ session: PersistedCompletedSession) -> CompletedSession {
         var order: [String] = []
         var byExercise: [String: [CompletedSet]] = [:]

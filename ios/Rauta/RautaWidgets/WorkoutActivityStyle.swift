@@ -9,7 +9,6 @@ extension Color {
 /// What a workout looks like when there is room for one shape and nothing
 /// else. Deliberately not a runner — this is a weights app, and the Island's
 /// smallest presentation is the only thing some glances ever see.
-@available(iOS 16.1, *)
 struct WorkoutGlyph: View {
     var isPaused: Bool
 
@@ -25,7 +24,6 @@ struct WorkoutGlyph: View {
 /// The RAUTA mark used by the Dynamic Island. The full Rive runtime belongs in
 /// the app; WidgetKit gets a lightweight rendered pose so the Island stays
 /// fast and deterministic while still carrying the same character identity.
-@available(iOS 16.1, *)
 struct RautaActivityMark: View {
     var isPaused: Bool
     var accent: WorkoutActivityColor
@@ -58,7 +56,6 @@ struct RautaActivityMark: View {
 
 /// The workout clock. A running session hands WidgetKit the instant to count
 /// from and never touches it again; a paused one shows the frozen reading.
-@available(iOS 16.1, *)
 struct WorkoutTimerText: View {
     var state: WorkoutActivityAttributes.ContentState
 
@@ -79,7 +76,6 @@ struct WorkoutTimerText: View {
 /// One dot per exercise, filled as each is completed and outlined while it is
 /// the one being performed. Long workouts fall back to the count alone rather
 /// than a row of dots too small to read.
-@available(iOS 16.1, *)
 struct ProgressDots: View {
     var state: WorkoutActivityAttributes.ContentState
 

@@ -53,6 +53,13 @@ struct ExerciseCard: View {
             selectMode ? "Select \(exercise.name)" : "View \(exercise.name) details"
         )
         .accessibilityAddTraits(selectMode && selected ? [.isSelected] : [])
+        // The long press that opens details while selecting has no
+        // VoiceOver equivalent of its own.
+        .accessibilityActions {
+            if selectMode {
+                Button("View details") { onOpenDetail(exercise) }
+            }
+        }
     }
 
     private var cardButton: some View {
@@ -74,7 +81,9 @@ struct ExerciseCard: View {
                 Color.clear
                     .aspectRatio(1, contentMode: .fit)
                     .overlay {
-                        ExerciseMediaView(exerciseId: exercise.id, animated: true)
+                        // A grid of hundreds shows posters; the demonstration
+                        // plays on the detail page.
+                        ExerciseMediaView(exerciseId: exercise.id)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
 

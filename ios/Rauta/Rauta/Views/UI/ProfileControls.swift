@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ProfileNameControl: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     @State private var draft = ""
     @FocusState private var focused: Bool
     var onFocusChange: (Bool) -> Void = { _ in }
@@ -36,7 +36,7 @@ struct ProfileNameControl: View {
 }
 
 struct ProfileExperienceControl: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     private var healthLimited: Bool { store.trainingProfile.profile.health.status != .healthy }
     private var healthSummary: String {
         guard healthLimited else { return "Nothing to train around" }
@@ -69,7 +69,7 @@ struct ProfileExperienceControl: View {
                     }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
                 }
             }
-            // Native menu so it morphs out of the row on iOS 26+ instead of
+            // Native menu so it morphs out of the row instead of
             // floating in as an arrowed popover.
             Menu {
                 Section("Anything to train around?") {
@@ -131,7 +131,7 @@ struct ProfileCheck: View {
 }
 
 struct ProfileHealthControl: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     var body: some View {
         VStack(spacing: 12) {
             Text("Plans are only built for you while none of these apply. Browsing and building your own workouts always works.")
@@ -162,7 +162,7 @@ struct ProfileHealthControl: View {
 }
 
 struct ProfileGoalControl: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     private var choices: [(goal: TrainingGoal, choice: ProfileChoice)] { ProfileVocabulary.goalChoices }
 
     var body: some View {
@@ -197,7 +197,7 @@ struct ProfileGoalControl: View {
 /// RAUTA's line for a profile step, carried under the step's title, and the
 /// badge it speaks from.
 struct ProfileTopPanel: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     var step: ProfileStep
     private var speech: String {
         let p = store.trainingProfile.profile

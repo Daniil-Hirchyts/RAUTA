@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import Observation
 import UIKit
 
 /// Keeps the compact JSON backup in iCloud's key-value store. KVS is the right
@@ -40,16 +41,17 @@ enum ICloudBackupStore {
 }
 
 @MainActor
-final class ICloudSync: ObservableObject {
+@Observable
+final class ICloudSync {
     static let shared = ICloudSync()
 
     enum Status: String {
         case checking, syncing, synced, unavailable, error
     }
 
-    @Published private(set) var status: Status = .checking
-    @Published private(set) var lastSyncedAt: String?
-    @Published private(set) var error: String?
+    private(set) var status: Status = .checking
+    private(set) var lastSyncedAt: String?
+    private(set) var error: String?
 
     private static let metaKey = "gym-lib-icloud-sync"
     private static let uploadDelay: TimeInterval = 0.9

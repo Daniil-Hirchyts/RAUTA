@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ActiveSetLog: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     let exerciseId: String
     var restSeconds: Double = 90
     var hasNextExercise = false
@@ -138,7 +138,9 @@ struct ActiveSetLog: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .background(Theme.muted.opacity(0.6), in: Capsule())
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel(isResting ? "Rest timer" : "Current set timer")
+            .accessibilityValue(restClock(seconds))
         }
     }
 
@@ -152,6 +154,8 @@ struct ActiveSetLog: View {
             }
             .font(Theme.sans(9, weight: .bold))
             .kerning(1.08)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
             .foregroundStyle(Theme.mutedForeground)
             .padding(.horizontal, 12)
             .padding(.bottom, 6)
@@ -184,6 +188,7 @@ struct ActiveSetLog: View {
                             )
                         }
                         .buttonStyle(.plain)
+                        .accessibilityAddTraits(selectedSet?.id == set.id ? .isSelected : [])
                     }
                 }
             }

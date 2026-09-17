@@ -1,25 +1,25 @@
 import Foundation
 
-private let UPPER: [MuscleId] = [
+private nonisolated let UPPER: [MuscleId] = [
     .chest, .upperBack, .deltoids, .biceps, .triceps, .trapezius, .forearm, .serratus,
 ]
-private let PUSH: [MuscleId] = [.chest, .deltoids, .triceps, .serratus]
-private let PULL: [MuscleId] = [.upperBack, .biceps, .trapezius, .forearm]
+private nonisolated let PUSH: [MuscleId] = [.chest, .deltoids, .triceps, .serratus]
+private nonisolated let PULL: [MuscleId] = [.upperBack, .biceps, .trapezius, .forearm]
 
 /// The muscle groups the split candidates are cut along, so a caller can name a
 /// session from its own focus without restating the split.
-enum SplitMuscleGroups {
+nonisolated enum SplitMuscleGroups {
     static let upper = UPPER
     static let push = PUSH
     static let pull = PULL
 }
 
-struct SplitCandidate {
+nonisolated struct SplitCandidate {
     var name: String
     var sessions: [PlannedSession]
 }
 
-enum Optimizer {
+nonisolated enum Optimizer {
     static func generateSplitCandidates(_ input: OptimizationInput) -> [SplitCandidate] {
         let all = input.targets.filter { $0.preferred > 0 }.map(\.muscleId)
         let lower = all.filter { !UPPER.contains($0) }

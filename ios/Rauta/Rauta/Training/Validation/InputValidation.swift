@@ -3,7 +3,7 @@ import Foundation
 /// The engine's request guard. Swift's types already carry the shape checks the
 /// TypeScript validator had to make by hand, so what remains here is the
 /// semantic half: ranges, uniqueness, ordering and cross-field agreement.
-enum InputValidation {
+nonisolated enum InputValidation {
     private static func issue(_ path: String) -> PlanningIssue {
         PlanningIssue(.invalidInput, path: path)
     }

@@ -2,6 +2,10 @@ import Combine
 import Foundation
 import WatchConnectivity
 
+/// The phone's side of the workout link. Its state belongs to the stores, so it
+/// lives on the main actor; WatchConnectivity calls the delegate on a queue of
+/// its own, and each callback copies out the `Data` it carries before hopping.
+@MainActor
 final class WatchConnectivityService: NSObject, WCSessionDelegate {
     static let shared = WatchConnectivityService()
 
@@ -9,15 +13,18 @@ final class WatchConnectivityService: NSObject, WCSessionDelegate {
     private let decoder = JSONDecoder()
     private var cancellables = Set<AnyCancellable>()
     private var started = false
-    private var processedActionIDs = Set<String>()
+    /// Oldest first, so the persisted window keeps the most recent actions. A
+    /// watch set arrives up to three times (message, application context, user
+    /// info) and the context is replayed on every activation.
+    private var processedActionIDs: [String] = []
     private let processedActionIDsKey = "rauta-watch-processed-actions"
+    private static let processedActionWindow = 64
 
     private override init() {
         super.init()
-        processedActionIDs = Set(UserDefaults.standard.stringArray(forKey: processedActionIDsKey) ?? [])
+        processedActionIDs = UserDefaults.standard.stringArray(forKey: processedActionIDsKey) ?? []
     }
 
-    @MainActor
     func start() {
         guard !started, WCSession.isSupported() else { return }
         started = true
@@ -46,7 +53,6 @@ final class WatchConnectivityService: NSObject, WCSessionDelegate {
         sendLatestSnapshot()
     }
 
-    @MainActor
     private func sendLatestSnapshot() {
         guard started, WCSession.default.activationState == .activated else { return }
         do {
@@ -58,7 +64,6 @@ final class WatchConnectivityService: NSObject, WCSessionDelegate {
         }
     }
 
-    @MainActor
     private func makeEnvelope() -> RautaWatchSnapshotEnvelope {
         let signature = SettingsStore.shared.accent.signature
         return RautaWatchSnapshotEnvelope(
@@ -72,7 +77,6 @@ final class WatchConnectivityService: NSObject, WCSessionDelegate {
         )
     }
 
-    @MainActor
     private func makeSnapshot() -> RautaWatchWorkoutSnapshot? {
         guard let session = ActiveWorkoutStore.shared.session else { return nil }
 
@@ -137,7 +141,6 @@ final class WatchConnectivityService: NSObject, WCSessionDelegate {
         )
     }
 
-    @MainActor
     private func apply(_ action: RautaWatchSetAction) -> Bool {
         if processedActionIDs.contains(action.id) { return true }
         guard let active = ActiveWorkoutStore.shared.session,
@@ -185,8 +188,10 @@ final class WatchConnectivityService: NSObject, WCSessionDelegate {
                     observation: observation
                 )
             }
-            processedActionIDs.insert(action.id)
-            UserDefaults.standard.set(Array(processedActionIDs.suffix(64)), forKey: processedActionIDsKey)
+            processedActionIDs = RecentIDs.recording(
+                action.id, in: processedActionIDs, limit: Self.processedActionWindow
+            )
+            UserDefaults.standard.set(processedActionIDs, forKey: processedActionIDsKey)
             let completedAt = action.completedAtMilliseconds.map { $0 / 1000 }
                 ?? Date().timeIntervalSince1970
             let elapsed = Date().timeIntervalSince1970 - completedAt
@@ -231,75 +236,110 @@ final class WatchConnectivityService: NSObject, WCSessionDelegate {
         return ResistanceValue(type: mode)
     }
 
-    @MainActor
-    private func reply(ok: Bool) -> [String: Any] {
-        var reply: [String: Any] = [RautaWatchMessageKey.ok: ok]
-        if let data = try? encoder.encode(makeEnvelope()) {
-            reply[RautaWatchMessageKey.snapshot] = data
+    /// Tells the watch what became of a set it sent, with the state that
+    /// resulted. Best effort: the application context carries the same state.
+    private func sendResult(of action: RautaWatchSetAction, ok: Bool) {
+        let session = WCSession.default
+        guard session.activationState == .activated, session.isReachable,
+              let result = try? encoder.encode(RautaWatchActionResult(actionId: action.id, ok: ok))
+        else { return }
+        var message: [String: Any] = [RautaWatchMessageKey.actionResult: result]
+        if let snapshot = try? encoder.encode(makeEnvelope()) {
+            message[RautaWatchMessageKey.snapshot] = snapshot
         }
-        return reply
+        session.sendMessage(message, replyHandler: nil, errorHandler: nil)
     }
 
-    func session(
+    /// Hands the watch the current state directly, for a watch that asked.
+    private func sendSnapshotMessage() {
+        let session = WCSession.default
+        guard session.activationState == .activated, session.isReachable,
+              let snapshot = try? encoder.encode(makeEnvelope())
+        else { return }
+        session.sendMessage([RautaWatchMessageKey.snapshot: snapshot], replyHandler: nil, errorHandler: nil)
+    }
+
+    // MARK: WCSessionDelegate
+
+    // WatchConnectivity calls these on a queue of its own. Each one copies the
+    // `Data` it needs out of the dictionary and hands only that to the main
+    // actor; a reply handler is answered where it arrived and never leaves.
+
+    nonisolated func session(
         _ session: WCSession,
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?
     ) {
         guard activationState == .activated else { return }
+        let incoming = Incoming(session.receivedApplicationContext)
         Task { @MainActor [weak self] in
-            self?.applyIncoming(session.receivedApplicationContext)
+            self?.handle(incoming)
             self?.sendLatestSnapshot()
         }
     }
 
-    func sessionDidBecomeInactive(_ session: WCSession) {}
+    nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
 
-    func sessionDidDeactivate(_ session: WCSession) {
+    nonisolated func sessionDidDeactivate(_ session: WCSession) {
         session.activate()
     }
 
-    func session(
+    nonisolated func session(
         _ session: WCSession,
         didReceiveMessage message: [String: Any],
         replyHandler: @escaping ([String: Any]) -> Void
     ) {
-        if message[RautaWatchMessageKey.requestSnapshot] as? Bool == true {
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                replyHandler(self.reply(ok: true))
-            }
-            return
-        }
+        // Only receipt is acknowledged here. What became of the message is
+        // sent back once the stores have applied it.
+        replyHandler([RautaWatchMessageKey.received: true])
+        receive(Incoming(message), reportingResult: true)
+    }
 
-        guard let data = message[RautaWatchMessageKey.action] as? Data,
-              let action = try? decoder.decode(RautaWatchSetAction.self, from: data)
-        else {
-            replyHandler([RautaWatchMessageKey.ok: false])
-            return
-        }
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        receive(Incoming(message), reportingResult: true)
+    }
 
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        receive(Incoming(userInfo), reportingResult: false)
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+        receive(Incoming(applicationContext), reportingResult: false)
+    }
+
+    /// The parts of a WatchConnectivity dictionary this service reads, as
+    /// values that can cross to the main actor.
+    private struct Incoming: Sendable {
+        var action: Data?
+        var healthClaim: Data?
+        var wantsSnapshot: Bool
+
+        nonisolated init(_ dictionary: [String: Any]) {
+            action = dictionary[RautaWatchMessageKey.action] as? Data
+            healthClaim = dictionary[RautaWatchMessageKey.healthClaim] as? Data
+            wantsSnapshot = dictionary[RautaWatchMessageKey.requestSnapshot] as? Bool == true
+        }
+    }
+
+    nonisolated private func receive(_ incoming: Incoming, reportingResult: Bool) {
         Task { @MainActor [weak self] in
-            guard let self else { return }
-            let ok = self.apply(action)
-            self.sendLatestSnapshot()
-            replyHandler(self.reply(ok: ok))
+            self?.handle(incoming, reportingResult: reportingResult)
         }
     }
 
-    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
-        Task { @MainActor [weak self] in self?.applyIncoming(userInfo) }
-    }
-
-    func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
-        Task { @MainActor [weak self] in self?.applyIncoming(applicationContext) }
-    }
-
-    @MainActor
-    private func applyIncoming(_ message: [String: Any]) {
-        guard let data = message[RautaWatchMessageKey.action] as? Data,
-              let action = try? decoder.decode(RautaWatchSetAction.self, from: data)
-        else { return }
-        _ = apply(action)
-        sendLatestSnapshot()
+    private func handle(_ incoming: Incoming, reportingResult: Bool = false) {
+        if let data = incoming.healthClaim,
+           let claim = try? decoder.decode(RautaWatchHealthClaim.self, from: data) {
+            HealthService.shared.recordWatchClaim(workoutId: claim.workoutId)
+        }
+        if let data = incoming.action,
+           let action = try? decoder.decode(RautaWatchSetAction.self, from: data) {
+            let ok = apply(action)
+            sendLatestSnapshot()
+            if reportingResult { sendResult(of: action, ok: ok) }
+        } else if incoming.wantsSnapshot {
+            sendLatestSnapshot()
+            sendSnapshotMessage()
+        }
     }
 }

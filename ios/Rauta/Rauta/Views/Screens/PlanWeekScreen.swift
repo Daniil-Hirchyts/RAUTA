@@ -1,11 +1,12 @@
 import SwiftUI
 
 struct PlanWeekScreen: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     let sourceProgramId: String?
 
     @State private var selectedDates: Set<String> = []
     @State private var working = false
+    @State private var work: Task<Void, Never>?
     @State private var block: PlanBlock?
 
     private var continuing: Bool { sourceProgramId != nil }
@@ -65,6 +66,8 @@ struct PlanWeekScreen: View {
             }
         }
         .task { selectDefaultDates() }
+        // Leaving the page abandons a plan still being built; nothing is saved.
+        .onDisappear { work?.cancel() }
     }
 
     private var planIntro: some View {
@@ -160,14 +163,15 @@ struct PlanWeekScreen: View {
         guard !working else { return }
         working = true
         block = nil
-        Task { @MainActor in
-            await Task.yield()
-            let outcome = TrainingPlan.createTrainingPlanForDates(
+        work = Task {
+            let outcome = await TrainingPlan.createTrainingPlanForDates(
                 dates: selectedDates.sorted(),
                 sourceProgramId: sourceProgramId
             )
             working = false
             switch outcome {
+            case nil:
+                break
             case .created:
                 Haptics.trigger(.success)
                 store.navigation.reset([.workouts])

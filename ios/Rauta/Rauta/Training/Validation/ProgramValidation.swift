@@ -1,6 +1,6 @@
 import Foundation
 
-struct ProgramValidationContext {
+nonisolated struct ProgramValidationContext {
     var sourceProgram: TrainingProgram?
 
     init(sourceProgram: TrainingProgram? = nil) {
@@ -8,13 +8,13 @@ struct ProgramValidationContext {
     }
 }
 
-struct ProgramValidationResult {
+nonisolated struct ProgramValidationResult {
     var valid: Bool
     var issues: [PlanningIssue]
     var warnings: [PlanningIssue]
 }
 
-enum ProgramValidation {
+nonisolated enum ProgramValidation {
     // swiftlint:disable:next cyclomatic_complexity
     static func validate(
         _ program: TrainingProgram,

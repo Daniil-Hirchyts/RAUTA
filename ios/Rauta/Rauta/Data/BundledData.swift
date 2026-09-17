@@ -2,7 +2,7 @@ import Foundation
 
 /// The datasets that ship inside the app: the exercise catalogue, the anatomy
 /// map outlines and the curated training metadata.
-enum BundledData {
+nonisolated enum BundledData {
     static func data(_ name: String, extension ext: String = "json") -> Data? {
         guard let url = Bundle.main.url(forResource: name, withExtension: ext) else { return nil }
         return try? Data(contentsOf: url, options: .mappedIfSafe)
@@ -22,7 +22,7 @@ enum BundledData {
 }
 
 /// The exercise catalogue plus the derived lookups the whole app browses by.
-enum ExerciseCatalogue {
+nonisolated enum ExerciseCatalogue {
     /// Any grid or list can realistically be asked to show hundreds at once, so
     /// every such list renders in bounded batches of this size.
     static let pageSize = 40

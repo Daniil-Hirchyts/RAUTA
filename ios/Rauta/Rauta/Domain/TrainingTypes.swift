@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Exercise
 
-struct ExerciseSummary: Codable, Hashable, Identifiable, Sendable {
+nonisolated struct ExerciseSummary: Codable, Hashable, Identifiable, Sendable {
     var id: String
     var name: String
     var equipment: String
@@ -17,7 +17,7 @@ struct ExerciseSummary: Codable, Hashable, Identifiable, Sendable {
 
 // MARK: - Enumerations
 
-enum TrainingGoal: String, Codable, CaseIterable, Hashable, Sendable {
+nonisolated enum TrainingGoal: String, Codable, CaseIterable, Hashable, Sendable {
     case hypertrophy
     case strength
     case generalFitness = "general_fitness"
@@ -27,11 +27,11 @@ enum TrainingGoal: String, Codable, CaseIterable, Hashable, Sendable {
     case power
 }
 
-enum Experience: String, Codable, CaseIterable, Hashable, Sendable {
+nonisolated enum Experience: String, Codable, CaseIterable, Hashable, Sendable {
     case beginner, intermediate, advanced
 }
 
-enum Confidence: String, Codable, CaseIterable, Hashable, Sendable {
+nonisolated enum Confidence: String, Codable, CaseIterable, Hashable, Sendable {
     case none, low, medium, high
 
     var rank: Int {
@@ -46,7 +46,7 @@ enum Confidence: String, Codable, CaseIterable, Hashable, Sendable {
     func atLeast(_ minimum: Confidence) -> Bool { rank >= minimum.rank }
 }
 
-enum MovementPattern: String, Codable, CaseIterable, Hashable, Sendable {
+nonisolated enum MovementPattern: String, Codable, CaseIterable, Hashable, Sendable {
     case horizontalPush = "horizontal_push"
     case horizontalPull = "horizontal_pull"
     case verticalPush = "vertical_push"
@@ -96,7 +96,7 @@ enum MovementPattern: String, Codable, CaseIterable, Hashable, Sendable {
     case unknown
 }
 
-enum PlanningIssueCode: String, Codable, Hashable, Sendable {
+nonisolated enum PlanningIssueCode: String, Codable, Hashable, Sendable {
     case invalidInput = "INVALID_INPUT"
     case unsupportedPopulation = "UNSUPPORTED_POPULATION"
     case unsupportedGoal = "UNSUPPORTED_GOAL"
@@ -121,7 +121,7 @@ enum PlanningIssueCode: String, Codable, Hashable, Sendable {
 }
 
 /// The loosely typed context bag planning issues carry.
-enum IssueContextValue: Codable, Hashable, Sendable {
+nonisolated enum IssueContextValue: Codable, Hashable, Sendable {
     case string(String)
     case number(Double)
     case bool(Bool)
@@ -156,7 +156,7 @@ enum IssueContextValue: Codable, Hashable, Sendable {
     }
 }
 
-struct PlanningIssue: Codable, Hashable, Sendable {
+nonisolated struct PlanningIssue: Codable, Hashable, Sendable {
     var code: PlanningIssueCode
     var path: String?
     var context: [String: IssueContextValue]?
@@ -170,7 +170,7 @@ struct PlanningIssue: Codable, Hashable, Sendable {
 
 // MARK: - Profile & preferences
 
-enum HealthLimitation: String, Codable, CaseIterable, Hashable, Sendable {
+nonisolated enum HealthLimitation: String, Codable, CaseIterable, Hashable, Sendable {
     case medicalCondition = "medical_condition"
     case activeInjury = "active_injury"
     case rehabilitation
@@ -178,7 +178,7 @@ enum HealthLimitation: String, Codable, CaseIterable, Hashable, Sendable {
     case other
 }
 
-struct TrainingHealth: Codable, Hashable, Sendable {
+nonisolated struct TrainingHealth: Codable, Hashable, Sendable {
     enum Status: String, Codable, Hashable, Sendable { case healthy, unsupported }
     var status: Status
     var reasons: [HealthLimitation]?
@@ -189,7 +189,7 @@ struct TrainingHealth: Codable, Hashable, Sendable {
     }
 }
 
-struct UserTrainingProfile: Codable, Hashable, Sendable {
+nonisolated struct UserTrainingProfile: Codable, Hashable, Sendable {
     var age: Double
     var bodyWeightKg: Double?
     var heightCm: Double?
@@ -198,19 +198,19 @@ struct UserTrainingProfile: Codable, Hashable, Sendable {
     var health: TrainingHealth
 }
 
-struct VolumeRange: Codable, Hashable, Sendable {
+nonisolated struct VolumeRange: Codable, Hashable, Sendable {
     var minimum: Double
     var preferred: Double
     var upperGuideline: Double
 }
 
-enum LoadBasis: String, Codable, Hashable, Sendable {
+nonisolated enum LoadBasis: String, Codable, Hashable, Sendable {
     case total
     case perImplement = "per_implement"
 }
 
 /// `{ incrementKg, minimumKg?, maximumKg? }` or `{ availableLoadsKg }`.
-struct LoadGrid: Codable, Hashable, Sendable {
+nonisolated struct LoadGrid: Codable, Hashable, Sendable {
     var incrementKg: Double?
     var minimumKg: Double?
     var maximumKg: Double?
@@ -233,27 +233,27 @@ struct LoadGrid: Codable, Hashable, Sendable {
     var isDiscrete: Bool { availableLoadsKg != nil }
 }
 
-enum MusclePriorityLevel: String, Codable, CaseIterable, Hashable, Sendable {
+nonisolated enum MusclePriorityLevel: String, Codable, CaseIterable, Hashable, Sendable {
     case low, normal, high, specialization
 }
 
-struct MusclePriorityPreference: Codable, Hashable, Sendable {
+nonisolated struct MusclePriorityPreference: Codable, Hashable, Sendable {
     var muscleId: MuscleId
     var level: MusclePriorityLevel
 }
 
-struct MuscleVolumeBound: Codable, Hashable, Sendable {
+nonisolated struct MuscleVolumeBound: Codable, Hashable, Sendable {
     var muscleId: MuscleId
     var minimum: Double?
     var maximum: Double?
 }
 
-struct LoadContext: Codable, Hashable, Sendable {
+nonisolated struct LoadContext: Codable, Hashable, Sendable {
     var stationId: String
     var basis: LoadBasis
 }
 
-struct PlanningPreferences: Codable, Hashable, Sendable {
+nonisolated struct PlanningPreferences: Codable, Hashable, Sendable {
     var goal: TrainingGoal
     var availableEquipment: [String]
     var preferredExerciseIds: [String]?
@@ -271,7 +271,7 @@ struct PlanningPreferences: Codable, Hashable, Sendable {
     var loadContexts: [String: LoadContext]?
 }
 
-struct TrainingSchedule: Codable, Hashable, Sendable {
+nonisolated struct TrainingSchedule: Codable, Hashable, Sendable {
     var weekStart: String
     var days: [Int]
     /// Explicit slots when rescheduling puts multiple sessions on one day.
@@ -281,7 +281,7 @@ struct TrainingSchedule: Codable, Hashable, Sendable {
 
 // MARK: - Observations
 
-enum ResistanceKind: String, Codable, Hashable, Sendable {
+nonisolated enum ResistanceKind: String, Codable, Hashable, Sendable {
     case externalLoad = "external_load"
     case assistance
     case bodyweight
@@ -289,7 +289,7 @@ enum ResistanceKind: String, Codable, Hashable, Sendable {
     case unknown
 }
 
-struct ResistanceValue: Codable, Hashable, Sendable {
+nonisolated struct ResistanceValue: Codable, Hashable, Sendable {
     var type: ResistanceKind
     var kg: Double?
     var basis: LoadBasis?
@@ -317,15 +317,15 @@ struct ResistanceValue: Codable, Hashable, Sendable {
     var isMeasured: Bool { type == .externalLoad || type == .assistance }
 }
 
-enum SetType: String, Codable, CaseIterable, Hashable, Sendable {
+nonisolated enum SetType: String, Codable, CaseIterable, Hashable, Sendable {
     case warmup, working, backoff, drop, other
 }
 
-enum SetSide: String, Codable, CaseIterable, Hashable, Sendable {
+nonisolated enum SetSide: String, Codable, CaseIterable, Hashable, Sendable {
     case both, left, right
 }
 
-struct CompletedSet: Codable, Hashable, Sendable {
+nonisolated struct CompletedSet: Codable, Hashable, Sendable {
     var id: String
     var plannedSetId: String?
     var reps: Double
@@ -339,12 +339,12 @@ struct CompletedSet: Codable, Hashable, Sendable {
     var timestamp: String?
 }
 
-struct CompletedExercise: Codable, Hashable, Sendable {
+nonisolated struct CompletedExercise: Codable, Hashable, Sendable {
     var exerciseId: String
     var sets: [CompletedSet]
 }
 
-struct CompletedSession: Codable, Hashable, Sendable {
+nonisolated struct CompletedSession: Codable, Hashable, Sendable {
     enum Status: String, Codable, Hashable, Sendable { case completed, partial }
     var id: String
     var plannedSessionId: String?
@@ -355,7 +355,7 @@ struct CompletedSession: Codable, Hashable, Sendable {
     var exercises: [CompletedExercise]
 }
 
-struct TrainingHistory: Codable, Hashable, Sendable {
+nonisolated struct TrainingHistory: Codable, Hashable, Sendable {
     enum Coverage: String, Codable, Hashable, Sendable { case complete, unknown }
     var sessions: [CompletedSession]
     var coverage: Coverage
@@ -364,13 +364,13 @@ struct TrainingHistory: Codable, Hashable, Sendable {
     static let empty = TrainingHistory(sessions: [], coverage: .unknown, coverageStart: nil)
 }
 
-struct SorenessEntry: Codable, Hashable, Sendable {
+nonisolated struct SorenessEntry: Codable, Hashable, Sendable {
     enum Level: String, Codable, Hashable, Sendable { case none, mild, high }
     var muscleId: MuscleId
     var level: Level
 }
 
-struct Readiness: Codable, Hashable, Sendable {
+nonisolated struct Readiness: Codable, Hashable, Sendable {
     enum Perceived: String, Codable, Hashable, Sendable { case normal, low }
     var perceivedReadiness: Perceived?
     var soreness: [SorenessEntry]?
@@ -379,12 +379,12 @@ struct Readiness: Codable, Hashable, Sendable {
 
 // MARK: - Metadata
 
-struct MuscleParticipation: Codable, Hashable, Sendable {
+nonisolated struct MuscleParticipation: Codable, Hashable, Sendable {
     var muscleId: MuscleId
     var relativeInvolvement: Double
 }
 
-struct EffectiveSetRole: Codable, Hashable, Sendable {
+nonisolated struct EffectiveSetRole: Codable, Hashable, Sendable {
     enum Role: String, Codable, Hashable, Sendable { case direct, indirect, incidental }
     enum Provenance: String, Codable, Hashable, Sendable { case rule, curated }
     var muscleId: MuscleId
@@ -392,25 +392,25 @@ struct EffectiveSetRole: Codable, Hashable, Sendable {
     var provenance: Provenance
 }
 
-enum AutomaticProgramming: String, Codable, CaseIterable, Hashable, Sendable {
+nonisolated enum AutomaticProgramming: String, Codable, CaseIterable, Hashable, Sendable {
     case allowed
     case specializedOnly = "specialized_only"
     case manualOnly = "manual_only"
 }
 
-enum ExerciseType: String, Codable, CaseIterable, Hashable, Sendable {
+nonisolated enum ExerciseType: String, Codable, CaseIterable, Hashable, Sendable {
     case resistance, isometric, stretch, mobility, conditioning, power, unknown
 }
 
-enum Mechanics: String, Codable, CaseIterable, Hashable, Sendable {
+nonisolated enum Mechanics: String, Codable, CaseIterable, Hashable, Sendable {
     case compound, isolation, unknown
 }
 
-enum Laterality: String, Codable, CaseIterable, Hashable, Sendable {
+nonisolated enum Laterality: String, Codable, CaseIterable, Hashable, Sendable {
     case bilateral, unilateral, alternating, unknown
 }
 
-enum TrackingMode: String, Codable, CaseIterable, Hashable, Sendable {
+nonisolated enum TrackingMode: String, Codable, CaseIterable, Hashable, Sendable {
     case externalLoad = "external_load"
     case assistance
     case bodyweight
@@ -421,7 +421,7 @@ enum TrackingMode: String, Codable, CaseIterable, Hashable, Sendable {
     case unknown
 }
 
-enum MetadataProvenance: String, Codable, Hashable, Sendable {
+nonisolated enum MetadataProvenance: String, Codable, Hashable, Sendable {
     case rule
     case curated
     case curatedText = "curated_text"
@@ -431,7 +431,7 @@ enum MetadataProvenance: String, Codable, Hashable, Sendable {
     case curatedVideoAndText = "curated_video_and_text"
 }
 
-enum ReviewStatus: String, Codable, Hashable, Sendable {
+nonisolated enum ReviewStatus: String, Codable, Hashable, Sendable {
     case ruleOnly = "rule_only"
     case partiallyReviewed = "partially_reviewed"
     case fullyReviewed = "fully_reviewed"
@@ -440,11 +440,11 @@ enum ReviewStatus: String, Codable, Hashable, Sendable {
     case staleSourceAndMediaReview = "stale_source_and_media_review"
 }
 
-enum Skill: String, Codable, CaseIterable, Hashable, Sendable {
+nonisolated enum Skill: String, Codable, CaseIterable, Hashable, Sendable {
     case basic, complex, unknown
 }
 
-struct ExerciseMetadata: Codable, Hashable, Sendable {
+nonisolated struct ExerciseMetadata: Codable, Hashable, Sendable {
     var exerciseId: String
     var exerciseType: ExerciseType
     var movementPatterns: [MovementPattern]
@@ -467,7 +467,7 @@ struct ExerciseMetadata: Codable, Hashable, Sendable {
     var ruleVersion: String
 }
 
-struct IndexedExercise: Hashable, Sendable {
+nonisolated struct IndexedExercise: Hashable, Sendable {
     var exercise: ExerciseSummary
     var metadata: ExerciseMetadata
     var participation: [MuscleParticipation]
@@ -477,23 +477,23 @@ struct IndexedExercise: Hashable, Sendable {
 
 // MARK: - Prescription
 
-struct RepRange: Codable, Hashable, Sendable {
+nonisolated struct RepRange: Codable, Hashable, Sendable {
     var min: Double
     var max: Double
 }
 
-enum PlannedSetType: String, Codable, Hashable, Sendable {
+nonisolated enum PlannedSetType: String, Codable, Hashable, Sendable {
     case warmup, working, backoff
 }
 
-enum LoadAcquisition: String, Codable, Hashable, Sendable {
+nonisolated enum LoadAcquisition: String, Codable, Hashable, Sendable {
     case calibrateByRir = "calibrate_by_rir"
     case history
     case bodyweight
     case bandResistance = "band_resistance"
 }
 
-struct PlannedSet: Codable, Hashable, Sendable {
+nonisolated struct PlannedSet: Codable, Hashable, Sendable {
     var id: String
     var setType: PlannedSetType
     var targetReps: RepRange
@@ -524,21 +524,21 @@ struct PlannedSet: Codable, Hashable, Sendable {
     }
 }
 
-struct ScoreContribution: Codable, Hashable, Sendable {
+nonisolated struct ScoreContribution: Codable, Hashable, Sendable {
     var factor: String
     var rawValue: Double
     var weight: Double
     var contribution: Double
 }
 
-struct Score: Codable, Hashable, Sendable {
+nonisolated struct Score: Codable, Hashable, Sendable {
     var total: Double
     var contributions: [ScoreContribution]
 
     static let zero = Score(total: 0, contributions: [])
 }
 
-enum ProgressionAction: String, Codable, Hashable, Sendable {
+nonisolated enum ProgressionAction: String, Codable, Hashable, Sendable {
     case calibrate
     case hold
     case increaseLoad = "increase_load"
@@ -549,7 +549,7 @@ enum ProgressionAction: String, Codable, Hashable, Sendable {
     case coarseGridProgression = "coarse_grid_progression"
 }
 
-enum ProgressionReason: String, Codable, Hashable, Sendable {
+nonisolated enum ProgressionReason: String, Codable, Hashable, Sendable {
     case noHistory = "no_history"
     case staleHistory = "stale_history"
     case contextChanged = "context_changed"
@@ -564,13 +564,13 @@ enum ProgressionReason: String, Codable, Hashable, Sendable {
     case coarseGridRequiresAlternativeProgression = "coarse_grid_requires_alternative_progression"
 }
 
-enum ProgressionStrategySuggestion: String, Codable, Hashable, Sendable {
+nonisolated enum ProgressionStrategySuggestion: String, Codable, Hashable, Sendable {
     case continueRepetitionProgression = "continue_repetition_progression"
     case useSmallerIncrementIfAvailable = "use_smaller_increment_if_available"
     case useDifferentVariation = "use_different_variation"
 }
 
-struct ProgressionRecommendation: Codable, Hashable, Sendable {
+nonisolated struct ProgressionRecommendation: Codable, Hashable, Sendable {
     var action: ProgressionAction
     var resistance: ResistanceValue
     var targetReps: RepRange
@@ -579,7 +579,7 @@ struct ProgressionRecommendation: Codable, Hashable, Sendable {
     var suggestedStrategies: [ProgressionStrategySuggestion]?
 }
 
-struct PlannedExercise: Codable, Hashable, Sendable {
+nonisolated struct PlannedExercise: Codable, Hashable, Sendable {
     var exerciseId: String
     var order: Int
     var workingSets: [PlannedSet]
@@ -590,7 +590,7 @@ struct PlannedExercise: Codable, Hashable, Sendable {
     var progression: ProgressionRecommendation
 }
 
-struct SessionDurationEstimate: Codable, Hashable, Sendable {
+nonisolated struct SessionDurationEstimate: Codable, Hashable, Sendable {
     var generalWarmupSeconds: Double
     var specificWarmupSeconds: Double
     var workingSetSeconds: Double
@@ -600,7 +600,7 @@ struct SessionDurationEstimate: Codable, Hashable, Sendable {
     var confidence: Confidence
 }
 
-struct PlannedSession: Codable, Hashable, Sendable {
+nonisolated struct PlannedSession: Codable, Hashable, Sendable {
     var id: String
     var scheduledAt: String
     var focus: [MuscleId]
@@ -608,7 +608,7 @@ struct PlannedSession: Codable, Hashable, Sendable {
     var duration: SessionDurationEstimate
 }
 
-struct MuscleTarget: Codable, Hashable, Sendable {
+nonisolated struct MuscleTarget: Codable, Hashable, Sendable {
     var muscleId: MuscleId
     var minimum: Double
     var preferred: Double
@@ -617,7 +617,7 @@ struct MuscleTarget: Codable, Hashable, Sendable {
     var preferredExposures: Double
 }
 
-struct TrainingWeek: Codable, Hashable, Sendable {
+nonisolated struct TrainingWeek: Codable, Hashable, Sendable {
     enum Phase: String, Codable, Hashable, Sendable {
         case base
         case reducedVolume = "reduced_volume"
@@ -629,13 +629,13 @@ struct TrainingWeek: Codable, Hashable, Sendable {
     var targets: [MuscleTarget]
 }
 
-struct SplitDiagnostic: Codable, Hashable, Sendable {
+nonisolated struct SplitDiagnostic: Codable, Hashable, Sendable {
     var name: String
     var score: Double
     var valid: Bool
 }
 
-struct ProgramDiagnostics: Codable, Hashable, Sendable {
+nonisolated struct ProgramDiagnostics: Codable, Hashable, Sendable {
     var splits: [SplitDiagnostic]
     var candidateCount: Int
     var optimizerIterations: Int
@@ -644,7 +644,7 @@ struct ProgramDiagnostics: Codable, Hashable, Sendable {
     var warnings: [PlanningIssue]
 }
 
-struct ProgramAdaptation: Codable, Hashable, Sendable {
+nonisolated struct ProgramAdaptation: Codable, Hashable, Sendable {
     enum Mode: String, Codable, Hashable, Sendable {
         case remainingWeek = "remaining_week"
         case nextWeek = "next_week"
@@ -654,7 +654,7 @@ struct ProgramAdaptation: Codable, Hashable, Sendable {
     var mode: Mode
 }
 
-struct TrainingProgram: Codable, Hashable, Sendable {
+nonisolated struct TrainingProgram: Codable, Hashable, Sendable {
     var id: String
     var engineVersion: String
     var policyVersion: String
@@ -670,7 +670,7 @@ struct TrainingProgram: Codable, Hashable, Sendable {
 
 // MARK: - Requests & results
 
-struct ProgramGenerationRequest: Sendable {
+nonisolated struct ProgramGenerationRequest: Sendable {
     var profile: UserTrainingProfile
     var preferences: PlanningPreferences
     var schedule: TrainingSchedule
@@ -682,7 +682,7 @@ struct ProgramGenerationRequest: Sendable {
     var policy: TrainingPolicy?
 }
 
-enum GenerationSuggestion: String, Codable, Hashable, Sendable {
+nonisolated enum GenerationSuggestion: String, Codable, Hashable, Sendable {
     case addEquipment = "add_equipment"
     case increaseDuration = "increase_duration"
     case relaxVolumeBounds = "relax_volume_bounds"
@@ -690,7 +690,7 @@ enum GenerationSuggestion: String, Codable, Hashable, Sendable {
     case curateMetadata = "curate_metadata"
 }
 
-enum ProgramGenerationResult: Sendable {
+nonisolated enum ProgramGenerationResult: Sendable {
     case success(program: TrainingProgram, issues: [PlanningIssue])
     case partial(program: TrainingProgram, issues: [PlanningIssue])
     case invalid(issues: [PlanningIssue], suggestions: [GenerationSuggestion])
@@ -724,13 +724,13 @@ enum ProgramGenerationResult: Sendable {
 
 // MARK: - Derived state
 
-struct MuscleVolume: Hashable, Sendable {
+nonisolated struct MuscleVolume: Hashable, Sendable {
     var direct: Double
     var indirect: Double
     var effective: Double
 }
 
-struct MuscleTrainingState: Hashable, Sendable {
+nonisolated struct MuscleTrainingState: Hashable, Sendable {
     enum Status: String, Hashable, Sendable {
         case underTarget = "under_target"
         case onTarget = "on_target"
@@ -755,7 +755,7 @@ struct MuscleTrainingState: Hashable, Sendable {
     var confidence: Confidence
 }
 
-struct StrengthEstimate: Hashable, Sendable {
+nonisolated struct StrengthEstimate: Hashable, Sendable {
     enum Source: String, Hashable, Sendable {
         case actual1RM = "actual_1rm"
         case estimatedFromSet = "estimated_from_set"
@@ -766,12 +766,12 @@ struct StrengthEstimate: Hashable, Sendable {
     var source: Source
 }
 
-enum PerformanceTrend: String, Hashable, Sendable {
+nonisolated enum PerformanceTrend: String, Hashable, Sendable {
     case improving, stable, declining
     case insufficientData = "insufficient_data"
 }
 
-struct ExercisePerformanceState: Hashable, Sendable {
+nonisolated struct ExercisePerformanceState: Hashable, Sendable {
     var exerciseId: String
     var bestEstimated1RM: Double?
     var recentEstimated1RM: Double?
@@ -785,14 +785,14 @@ struct ExercisePerformanceState: Hashable, Sendable {
     var confidence: Confidence
 }
 
-struct AdherenceState: Hashable, Sendable {
+nonisolated struct AdherenceState: Hashable, Sendable {
     var sessionCompletion: Double?
     var setCompletion: Double?
     var exerciseCompletion: Double?
     var durationRatio: Double?
 }
 
-struct DerivedTrainingState: Sendable {
+nonisolated struct DerivedTrainingState: Sendable {
     var muscles: [MuscleId: MuscleTrainingState]
     var exercises: [String: ExercisePerformanceState]
     var adherence: AdherenceState
@@ -800,7 +800,7 @@ struct DerivedTrainingState: Sendable {
     var issues: [PlanningIssue]
 }
 
-struct ProgressionInput: Sendable {
+nonisolated struct ProgressionInput: Sendable {
     var exercise: IndexedExercise
     var history: TrainingHistory
     var now: String

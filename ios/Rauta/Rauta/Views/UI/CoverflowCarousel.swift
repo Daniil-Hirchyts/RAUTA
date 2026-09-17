@@ -35,7 +35,9 @@ struct CoverflowCarousel<ID: Hashable, Media: View>: View {
     @ViewBuilder let media: (CoverflowSlide<ID>) -> Media
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @GestureState private var translation: CGFloat = 0
+    /// How far the deck is being dragged, in points. Returns to zero on the
+    /// same spring that settles the chosen card, so a release never jumps.
+    @State private var translation: CGFloat = 0
 
     private var selectedIndex: Int {
         slides.firstIndex { $0.id == value } ?? 0
@@ -77,16 +79,13 @@ struct CoverflowCarousel<ID: Hashable, Media: View>: View {
                 }
                 .frame(width: proxy.size.width, height: cardHeight + 72)
                 .contentShape(Rectangle())
-                .highPriorityGesture(
-                    DragGesture(minimumDistance: 6)
-                        .updating($translation) { value, state, _ in
-                            state = value.translation.width
-                        }
-                        .onEnded { drag in
-                            guard !slides.isEmpty else { return }
-                            let throwBy = Int((-drag.predictedEndTranslation.width / pitch).rounded())
-                            choose(index: selectedIndex + max(-2, min(2, throwBy)))
-                        }
+                // Sideways only, so the page it sits on still scrolls.
+                .gesture(
+                    HorizontalPan(
+                        onChanged: { value in translation = value.translation },
+                        onEnded: { value in release(value, pitch: pitch) },
+                        onCancelled: { settle() }
+                    )
                 )
             }
             .frame(height: deckHeight)
@@ -112,8 +111,32 @@ struct CoverflowCarousel<ID: Hashable, Media: View>: View {
         }
     }
 
+    /// Projects the throw the way a scroll view decelerates, then lands on
+    /// the nearest card, at most two away.
+    private func release(_ value: HorizontalPan.Value, pitch: CGFloat) {
+        guard !slides.isEmpty, pitch > 0 else { return settle() }
+        let decelerationRate = UIScrollView.DecelerationRate.normal.rawValue
+        let projected = value.translation
+            + value.velocity * decelerationRate / (1 - decelerationRate) / 1000
+        let throwBy = Int((-projected / pitch).rounded())
+        withAnimation(releaseAnimation) {
+            translation = 0
+            choose(index: selectedIndex + max(-2, min(2, throwBy)))
+        }
+    }
+
+    private func settle() {
+        withAnimation(releaseAnimation) { translation = 0 }
+    }
+
+    /// A critically damped spring: it carries the finger's motion into the
+    /// landing and can be caught again mid-flight.
+    private var releaseAnimation: Animation? {
+        reduceMotion ? nil : .spring(duration: 0.35, bounce: 0)
+    }
+
     private var deckHeight: CGFloat {
-        let screenWidth = UIScreen.main.bounds.width
+        let screenWidth = DeviceScreen.width
         let width = min(maximumCardWidth, max(minimumCardWidth, screenWidth * widthFraction))
         return width * cardHeightRatio + 72
     }

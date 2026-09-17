@@ -1,7 +1,7 @@
 import Foundation
 
 /// The eighteen muscles the anatomy map and the training engine share.
-enum MuscleId: String, Codable, CaseIterable, Hashable, Sendable {
+nonisolated enum MuscleId: String, Codable, CaseIterable, Hashable, Sendable {
     case trapezius
     case deltoids
     case chest
@@ -22,7 +22,7 @@ enum MuscleId: String, Codable, CaseIterable, Hashable, Sendable {
     case tibialis
 }
 
-extension MuscleId {
+nonisolated extension MuscleId {
     /// Display name, as the body map and every muscle list render it.
     var label: String {
         switch self {

@@ -1,17 +1,17 @@
 import Foundation
 
-let MAJOR_MUSCLES: [MuscleId] = [
+nonisolated let MAJOR_MUSCLES: [MuscleId] = [
     .chest, .upperBack, .deltoids, .biceps, .triceps,
     .quadriceps, .gluteal, .hamstring, .calves, .abs,
 ]
 
-extension TrainingGoal {
+nonisolated extension TrainingGoal {
     /// Power falls back to the general-fitness prescription; the policy has no
     /// dedicated entry for it.
     var policyKey: TrainingGoal { self == .power ? .generalFitness : self }
 }
 
-enum Targets {
+nonisolated enum Targets {
     static func deriveProgramTargets(
         _ request: ProgramGenerationRequest,
         _ state: DerivedTrainingState,

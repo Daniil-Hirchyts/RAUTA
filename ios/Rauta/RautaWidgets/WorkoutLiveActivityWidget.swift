@@ -6,7 +6,6 @@ import WidgetKit
 /// progress. Everything rendered here comes from the activity's content state,
 /// which the app pushes only when visible workout state changes — the timer is
 /// the exception, and counts on its own from a date.
-@available(iOS 16.2, *)
 struct WorkoutLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: WorkoutActivityAttributes.self) { context in
@@ -79,7 +78,6 @@ struct WorkoutLiveActivityWidget: Widget {
 /// timer and the progress dots do not already say. What comes *after* this
 /// exercise is deliberately absent: the card is for the set being performed
 /// right now, and reading ahead is what the app is for.
-@available(iOS 16.1, *)
 private struct StatusLabel: View {
     var state: WorkoutActivityAttributes.ContentState
 
@@ -102,7 +100,6 @@ private struct StatusLabel: View {
 /// A text-first Lock Screen card. The timer is sized for an arm's-length glance;
 /// the current exercise remains beneath it, while artwork stays in the app where
 /// it has room to be useful.
-@available(iOS 16.1, *)
 private struct LockScreenCard: View {
     var workoutDate: String
     var state: WorkoutActivityAttributes.ContentState

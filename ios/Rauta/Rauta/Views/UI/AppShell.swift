@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import UIKit
 
@@ -129,62 +130,35 @@ struct AppGrain: View {
 /// - the title bar itself, an ``AppShellHeader`` floating over the page;
 /// - where the page starts: its first row sits a fixed gap under the bar,
 ///   however many rows this page's bar carries;
-/// - the progressive blur that dissolves content scrolling up behind the bar;
+/// - the progressive blur that dissolves content scrolling up behind the bar,
+///   which is the system's soft scroll edge effect over a bar-sized region;
 /// - getting out of the way: scrolling down the page's ``View/pageScroll()``
 ///   scroller slides the bar away, scrolling back brings it in.
 struct AppTitledPage<Header: View, Content: View>: View {
-    @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     /// From the bottom of the bar to the page's first row.
     var contentGap: CGFloat = Theme.Metrics.headerContentGap
     @ViewBuilder var header: () -> Header
     @ViewBuilder var content: () -> Content
 
     @StateObject private var scroll = ScrollHideTracker()
-    @State private var measuredHeaderHeight: CGFloat?
-
-    /// A bar with nothing under its title row, for the frames before this
-    /// page's own bar has been measured.
-    private var standardHeaderHeight: CGFloat {
-        safeAreaInsets.top + Theme.Metrics.headerHeight
-    }
-
-    private var headerHeight: CGFloat {
-        measuredHeaderHeight ?? standardHeaderHeight
-    }
-
-    private var contentTop: CGFloat {
-        headerHeight + contentGap
-    }
-
-    /// Once the bar has gone, a tall one leaves no more blur behind than a
-    /// plain title would.
-    private var scrimHeight: CGFloat {
-        (scroll.hidden ? standardHeaderHeight : headerHeight) + Theme.Metrics.headerScrimOverhang
-    }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            content()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                // The margin sits inside the scroller, so content starts clear
-                // of the bar at rest and still passes behind it on the way up.
-                .contentMargins(.top, contentTop, for: .scrollContent)
-                .environment(\.appPageContentTop, contentTop)
-                .environment(\.appPageScrollTracker, scroll)
-
-            AppTopScrim(height: scrimHeight)
-                .animation(Theme.Motion.smoothOut(0.52), value: scroll.hidden)
-                .zIndex(20)
-
-            header()
-                .environment(\.appPageHeaderHidden, scroll.hidden)
-                .onGeometryChange(for: CGFloat.self) { proxy in
-                    proxy.size.height
-                } action: { height in
-                    measuredHeaderHeight = height
-                }
-                .zIndex(30)
-        }
+        content()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Content starts this far under the bar at rest; scrollers take it
+            // as a margin, so their content still passes behind the bar.
+            .contentMargins(.top, contentGap, for: .scrollContent)
+            .environment(\.appPageContentTop, contentGap)
+            .environment(\.appPageScrollTracker, scroll)
+            .scrollEdgeEffectStyle(.soft, for: .top)
+            // The title bar is the page's bar: it insets the page and the
+            // scroll edge effect dissolves content passing behind it. It
+            // slides away with offset and opacity only, so its layout — and
+            // the content under it — stays still.
+            .safeAreaBar(edge: .top, spacing: 0) {
+                header()
+                    .environment(\.appPageHeaderHidden, scroll.hidden)
+            }
     }
 }
 
@@ -268,137 +242,6 @@ extension EnvironmentValues {
     }
 }
 
-/// The top edge fade belongs to the page, not to the title. It stays put when
-/// the title slides away.
-///
-/// Seven blur bands rather than one blurred pane: a single large blur moves
-/// every pixel by the same amount, so the boundary where it stops is a visible
-/// seam. Stepping the radius down band by band means each band is only slightly
-/// sharper than the one above it, and detail dissolves on the way up.
-private struct AppTopScrim: View {
-    var height: CGFloat
-
-    var body: some View {
-        AppGradientBlur(edge: .top, radiusScale: 1.05)
-        .frame(height: height)
-        .frame(maxWidth: .infinity, alignment: .top)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-        .ignoresSafeArea(edges: .top)
-    }
-}
-
-/// The colourless, progressively fading backdrop blur shared by the fixed
-/// edges of the app. Reversing the edge gives the bottom RAUTA treatment the
-/// same dissolve as the shell header.
-struct AppGradientBlur: View {
-    var edge: VerticalEdge
-    var radiusScale: CGFloat = 1
-    private static let radii: [CGFloat] = [48, 32, 16, 8, 4, 2, 1]
-
-    var body: some View {
-        ZStack {
-            ForEach(Array(Self.radii.enumerated()), id: \.offset) { index, radius in
-                ProgressiveBlur(radius: radius * max(0, radiusScale))
-                    .mask(bandMask(for: index))
-            }
-        }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-
-    /// Each band is fully opaque across the middle eighth of its own range and
-    /// fades out over the eighth on either side, so no two steps ever meet at an
-    /// edge.
-    private func bandMask(for index: Int) -> some View {
-        let step = 0.125
-        let start = Double(index) * step
-        return LinearGradient(
-            stops: [
-                .init(color: .clear, location: Swift.max(0, start - step)),
-                .init(color: .black, location: start),
-                .init(color: .black, location: start + step),
-                .init(color: .clear, location: Swift.min(1, start + 2 * step)),
-            ],
-            startPoint: edge == .top ? .top : .bottom,
-            endPoint: edge == .top ? .bottom : .top
-        )
-    }
-}
-
-/// A variable blur of the content behind, in the one radius a band asks for.
-final class PureBackdropBlurView: UIVisualEffectView {
-    var blurRadius: CGFloat = 0 {
-        didSet { scheduleRetune() }
-    }
-
-    private var retuneScheduled = false
-
-    override func didMoveToWindow() {
-        super.didMoveToWindow()
-        scheduleRetune()
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        scheduleRetune()
-    }
-
-    private func scheduleRetune() {
-        guard !retuneScheduled else { return }
-        retuneScheduled = true
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            self.retuneScheduled = false
-            self.retuneBackdrop()
-        }
-    }
-
-    private func retuneBackdrop() {
-        backgroundColor = .clear
-        contentView.backgroundColor = .clear
-
-        guard let backdrop = subviews.first(where: {
-            String(describing: type(of: $0)).contains("Backdrop")
-        }) ?? subviews.first else { return }
-
-        backdrop.backgroundColor = .clear
-        backdrop.layer.backgroundColor = UIColor.clear.cgColor
-
-        guard let filters = backdrop.layer.filters else { return }
-        var gaussianFilters: [Any] = []
-        for filter in filters {
-            let object = filter as AnyObject
-            guard let name = object.value(forKey: "name") as? String,
-                  name == "gaussianBlur"
-            else { continue }
-            object.setValue(blurRadius, forKey: "inputRadius")
-            gaussianFilters.append(filter)
-        }
-        if !gaussianFilters.isEmpty {
-            // Removing the material colour/saturation filters leaves only the
-            // backdrop Gaussian blur, so the header no longer paints a dark
-            // slab over the page.
-            backdrop.layer.filters = gaussianFilters
-        }
-    }
-}
-
-struct ProgressiveBlur: UIViewRepresentable {
-    var radius: CGFloat
-
-    func makeUIView(context: Context) -> PureBackdropBlurView {
-        let view = PureBackdropBlurView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
-        view.isUserInteractionEnabled = false
-        view.blurRadius = radius
-        return view
-    }
-
-    func updateUIView(_ uiView: PureBackdropBlurView, context: Context) {
-        uiView.blurRadius = radius
-    }
-}
-
 enum HeaderProgressState: Hashable {
     case completed, current, pending
 }
@@ -409,6 +252,7 @@ enum HeaderProgressState: Hashable {
 struct AppShellHeader<Left: View, Right: View, Above: View, Below: View>: View {
     @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     @Environment(\.appPageHeaderHidden) private var hidden
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     enum TitleSize { case standard, medium, small, extraSmall }
 
@@ -501,8 +345,10 @@ struct AppShellHeader<Left: View, Right: View, Above: View, Below: View>: View {
         .padding(.top, 12 + safeAreaInsets.top)
         .padding(.bottom, 12)
         .opacity(hidden ? 0 : 1)
-        .offset(y: hidden ? -80 : 0)
-        .animation(Theme.Motion.smoothOut(0.52), value: hidden)
+        // Reduce Motion: the bar fades in place instead of sliding away.
+        .offset(y: hidden && !reduceMotion ? -80 : 0)
+        // Frequent — every change of scroll direction — so it stays short.
+        .animation(Theme.Motion.pageEnter, value: hidden)
         .allowsHitTesting(!hidden)
     }
 
@@ -512,6 +358,9 @@ struct AppShellHeader<Left: View, Right: View, Above: View, Below: View>: View {
             .kerning(-0.5)
             .foregroundStyle(Theme.foreground)
             .lineLimit(titleMultiline ? 2 : 1)
+            // Large text shrinks a little before it truncates: the title sits
+            // between two fixed tools.
+            .minimumScaleFactor(0.7)
             .multilineTextAlignment(.center)
             .truncationMode(.tail)
     }
@@ -588,6 +437,12 @@ final class ScrollHideTracker: ObservableObject {
 }
 
 extension AnyTransition {
+    /// `transition`, or a plain crossfade when Reduce Motion is on: the change
+    /// is still shown, without the travel or the scaling.
+    static func motion(_ transition: AnyTransition, reduced: Bool) -> AnyTransition {
+        reduced ? .opacity : transition
+    }
+
     static func page(_ direction: NavigationDirection) -> AnyTransition {
         switch direction {
         case .forward:

@@ -2,7 +2,7 @@ import Foundation
 
 typealias MuscleVolumeMap = [MuscleId: MuscleVolume]
 
-enum Volume {
+nonisolated enum Volume {
     static func empty() -> MuscleVolumeMap {
         var volume: MuscleVolumeMap = [:]
         for muscle in MuscleId.allCases {

@@ -4,6 +4,8 @@ import SwiftUI
 struct WatchWorkoutView: View {
     @EnvironmentObject private var session: WatchSessionModel
     @EnvironmentObject private var workout: WatchWorkoutManager
+    /// Always On: seconds are not shown while the wrist is down.
+    @Environment(\.isLuminanceReduced) private var isLuminanceReduced
 
     var body: some View {
         Group {
@@ -14,13 +16,11 @@ struct WatchWorkoutView: View {
             }
         }
         .background(Color.black.ignoresSafeArea())
-        .onChange(of: session.snapshot?.workoutId) { _, workoutId in
-            if workoutId == nil { workout.endIfNeeded() }
-            else { workout.beginIfNeeded() }
-        }
-        .onAppear {
-            if session.snapshot != nil { workout.beginIfNeeded() }
-        }
+        // The workout session follows the phone in `WatchWorkoutManager`, not
+        // here: a view is not there when the app runs in the background.
+        // A logged set is felt as well as seen.
+        .sensoryFeedback(.success, trigger: session.confirmedSets)
+        .sensoryFeedback(.error, trigger: session.failedSets)
     }
 
     private func activeWorkout(_ snapshot: RautaWatchWorkoutSnapshot) -> some View {
@@ -83,9 +83,9 @@ struct WatchWorkoutView: View {
     }
 
     private func timePanel(_ snapshot: RautaWatchWorkoutSnapshot) -> some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
+        TimelineView(.periodic(from: .now, by: isLuminanceReduced ? 60 : 1)) { context in
             HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Text(duration(session.elapsedSeconds(at: context.date)))
+                Text(duration(session.elapsedSeconds(at: context.date), showsSeconds: !isLuminanceReduced))
                     .font(.system(size: 38, weight: .black, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.white)
@@ -152,7 +152,10 @@ struct WatchWorkoutView: View {
                 value: loadText,
                 decrementDisabled: session.loadKg <= 0,
                 decrement: { session.loadKg = Swift.max(0, session.loadKg - 0.5) },
-                increment: { session.loadKg = Swift.min(500, session.loadKg + 0.5) }
+                increment: { session.loadKg = Swift.min(500, session.loadKg + 0.5) },
+                crown: $session.loadKg,
+                crownRange: 0...500,
+                crownStep: 0.5
             )
 
             SetAdjuster(
@@ -161,7 +164,13 @@ struct WatchWorkoutView: View {
                 value: String(session.reps),
                 decrementDisabled: session.reps <= 1,
                 decrement: { session.reps = Swift.max(1, session.reps - 1) },
-                increment: { session.reps = Swift.min(100, session.reps + 1) }
+                increment: { session.reps = Swift.min(100, session.reps + 1) },
+                crown: Binding(
+                    get: { Double(session.reps) },
+                    set: { session.reps = Int($0.rounded()) }
+                ),
+                crownRange: 1...100,
+                crownStep: 1
             )
 
             Button {
@@ -259,11 +268,14 @@ struct WatchWorkoutView: View {
         return String(format: "%.1f kg", session.loadKg)
     }
 
-    private func duration(_ seconds: TimeInterval) -> String {
+    private func duration(_ seconds: TimeInterval, showsSeconds: Bool) -> String {
         let total = Swift.max(0, Int(seconds.rounded(.down)))
         let hours = total / 3600
         let minutes = (total % 3600) / 60
         let secs = total % 60
+        guard showsSeconds else {
+            return hours > 0 ? String(format: "%d:%02d", hours, minutes) : "\(minutes) min"
+        }
         if hours > 0 { return String(format: "%d:%02d:%02d", hours, minutes, secs) }
         return String(format: "%02d:%02d", minutes, secs)
     }
@@ -303,6 +315,11 @@ private struct SetAdjuster: View {
     var decrementDisabled: Bool
     var decrement: () -> Void
     var increment: () -> Void
+    /// The Digital Crown turns the value once it is tapped into focus; until
+    /// then the crown keeps paging, as it does everywhere else in the app.
+    var crown: Binding<Double>
+    var crownRange: ClosedRange<Double>
+    var crownStep: Double
 
     var body: some View {
         HStack(spacing: 9) {
@@ -322,6 +339,26 @@ private struct SetAdjuster: View {
                     .minimumScaleFactor(0.72)
             }
             .frame(maxWidth: .infinity)
+            .focusable()
+            .digitalCrownRotation(
+                crown,
+                from: crownRange.lowerBound,
+                through: crownRange.upperBound,
+                by: crownStep,
+                sensitivity: .low,
+                isContinuous: false,
+                isHapticFeedbackEnabled: true
+            )
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(title)
+            .accessibilityValue(value)
+            .accessibilityAdjustableAction { direction in
+                switch direction {
+                case .increment: increment()
+                case .decrement: if !decrementDisabled { decrement() }
+                @unknown default: break
+                }
+            }
 
             adjustButton(systemImage: "plus", disabled: false, action: increment)
         }
@@ -347,7 +384,12 @@ private struct SetAdjuster: View {
 }
 
 private struct AnimatedRauta: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Always On: the wrist is down, and a looping float only costs power.
+    @Environment(\.isLuminanceReduced) private var isLuminanceReduced
     @State private var floating = false
+
+    private var still: Bool { reduceMotion || isLuminanceReduced }
 
     private static let artwork: CGImage? = {
         guard let url = Bundle.main.url(forResource: "RautaWatch", withExtension: "png"),
@@ -364,13 +406,20 @@ private struct AnimatedRauta: View {
                     .scaledToFit()
             }
         }
-        .offset(y: floating ? -2 : 2)
-        .rotationEffect(.degrees(floating ? 1.5 : -1.5))
-        .scaleEffect(floating ? 1.02 : 0.98)
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
-                floating = true
-            }
+        .offset(y: still ? 0 : (floating ? -2 : 2))
+        .rotationEffect(.degrees(still ? 0 : (floating ? 1.5 : -1.5)))
+        .scaleEffect(still ? 1 : (floating ? 1.02 : 0.98))
+        // Keyed on `still`, so the loop starts only while it may run and a
+        // change of setting replaces it rather than stacking a second one.
+        .animation(
+            still ? nil : .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
+            value: floating
+        )
+        .task(id: still) {
+            floating = false
+            guard !still else { return }
+            await Task.yield()
+            floating = true
         }
         .accessibilityHidden(true)
     }
@@ -378,6 +427,7 @@ private struct AnimatedRauta: View {
 
 /// The iPhone app's accent. Read through ``WatchAccentStore``, which SwiftUI
 /// observes, so the watch redraws the moment the phone sends a new one.
+@MainActor
 enum WatchPalette {
     private static var accent: RautaWatchAccent { WatchAccentStore.shared.accent }
 

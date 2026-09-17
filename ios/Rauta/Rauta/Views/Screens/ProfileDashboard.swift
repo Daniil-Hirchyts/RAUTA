@@ -1,8 +1,9 @@
 import SwiftUI
 
 struct ProfileDashboard: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     @Environment(\.rautaOnStage) private var onStage
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Whether Profile is the tab on screen. The avatar is built once and
     /// kept; switching tabs only brings it in or sends it away.
     let isActive: Bool
@@ -141,7 +142,7 @@ struct ProfileDashboard: View {
             }
             // RAUTA arrives from the tab bar as the page changes: the one there
             // shrinks away while this one grows in.
-            .scaleEffect(isActive ? 1 : 0.82)
+            .scaleEffect(isActive || reduceMotion ? 1 : 0.82)
             .opacity(isActive ? 1 : 0)
             // It leaves only once the page is already off screen. Animated, that
             // exit would wait for the page to come back and play then — the

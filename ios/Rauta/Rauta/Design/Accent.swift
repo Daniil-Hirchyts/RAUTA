@@ -298,7 +298,7 @@ struct ThemePalette {
 /// redrawn the moment the accent changes — no relaunch, no rebuilt hierarchy,
 /// no lost scroll position.
 @Observable
-final class ThemeStore: @unchecked Sendable {
+final class ThemeStore {
     static let shared = ThemeStore()
 
     private(set) var accent: AppAccent = .default

@@ -21,7 +21,7 @@ struct WorkoutDetailActionState: Equatable {
 }
 
 struct WorkoutDetailScreen: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     let workoutId: String
     var onOpenExercisePlayer: (() -> Void)? = nil
     var onBackToWorkouts: (() -> Void)? = nil
@@ -206,7 +206,8 @@ struct WorkoutDetailScreen: View {
                         },
                         onAlternative: { openAlternative(id) },
                         onToggle: { store.activeWorkout.toggleComplete(id) },
-                        onRemove: { remove(id) }
+                        onRemove: { remove(id) },
+                        onMove: canEditWorkout ? { move(id, by: $0, among: rows) } : nil
                     )
                 }
                 .reorderable()
@@ -309,7 +310,8 @@ struct WorkoutDetailScreen: View {
                                         },
                                         onAlternative: { openAlternative(id) },
                                         onToggle: { store.activeWorkout.toggleComplete(id) },
-                                        onRemove: { remove(id) }
+                                        onRemove: { remove(id) },
+                                        onMove: canEditWorkout ? { move(id, by: $0, among: rows) } : nil
                                     )
                                 }
                                 .reorderable()
@@ -360,11 +362,13 @@ struct WorkoutDetailScreen: View {
     }
 
     private func duplicate() {
-        do {
-            let id = try EngineWorkout.duplicateWithEngine(workoutId, date: CalendarDate.today)
-            onReplaceWorkout?(id)
-            Haptics.trigger(.success)
-        } catch { capture(error) }
+        Task {
+            do {
+                let id = try await EngineWorkout.duplicateWithEngine(workoutId, date: CalendarDate.today)
+                onReplaceWorkout?(id)
+                Haptics.trigger(.success)
+            } catch { capture(error) }
+        }
     }
 
     private func reschedule(_ date: String) {
@@ -400,13 +404,14 @@ struct WorkoutDetailScreen: View {
         store.navigation.push(.addExercises(preferredWorkoutId: preferredWorkoutId), from: RautaNativeTabControl.zoomSourceID)
     }
 
-    private func move(_ id: String, from index: Int, by direction: Int) {
+    /// One place up or down: the accessible form of dragging a row.
+    private func move(_ id: String, by offset: Int, among rows: [ExerciseSummary]) {
         guard let workout else { return }
-        let target = index + direction
-        guard target >= 0, target < workout.exerciseIds.count else { return }
-        var ids = workout.exerciseIds
-        ids.swapAt(index, target)
+        let ids = workout.exerciseIds.movingElement(id, by: offset, visible: Set(rows.map(\.id)))
+        guard ids != workout.exerciseIds else { return }
         updateExercises(ids, moved: id)
+        let position = ids.filter { id in rows.contains { $0.id == id } }.firstIndex(of: id).map { $0 + 1 } ?? 0
+        AccessibilityNotification.Announcement("Moved to position \(position) of \(rows.count)").post()
     }
 
     private func remove(_ id: String) {
@@ -569,7 +574,7 @@ private struct WorkoutStartCountdown: View {
 }
 
 struct CurrentExerciseAccessory: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     let exercise: ExerciseSummary
     let onOpen: () -> Void
     let compact: Bool
@@ -599,7 +604,8 @@ struct CurrentExerciseAccessory: View {
     var body: some View {
         Button(action: onOpen) {
             HStack(spacing: compact ? 8 : 10) {
-                ExerciseMediaView(exerciseId: exercise.id, animated: true)
+                // Always on screen with the tab bar: a still, not a loop.
+                ExerciseMediaView(exerciseId: exercise.id)
                     .frame(width: compact ? 30 : 42, height: compact ? 30 : 42)
                     .clipShape(RoundedRectangle(cornerRadius: compact ? 7 : 10, style: .continuous))
 
@@ -626,6 +632,8 @@ struct CurrentExerciseAccessory: View {
         .frame(maxWidth: .infinity)
         .accessibilityLabel("\(exercise.name.capitalized), Current exercise")
         .accessibilityHint("Opens the current exercise")
+        // A fixed-height bar accessory: text grows while it still fits.
+        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
         .animation(.spring(response: 0.42, dampingFraction: 0.86), value: compact)
     }
 
@@ -671,8 +679,8 @@ struct CurrentExerciseAccessory: View {
 }
 
 struct ActiveExerciseDrawer: View {
-    @ObservedObject private var store = AppStore.shared
-    @ObservedObject private var activeWorkout = ActiveWorkoutStore.shared
+    private let store = AppStore.shared
+    private let activeWorkout = ActiveWorkoutStore.shared
     let exercise: ExerciseSummary
     let session: ActiveWorkoutSession
     let restSeconds: Double
@@ -682,7 +690,6 @@ struct ActiveExerciseDrawer: View {
     let onFinish: () -> Void
     let onDismiss: () -> Void
     @State private var revealDetails = false
-    @GestureState private var dismissalOffset: CGFloat = 0
 
     var body: some View {
         Group {
@@ -695,14 +702,12 @@ struct ActiveExerciseDrawer: View {
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.985)))
             } else {
+                // Dragging the player down is the zoom transition's own
+                // dismissal: the system follows the finger and throws the
+                // player back into the accessory it grew from.
                 GeometryReader { proxy in
                     playerSurface(proxy)
                         .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
-                        .offset(y: dismissalOffset)
-                        // With the zoom transition the system follows the drag
-                        // and throws the player back; the hand-made drag is only
-                        // for where that does not exist.
-                        .simultaneousGesture(dismissGesture(in: proxy), including: .none)
                 }
                 .transition(.opacity)
             }
@@ -715,23 +720,8 @@ struct ActiveExerciseDrawer: View {
             }
         }
         .accessibilityAddTraits(.isModal)
-    }
-
-    private func dismissGesture(in proxy: GeometryProxy) -> some Gesture {
-        DragGesture(minimumDistance: 12, coordinateSpace: .local)
-            .updating($dismissalOffset) { value, offset, _ in
-                guard value.startLocation.y < proxy.size.height * 0.62,
-                      value.translation.height > 0
-                else { return }
-                offset = value.translation.height
-            }
-            .onEnded { value in
-                guard value.startLocation.y < proxy.size.height * 0.62 else { return }
-                if value.translation.height > 110 || value.predictedEndTranslation.height > 180 {
-                    Haptics.trigger(.light)
-                    onDismiss()
-                }
-            }
+        // The zoom dismissal is a drag; VoiceOver's scrub closes it too.
+        .accessibilityAction(.escape, onDismiss)
     }
 
     private func playerSurface(_ proxy: GeometryProxy) -> some View {
@@ -855,11 +845,10 @@ struct ActiveExerciseDrawer: View {
 }
 
 struct CompletedWorkoutDrawer: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     let session: ActiveWorkoutSession
     let onFinish: () -> Void
     let onDismiss: () -> Void
-    @GestureState private var dismissalOffset: CGFloat = 0
 
     private var liveSession: ActiveWorkoutSession {
         store.activeWorkout.session ?? session
@@ -929,28 +918,11 @@ struct CompletedWorkoutDrawer: View {
                 }
                 .ignoresSafeArea()
             }
-            .offset(y: dismissalOffset)
-            .simultaneousGesture(dismissGesture(in: proxy), including: .none)
         }
         .ignoresSafeArea()
         .accessibilityAddTraits(.isModal)
-    }
-
-    private func dismissGesture(in proxy: GeometryProxy) -> some Gesture {
-        DragGesture(minimumDistance: 12, coordinateSpace: .local)
-            .updating($dismissalOffset) { value, offset, _ in
-                guard value.startLocation.y < proxy.size.height * 0.62,
-                      value.translation.height > 0
-                else { return }
-                offset = value.translation.height
-            }
-            .onEnded { value in
-                guard value.startLocation.y < proxy.size.height * 0.62 else { return }
-                if value.translation.height > 110 || value.predictedEndTranslation.height > 180 {
-                    Haptics.trigger(.light)
-                    onDismiss()
-                }
-            }
+        // The zoom dismissal is a drag; VoiceOver's scrub closes it too.
+        .accessibilityAction(.escape, onDismiss)
     }
 
     private func workoutMetric(value: String, label: String) -> some View {
@@ -1184,7 +1156,7 @@ private struct LiveExerciseCard: View {
                     }
                     .frame(width: hero.size.width, height: hero.size.height)
                 }
-                .frame(height: min(380, UIScreen.main.bounds.width - Theme.Metrics.contentInset * 2))
+                .frame(height: min(380, DeviceScreen.width - Theme.Metrics.contentInset * 2))
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl3, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.Radius.xl3, style: .continuous)
@@ -1212,6 +1184,8 @@ private struct WorkoutExerciseRow: View {
     let onAlternative: () -> Void
     let onToggle: () -> Void
     let onRemove: () -> Void
+    /// Moves the row one place (-1 up, +1 down); nil where it cannot move.
+    var onMove: ((Int) -> Void)? = nil
 
     var body: some View {
         card
@@ -1240,6 +1214,13 @@ private struct WorkoutExerciseRow: View {
                 }
             }
             .padding(.horizontal, Theme.Metrics.contentInset)
+            // Dragging to reorder has no VoiceOver form of its own.
+            .accessibilityActions {
+                if let onMove {
+                    Button("Move up") { onMove(-1) }
+                    Button("Move down") { onMove(1) }
+                }
+            }
     }
 
     private var card: some View {
@@ -1268,7 +1249,9 @@ private struct WorkoutExerciseRow: View {
                 .frame(maxHeight: .infinity)
 
                 Button(action: onOpen) {
-                    ExerciseMediaView(exerciseId: exercise.id, animated: true)
+                    // A list row shows the poster; the demonstration plays
+                    // when the exercise is opened.
+                    ExerciseMediaView(exerciseId: exercise.id)
                         .frame(width: 136, height: 136)
                 }
                 .buttonStyle(.plain)

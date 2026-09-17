@@ -1,10 +1,10 @@
 import Foundation
 
-enum DraftIdKind: String { case exercise, set }
+nonisolated enum DraftIdKind: String { case exercise, set }
 
 typealias PersistenceIdFactory = (DraftIdKind) -> String
 
-enum WorkoutDrafts {
+nonisolated enum WorkoutDrafts {
     private static func assertTimestamp(_ value: String, _ field: String) throws {
         guard PersistenceValidation.isValidIsoTimestamp(value) else {
             throw TrainingPersistenceError("Invalid \(field)")

@@ -1,6 +1,6 @@
 import Foundation
 
-enum TrainingStateAnalysis {
+nonisolated enum TrainingStateAnalysis {
     static func analyze(
         _ request: ProgramGenerationRequest,
         index: ExerciseIndex? = nil,

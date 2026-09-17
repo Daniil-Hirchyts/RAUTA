@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import UIKit
 
@@ -297,6 +298,12 @@ private struct ThoughtBubble: View {
     let close: () -> Void
 
     @State private var contentHeight: CGFloat = 60
+    /// Reduce Motion: the thought fades in and out where it rests, with no
+    /// travel out of RAUTA and no growing pane.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var laidOut: Bool { shown || reduceMotion }
+    private static let fade = Animation.easeOut(duration: 0.2)
 
     /// The trail: the bubble set into the panel and the small one by RAUTA's
     /// head — how big each is, and its place in line leaving RAUTA.
@@ -323,12 +330,13 @@ private struct ThoughtBubble: View {
                 ForEach(Self.trail, id: \.order) { bubble in
                     // Out of RAUTA smallest first; back in largest first.
                     let delay = shown ? Double(bubble.order) * 0.055 : Double(1 - bubble.order) * 0.06 + 0.08
-                    let diameter = shown ? bubble.diameter : 0.5
+                    let diameter = laidOut ? bubble.diameter : 0.5
                     Color.clear
                         .frame(width: diameter, height: diameter)
                         .glassSurface(Self.glass, in: Circle())
-                        .position(shown ? (bubble.large ? geometry.largeBubble : geometry.smallBubble) : geometry.origin)
-                        .animation(Self.spring(delay: delay), value: shown)
+                        .opacity(reduceMotion && !shown ? 0 : 1)
+                        .position(laidOut ? (bubble.large ? geometry.largeBubble : geometry.smallBubble) : geometry.origin)
+                        .animation(reduceMotion ? Self.fade : Self.spring(delay: delay), value: shown)
                         .allowsHitTesting(false)
                 }
 
@@ -342,7 +350,7 @@ private struct ThoughtBubble: View {
     }
 
     private func panel(_ geometry: ThoughtGeometry) -> some View {
-        let frame = shown
+        let frame = laidOut
             ? geometry.panelFrame(height: contentHeight)
             : geometry.foldedPanelFrame(diameter: Self.foldedPanel)
         let radius = min(26, frame.height / 2)
@@ -362,7 +370,11 @@ private struct ThoughtBubble: View {
         .opacity(shown ? 1 : 0)
         // The rows fade in once the pane has mostly opened, and out at once
         // when it starts to fold.
-        .animation(shown ? .easeOut(duration: 0.2).delay(0.24) : .easeIn(duration: 0.1), value: shown)
+        .animation(
+            reduceMotion ? Self.fade
+                : (shown ? .easeOut(duration: 0.16).delay(0.1) : .easeOut(duration: 0.1)),
+            value: shown
+        )
         .frame(
             width: frame.width,
             height: frame.height,
@@ -373,10 +385,11 @@ private struct ThoughtBubble: View {
             Self.glass,
             in: RoundedRectangle(cornerRadius: radius, style: .continuous)
         )
+        .opacity(reduceMotion && !shown ? 0 : 1)
         // Picking a row puts the thought away; the row's own action still runs.
         .simultaneousGesture(TapGesture().onEnded { close() })
         .position(x: frame.midX, y: frame.midY)
-        .animation(Self.spring(delay: shown ? 0.14 : 0), value: shown)
+        .animation(reduceMotion ? Self.fade : Self.spring(delay: shown ? 0.06 : 0), value: shown)
         .animation(Self.spring(delay: 0), value: contentHeight)
     }
 }

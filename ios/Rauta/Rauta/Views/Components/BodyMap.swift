@@ -100,6 +100,22 @@ struct BodyFigure: View {
                 onToggle(muscle)
             })
         }
+        // The figure is picked by where a finger lands, which VoiceOver and
+        // Switch Control cannot aim: each muscle is offered as its own button.
+        .accessibilityChildren {
+            ForEach(onToggle == nil ? [] : accessibleMuscles, id: \.self) { muscle in
+                let selected = selectedMuscles.contains(muscle)
+                Button(muscle.label) { onToggle?(muscle) }
+                    .accessibilityValue(selected ? "Selected" : "Not selected")
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+    }
+
+    /// The muscles drawn on this side, once each, in drawing order.
+    private var accessibleMuscles: [MuscleId] {
+        var seen = Set<MuscleId>()
+        return view.parts.compactMap(\.muscle).filter { seen.insert($0).inserted }
     }
 
     private func partShape(_ part: BodyPart, scale: CGFloat, offset: CGPoint) -> some View {
@@ -192,6 +208,7 @@ struct BodyMap: View {
     var side: BodySide?
 
     @State private var internalSide: BodySide = .front
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var currentSide: BodySide { side ?? internalSide }
     private var label: String { currentSide == .front ? "Front" : "Back" }
@@ -207,7 +224,7 @@ struct BodyMap: View {
                 )
                 .padding(14)
                 .id(currentSide)
-                .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                .transition(.motion(.opacity.combined(with: .scale(scale: 0.98)), reduced: reduceMotion))
 
                 if showCornerCount && !selectedMuscles.isEmpty {
                     HStack(spacing: 4) {

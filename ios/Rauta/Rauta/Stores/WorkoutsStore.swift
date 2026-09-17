@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import Combine
 
 enum HealthSyncStatus: String, Codable, Hashable, Sendable {
@@ -60,13 +61,14 @@ extension Sequence where Element == Workout {
 }
 
 @MainActor
-final class WorkoutsStore: ObservableObject {
+@Observable
+final class WorkoutsStore {
     static let shared = WorkoutsStore()
 
     static let storageKey = "gym-lib-workouts"
     static let version = 2
 
-    @Published private(set) var workouts: [Workout] = []
+    private(set) var workouts: [Workout] = []
 
     /// Fired after every mutation, so the iCloud mirror and the session
     /// reconciler can follow the store rather than every call site.

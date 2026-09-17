@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 /// What "80" means when someone logs it.
 ///
@@ -72,32 +73,20 @@ enum Resistance {
 
     // MARK: Metadata
 
-    private static let metadataCache = MetadataCache()
-
-    private final class MetadataCache: @unchecked Sendable {
-        private var storage: [String: ExerciseMetadata] = [:]
-        private let lock = NSLock()
-
-        func metadata(for exercise: ExerciseSummary) -> ExerciseMetadata {
-            lock.lock()
-            if let cached = storage[exercise.id] {
-                lock.unlock()
-                return cached
-            }
-            lock.unlock()
-            let resolved = CuratedExercises.resolveMetadata(exercise)
-            lock.lock()
-            storage[exercise.id] = resolved
-            lock.unlock()
-            return resolved
-        }
-    }
+    /// Resolved metadata by exercise id. The resolution runs outside the lock,
+    /// so two callers may occasionally resolve the same exercise; both get the
+    /// same answer.
+    private static let metadataCache = Mutex<[String: ExerciseMetadata]>([:])
 
     /// Catalogue metadata for one exercise, without paying for the whole engine
     /// index: the set editor only ever asks about the handful of exercises in
     /// the workout on screen.
     static func metadata(for exercise: ExerciseSummary) -> ExerciseMetadata {
-        metadataCache.metadata(for: exercise)
+        let id = exercise.id
+        if let cached = metadataCache.withLock({ $0[id] }) { return cached }
+        let resolved = CuratedExercises.resolveMetadata(exercise)
+        metadataCache.withLock { $0[id] = resolved }
+        return resolved
     }
 
     static func metadata(forExerciseId exerciseId: String) -> ExerciseMetadata? {

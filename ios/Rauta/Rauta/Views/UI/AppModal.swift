@@ -15,6 +15,8 @@ struct AppModal<Content: View>: View {
     var panelPadding: CGFloat = 14
     @ViewBuilder var content: () -> Content
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         ZStack {
             if isPresented {
@@ -31,14 +33,12 @@ struct AppModal<Content: View>: View {
                     .frame(maxWidth: 344)
                     .background(FrostedBackground(cornerRadius: Theme.Radius.xl3))
                     .padding(20)
-                    .transition(
-                        .asymmetric(
-                            insertion: .opacity.combined(with: .scale(scale: 0.96)),
-                            removal: .opacity.combined(with: .scale(scale: 0.96))
-                        )
-                    )
+                    .transition(.motion(.opacity.combined(with: .scale(scale: 0.96)), reduced: reduceMotion))
                     .accessibilityLabel(label)
                     .accessibilityAddTraits(.isModal)
+                    // The scrim tap is invisible to VoiceOver; the two-finger
+                    // scrub is its way out.
+                    .accessibilityAction(.escape, onClose)
             }
         }
         .animation(Theme.Motion.smoothOut(isPresented ? 0.25 : 0.15), value: isPresented)
@@ -116,7 +116,7 @@ struct ConfirmModal: View {
     var onCancel: () -> Void
     var onConfirm: () -> Void
 
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     /// Clearing everything asks twice: the second pass is the one that says the
     /// data is not coming back.
     @State private var clearConfirmed = false

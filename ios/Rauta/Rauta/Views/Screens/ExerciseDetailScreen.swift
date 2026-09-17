@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ExerciseDetailScreen: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     let exerciseId: String
 
     var body: some View {
@@ -76,7 +76,7 @@ struct ExerciseDetailScreen: View {
 }
 
 struct EquipmentPresetScreen: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
     @State private var name = ""
 
     private var canSave: Bool {

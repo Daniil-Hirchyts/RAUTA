@@ -159,6 +159,9 @@ struct MonthlySummaryDashboard: View {
 
             MuscleHeatmapCard(snapshot: snapshot)
         }
+        // Square cards and fixed chart columns: text grows with Dynamic Type
+        // up to the point where they can still hold it.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 
     private static func duration(_ seconds: Double) -> String {
@@ -189,8 +192,10 @@ private struct SummaryMetricCard: View {
                 Text(title)
                     .font(Theme.sans(15, weight: .bold))
                     .foregroundStyle(Theme.foreground)
-                    .lineLimit(1)
+                    // Wraps rather than truncates at the larger text sizes.
+                    .lineLimit(1...2)
                     .minimumScaleFactor(0.82)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Spacer(minLength: 4)
 

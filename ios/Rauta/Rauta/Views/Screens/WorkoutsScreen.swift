@@ -121,9 +121,9 @@ enum NativeTabIcons {
 }
 
 struct WorkoutsScreen: View {
-    @ObservedObject private var workouts = WorkoutsStore.shared
-    @ObservedObject private var trainingRecords = TrainingRecordsStore.shared
-    @ObservedObject private var activeWorkout = ActiveWorkoutStore.shared
+    private let workouts = WorkoutsStore.shared
+    private let trainingRecords = TrainingRecordsStore.shared
+    private let activeWorkout = ActiveWorkoutStore.shared
     private let navigation = AppSessionStore.shared
     private let filters = FiltersStore.shared
     @State private var mainTab: MainTab = .summary
@@ -138,13 +138,15 @@ struct WorkoutsScreen: View {
     @State private var workoutDetailActionRequest: WorkoutDetailExternalAction?
     @State private var workoutListSelection = 0
     @State private var selectedWorkoutId: String?
-    @State private var tabHostIdentity = UUID()
     @Environment(\.rautaOnStage) private var onStage
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Whether the tab bar and RAUTA are arranged for Profile. It follows
     /// `mainTab` a beat behind: the selection moves first, and only once it
     /// has settled does RAUTA leave its circle and the bar resize — each on
     /// frames of its own instead of all on the same one.
     @State private var profileChrome = false
+    /// The remaining week being re-planned, off the main actor.
+    @State private var adjustingPlan = false
 
     @State private var timelineMemo = Memo<TimelineInputs, WorkoutTimeline>()
 
@@ -243,16 +245,13 @@ struct WorkoutsScreen: View {
         .task(id: mainTab == .profile) {
             let target = mainTab == .profile
             guard profileChrome != target else { return }
-            // Let the tab selection finish moving before anything else does. The
-            // first short wait only resumes once the new page has been built —
-            // the first visit to a page can hold the main thread for a moment —
-            // so the second is always a full beat of settled selection.
-            try? await Task.sleep(for: .milliseconds(30))
-            try? await Task.sleep(for: .milliseconds(380))
+            // Let the tab selection settle before the bar changes shape, so the
+            // two do not move on the same frames. One short beat is enough.
+            try? await Task.sleep(for: .seconds(Theme.Duration.fast))
             guard !Task.isCancelled else { return }
             guard target else {
                 // The bar makes room for RAUTA's circle with its own animation.
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                     profileChrome = false
                 }
                 return
@@ -261,13 +260,13 @@ struct WorkoutsScreen: View {
             // frame. Applying the change and that layout inside a UIKit
             // animation makes the bar grow into the space instead — the same
             // motion as it shrinking back, run the other way.
-            UIKitAnimation.spring(duration: 0.5, bounce: 0.08) {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
+            UIKitAnimation.spring(duration: 0.35, bounce: 0.08) {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                     profileChrome = true
                 }
             }
         }
-        .onReceive(navigation.$requestedWorkoutId) { workoutId in
+        .onChange(of: navigation.requestedWorkoutId, initial: true) { _, workoutId in
             guard let workoutId else { return }
             openRequestedWorkout(workoutId)
         }
@@ -285,12 +284,6 @@ struct WorkoutsScreen: View {
             // Scrolling down may wrap the native bar around that player; idle
             // navigation stays expanded.
             .tabBarMinimizeBehavior(activeWorkout.session == nil ? .never : .onScrollDown)
-            // UIKit can retain the previous bottom-accessory chrome after the
-            // accessory disappears. Rebuild the native tab host at the workout
-            // lifecycle boundary so an ended workout cannot leave an empty pill.
-            .id(
-                "\(tabHostIdentity.uuidString)-\(activeWorkout.session?.workoutId ?? "idle-native-tabs")"
-            )
     }
 
     private var nativeProminentTabView: some View {
@@ -324,6 +317,9 @@ struct WorkoutsScreen: View {
                     Color.clear
                 } label: {
                     Image(uiImage: NativeTabIcons.transparentPlaceholder)
+                        // The drawn RAUTA over this slot is hidden from
+                        // VoiceOver; the tab itself is what it reaches.
+                        .accessibilityLabel("Rauta actions")
                 }
             }
         }
@@ -369,7 +365,7 @@ struct WorkoutsScreen: View {
                 // and switching to Profile and back used to build one each way.
                 // Off to one side it only hides and stops rendering.
                 rautaTabControl(bottomInset: proxy.safeAreaInsets.bottom)
-                    .scaleEffect(profileChrome ? 0.78 : 1, anchor: .bottomTrailing)
+                    .scaleEffect(profileChrome && !reduceMotion ? 0.78 : 1, anchor: .bottomTrailing)
                     .opacity(profileChrome ? 0 : 1)
                     .allowsHitTesting(!profileChrome)
                     .accessibilityHidden(profileChrome)
@@ -524,13 +520,18 @@ struct WorkoutsScreen: View {
         }
         if let source = TrainingPlan.activeProgramRecord(), activeWorkout.session == nil {
             let remaining = TrainingWorkflow.remainingTrainingSlots(source, ISOTime.now())
-            if !remaining.sessions.isEmpty && trainingRecords.data.sessions.contains(where: { $0.plannedProgramId == source.id }) {
+            if !adjustingPlan,
+               !remaining.sessions.isEmpty && trainingRecords.data.sessions.contains(where: { $0.plannedProgramId == source.id }) {
                 actions.append(CompanionAction(title: "Adjust remaining week", systemImage: "arrow.triangle.2.circlepath", primary: true) {
-                    do {
-                        let result = try TrainingWorkflow.generateAndSavePlan(source: source)
-                        if let program = result.result.program { TrainingPlan.projectPlannedWorkouts(TrainingPlan.sessionViews(program)) }
-                        Haptics.trigger(.success)
-                    } catch { Haptics.trigger(.warning) }
+                    adjustingPlan = true
+                    Task {
+                        defer { adjustingPlan = false }
+                        do {
+                            let result = try await TrainingWorkflow.generateAndSavePlan(source: source)
+                            if let program = result.result.program { TrainingPlan.projectPlannedWorkouts(TrainingPlan.sessionViews(program)) }
+                            Haptics.trigger(.success)
+                        } catch { Haptics.trigger(.warning) }
+                    }
                 })
             } else if remaining.sessions.isEmpty {
                 actions.append(CompanionAction(title: "Extend training plan", systemImage: "calendar.badge.plus", primary: true) {
@@ -825,7 +826,7 @@ private struct NativeWorkoutCompleteAccessory: View {
 }
 
 private struct WorkoutTabHost: View {
-    @ObservedObject private var activeWorkout = ActiveWorkoutStore.shared
+    private let activeWorkout = ActiveWorkoutStore.shared
     let upcoming: [Workout]
     let past: [Workout]
     let activeWorkoutId: String?
@@ -1076,9 +1077,9 @@ struct WorkoutTimeline {
 /// training history: with nothing passed in, SwiftUI has no reason to run this
 /// body again until a store it reads changes.
 private struct SummaryWorkoutsContent: View {
-    @ObservedObject private var workouts = WorkoutsStore.shared
-    @ObservedObject private var trainingRecords = TrainingRecordsStore.shared
-    @ObservedObject private var activeWorkout = ActiveWorkoutStore.shared
+    private let workouts = WorkoutsStore.shared
+    private let trainingRecords = TrainingRecordsStore.shared
+    private let activeWorkout = ActiveWorkoutStore.shared
 
     var body: some View {
         let completedWorkouts = WorkoutTimeline(
@@ -1457,6 +1458,7 @@ private struct StreakStrip: View {
                             .frame(width: day.isToday ? 38.4 : 30.4, height: day.isToday ? 48 : 38)
                             .frame(height: 48, alignment: .bottom).opacity(day.isFuture ? 0.6 : 1)
                         Text(CalendarDate.weekdayShort(day.date)).font(Theme.sans(10, weight: .semibold))
+                            .lineLimit(1).minimumScaleFactor(0.5)
                             .foregroundStyle(day.isToday ? Theme.primaryForeground : Theme.mutedForeground)
                             .padding(.horizontal, 6).padding(.vertical, 2)
                             .background(day.isToday ? Theme.primary : .clear, in: Capsule())
@@ -1470,6 +1472,9 @@ private struct StreakStrip: View {
             shape
                 .fill(Theme.card)
         }
+        // A week of fixed-width columns: text grows with Dynamic Type up to
+        // the point where the columns can still hold it.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 
     private func streakMetric(value: Int, label: String, color: Color) -> some View {
@@ -1555,7 +1560,8 @@ private struct Flame: View {
     }
 }
 
-private struct FlameShape: InsettableShape {
+/// Pure geometry: `Shape` asks for its path off the main actor.
+private nonisolated struct FlameShape: InsettableShape {
     static let definition = "M16.6 1.6c.6 6.4 9.9 10.4 9.9 22.1a10.5 10.5 0 0 1-21 0c0-5.4 2.1-9 4.9-11.9.1 3.1 1.3 5.3 3.1 6.4 1.8-1.7 3-8.6 3.1-16.6Z"
 
     var insetAmount: CGFloat = 0
@@ -1582,6 +1588,7 @@ private struct WorkoutRow: View {
     let isPast: Bool
     let isRunning: Bool
     let onOpen: () -> Void
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private var muscles: [MuscleId] { ExerciseCatalogue.musclesForExerciseIds(workout.exerciseIds) }
 
     static func zoomSourceID(_ workoutId: String) -> String { "workout:\(workoutId)" }
@@ -1638,7 +1645,8 @@ private struct WorkoutRow: View {
             .font(Theme.sans(16, weight: .heavy))
             .tracking(-0.2)
             .foregroundStyle(Theme.foreground)
-            .lineLimit(1)
+            // Large text wraps instead of cutting the name short.
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
     }
 
     @ViewBuilder private var detail: some View {

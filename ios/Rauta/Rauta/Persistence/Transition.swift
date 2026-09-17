@@ -11,7 +11,7 @@ import Foundation
 /// What an intent is not is evidence. It carries identities, times and the
 /// legacy shell's own numbers; which sets were performed lives only in the
 /// draft's observations, and nothing here writes one.
-enum TransitionRecoveryReason: String {
+nonisolated enum TransitionRecoveryReason: String {
     /// No intent was in flight.
     case none
     /// A start that never created its draft; nothing happened to carry forward.
@@ -30,21 +30,21 @@ enum TransitionRecoveryReason: String {
     case intentStale = "intent-stale"
 }
 
-enum DraftDisposition: String { case keep, close, discard }
-enum ShellDisposition: String { case keep, clear, restore }
+nonisolated enum DraftDisposition: String { case keep, close, discard }
+nonisolated enum ShellDisposition: String { case keep, clear, restore }
 
-struct TransitionClose {
+nonisolated struct TransitionClose {
     var sessionId: String
     var completedAt: String
     var status: CompletedSession.Status
 }
 
-struct TransitionLegacy {
+nonisolated struct TransitionLegacy {
     var workoutId: String
     var intent: PersistedLegacyCompletionIntent
 }
 
-struct TransitionShellRestore {
+nonisolated struct TransitionShellRestore {
     var workoutId: String
     var workoutName: String
     var workoutDate: String
@@ -53,7 +53,7 @@ struct TransitionShellRestore {
 }
 
 /// Each step recovery may still owe, decided from the state that came back.
-struct TransitionRecovery {
+nonisolated struct TransitionRecovery {
     var draft: DraftDisposition
     var close: TransitionClose?
     var legacy: TransitionLegacy?
@@ -68,7 +68,7 @@ struct TransitionRecovery {
     )
 }
 
-enum TransitionPlanner {
+nonisolated enum TransitionPlanner {
     struct Input {
         var intent: PersistedTransitionIntent?
         var draft: PersistedActiveWorkoutDraft?

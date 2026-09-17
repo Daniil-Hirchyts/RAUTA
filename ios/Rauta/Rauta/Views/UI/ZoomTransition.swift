@@ -4,12 +4,11 @@ import UIKit
 // The zoom transition modals grow out of and fall back into.
 //
 // A view something opens from is marked with `appZoomSource(_:)`; the page it
-// opens is presented with `appZoomTransition(from:)` naming the same id. From
-// iOS 18 the system then owns the whole gesture: the page grows out of its
-// source, follows a finger dragged down on it, and is thrown back into the
-// source with the speed it was let go at. The source is tracked live, so a
-// grid that scrolls while the page closes still receives it in the right
-// place. Before iOS 18 pages present the plain way.
+// opens is presented with `appZoomTransition(from:)` naming the same id. The
+// system then owns the whole gesture: the page grows out of its source,
+// follows a finger dragged down on it, and is thrown back into the source with
+// the speed it was let go at. The source is tracked live, so a grid that
+// scrolls while the page closes still receives it in the right place.
 
 private struct AppZoomNamespaceKey: EnvironmentKey {
     static let defaultValue: Namespace.ID? = nil
@@ -102,17 +101,9 @@ private struct SwipeBackEnabler: UIViewRepresentable {
     func updateUIView(_ uiView: ProbeView, context: Context) { uiView.attach() }
 
     final class ProbeView: UIView {
-        private weak var navigation: UINavigationController?
-
         override func didMoveToWindow() {
             super.didMoveToWindow()
             attach()
-            // A page arriving or leaving changes how deep the stack is; once
-            // any transition has settled, hand the edge to the right gesture.
-            let navigation = navigation
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                if let navigation { Self.assignLeadingEdge(in: navigation) }
-            }
         }
 
         func attach() {
@@ -120,31 +111,13 @@ private struct SwipeBackEnabler: UIViewRepresentable {
             while let current = responder, !(current is UINavigationController) {
                 responder = current.next
             }
-            guard let found = responder as? UINavigationController else { return }
-            navigation = found
-
+            guard let navigation = responder as? UINavigationController,
+                  let swipe = navigation.interactiveContentPopGestureRecognizer
+            else { return }
             // The swipe back is recognised across the whole page, and that
             // recogniser is the one that receives an edge swipe.
-            let swipe: UIGestureRecognizer? = found.interactiveContentPopGestureRecognizer
-            swipe?.isEnabled = true
-            swipe?.delegate = SwipeBackDelegate.shared
-            Self.assignLeadingEdge(in: found)
-        }
-
-        /// A zoomed modal also has a leading-edge pan that closes the whole
-        /// modal, which would take the edge from going back a step. While there
-        /// is a step to go back to, that pan is off; on a modal's first page it
-        /// is left to the system.
-        static func assignLeadingEdge(in navigation: UINavigationController) {
-            let canGoBack = navigation.viewControllers.count > 1
-            var view: UIView? = navigation.view
-            while let current = view {
-                for recognizer in current.gestureRecognizers ?? []
-                where recognizer.name?.hasPrefix("com.apple.UIKit.ZoomInteractiveDismissLeadingEdge") == true {
-                    recognizer.isEnabled = !canGoBack
-                }
-                view = current.superview
-            }
+            swipe.isEnabled = true
+            swipe.delegate = SwipeBackDelegate.shared
         }
     }
 }
@@ -152,6 +125,11 @@ private struct SwipeBackEnabler: UIViewRepresentable {
 /// Lets a swipe back start only from the leading edge, and only when there is
 /// a page to go back to — on a stack's first page it would otherwise leave the
 /// stack stuck mid-transition.
+///
+/// A zoomed modal also has a leading-edge pan that closes the whole modal. It
+/// is installed above the navigation stack, so while there is a step to go
+/// back to, any pan up there waits for the swipe back to fail: an edge swipe
+/// goes back a step, and on a modal's first page the modal's own pan is free.
 private final class SwipeBackDelegate: NSObject, UIGestureRecognizerDelegate {
     static let shared = SwipeBackDelegate()
 
@@ -172,13 +150,32 @@ private final class SwipeBackDelegate: NSObject, UIGestureRecognizerDelegate {
         canGoBack(gestureRecognizer)
     }
 
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool {
+        guard otherGestureRecognizer is UIPanGestureRecognizer,
+              let navigation = navigationController(of: gestureRecognizer),
+              navigation.viewControllers.count > 1,
+              let otherView = otherGestureRecognizer.view,
+              let navigationView = navigation.view
+        else { return false }
+        // Only pans that contain the whole stack — the presentation's —
+        // never the page's own scrollers, dials and rows inside it.
+        return otherView !== navigationView && navigationView.isDescendant(of: otherView)
+    }
+
     private func canGoBack(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard let navigation = navigationController(of: gestureRecognizer) else { return false }
+        return navigation.viewControllers.count > 1 && navigation.transitionCoordinator == nil
+    }
+
+    private func navigationController(of gestureRecognizer: UIGestureRecognizer) -> UINavigationController? {
         var responder: UIResponder? = gestureRecognizer.view
         while let current = responder, !(current is UINavigationController) {
             responder = current.next
         }
-        guard let navigation = responder as? UINavigationController else { return false }
-        return navigation.viewControllers.count > 1 && navigation.transitionCoordinator == nil
+        return responder as? UINavigationController
     }
 }
 

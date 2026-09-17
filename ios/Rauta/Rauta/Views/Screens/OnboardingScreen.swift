@@ -24,7 +24,8 @@ enum ProfileStep: String {
 /// Mirrors ProfileStepFlow in profile-pages.tsx; settings reuses these steps.
 struct ProfileStepFlow: View {
     @Environment(\.appSafeAreaInsets) private var safeAreaInsets
-    @ObservedObject private var store = AppStore.shared
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private let store = AppStore.shared
     let steps: [ProfileStep]
     var onboarding = false
     let onFinish: () -> Void
@@ -87,7 +88,7 @@ struct ProfileStepFlow: View {
                             }
                         }
                         .id(step)
-                        .transition(.opacity.combined(with: .scale(scale: 0.985)))
+                        .transition(.motion(.opacity.combined(with: .scale(scale: 0.985)), reduced: reduceMotion))
 
                         if step == .gym {
                             VStack {
@@ -245,7 +246,7 @@ private struct OnboardingPill: View {
 }
 
 private struct OnboardingReadyView: View {
-    @ObservedObject private var store = AppStore.shared
+    private let store = AppStore.shared
 
     private var equipmentSummary: String {
         let count = store.filters.gymEquipment.count

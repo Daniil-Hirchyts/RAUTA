@@ -79,12 +79,12 @@ enum WorkoutAudio {
             activeStyle = wanted
         }
 
-        if !wired {
-            engine.attach(player)
-            engine.connect(player, to: engine.mainMixerNode, format: format)
-            wired = true
-        }
         do {
+            if !wired {
+                if !engine.attachedNodes.contains(player) { engine.attach(player) }
+                try engine.connectNode(player, to: engine.mainMixerNode, format: format)
+                wired = true
+            }
             if !engine.isRunning {
                 engine.prepare()
                 try engine.start()
@@ -96,7 +96,14 @@ enum WorkoutAudio {
         player.scheduleBuffer(buffer, at: nil, options: []) {
             Task { @MainActor in scheduleRelease() }
         }
-        if !player.isPlaying { player.play() }
+        guard !player.isPlaying else { return }
+        do {
+            try player.playAudio()
+        } catch {
+            // No playback means no completion callback to release the
+            // session, so let go now rather than leave other audio ducked.
+            release()
+        }
     }
 
     /// Lets go of the session a moment after the last sound, so a countdown's

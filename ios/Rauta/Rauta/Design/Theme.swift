@@ -161,8 +161,6 @@ extension Theme {
         static let headerHeight: CGFloat = 68
         /// From the bottom of a page's title bar to the page's first row.
         static let headerContentGap: CGFloat = 20
-        /// How far the progressive blur reaches past the bottom of the title bar.
-        static let headerScrimOverhang: CGFloat = 12
     }
 
     enum Duration {
@@ -199,17 +197,45 @@ extension Theme {
 
 // MARK: - Device
 
-/// The hardware corner radius, read from the private but stable display corner
-/// value with a sane fallback so the surround stays concentric on every phone.
+/// The hardware corner radius, so the surround stays concentric on every phone.
+///
+/// Read through public UIKit: a view that fills a window and asks for
+/// container-concentric corners resolves to the display's own radius.
 enum DeviceScreen {
-    static let cornerRadius: CGFloat = {
-        let key = ["Radius", "Corner", "display", "_"].reversed().joined()
-        if let value = UIScreen.main.value(forKey: key) as? CGFloat, value > 0 {
-            return value
-        }
-        return 55
-    }()
+    /// Until a window exists the fallback is used and nothing is cached, so the
+    /// first read inside a window settles the real value.
+    private static let fallback: CGFloat = 55
+    private static var resolved: CGFloat?
 
+    static var cornerRadius: CGFloat {
+        if let resolved { return resolved }
+        guard let radius = measure() else { return fallback }
+        resolved = radius
+        return radius
+    }
+
+    /// The width of the screen the app's window is on, found through the
+    /// window scene.
+    static var width: CGFloat {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let scene = scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
+        return scene?.screen.bounds.width ?? 0
+    }
+
+    private static func measure() -> CGFloat? {
+        let window = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first { !$0.bounds.isEmpty }
+        guard let window else { return nil }
+        let probe = UIView(frame: window.bounds)
+        probe.cornerConfiguration = .corners(radius: .containerConcentric())
+        window.addSubview(probe)
+        defer { probe.removeFromSuperview() }
+        probe.layoutIfNeeded()
+        let radius = probe.effectiveRadius(corner: .topLeft)
+        return radius > 0 ? radius : nil
+    }
 }
 
 private struct AppSafeAreaInsetsKey: EnvironmentKey {
@@ -232,82 +258,36 @@ extension Theme {
         static let readout = "MatrixSansPrint-Regular"
     }
 
-    /// Geist ships as a variable font; iOS needs the weight axis set explicitly
-    /// rather than synthesised, so every UI weight is an instance of the axis.
+    /// Every face grows with Dynamic Type, relative to the system text style
+    /// nearest its design size. Geist and Doto ship as variable fonts; the
+    /// weight is applied to their weight axis, not synthesised.
     static func sans(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        Font(VariableFont.geist(size: size, weight: weight))
+        Font.custom(FontFamily.sans, size: size, relativeTo: textStyle(for: size)).weight(weight)
+    }
+
+    /// The system text style a design size grows with under Dynamic Type.
+    static func textStyle(for size: CGFloat) -> Font.TextStyle {
+        switch size {
+        case ..<11.5: return .caption2
+        case ..<12.5: return .caption
+        case ..<13.5: return .footnote
+        case ..<15.5: return .subheadline
+        case ..<16.5: return .callout
+        case ..<17.5: return .body
+        case ..<20.5: return .title3
+        case ..<24.5: return .title2
+        case ..<30.5: return .title
+        default: return .largeTitle
+        }
     }
 
     static func dot(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        Font(VariableFont.doto(size: size, weight: weight))
+        Font.custom(FontFamily.dot, size: size, relativeTo: textStyle(for: size)).weight(weight)
     }
 
     /// Instrument-style numeric readout. Tabular by construction.
     static func readout(_ size: CGFloat) -> Font {
-        if let font = UIFont(name: FontFamily.readout, size: size) {
-            return Font(font)
-        }
-        return .system(size: size, design: .monospaced)
+        Font.custom(FontFamily.readout, size: size, relativeTo: textStyle(for: size))
     }
 }
 
-enum VariableFont {
-    /// `wght` — the four-character axis identifier as a 32-bit tag.
-    private static let weightAxis = 0x77676874
-
-    private static func numericWeight(_ weight: Font.Weight) -> CGFloat {
-        switch weight {
-        case .ultraLight: return 100
-        case .thin: return 200
-        case .light: return 300
-        case .regular: return 400
-        case .medium: return 500
-        case .semibold: return 600
-        case .bold: return 700
-        case .heavy: return 800
-        case .black: return 900
-        default: return 400
-        }
-    }
-
-    private static func instance(_ family: String, size: CGFloat, weight: Font.Weight, fallback: UIFont) -> UIFont {
-        guard let base = UIFont(name: family, size: size) else { return fallback }
-        let descriptor = base.fontDescriptor.addingAttributes([
-            UIFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String):
-                [weightAxis: numericWeight(weight)]
-        ])
-        return UIFont(descriptor: descriptor, size: size)
-    }
-
-    static func geist(size: CGFloat, weight: Font.Weight) -> UIFont {
-        instance(
-            Theme.FontFamily.sans,
-            size: size,
-            weight: weight,
-            fallback: .systemFont(ofSize: size, weight: uiWeight(weight))
-        )
-    }
-
-    static func doto(size: CGFloat, weight: Font.Weight) -> UIFont {
-        instance(
-            Theme.FontFamily.dot,
-            size: size,
-            weight: weight,
-            fallback: .monospacedSystemFont(ofSize: size, weight: uiWeight(weight))
-        )
-    }
-
-    static func uiWeight(_ weight: Font.Weight) -> UIFont.Weight {
-        switch weight {
-        case .ultraLight: return .ultraLight
-        case .thin: return .thin
-        case .light: return .light
-        case .medium: return .medium
-        case .semibold: return .semibold
-        case .bold: return .bold
-        case .heavy: return .heavy
-        case .black: return .black
-        default: return .regular
-        }
-    }
-}
