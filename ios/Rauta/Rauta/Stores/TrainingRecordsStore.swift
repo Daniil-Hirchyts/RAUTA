@@ -156,6 +156,50 @@ final class TrainingRecordsStore {
         return draftId
     }
 
+    /// A session from a plan that has since been replaced, started as a
+    /// workout of its own. Its prescription — warm-ups, working sets, targets —
+    /// comes along; its link to the old plan does not, so it cannot be counted
+    /// against a plan that no longer runs.
+    @discardableResult
+    func startCarryingPrescription(
+        programId: String,
+        plannedSessionId: String,
+        exerciseIds: [String],
+        startedAt: String = ISOTime.now(),
+        sourceWorkoutId: String? = nil
+    ) throws -> String {
+        if data.activeWorkout != nil { throw TrainingPersistenceError("A workout is already active") }
+        guard let record = data.programs.first(where: { $0.id == programId }),
+              let session = ProgramRecords.toEngineProgram(record.snapshot).weeks
+                .flatMap(\.sessions).first(where: { $0.id == plannedSessionId })
+        else {
+            return try startFreeWorkout(exerciseIds: exerciseIds, startedAt: startedAt, sourceWorkoutId: sourceWorkoutId)
+        }
+
+        let draftId = Self.makeId("workout-draft")
+        let makeId: PersistenceIdFactory = { Self.makeId("draft-\($0.rawValue)") }
+        let prescribed = try WorkoutDrafts.createFromPlannedSession(WorkoutDrafts.PlannedDraftInput(
+            draftId: draftId,
+            programId: programId,
+            session: session,
+            startedAt: startedAt,
+            makeId: makeId,
+            exerciseNameSnapshot: { [weak self] in self?.exerciseName($0) },
+            sourceWorkoutId: sourceWorkoutId
+        ))
+        let draft = WorkoutDrafts.detachedFromPlan(
+            prescribed,
+            exerciseIds: exerciseIds,
+            makeId: makeId,
+            exerciseNameSnapshot: { [weak self] in self?.exerciseName($0) }
+        )
+
+        var next = data
+        next.activeWorkout = draft
+        try commit(next)
+        return draftId
+    }
+
     @discardableResult
     func startFreeWorkout(
         exerciseIds: [String],

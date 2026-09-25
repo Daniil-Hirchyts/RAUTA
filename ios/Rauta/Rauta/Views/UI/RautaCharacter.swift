@@ -12,10 +12,14 @@ struct RautaCharacter: View {
     var reactionKey = ""
     var reaction: RautaReaction?
     var onActivate: (() -> Void)?
+    /// A horizontal turn to hold, in degrees, for a character being steered —
+    /// flying in on the launch, say. Nil lets it face you as usual.
+    var yaw: Double?
     @Environment(\.accessibilityReduceMotion) private var reducedMotion
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.rautaOnStage) private var onStage
     @StateObject private var performer = RautaPerformer()
+    private let speech = RautaSpeech.shared
     @State private var leash = CGSize.zero
     /// Resets when the touch ends *or is cancelled*; only a cancel reaches
     /// `touchCancelled`, since `onEnded` has already settled a normal lift.
@@ -32,10 +36,15 @@ struct RautaCharacter: View {
             .onAppear {
                 performer.appear(mood: mood, reducedMotion: reducedMotion, onStage: onStage)
                 if let reaction { performer.explicit(reaction) }
+                if let yaw { performer.hold(yaw: yaw) }
             }
             .onDisappear { performer.disappear() }
             .onChange(of: mood) { _, next in performer.setMood(next) }
+            // What RAUTA says, the character that answers for it also shows:
+            // the look a line asks for, and a beat as it starts.
+            .onChange(of: speech.line) { _, line in performer.hear(line) }
             .onChange(of: reactionKey) { _, _ in performer.explicit(reaction) }
+            .onChange(of: yaw) { _, next in performer.hold(yaw: next) }
             .onChange(of: reducedMotion) { _, next in performer.setReducedMotion(next) }
             .onChange(of: scenePhase) { _, next in performer.setSceneActive(next == .active) }
             .onChange(of: onStage) { _, next in performer.setOnStage(next) }
@@ -152,6 +161,9 @@ final class RautaPerformer: ObservableObject {
 
     // How it feels.
     private var baseMood: RautaMood = .calm
+    /// The look the line RAUTA is saying asks for — working, while it works.
+    /// Only the character answering for RAUTA wears it.
+    private var spokenMood: RautaMood?
     private var context = RautaContext()
     private var sulkUntil = Date.distantPast
     /// A mood held for the length of a gesture — see `beginDrag`.
@@ -311,6 +323,7 @@ final class RautaPerformer: ObservableObject {
 
     private var effectiveMood: RautaMood {
         if let borrowedMood { return borrowedMood }
+        if let spokenMood { return spokenMood }
         let now = Date()
         if now < sulkUntil { return .skeptical }
         return context.mood(for: baseMood, now: now)
@@ -336,6 +349,18 @@ final class RautaPerformer: ObservableObject {
 
     /// A reaction the screen asked for. With none named, it varies what it says
     /// so the same screen does not answer the same way twice.
+    /// A new line, or silence. The lead character takes on the line's look and
+    /// plays its beat; the others leave it to that one.
+    func hear(_ line: RautaSpeech.Line?) {
+        let leads = performing && director.leader == id
+        let mood = leads ? line?.mood : nil
+        if mood != spokenMood {
+            spokenMood = mood
+            applyMood()
+        }
+        if leads, let reaction = line?.reaction { play(reaction, source: .explicit) }
+    }
+
     func explicit(_ reaction: RautaReaction?) {
         let chosen = reaction
             ?? RautaCues.acknowledgements[acknowledgementIndex % RautaCues.acknowledgements.count]
@@ -709,6 +734,23 @@ final class RautaPerformer: ObservableObject {
         returnGaze(after: 0.35)
     }
 
+    /// Holds the body turned to `yaw` degrees; nil lets it swing back to face
+    /// you on the usual spring.
+    func hold(yaw: Double?) {
+        guard let yaw else {
+            guard !springing, facing != 0 else { return }
+            springing = true
+            facingVelocity = 0
+            enliven(for: 1.2)
+            return
+        }
+        springing = false
+        facingVelocity = 0
+        facing = yaw
+        pushFacing()
+        enliven(for: 0.3)
+    }
+
     private func pushFacing() {
         let wrapped = (facing.truncatingRemainder(dividingBy: 360) + 360)
             .truncatingRemainder(dividingBy: 360)
@@ -808,6 +850,9 @@ struct RautaHeaderBadge: View {
     var reactionKey = ""
     var reaction: RautaReaction?
     var onActivate: (() -> Void)?
+    /// Whether RAUTA's lines rise from this one. The workout player's keeps
+    /// quiet, so nothing but the work competes for attention there.
+    var speaks = true
 
     var body: some View {
         ZStack {
@@ -829,6 +874,19 @@ struct RautaHeaderBadge: View {
             .frame(width: 44, height: 44)
         }
         .frame(width: 44, height: 44)
+        .modifier(SpeakerRole(speaks: speaks))
+    }
+}
+
+private struct SpeakerRole: ViewModifier {
+    let speaks: Bool
+
+    func body(content: Content) -> some View {
+        if speaks {
+            content.rautaSpeaker()
+        } else {
+            content
+        }
     }
 }
 

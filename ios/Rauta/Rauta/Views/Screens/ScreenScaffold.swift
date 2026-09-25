@@ -8,13 +8,12 @@ struct RautaScreen<Content: View, Controls: View, Right: View>: View {
     var backLabel: String?
     var onBack: (() -> Void)?
     var titleMultiline: Bool = false
-    var fullScreen: Bool = false
     @ViewBuilder var right: () -> Right
     @ViewBuilder var content: () -> Content
     @ViewBuilder var controls: () -> Controls
 
     var body: some View {
-        AppShell(commandsVisible: Controls.self != EmptyView.self, fullScreen: fullScreen) {
+        AppShell(commandsVisible: Controls.self != EmptyView.self) {
             AppTitledPage {
                 AppShellHeader(
                     title: title,
@@ -55,7 +54,6 @@ extension RautaScreen where Right == EmptyView {
         backLabel: String? = nil,
         onBack: (() -> Void)? = nil,
         titleMultiline: Bool = false,
-        fullScreen: Bool = false,
         @ViewBuilder content: @escaping () -> Content,
         @ViewBuilder controls: @escaping () -> Controls
     ) {
@@ -67,7 +65,6 @@ extension RautaScreen where Right == EmptyView {
             backLabel: backLabel,
             onBack: onBack,
             titleMultiline: titleMultiline,
-            fullScreen: fullScreen,
             right: { EmptyView() },
             content: content,
             controls: controls
@@ -84,7 +81,6 @@ extension RautaScreen where Controls == EmptyView {
         backLabel: String? = nil,
         onBack: (() -> Void)? = nil,
         titleMultiline: Bool = false,
-        fullScreen: Bool = false,
         @ViewBuilder right: @escaping () -> Right,
         @ViewBuilder content: @escaping () -> Content
     ) {
@@ -96,7 +92,6 @@ extension RautaScreen where Controls == EmptyView {
             backLabel: backLabel,
             onBack: onBack,
             titleMultiline: titleMultiline,
-            fullScreen: fullScreen,
             right: right,
             content: content,
             controls: { EmptyView() }
@@ -113,7 +108,6 @@ extension RautaScreen where Controls == EmptyView, Right == EmptyView {
         backLabel: String? = nil,
         onBack: (() -> Void)? = nil,
         titleMultiline: Bool = false,
-        fullScreen: Bool = false,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.init(
@@ -124,7 +118,6 @@ extension RautaScreen where Controls == EmptyView, Right == EmptyView {
             backLabel: backLabel,
             onBack: onBack,
             titleMultiline: titleMultiline,
-            fullScreen: fullScreen,
             right: { EmptyView() },
             content: content,
             controls: { EmptyView() }
@@ -168,12 +161,12 @@ struct SelectionChip: View {
     }
 }
 
-/// What a page shows when it has nothing to list: a symbol, a title that says
-/// what is missing, a line on how to get some, and optionally the one action
-/// that fixes it. Every empty list in the app uses this, so they all read the
-/// same way.
+/// What a page shows when it has nothing to list: RAUTA, looking the way the
+/// situation feels, a title that says what is missing, a line on how to get
+/// some, and optionally the one action that fixes it. Every empty list in the
+/// app uses this, so they all read the same way.
 struct EmptyStatePlaceholder: View {
-    let systemImage: String
+    var mood: RautaMood = .curious
     let title: String
     let message: String
     var actionTitle: String? = nil
@@ -181,11 +174,9 @@ struct EmptyStatePlaceholder: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.system(size: 30, weight: .medium))
-                .foregroundStyle(Theme.primary)
-                .frame(height: 42)
-                .padding(.bottom, 4)
+            RautaCharacter(mood: mood, reactionKey: title, reaction: .peek)
+                .frame(width: 96, height: 96)
+                .accessibilityHidden(true)
 
             Text(title)
                 .font(Theme.sans(18, weight: .bold))

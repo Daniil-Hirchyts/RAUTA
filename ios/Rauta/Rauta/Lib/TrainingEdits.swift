@@ -176,7 +176,9 @@ enum TrainingEdits {
         let source = TrainingRecordsStore.shared.data.programs.first {
             $0.id == planned.programId
         }
-        if source?.effectiveKind == .workout {
+        // A session whose plan has been replaced belongs to no plan any more:
+        // it goes like a workout of its own, and the old plan stays as it was.
+        if source?.effectiveKind == .workout || ActiveWorkoutStore.planWasReplaced(workout) {
             WorkoutsStore.shared.deleteWorkout(workoutId)
             return
         }

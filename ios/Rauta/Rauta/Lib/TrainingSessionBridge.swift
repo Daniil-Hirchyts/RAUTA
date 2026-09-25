@@ -47,40 +47,48 @@ enum TrainingSessionBridge {
     /// belong in history under their own session, not in this one.
     ///
     /// A planned workout must keep its lineage: when its planned draft cannot be
-    /// opened this returns false and no free draft is substituted for it.
+    /// opened this throws and no free draft is substituted for it. The reason
+    /// travels with the error, because the screen that asked has to say it.
+    /// - Parameter carrying: a session from a replaced plan whose prescription
+    ///   a workout of its own should keep.
     static func beginTrainingDraft(
         exerciseIds: [String],
         startedAt: String,
         sourceWorkoutId: String,
-        planned: PlannedWorkoutReference?
-    ) -> Bool {
+        planned: PlannedWorkoutReference?,
+        carrying: PlannedWorkoutReference? = nil
+    ) throws {
         let store = TrainingRecordsStore.shared
         if let stale = store.data.activeWorkout {
-            _ = try? store.abortWorkout(completedAt: draftClosingTime(stale, now: startedAt))
+            // A draft from an earlier session holds work that was genuinely
+            // performed. If it cannot be filed away, this one does not open on
+            // top of it.
+            try store.abortWorkout(completedAt: draftClosingTime(stale, now: startedAt))
         }
         if let planned {
-            do {
-                try store.startPlannedWorkout(
-                    programId: planned.programId,
-                    plannedSessionId: planned.sessionId,
-                    startedAt: startedAt,
-                    sourceWorkoutId: sourceWorkoutId
-                )
-                return true
-            } catch {
-                return false
-            }
+            try store.startPlannedWorkout(
+                programId: planned.programId,
+                plannedSessionId: planned.sessionId,
+                startedAt: startedAt,
+                sourceWorkoutId: sourceWorkoutId
+            )
+            return
         }
-        do {
-            try store.startFreeWorkout(
+        if let carrying {
+            try store.startCarryingPrescription(
+                programId: carrying.programId,
+                plannedSessionId: carrying.sessionId,
                 exerciseIds: exerciseIds,
                 startedAt: startedAt,
                 sourceWorkoutId: sourceWorkoutId
             )
-            return true
-        } catch {
-            return false
+            return
         }
+        try store.startFreeWorkout(
+            exerciseIds: exerciseIds,
+            startedAt: startedAt,
+            sourceWorkoutId: sourceWorkoutId
+        )
     }
 
     /// When a stale draft is treated as having ended: now, or the moment of its

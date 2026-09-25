@@ -97,7 +97,7 @@ struct ExerciseCard: View {
                     .padding(.horizontal, 14)
             }
             .frame(maxWidth: .infinity)
-            .background(Theme.card)
+            .background { GradientCard(radius: Theme.Metrics.cardRadius, accent: Theme.primary, strength: 0.55) }
             .clipShape(
                 RoundedRectangle(cornerRadius: Theme.Metrics.cardRadius, style: .continuous)
             )
@@ -162,7 +162,7 @@ struct EquipmentGrid: View {
                             .frame(minHeight: 52)
                     }
                     .frame(maxWidth: .infinity)
-                    .background(Theme.card)
+                    .background { GradientCard(radius: Theme.Metrics.cardRadius, accent: Theme.primary, strength: checked ? 1 : 0.45) }
                     .clipShape(
                         RoundedRectangle(cornerRadius: Theme.Metrics.cardRadius, style: .continuous)
                     )

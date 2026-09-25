@@ -153,11 +153,7 @@ struct ProfileStepFlow: View {
                     FlowProgress(stage: index + 1, steps: steps.count)
                 }
             },
-            below: {
-                if !isStoryStep {
-                    ProfileTopPanel(step: step)
-                }
-            }
+            below: { EmptyView() }
         )
     }
 

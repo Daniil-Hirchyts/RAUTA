@@ -156,7 +156,7 @@ nonisolated enum PersistenceValidation {
             "generalWarmupSeconds", "specificWarmupSeconds", "workingSetSeconds",
             "restSeconds", "transitionSeconds", "totalSeconds",
         ]
-        guard seconds.allSatisfy({ finite(duration[$0], 0, 86_400) }),
+        guard seconds.allSatisfy({ finite(duration[$0], 0, MAX_SESSION_DURATION_SECONDS) }),
               let confidence = duration["confidence"]?.stringValue, confidences.contains(confidence)
         else { return false }
         return true
@@ -388,7 +388,7 @@ nonisolated enum PersistenceValidation {
             issues.append(TrainingPersistenceIssue(path: path, message: "invalid completed session"))
             return false
         }
-        if let duration = object["durationSeconds"], !finite(duration, 0, 86_400) {
+        if let duration = object["durationSeconds"], !finite(duration, 0, MAX_SESSION_DURATION_SECONDS) {
             issues.append(TrainingPersistenceIssue(path: path, message: "invalid completed session"))
             return false
         }

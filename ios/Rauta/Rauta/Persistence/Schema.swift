@@ -66,6 +66,14 @@ nonisolated struct PersistedCompletedExercise: Codable, Hashable, Sendable {
     var sets: [CompletedSet]
 }
 
+/// The longest span a recorded session's duration can be.
+///
+/// A day is not a training session. Past this the elapsed time between opening
+/// and closing the app says nothing about how long somebody trained, so it is
+/// recorded as unknown rather than as a number — and the validator refuses to
+/// store one.
+nonisolated let MAX_SESSION_DURATION_SECONDS: Double = 86_400
+
 nonisolated struct PersistedCompletedSession: Codable, Hashable, Sendable {
     /// Actual workout identity; never a planned-session ID.
     var id: String

@@ -132,7 +132,20 @@ struct WorkoutFormScreen: View {
         ZStack {
             RautaScreen(
                 title: workout == nil ? (focusMuscles == nil ? "New workout" : "Proposed workout") : "Edit workout",
-                onBack: store.navigation.pop
+                onBack: store.navigation.pop,
+                right: {
+                    // A workout RAUTA proposed, RAUTA can propose again.
+                    if focusMuscles != nil {
+                        AppMenuButton(label: "Workout actions", compact: true, mood: regenerating ? .working : .focused) {
+                            Button(action: regenerate) {
+                                Label("Try another workout", systemImage: "arrow.clockwise")
+                            }
+                            .disabled(regenerating || saving)
+                        }
+                    } else {
+                        RautaHeaderBadge(mood: .focused)
+                    }
+                }
             ) {
                 ScrollView {
                     VStack(spacing: 12) {
@@ -158,23 +171,13 @@ struct WorkoutFormScreen: View {
                 .pageScroll()
                 .swipeActionsContainer()
             } controls: {
-                HStack(spacing: 10) {
-                    if focusMuscles != nil {
-                        AppControlButton(
-                            systemImage: "arrow.clockwise",
-                            label: "Regenerate workout",
-                            isDisabled: regenerating || saving,
-                            action: regenerate
-                        )
-                    }
-                    AppButton(
-                        saveButtonTitle,
-                        size: .cta,
-                        isDisabled: exerciseIds.isEmpty || saving || regenerating,
-                        expands: true,
-                        action: save
-                    )
-                }
+                AppButton(
+                    saveButtonTitle,
+                    size: .cta,
+                    isDisabled: exerciseIds.isEmpty || saving || regenerating,
+                    expands: true,
+                    action: save
+                )
             }
 
             WorkoutDateCalendarModal(
@@ -188,6 +191,14 @@ struct WorkoutFormScreen: View {
             .zIndex(9)
         }
         .onAppear(perform: load)
+        .task {
+            guard focusMuscles != nil, workout == nil else { return }
+            try? await Task.sleep(for: .seconds(0.6))
+            RautaSpeech.shared.say(
+                "Here's what I'd do today. Tap me for another take.",
+                reaction: .wink
+            )
+        }
         .onDisappear { work?.cancel() }
     }
 
@@ -220,6 +231,7 @@ struct WorkoutFormScreen: View {
     private func regenerate() {
         guard let focusMuscles, !regenerating, !saving else { return }
         regenerating = true
+        RautaSpeech.shared.working("Trying another combination…")
         work = Task {
             defer { regenerating = false }
             do {
@@ -232,8 +244,13 @@ struct WorkoutFormScreen: View {
                 exerciseIds = proposal
                 issue = nil
                 Haptics.trigger(.medium)
+                RautaSpeech.shared.say("How about this one?", reaction: .wink)
             } catch is CancellationError {
-            } catch { capture(error) }
+                RautaSpeech.shared.hush()
+            } catch {
+                RautaSpeech.shared.hush()
+                capture(error)
+            }
         }
     }
 

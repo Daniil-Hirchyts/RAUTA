@@ -8,6 +8,19 @@ enum ActiveWorkoutOutcome: String, Sendable {
     case finished, cancelled
 }
 
+/// Whether a workout could be started, and if not, why not in plain words.
+enum WorkoutStartOutcome: Equatable {
+    case started
+    case refused(String)
+
+    var isStarted: Bool { self == .started }
+
+    var refusal: String? {
+        if case .refused(let reason) = self { return reason }
+        return nil
+    }
+}
+
 @MainActor
 @Observable
 final class ActiveWorkoutStore {
@@ -96,14 +109,54 @@ final class ActiveWorkoutStore {
 
     // MARK: Lifecycle
 
-    /// Opens a session for `workout`, or refuses when there is nothing to
-    /// perform or the structured draft could not be opened.
+    /// Opens a session for `workout`, or says why it will not.
+    ///
+    /// A refusal used to be a bare `false`, which left every caller to invent
+    /// its own guess at the reason. The reason is always known here, so it is
+    /// returned.
+    /// Whether `workout` came from a plan that has since been replaced. No plan
+    /// can take its session any more, but it is still a workout.
+    static func planWasReplaced(_ workout: Workout) -> Bool {
+        guard let planned = workout.planned else { return false }
+        return !ProgramRecords.isStartablePlannedSession(
+            TrainingRecordsStore.shared.data, planned.programId, planned.sessionId
+        )
+    }
+
+    /// Starts a workout from a replaced plan as a workout of its own. The link
+    /// to the old plan is let go — because the person asked to train it, never
+    /// as a silent fallback inside ``start(_:)`` — and is put back if the start
+    /// is refused.
     @discardableResult
-    func start(_ workout: Workout) -> Bool {
-        if workout.completion != nil { return false }
-        if session?.workoutId == workout.id { return true }
+    func startAsOwnWorkout(_ workout: Workout) -> WorkoutStartOutcome {
+        guard let planned = workout.planned, Self.planWasReplaced(workout) else { return start(workout) }
+        let workouts = WorkoutsStore.shared
+        workouts.updateWorkout(workout.id, .init(clearsPlanned: true))
+        guard let own = workouts.workout(workout.id) else {
+            return .refused("This workout is no longer here.")
+        }
+        let outcome = start(own, carrying: planned)
+        if !outcome.isStarted { workouts.updateWorkout(workout.id, .init(planned: planned)) }
+        return outcome
+    }
+
+    @discardableResult
+    func start(_ workout: Workout) -> WorkoutStartOutcome {
+        start(workout, carrying: nil)
+    }
+
+    private func start(_ workout: Workout, carrying prescription: PlannedWorkoutReference?) -> WorkoutStartOutcome {
+        if workout.completion != nil {
+            return .refused("This workout is already finished. Copy it to today to train it again.")
+        }
+        if session?.workoutId == workout.id { return .started }
+        if session != nil {
+            return .refused("Another workout is running. Finish it before starting this one.")
+        }
         let exerciseIds = workout.exerciseIds.filter { ExerciseCatalogue.has($0) }
-        if exerciseIds.isEmpty { return false }
+        if exerciseIds.isEmpty {
+            return .refused("This workout has no exercises yet. Add some first.")
+        }
 
         let now = ActiveWorkout.nowMillis()
         let date = CalendarDate.toISO(Date(timeIntervalSince1970: now / 1000))
@@ -116,21 +169,23 @@ final class ActiveWorkoutStore {
         do {
             try WorkoutTransition.recordStartIntent(shellWorkout, startedAtMs: now)
         } catch {
-            return false
+            return .refused(Self.message(error))
         }
 
         // Open the structured record before exposing a running session. A
         // planned workout whose program cannot be resolved must not silently
         // become a free workout or leave a shell session behind.
-        let draftStarted = TrainingSessionBridge.beginTrainingDraft(
-            exerciseIds: exerciseIds,
-            startedAt: ISOTime.string(fromMillis: now),
-            sourceWorkoutId: workout.id,
-            planned: workout.planned
-        )
-        guard draftStarted else {
+        do {
+            try TrainingSessionBridge.beginTrainingDraft(
+                exerciseIds: exerciseIds,
+                startedAt: ISOTime.string(fromMillis: now),
+                sourceWorkoutId: workout.id,
+                planned: workout.planned,
+                carrying: prescription
+            )
+        } catch {
             WorkoutTransition.settleWorkoutTransition()
-            return false
+            return .refused(Self.message(error))
         }
 
         setSession(
@@ -153,23 +208,107 @@ final class ActiveWorkoutStore {
             WorkoutsStore.shared.updateWorkout(workout.id, WorkoutsStore.WorkoutPatch(date: date))
         }
         WorkoutTransition.settleWorkoutTransition()
-        return true
+        return .started
     }
 
-    func finish() {
-        guard let session else { return }
+    /// Finishes the running session and says, from the records themselves,
+    /// whether it is saved.
+    ///
+    /// Nothing about this call is optimistic. The finish intent is written
+    /// first; if that write is refused, the session is left exactly as it was
+    /// and the refusal is returned. After the transition runs, the durable
+    /// records are read back: only once the draft is closed, the workout is
+    /// marked complete, and any logged sets are in history does this hand back
+    /// a receipt and clear the session. A failure keeps the draft, the shell and
+    /// the last set, so finishing can simply be tried again — the journal makes
+    /// the retry land on the same session rather than a second one.
+    @discardableResult
+    func finish() -> WorkoutFinishOutcome {
+        guard let session else {
+            return .failed("There is no workout to finish.")
+        }
+        let durationMs = ActiveWorkout.elapsedMs(session)
+        let records = TrainingRecordsStore.shared
+        let draft = records.data.activeWorkout
+        let draftStartedAt = draft?.startedAt
+        let loggedSets = draft?.exercises.reduce(0) { total, exercise in
+            total + exercise.sets.filter { $0.observation?.completed == true }.count
+        } ?? 0
+
         // Everything the finish will use is decided once and written down, so an
         // interruption resumes to exactly this result.
-        _ = try? WorkoutTransition.recordFinishIntent(
-            session, durationMs: ActiveWorkout.elapsedMs(session)
-        )
+        let intent: PersistedTransitionIntent
+        do {
+            intent = try WorkoutTransition.recordFinishIntent(session, durationMs: durationMs)
+        } catch {
+            return .failed(Self.message(error))
+        }
+
         // Both records close together: the legacy workout keeps duration,
         // calories and which exercises were checked off, while the structured
         // session keeps the sets that were really performed.
-        WorkoutTransition.recoverWorkoutTransition()
+        var draftFailure: String?
+        WorkoutTransition.recoverWorkoutTransition(draftFailure: &draftFailure)
+
+        // A refused write used to be swallowed here, so a finish could report
+        // success that history never received. It is the whole answer now.
+        if let draftFailure {
+            return .failed("\(draftFailure) Nothing you logged is lost — try finishing again.")
+        }
+
+        if let reason = WorkoutTransition.unfinishedFinishReason(
+            workoutId: session.workoutId,
+            expectedStructuredSession: loggedSets > 0,
+            sessionId: intent.sessionId,
+            draftStartedAt: draftStartedAt
+        ) {
+            return .failed("\(reason) Nothing you logged is lost — try finishing again.")
+        }
+
+        let recorded = WorkoutTransition.recordedSession(
+            sessionId: intent.sessionId,
+            workoutId: session.workoutId,
+            startedAt: draftStartedAt
+        )
+        let completion = WorkoutsStore.shared.workout(session.workoutId)?.completion
+        let receipt = WorkoutReceipt(
+            sessionId: recorded?.id,
+            workoutId: session.workoutId,
+            workoutName: session.workoutName,
+            completedAt: intent.completedAt ?? intent.recordedAt,
+            durationMs: intent.legacy?.durationMs ?? durationMs,
+            exercisesRecorded: Self.recordedExerciseCount(recorded, session: session),
+            exercisesPlanned: session.exerciseIds.count,
+            setsRecorded: recorded?.exercises.reduce(0) { total, exercise in
+                total + exercise.sets.filter(\.completed).count
+            } ?? 0,
+            isComplete: (recorded?.status ?? intent.status) == .completed,
+            healthSyncPending: completion?.healthSyncStatus == .pending
+        )
+
         setSession(nil, outcome: .finished)
         RestAlerts.shared.cancel()
         WorkoutTransition.settleWorkoutTransition()
+        return .saved(receipt)
+    }
+
+    /// Exercises the session can honestly claim: those holding a recorded set,
+    /// plus any checked off by hand that hold none.
+    private static func recordedExerciseCount(
+        _ recorded: PersistedCompletedSession?,
+        session: ActiveWorkoutSession
+    ) -> Int {
+        var ids = Set(
+            (recorded?.exercises ?? [])
+                .filter { $0.sets.contains(where: \.completed) }
+                .map(\.exerciseId)
+        )
+        ids.formUnion(session.completedIds)
+        return ids.intersection(session.exerciseIds).count
+    }
+
+    private static func message(_ error: Error) -> String {
+        (error as? TrainingPersistenceError)?.message ?? error.localizedDescription
     }
 
     func cancel() {
@@ -211,6 +350,34 @@ final class ActiveWorkoutStore {
             deadline: Date(timeIntervalSince1970: deadlineMs / 1_000),
             exerciseName: exerciseName
         )
+    }
+
+    /// Pushes the shared rest deadline out by `seconds`.
+    ///
+    /// The deadline is the one the local alert, the Live Activity, the Watch
+    /// and every on-screen timer read, so moving it here moves all of them.
+    func extendRest(by seconds: TimeInterval, exerciseName: String?) {
+        guard var current = session, let restUntil = current.restUntil else { return }
+        let now = ActiveWorkout.nowMillis()
+        // Extending an already-expired rest starts the extra time from now
+        // rather than from a deadline in the past.
+        let deadlineMs = Swift.max(restUntil, now) + Swift.max(1, seconds.rounded()) * 1_000
+        current.restUntil = deadlineMs
+        current.setPhaseStartedAt = deadlineMs
+        mutate { session = current }
+        RestAlerts.shared.schedule(
+            deadline: Date(timeIntervalSince1970: deadlineMs / 1_000),
+            exerciseName: exerciseName
+        )
+    }
+
+    /// Ends rest now. It records nothing: a set is logged by logging it.
+    func endRest() {
+        guard var current = session, current.restUntil != nil else { return }
+        current.restUntil = nil
+        current.setPhaseStartedAt = ActiveWorkout.nowMillis()
+        mutate { session = current }
+        RestAlerts.shared.cancel()
     }
 
     func setCurrentExercise(_ exerciseId: String) {

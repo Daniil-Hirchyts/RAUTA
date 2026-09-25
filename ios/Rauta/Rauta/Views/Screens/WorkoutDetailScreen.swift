@@ -82,9 +82,13 @@ struct WorkoutDetailScreen: View {
         guard let workout, !isPast, !plannedUnavailable else { return false }
         return workout.planned == nil || !hasAnotherActiveWorkout
     }
-    private var canDeleteWorkout: Bool { canEditWorkout }
+    /// A workout from a replaced plan can still be trained or cleared away;
+    /// only editing it as part of that plan is closed.
+    private var canDeleteWorkout: Bool {
+        canEditWorkout || (plannedUnavailable && !isPast && session == nil)
+    }
     private var canStartWorkout: Bool {
-        !isPast && !plannedUnavailable && store.activeWorkout.session == nil
+        !isPast && store.activeWorkout.session == nil
     }
     var body: some View {
         ZStack {
@@ -138,6 +142,7 @@ struct WorkoutDetailScreen: View {
             WorkoutActivityShareView(text: payload.text)
         }
         .onAppear(perform: publishCompanionActions)
+        .task(id: workoutId) { await explainReplacedPlan() }
         .onChange(of: companionActionSignature) { _, _ in
             publishCompanionActions()
         }
@@ -353,21 +358,46 @@ struct WorkoutDetailScreen: View {
 
     private func start() {
         guard let workout else { return }
-        if !store.activeWorkout.start(workout) {
-            issue = "This workout could not be started. Finish the current session or refresh its plan."
+        let outcome = plannedUnavailable
+            ? store.activeWorkout.startAsOwnWorkout(workout)
+            : store.activeWorkout.start(workout)
+        if let refusal = outcome.refusal {
+            issue = refusal
         } else {
             tab = 0
             Haptics.trigger(.success)
         }
     }
 
+    /// Workouts RAUTA has already explained this launch, so opening one again
+    /// is not a lecture.
+    private static var explained: Set<String> = []
+
+    /// Why this workout reads differently, once: its plan was replaced, and
+    /// RAUTA will still run it.
+    private func explainReplacedPlan() async {
+        guard plannedUnavailable, !isPast, session == nil, !Self.explained.contains(workoutId) else { return }
+        try? await Task.sleep(for: .seconds(0.6))
+        guard !Task.isCancelled else { return }
+        Self.explained.insert(workoutId)
+        RautaSpeech.shared.say(
+            "This one's from a plan you replaced. I can still run it as a one-off — tap me.",
+            reaction: .peek
+        )
+    }
+
     private func duplicate() {
+        RautaSpeech.shared.working("Copying it to today…")
         Task {
             do {
                 let id = try await EngineWorkout.duplicateWithEngine(workoutId, date: CalendarDate.today)
                 onReplaceWorkout?(id)
                 Haptics.trigger(.success)
-            } catch { capture(error) }
+                RautaSpeech.shared.say("It's on today. Start it whenever you're ready.", reaction: .wink)
+            } catch {
+                RautaSpeech.shared.hush()
+                capture(error)
+            }
         }
     }
 
@@ -689,6 +719,7 @@ struct ActiveExerciseDrawer: View {
     let onFinish: () -> Void
     let onDismiss: () -> Void
     @State private var revealDetails = false
+    @State private var resting = false
     // `.ignoresSafeArea()` below zeroes out the geometry proxy's own
     // safeAreaInsets, so the top clearance comes from the app-wide value
     // captured before anything here started ignoring the safe area.
@@ -777,39 +808,6 @@ struct ActiveExerciseDrawer: View {
                     store.favorites.toggleFavorite(exercise.id)
                 }
 
-                Menu {
-                    Button {
-                        Haptics.trigger(.selection)
-                        if store.activeWorkout.session?.runningSince == nil {
-                            store.activeWorkout.resume()
-                        } else {
-                            store.activeWorkout.pause()
-                        }
-                    } label: {
-                        Label(
-                            store.activeWorkout.session?.runningSince == nil ? "Resume workout" : "Pause workout",
-                            systemImage: store.activeWorkout.session?.runningSince == nil ? "play.fill" : "pause.fill"
-                        )
-                    }
-                    Button {
-                        onFinishExercise()
-                    } label: {
-                        Label("Finish exercise", systemImage: "flag.checkered")
-                    }
-                    Button {
-                        onFinish()
-                    } label: {
-                        Label("Finish workout", systemImage: "flag.checkered")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 19, weight: .bold))
-                        .foregroundStyle(Theme.foreground)
-                        .frame(width: 36, height: 36)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Workout actions")
             }
             .padding(.horizontal, Theme.Metrics.contentInset)
             .padding(.top, 18)
@@ -827,6 +825,12 @@ struct ActiveExerciseDrawer: View {
                 .padding(.horizontal, Theme.Metrics.contentInset)
                 .padding(.bottom, Swift.max(proxy.safeAreaInsets.bottom, 14))
         }
+        // RAUTA keeps the workout: it holds its actions and keeps the rest.
+        .overlay(alignment: .topTrailing) {
+            playerRauta
+                .padding(.top, Swift.max(appSafeAreaInsets.top, 18) + 2)
+                .padding(.trailing, Theme.Metrics.contentInset + 4)
+        }
         .background {
             ZStack {
                 Theme.background
@@ -841,9 +845,71 @@ struct ActiveExerciseDrawer: View {
         }
     }
 
+    private var paused: Bool { store.activeWorkout.session?.runningSince == nil }
+
+    private var playerRauta: some View {
+        // Quiet here: the rest ring and RAUTA's face say enough while you
+        // train, and its menu is one tap away.
+        AppMenuButton(label: "Workout actions", compact: true, mood: resting ? .calm : .focused, speaks: false) {
+            Button {
+                Haptics.trigger(.selection)
+                paused ? store.activeWorkout.resume() : store.activeWorkout.pause()
+            } label: {
+                Label(paused ? "Resume workout" : "Pause workout", systemImage: paused ? "play.fill" : "pause.fill")
+            }
+            Button(action: onFinishExercise) {
+                Label(hasNextExercise ? "Next exercise" : "Finish exercise", systemImage: "forward.end.fill")
+            }
+            Button(action: onFinish) {
+                Label("Finish workout", systemImage: "flag.checkered")
+            }
+        }
+        .background { RestRing(until: session.restUntil, total: restSeconds) }
+        .task(id: store.activeWorkout.session?.restUntil) { await followRest() }
+    }
+
+    /// Resting while the deadline is ahead; RAUTA eases off until it passes.
+    private func followRest() async {
+        guard let until = store.activeWorkout.session?.restUntil else {
+            resting = false
+            return
+        }
+        let remaining = until / 1_000 - Date().timeIntervalSince1970
+        guard remaining > 0 else {
+            resting = false
+            return
+        }
+        resting = true
+        try? await Task.sleep(for: .seconds(remaining))
+        if !Task.isCancelled { resting = false }
+    }
+
     private var trainedMusclesText: String {
         let labels = exercise.muscles.map(\.label)
         return labels.isEmpty ? "Full body" : labels.joined(separator: " · ")
+    }
+}
+
+/// The rest, drawn around RAUTA and running out as it ends: the one keeping
+/// the timer wears it.
+private struct RestRing: View {
+    let until: Double?
+    let total: Double
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.2)) { context in
+            let remaining = until.map { $0 / 1_000 - context.date.timeIntervalSince1970 } ?? 0
+            let fraction = total > 0 ? min(1, max(0, remaining / total)) : 0
+            Circle()
+                .trim(from: 0, to: fraction)
+                .stroke(Theme.primary, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .frame(width: 52, height: 52)
+                .opacity(fraction > 0 ? 1 : 0)
+                .animation(.linear(duration: 0.2), value: fraction)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
@@ -1286,7 +1352,7 @@ private struct WorkoutExerciseRow: View {
             }
         }
         .contentShape(Rectangle())
-        .background(Theme.card)
+        .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.primary, strength: 0.6) }
         .clipShape(
             RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
         )

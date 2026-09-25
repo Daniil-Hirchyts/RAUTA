@@ -143,6 +143,11 @@ final class RautaDirector {
             line: response.line, at: Date()
         )
         if let glow = cue.afterglow { setAfterglow(glow.mood, for: glow.seconds) }
+        // RAUTA says what it saw. Coming back to the app is answered with what
+        // to do next instead, which the main screen works out.
+        if cue != .welcomeBack {
+            RautaSpeech.shared.say(Self.spoken(response.line, for: cue), reaction: nil)
+        }
 
         if stage.isEmpty {
             unanswered = beat
@@ -150,6 +155,20 @@ final class RautaDirector {
             unanswered = nil
             beats.send(beat)
         }
+    }
+
+    /// A saved set starts the rest, so RAUTA says how long it is: the person
+    /// hears the timer from the one keeping it.
+    private static func spoken(_ line: String, for cue: RautaCue) -> String {
+        guard !line.isEmpty, cue == .setSaved || cue == .hardSetSaved,
+              let restUntil = ActiveWorkoutStore.shared.session?.restUntil
+        else { return line }
+        let seconds = Int(((restUntil - Date().timeIntervalSince1970 * 1000) / 1000).rounded())
+        guard seconds > 0 else { return line }
+        let clock = seconds >= 60
+            ? "\(seconds / 60):\(String(format: "%02d", seconds % 60))"
+            : "\(seconds) s"
+        return "\(line) Rest \(clock)."
     }
 
     /// The beat a character arriving on stage should still answer, if any.

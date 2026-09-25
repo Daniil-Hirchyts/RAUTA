@@ -73,6 +73,45 @@ nonisolated enum WorkoutDrafts {
         )
     }
 
+    /// A draft made from a planned session, cut loose from its plan: the
+    /// workout's own exercises in its order, each keeping the prescription it
+    /// had — set types, sides, targets — and nothing that points back at the
+    /// plan. Used when the plan was replaced and the person trains the session
+    /// anyway, so it cannot be counted against a plan that no longer runs.
+    static func detachedFromPlan(
+        _ draft: PersistedActiveWorkoutDraft,
+        exerciseIds: [String],
+        makeId: PersistenceIdFactory,
+        exerciseNameSnapshot: ((String) -> String?)?
+    ) -> PersistedActiveWorkoutDraft {
+        let prescribed = Dictionary(
+            draft.exercises.map { ($0.exerciseId, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        var detached = draft
+        detached.plannedProgramId = nil
+        detached.plannedSessionId = nil
+        detached.exercises = exerciseIds.map { exerciseId in
+            guard var exercise = prescribed[exerciseId] else {
+                return PersistedActiveExerciseDraft(
+                    id: makeId(.exercise),
+                    exerciseId: exerciseId,
+                    plannedExerciseId: nil,
+                    exerciseNameSnapshot: exerciseNameSnapshot?(exerciseId),
+                    sets: []
+                )
+            }
+            exercise.plannedExerciseId = nil
+            exercise.sets = exercise.sets.map { set in
+                var set = set
+                set.plannedSetId = nil
+                return set
+            }
+            return exercise
+        }
+        return detached
+    }
+
     struct FreeDraftInput {
         var draftId: String
         var startedAt: String
@@ -240,6 +279,12 @@ nonisolated enum WorkoutDrafts {
             throw TrainingPersistenceError("Complete at least one set before saving")
         }
 
+        // A session somebody left open overnight has a span, not a training
+        // duration. Rather than refuse to record the sets that were genuinely
+        // performed — or invent a plausible number for the hours in between —
+        // the work is kept and the duration is left unknown. The raw
+        // timestamps are untouched either way.
+        let span = (completedAtMillis - startedAtMillis) / 1000
         return PersistedCompletedSession(
             id: sessionId,
             sourceWorkoutId: draft.sourceWorkoutId,
@@ -247,7 +292,7 @@ nonisolated enum WorkoutDrafts {
             plannedSessionId: draft.plannedSessionId,
             startedAt: draft.startedAt,
             completedAt: completedAt,
-            durationSeconds: (completedAtMillis - startedAtMillis) / 1000,
+            durationSeconds: span <= MAX_SESSION_DURATION_SECONDS ? span : nil,
             status: status,
             exercises: exercises
         )

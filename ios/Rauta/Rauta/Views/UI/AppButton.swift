@@ -40,7 +40,7 @@ struct AppButton<Label: View>: View {
     var action: () -> Void
     @ViewBuilder var label: () -> Label
 
-    @State private var shakePhase = 0
+    @State private var shakePhase: CGFloat = 0
 
     private var tone: GlassTone {
         if isDisabled { return .inert }
@@ -148,13 +148,16 @@ extension AppButton where Label == Text {
 }
 
 /// A short horizontal refusal, three swings and out.
+///
+/// The phase is fractional because the swing lives in its fractional part:
+/// rounding it to a whole number left the button standing still.
 nonisolated struct ShakeEffect: GeometryEffect {
-    var phase: Int
+    var phase: CGFloat
     var amplitude: CGFloat = 6
 
     var animatableData: CGFloat {
-        get { CGFloat(phase) }
-        set { phase = Int(newValue.rounded()) }
+        get { phase }
+        set { phase = newValue }
     }
 
     func effectValue(size: CGSize) -> ProjectionTransform {
@@ -217,6 +220,8 @@ struct AppHeaderButton: View {
 struct AppMenuButton<MenuContent: View>: View {
     var label: String
     var compact = false
+    var mood: RautaMood = .focused
+    var speaks = true
     @ViewBuilder var menu: () -> MenuContent
     @State private var isPresented = false
     @State private var reactionKey = ""
@@ -229,9 +234,9 @@ struct AppMenuButton<MenuContent: View>: View {
 
     @ViewBuilder private var trigger: some View {
         if compact {
-            RautaHeaderBadge(mood: .focused, reactionKey: reactionKey, onActivate: openMenu)
+            RautaHeaderBadge(mood: mood, reactionKey: reactionKey, onActivate: openMenu, speaks: speaks)
         } else {
-            RautaCharacter(mood: .focused, reactionKey: reactionKey, onActivate: openMenu)
+            RautaCharacter(mood: mood, reactionKey: reactionKey, onActivate: openMenu)
                 .frame(width: 72, height: 72)
                 .frame(width: 60, height: 52)
                 .contentShape(Circle())
@@ -240,6 +245,7 @@ struct AppMenuButton<MenuContent: View>: View {
 
     private func openMenu() {
         Haptics.trigger(.selection)
+        RautaSpeech.shared.hush()
         // The character reacts as the thought leaves it.
         reactionKey = UUID().uuidString
         isPresented = true
@@ -278,6 +284,7 @@ struct AppMenuRowButtonStyle: ButtonStyle {
             .font(Theme.sans(16, weight: .medium))
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 12)
+            .padding(.trailing, 6)
             .frame(minHeight: 44)
             .contentShape(Rectangle())
             .background(

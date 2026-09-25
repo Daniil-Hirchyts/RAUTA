@@ -193,9 +193,10 @@ struct ProfileGoalControl: View {
     }
 }
 
-/// RAUTA's line for a profile step, carried under the step's title, and the
-/// badge it speaks from.
-struct ProfileTopPanel: View {
+/// RAUTA's line for a profile step, and the header character that says it.
+/// The line is spoken as the step opens and folds away once read; tapping
+/// RAUTA says it again.
+struct ProfileTopPanel {
     private let store = AppStore.shared
     var step: ProfileStep
     private var speech: String {
@@ -241,17 +242,19 @@ struct ProfileTopPanel: View {
         case .ready: return .celebrate
         }
     }
-    var body: some View {
-        Text(speech).font(Theme.sans(15, weight: .semibold)).tracking(-0.3).lineSpacing(2)
-            .foregroundStyle(Theme.foreground).multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity).padding(.horizontal, 40).padding(.top, 6)
-    }
-
     var headerBadge: some View {
         RautaHeaderBadge(
             mood: mood,
             reactionKey: step.rawValue,
-            reaction: reaction
+            reaction: reaction,
+            onActivate: { RautaSpeech.shared.say(speech, reaction: nil) }
         )
+        .task(id: step) {
+            // Once the step has slid in, so the line drops from a RAUTA that
+            // is already in place.
+            try? await Task.sleep(for: .seconds(0.55))
+            guard !Task.isCancelled else { return }
+            RautaSpeech.shared.say(speech, reaction: nil)
+        }
     }
 }

@@ -160,14 +160,19 @@ enum WorkoutTransition {
 
     /// Closes the draft under the identity and instant the intent fixed, so a
     /// replay lands on the same session rather than adding another.
-    private static func applyDraft(_ recovery: TransitionRecovery) {
+    ///
+    /// - Returns: why the draft could not be closed, when it could not. This
+    ///   used to be discarded, which is how a finish could report success while
+    ///   history never received the session — the caller needs it to tell the
+    ///   truth.
+    private static func applyDraft(_ recovery: TransitionRecovery) -> String? {
         let store = TrainingRecordsStore.shared
-        guard let draft = store.data.activeWorkout else { return }
+        guard let draft = store.data.activeWorkout else { return nil }
         if recovery.draft == .discard {
-            try? store.cancelWorkout()
-            return
+            do { try store.cancelWorkout() } catch { return message(error) }
+            return nil
         }
-        guard recovery.draft == .close else { return }
+        guard recovery.draft == .close else { return nil }
 
         let hasObservations = draft.exercises.contains { exercise in
             exercise.sets.contains { $0.observation?.completed == true }
@@ -175,20 +180,33 @@ enum WorkoutTransition {
         // Nothing performed leaves no structured session at all, whatever the
         // intent hoped for: an interrupted finish must not become fiction.
         guard hasObservations else {
-            try? store.cancelWorkout()
-            return
+            do { try store.cancelWorkout() } catch { return message(error) }
+            return nil
         }
 
         let coverageComplete = TrainingSessionBridge.activePlannedCoverage()?.complete ?? true
         let status: CompletedSession.Status = (recovery.close?.status == .completed && coverageComplete)
             ? .completed
             : .partial
-        _ = try? store.completeWorkout(
-            status: status,
-            completedAt: recovery.close?.completedAt
-                ?? TrainingSessionBridge.draftClosingTime(draft),
-            sessionId: recovery.close?.sessionId
-        )
+        do {
+            _ = try store.completeWorkout(
+                status: status,
+                completedAt: recovery.close?.completedAt
+                    ?? TrainingSessionBridge.draftClosingTime(draft),
+                sessionId: recovery.close?.sessionId
+            )
+        } catch {
+            return message(error)
+        }
+        return nil
+    }
+
+    private static func message(_ error: Error) -> String {
+        if let error = error as? TrainingPersistenceError { return error.message }
+        if let error = error as? TrainingPersistenceValidationError {
+            return error.issues.first?.message ?? "This session could not be recorded."
+        }
+        return error.localizedDescription
     }
 
     /// Finishes whatever transition was in flight when the app stopped. Returns
@@ -197,6 +215,21 @@ enum WorkoutTransition {
     static func recoverWorkoutTransition(
         shellWorkoutId: String? = nil,
         shellStartedAtMs: Double? = nil
+    ) -> TransitionRecovery {
+        var ignored: String?
+        return recoverWorkoutTransition(
+            shellWorkoutId: shellWorkoutId,
+            shellStartedAtMs: shellStartedAtMs,
+            draftFailure: &ignored
+        )
+    }
+
+    /// The same, reporting any write the draft half refused.
+    @discardableResult
+    static func recoverWorkoutTransition(
+        shellWorkoutId: String? = nil,
+        shellStartedAtMs: Double? = nil,
+        draftFailure: inout String?
     ) -> TransitionRecovery {
         let store = TrainingRecordsStore.shared
         let intent = store.data.transition
@@ -221,8 +254,14 @@ enum WorkoutTransition {
                 workout.id, WorkoutsStore.WorkoutPatch(date: shell.workoutDate)
             )
         }
+        // The structured record goes first. If it refuses, the workout is not
+        // yet marked complete, the running session is untouched, and finishing
+        // can simply be tried again — which is what a failure has to leave
+        // behind. Doing it the other way round completes the workout, which
+        // ends the session out from under a finish that did not happen.
+        draftFailure = applyDraft(recovery)
+        guard draftFailure == nil else { return recovery }
         applyLegacy(recovery)
-        applyDraft(recovery)
 
         return recovery
     }
@@ -230,5 +269,46 @@ enum WorkoutTransition {
     /// Clears the journal entry for a transition that ran to completion.
     static func settleWorkoutTransition() {
         try? TrainingRecordsStore.shared.clearTransition()
+    }
+
+    /// The structured session a finish wrote, looked for the same way recovery
+    /// decides a finish is already written.
+    ///
+    /// Nil is a real answer: a session where nothing was logged writes no
+    /// structured record at all, because inventing one would be fiction.
+    static func recordedSession(
+        sessionId: String?,
+        workoutId: String,
+        startedAt: String?
+    ) -> PersistedCompletedSession? {
+        let sessions = TrainingRecordsStore.shared.data.sessions
+        if let sessionId, let match = sessions.first(where: { $0.id == sessionId }) { return match }
+        guard let startedAt else { return nil }
+        return sessions.first { $0.sourceWorkoutId == workoutId && $0.startedAt == startedAt }
+    }
+
+    /// Whether a finish that has run left every record it promised.
+    ///
+    /// Returns the reason it did not, so the player can say something true
+    /// instead of closing on a save that never happened.
+    static func unfinishedFinishReason(
+        workoutId: String,
+        expectedStructuredSession: Bool,
+        sessionId: String?,
+        draftStartedAt: String?
+    ) -> String? {
+        if TrainingRecordsStore.shared.data.activeWorkout != nil {
+            return "The session is still open, so nothing was filed away yet."
+        }
+        if let workout = WorkoutsStore.shared.workout(workoutId), workout.completion == nil {
+            return "This workout is not marked complete yet."
+        }
+        if expectedStructuredSession,
+           recordedSession(
+               sessionId: sessionId, workoutId: workoutId, startedAt: draftStartedAt
+           ) == nil {
+            return "Your logged sets have not reached your training history yet."
+        }
+        return nil
     }
 }

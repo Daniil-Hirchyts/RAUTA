@@ -5,12 +5,17 @@ struct SettingsScreen: View {
     private let store = AppStore.shared
     @State private var clearing = false
     @State private var importing = false
-    @State private var notice: String?
     @State private var connectingHealth = false
+    /// A backup the person asked for, which RAUTA reports on when it lands.
+    @State private var backupRequested = false
 
     var body: some View {
         ZStack {
-            RautaScreen(title: "Settings", onBack: store.navigation.pop) {
+            RautaScreen(title: "Settings", onBack: store.navigation.pop, right: {
+                // RAUTA does the connecting, the backing up and the restoring
+                // here, and says how each one went.
+                RautaHeaderBadge(mood: .focused)
+            }) {
                 ScrollView {
                     VStack(spacing: 24) {
                         section("Training profile") {
@@ -27,10 +32,6 @@ struct SettingsScreen: View {
 
                         section("Apple Health") {
                             settingsRow(title: "Apple Health", detail: healthConnectionDescription, icon: "apple.logo", showsDivider: true) {
-                                if connectingHealth {
-                                    MatrixLoader(variant: .pulse, label: "Connecting to Apple Health")
-                                        .frame(width: 20, height: 20)
-                                }
                                 AppSwitch(
                                     // Holds on while the permission sheet is up, so the
                                     // system switch does not flick back off under it.
@@ -121,10 +122,7 @@ struct SettingsScreen: View {
                         section("Data & Storage") {
                             settingsRow(title: "iCloud backup", detail: iCloudDescription, icon: "icloud", showsDivider: true) {
                                 switch store.iCloud.status {
-                                case .checking, .syncing:
-                                    MatrixLoader(variant: .pulse, label: "Syncing iCloud backup")
-                                        .frame(width: 20, height: 20)
-                                case .unavailable:
+                                case .checking, .syncing, .unavailable:
                                     EmptyView()
                                 case .synced, .error:
                                     Button(action: syncICloud) {
@@ -172,20 +170,12 @@ struct SettingsScreen: View {
                                     .monospacedDigit()
                             }
                         }
-
-                        if let notice {
-                            Text(notice)
-                                .font(Theme.sans(14))
-                                .foregroundStyle(Theme.mutedForeground)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 8)
-                                .frame(maxWidth: .infinity)
-                        }
                     }
                     .padding(.horizontal, Theme.Metrics.contentInset)
                     .padding(.bottom, 24)
                 }
                 .pageScroll()
+                .onChange(of: store.iCloud.status) { _, status in reportBackup(status) }
             }
 
             ConfirmModal(kind: clearing ? .clearData : nil, onCancel: { clearing = false }, onConfirm: clearData)
@@ -329,7 +319,7 @@ struct SettingsScreen: View {
                 .padding(.horizontal, 4)
 
             VStack(spacing: 0) { content() }
-                .background(Theme.card)
+                .background { GradientCard(radius: 24, accent: Theme.primary, strength: 0.6) }
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                 .shadow(color: .black.opacity(0.10), radius: 3, y: 1)
         }
@@ -446,7 +436,7 @@ struct SettingsScreen: View {
         }
 
         connectingHealth = true
-        notice = nil
+        RautaSpeech.shared.working("Asking Apple Health for access…")
         Task { @MainActor in
             let result = await HealthService.shared.requestAccess()
             connectingHealth = false
@@ -459,9 +449,15 @@ struct SettingsScreen: View {
                     $0.healthLastConnectedAt = ISOTime.now()
                 }
                 if let bodyWeightKg {
-                    notice = "Apple Health connected. Using \(Resistance.formatKg(bodyWeightKg)) kg for energy estimates."
+                    RautaSpeech.shared.say(
+                        "Apple Health is connected. I'll use \(Resistance.formatKg(bodyWeightKg)) kg for energy estimates.",
+                        reaction: .celebrate
+                    )
                 } else {
-                    notice = "Apple Health connected. Weight access is optional; energy uses a standard estimate."
+                    RautaSpeech.shared.say(
+                        "Apple Health is connected. Without your weight I'll use a standard energy estimate.",
+                        reaction: .celebrate
+                    )
                 }
                 Haptics.trigger(.success)
             case .unavailable:
@@ -470,7 +466,7 @@ struct SettingsScreen: View {
                     $0.healthStatus = .unavailable
                     $0.healthBodyWeightKg = nil
                 }
-                notice = "Apple Health is available in the iPhone app."
+                RautaSpeech.shared.say("Apple Health only works in the iPhone app.", reaction: .frustrated)
                 Haptics.trigger(.warning)
             }
         }
@@ -478,7 +474,28 @@ struct SettingsScreen: View {
 
     private func syncICloud() {
         Haptics.trigger(.light)
-        if store.iCloud.syncNow() { Haptics.trigger(.success) }
+        guard store.iCloud.syncNow() else { return }
+        backupRequested = true
+        RautaSpeech.shared.working("Backing everything up to iCloud…")
+    }
+
+    /// How the backup the person asked for went, once it has.
+    private func reportBackup(_ status: ICloudSync.Status) {
+        guard backupRequested else { return }
+        switch status {
+        case .synced:
+            backupRequested = false
+            Haptics.trigger(.success)
+            RautaSpeech.shared.say("All backed up to iCloud.", reaction: .celebrate)
+        case .error, .unavailable:
+            backupRequested = false
+            RautaSpeech.shared.say(
+                "The backup didn't go through. \(store.iCloud.error ?? "Check that you're signed in to iCloud.")",
+                reaction: .frustrated
+            )
+        case .checking, .syncing:
+            break
+        }
     }
 
     private func importBackup(_ result: Result<URL, Error>) {
@@ -487,11 +504,14 @@ struct SettingsScreen: View {
             let scoped = url.startAccessingSecurityScopedResource()
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
             try AppBackup.importBackup(String(contentsOf: url, encoding: .utf8))
-            notice = "Backup restored. Your workouts, favorites and presets are back."
+            RautaSpeech.shared.say("Backup restored. Your workouts, favorites and presets are back.", reaction: .celebrate)
             Haptics.trigger(.success)
         } catch {
-            notice = (error as? TrainingPersistenceError)?.message
-                ?? "That file is not a RAUTA backup. Pick the .json file this app exported."
+            RautaSpeech.shared.say(
+                (error as? TrainingPersistenceError)?.message
+                    ?? "That file isn't a RAUTA backup. Pick the .json file this app exported.",
+                reaction: .frustrated
+            )
             Haptics.trigger(.warning)
         }
     }

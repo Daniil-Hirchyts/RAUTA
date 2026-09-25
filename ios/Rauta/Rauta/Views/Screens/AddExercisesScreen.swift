@@ -19,6 +19,8 @@ struct AddExercisesScreen: View {
     @State private var resultsMemo = Memo<ExerciseBrowseQuery, [ExerciseSummary]>()
     /// A workout being proposed, off the main actor.
     @State private var proposal: Task<Void, Never>?
+    /// RAUTA's working scene, up while a proposal takes longer than a blink.
+    @State private var thinking = false
 
     private static let zoomPrefix = "picker"
 
@@ -59,6 +61,18 @@ struct AddExercisesScreen: View {
             }
         } controls: {
             controls
+        }
+        .overlay {
+            if thinking {
+                let inputs = ThinkingInputs.workout(
+                    muscles: store.filters.selectedMuscles,
+                    equipmentCount: store.filters.selectedEquipment.count
+                )
+                RautaThinkingStage(thoughts: inputs.thoughts, chips: inputs.chips)
+                    .background(AppPageBackground().ignoresSafeArea())
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+            }
         }
         .exerciseFilterPage(
             state: $browse,
@@ -205,8 +219,16 @@ struct AddExercisesScreen: View {
     private func buildWorkoutWithRauta() {
         guard proposal == nil else { return }
         let focus = store.filters.selectedMuscles
+        RautaSpeech.shared.hush()
+        Task {
+            try? await Task.sleep(for: .milliseconds(250))
+            if proposal != nil { withAnimation(.easeOut(duration: 0.25)) { thinking = true } }
+        }
         proposal = Task {
-            defer { proposal = nil }
+            defer {
+                proposal = nil
+                withAnimation(.easeOut(duration: 0.2)) { thinking = false }
+            }
             do {
                 let exerciseIds = try await EngineWorkout.propose(
                     date: CalendarDate.today,
@@ -215,15 +237,25 @@ struct AddExercisesScreen: View {
                 )
                 guard !exerciseIds.isEmpty else {
                     Haptics.trigger(.warning)
+                    RautaSpeech.shared.say(
+                        "Nothing fits those muscles with this equipment. Widen the filters and ask me again.",
+                        reaction: .frustrated
+                    )
                     return
                 }
                 Haptics.trigger(.medium)
+                RautaSpeech.shared.hush()
                 store.navigation.push(
                     .workoutForm(exerciseIds: exerciseIds, workoutId: nil, engineFocusMuscles: focus)
                 )
             } catch is CancellationError {
+                RautaSpeech.shared.hush()
             } catch {
                 Haptics.trigger(.warning)
+                RautaSpeech.shared.say(
+                    "I couldn't build that one. \((error as? TrainingPersistenceError)?.message ?? "Try again in a moment.")",
+                    reaction: .frustrated
+                )
             }
         }
     }

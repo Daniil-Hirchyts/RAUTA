@@ -373,7 +373,9 @@ struct ExerciseBrowseEmptyState: View {
 
     var body: some View {
         EmptyStatePlaceholder(
-            systemImage: query.isEmpty && favoritesEmpty ? "heart" : "magnifyingglass",
+            // Puzzled by a search that found nothing; curious about favorites
+            // that are still to come.
+            mood: query.isEmpty && state.favoritesOnly ? .curious : .confused,
             title: title,
             message: message,
             actionTitle: actionTitle,

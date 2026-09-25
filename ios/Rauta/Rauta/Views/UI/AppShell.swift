@@ -2,33 +2,31 @@ import Combine
 import SwiftUI
 import UIKit
 
-/// The frame owns the rounded app surface and its command row. Content remains
-/// visually stable while compact controls can use Liquid Glass above it.
+/// The page and its command row. The page runs edge to edge like any other
+/// app, and the commands float over its foot in Liquid Glass.
 struct AppShell<Content: View, Controls: View>: View {
     var commandsVisible: Bool
-    var fullScreen = false
     @ViewBuilder var content: () -> Content
     @ViewBuilder var controls: () -> Controls
 
     var body: some View {
         GeometryReader { proxy in
-            let safeBottom = proxy.safeAreaInsets.bottom
-            let controlsGap = Swift.max(safeBottom, Theme.Metrics.controlsInset)
+            let controlsGap = Swift.max(proxy.safeAreaInsets.bottom, Theme.Metrics.controlsInset)
             let controlsSpace = Theme.Metrics.controlsHeight + 16 + controlsGap
-                - Theme.Metrics.surfaceGutter
 
             ZStack(alignment: .bottom) {
-                Theme.shell.ignoresSafeArea()
+                // One background for the whole screen, so the band under the
+                // commands is the same page rather than a frame around it.
+                background.ignoresSafeArea()
 
-                surface()
-                    .padding(.horizontal, fullScreen ? 0 : Theme.Metrics.surfaceGutter)
-                    .padding(.top, fullScreen ? 0 : Theme.Metrics.surfaceGutter)
-                    .padding(
-                        .bottom,
-                        (fullScreen ? 0 : Theme.Metrics.surfaceGutter)
-                            + (commandsVisible ? controlsSpace : 0)
-                    )
+                content()
+                    .scrollIndicators(.hidden)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    // Safe-area room rather than padding: lists keep scrolling
+                    // under the commands, and their last row still clears them.
+                    .safeAreaPadding(.bottom, commandsVisible ? controlsSpace : 0)
                     .animation(Theme.Motion.smoothOut(0.32), value: commandsVisible)
+                    .overlay(AppGrain())
 
                 if commandsVisible {
                     controls()
@@ -47,59 +45,8 @@ struct AppShell<Content: View, Controls: View>: View {
         }
     }
 
-    @ViewBuilder
-    private func surface() -> some View {
-        let base = content()
-            .scrollIndicators(.hidden)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .background(surfaceBackground)
-
-        if fullScreen {
-            base
-                .overlay(AppGrain())
-        } else {
-            base
-                .clipShape(surfaceShape)
-                .overlay(
-                    surfaceShape
-                        .strokeBorder(Theme.border, lineWidth: 1)
-                )
-                .overlay(AppGrain())
-        }
-    }
-
-    private var surfaceShape: UnevenRoundedRectangle {
-        let bottomRadius = commandsVisible
-            ? Theme.Metrics.cardRadius
-            : Theme.Metrics.surfaceRadius
-
-        return UnevenRoundedRectangle(
-            cornerRadii: RectangleCornerRadii(
-                topLeading: Theme.Metrics.surfaceRadius,
-                bottomLeading: bottomRadius,
-                bottomTrailing: bottomRadius,
-                topTrailing: Theme.Metrics.surfaceRadius
-            ),
-            style: .continuous
-        )
-    }
-
-    private var surfaceBackground: some View {
-        ZStack {
-            Theme.background
-            RadialGradient(
-                colors: [Theme.oxblood.opacity(0.22), .clear],
-                center: UnitPoint(x: -0.08, y: 0.18),
-                startRadius: 0,
-                endRadius: 420
-            )
-            RadialGradient(
-                colors: [Theme.primary.opacity(0.10), .clear],
-                center: UnitPoint(x: 0.78, y: 1.12),
-                startRadius: 0,
-                endRadius: 480
-            )
-        }
+    private var background: some View {
+        AppPageBackground()
     }
 }
 

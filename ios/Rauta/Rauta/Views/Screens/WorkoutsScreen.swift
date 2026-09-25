@@ -5,7 +5,6 @@ enum MainTab: String, CaseIterable, Identifiable {
     case summary = "Summary"
     case workout = "Workout"
     case library = "Library"
-    case profile = "Profile"
 
     var id: String { rawValue }
 
@@ -14,7 +13,6 @@ enum MainTab: String, CaseIterable, Identifiable {
         case .summary: return "chart.bar"
         case .workout: return "figure.strengthtraining.traditional"
         case .library: return "books.vertical"
-        case .profile: return "person.crop.circle"
         }
     }
 }
@@ -80,7 +78,6 @@ enum NativeTabIcons {
     static let summary = make(MainTab.summary.systemImage)
     static let workout = make(MainTab.workout.systemImage)
     static let library = make(MainTab.library.systemImage)
-    static let profile = make(MainTab.profile.systemImage)
     static let transparentPlaceholder = UIGraphicsImageRenderer(
         size: CGSize(width: 28, height: 28)
     ).image { _ in }
@@ -90,7 +87,6 @@ enum NativeTabIcons {
         case .summary: return summary
         case .workout: return workout
         case .library: return library
-        case .profile: return profile
         }
     }
 
@@ -134,17 +130,29 @@ struct WorkoutsScreen: View {
     /// player has finished closing — nothing can be presented while it is up.
     @State private var afterExercisePlayer: (() -> Void)?
     @State private var liveWorkoutPresented = false
+    /// Why the last finish did not save. The session stays open when it is set.
+    @State private var finishIssue: String?
+    /// The workout just saved, while RAUTA celebrates it.
+    @State private var celebration: WorkoutReceipt?
+    /// RAUTA's arrival, once per launch. Reduce Motion skips it.
+    @State private var introPlaying = !WorkoutsScreen.introPlayed
+    /// Where the tab bar's RAUTA sits, for the arrival to land on.
+    @State private var rautaSeat: CGRect = .zero
+    private static var introPlayed = false
     @State private var workoutDetailActionState = WorkoutDetailActionState.none
     @State private var workoutDetailActionRequest: WorkoutDetailExternalAction?
     @State private var workoutListSelection = 0
     @State private var selectedWorkoutId: String?
     @Environment(\.rautaOnStage) private var onStage
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    /// When the app last went to the background, so a return after a real
+    /// absence is greeted and a glance at a notification is not.
+    @State private var backgroundedAt: Date?
     /// Whether the tab bar and RAUTA are arranged for Profile. It follows
     /// `mainTab` a beat behind: the selection moves first, and only once it
     /// has settled does RAUTA leave its circle and the bar resize — each on
     /// frames of its own instead of all on the same one.
-    @State private var profileChrome = false
     /// The remaining week being re-planned, off the main actor.
     @State private var adjustingPlan = false
 
@@ -227,6 +235,29 @@ struct WorkoutsScreen: View {
                     .onAppear { exercisePlayerOpen = false }
             }
         }
+        .overlay {
+            if let celebration {
+                WorkoutCelebration(receipt: celebration, onContinue: closeCelebration)
+                    .transition(.opacity)
+            }
+        }
+        .overlay {
+            if introPlaying, !reduceMotion {
+                RautaLaunchIntro(seat: rautaSeat, onLanded: landIntro)
+                    .transition(.opacity)
+            }
+        }
+        .alert(
+            "Workout not saved yet",
+            isPresented: Binding(
+                get: { finishIssue != nil },
+                set: { if !$0 { finishIssue = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(finishIssue ?? "")
+        }
         .onChange(of: activeWorkout.session?.workoutId) { _, workoutId in
             if workoutId == nil {
                 exercisePlayerOpen = false
@@ -238,37 +269,30 @@ struct WorkoutsScreen: View {
             if tab != .workout {
                 liveWorkoutPresented = false
             }
-            if tab == .profile {
-                rautaMenuPresented = false
-            }
-        }
-        .task(id: mainTab == .profile) {
-            let target = mainTab == .profile
-            guard profileChrome != target else { return }
-            // Let the tab selection settle before the bar changes shape, so the
-            // two do not move on the same frames. One short beat is enough.
-            try? await Task.sleep(for: .seconds(Theme.Duration.fast))
-            guard !Task.isCancelled else { return }
-            guard target else {
-                // The bar makes room for RAUTA's circle with its own animation.
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
-                    profileChrome = false
-                }
-                return
-            }
-            // Taking the circle away, UIKit lays the bar out full width in one
-            // frame. Applying the change and that layout inside a UIKit
-            // animation makes the bar grow into the space instead — the same
-            // motion as it shrinking back, run the other way.
-            UIKitAnimation.spring(duration: 0.35, bounce: 0.08) {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
-                    profileChrome = true
-                }
-            }
         }
         .onChange(of: navigation.requestedWorkoutId, initial: true) { _, workoutId in
             guard let workoutId else { return }
             openRequestedWorkout(workoutId)
+        }
+        .task {
+            WorkoutsScreen.introPlayed = true
+            guard !introPlaying || reduceMotion else { return }
+            // Once the first frame has settled, so the line rises from a RAUTA
+            // that is already there.
+            introPlaying = false
+            try? await Task.sleep(for: .seconds(0.9))
+            greet()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background:
+                backgroundedAt = Date()
+            case .active:
+                if let away = backgroundedAt, Date().timeIntervalSince(away) > 15 * 60 { greet() }
+                backgroundedAt = nil
+            default:
+                break
+            }
         }
         .task {
             // Restore any missing lightweight projection from its authoritative plan.
@@ -303,24 +327,17 @@ struct WorkoutsScreen: View {
             } label: {
                 tabLabel(.library)
             }
-            Tab(value: NativeTabSelection.page(.profile)) {
-                page(for: .profile)
-            } label: {
-                tabLabel(.profile)
-            }
             // iOS 27 has a real auxiliary/prominent tab role. Use it here
             // instead of abusing the search role: the system reserves a
-            // separate trailing control without merging it into the four
+            // separate trailing control without merging it into the three
             // navigation destinations.
-            if !profileChrome {
-                Tab(value: NativeTabSelection.rauta, role: .prominent) {
-                    Color.clear
-                } label: {
-                    Image(uiImage: NativeTabIcons.transparentPlaceholder)
-                        // The drawn RAUTA over this slot is hidden from
-                        // VoiceOver; the tab itself is what it reaches.
-                        .accessibilityLabel("Rauta actions")
-                }
+            Tab(value: NativeTabSelection.rauta, role: .prominent) {
+                Color.clear
+            } label: {
+                Image(uiImage: NativeTabIcons.transparentPlaceholder)
+                    // The drawn RAUTA over this slot is hidden from
+                    // VoiceOver; the tab itself is what it reaches.
+                    .accessibilityLabel("Rauta actions")
             }
         }
         .tabViewStyle(.sidebarAdaptable)
@@ -365,11 +382,15 @@ struct WorkoutsScreen: View {
                 // and switching to Profile and back used to build one each way.
                 // Off to one side it only hides and stops rendering.
                 rautaTabControl(bottomInset: proxy.safeAreaInsets.bottom)
-                    .scaleEffect(profileChrome && !reduceMotion ? 0.78 : 1, anchor: .bottomTrailing)
-                    .opacity(profileChrome ? 0 : 1)
-                    .allowsHitTesting(!profileChrome)
-                    .accessibilityHidden(profileChrome)
-                    .environment(\.rautaOnStage, onStage && !profileChrome)
+                    // Hidden while the arriving RAUTA flies in to take its place.
+                    .opacity(introPlaying && !reduceMotion ? 0 : 1)
+                    // Covered by the player or the celebration, it neither
+                    // performs nor speaks: the RAUTA in front does.
+                    .environment(
+                        \.rautaOnStage,
+                        onStage && !exercisePlayerOpen && celebration == nil
+                            && !(introPlaying && !reduceMotion)
+                    )
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
         }
@@ -378,14 +399,19 @@ struct WorkoutsScreen: View {
 
     private func rautaTabControl(bottomInset: CGFloat) -> some View {
         RautaNativeTabControl(
-            mood: activeWorkout.session == nil ? .calm : .focused,
+            mood: adjustingPlan ? .working : (activeWorkout.session == nil ? .calm : .focused),
             activeTab: $mainTab,
             actionsForTab: companionActions(for:),
             workoutActive: activeWorkout.session != nil,
             wrapped: rautaCompact,
             isPresented: $rautaMenuPresented,
-            onPresent: presentRautaMenu
+            onPresent: presentRautaMenu,
+            onSeat: { rautaSeat = $0 },
+            lift: exerciseBarLift
         )
+        // The exercise bar sits over the tabs during a workout; what RAUTA
+        // says and offers rises above it rather than covering it.
+        .rautaSpeaker(lift: exerciseBarLift)
         .padding(.trailing, 6)
         .padding(.bottom, Swift.max(7, bottomInset))
         .offset(
@@ -399,9 +425,66 @@ struct WorkoutsScreen: View {
         .zIndex(1_000)
     }
 
+    /// How far RAUTA's bubbles rise to clear the exercise bar, while it is
+    /// laid out above the tabs.
+    private var exerciseBarLift: CGFloat {
+        shouldShowNativeExerciseAccessory && !rautaCompact ? 46 : 0
+    }
+
     private func presentRautaMenu() {
         Haptics.trigger(.selection)
+        RautaSpeech.shared.hush()
         rautaMenuPresented = true
+    }
+
+    /// The line RAUTA opens with. Each offer in it is the first row of the menu
+    /// a tap on RAUTA opens right now.
+    private var greeting: String {
+        let today = CalendarDate.today
+        return RautaGreeting.line(RautaGreeting.Input(
+            activeWorkout: activeWorkout.session?.workoutName,
+            today: today,
+            upcoming: startableUpcoming.map { RautaGreeting.Day(name: $0.name, date: $0.date) },
+            trainedToday: timeline.past.contains { $0.date == today },
+            hasPlan: TrainingPlan.activeProgramRecord() != nil
+        ))
+    }
+
+    private func greet() {
+        RautaSpeech.shared.say(greeting)
+    }
+
+    /// What RAUTA can point to: anything on today, which it can always start —
+    /// a session from a replaced plan runs as a one-off — and, further ahead,
+    /// only what the current plan still holds.
+    private var startableUpcoming: [Workout] {
+        let today = CalendarDate.today
+        return timeline.upcoming.filter { workout in
+            workout.date == today || !ActiveWorkoutStore.planWasReplaced(workout)
+        }
+    }
+
+    /// Today's workout, when there is one to start.
+    private var todaysWorkout: Workout? {
+        guard activeWorkout.session == nil else { return nil }
+        let today = CalendarDate.today
+        return startableUpcoming.first { $0.date == today && !$0.exerciseIds.isEmpty }
+    }
+
+    /// RAUTA starts the workout itself and takes you into it. A refusal is
+    /// said in words, by RAUTA, rather than left to a buzz.
+    private func startFromRauta(_ workout: Workout) {
+        _ = EngineWorkout.ensureEngineWorkout(workout.id)
+        if let refusal = activeWorkout.startAsOwnWorkout(workout).refusal {
+            Haptics.trigger(.warning)
+            RautaSpeech.shared.say(refusal)
+            return
+        }
+        withAnimation(Theme.Motion.smoothOut(0.28)) {
+            selectedWorkoutId = nil
+            liveWorkoutPresented = true
+            selectMainTab(.workout)
+        }
     }
 
     @ViewBuilder
@@ -445,7 +528,7 @@ struct WorkoutsScreen: View {
         )
     }
 
-    /// Summary, Library and Profile. The Workout tab is ``workoutTabContent``.
+    /// Summary and Library. The Workout tab is ``workoutTabContent``.
     private func page(for pageTab: MainTab) -> some View {
         AppShell(commandsVisible: false) {
             if pageTab == .library {
@@ -458,7 +541,7 @@ struct WorkoutsScreen: View {
                         title: pageTab.rawValue,
                         left: { Color.clear.frame(width: 44, height: 44) },
                         right: {
-                            if pageTab == .profile {
+                            if pageTab == .summary {
                                 AppHeaderButton(systemImage: "gearshape", label: "Settings") {
                                     navigation.push(.settings, from: "profile-settings")
                                 }
@@ -473,8 +556,6 @@ struct WorkoutsScreen: View {
                 } content: {
                     if pageTab == .summary {
                         summaryContent
-                    } else if pageTab == .profile {
-                        ProfileDashboard(isActive: profileChrome)
                     } else {
                         Spacer(minLength: 0)
                     }
@@ -497,12 +578,6 @@ struct WorkoutsScreen: View {
             return [
                 CompanionAction(title: "Choose exercises", systemImage: "list.bullet.rectangle", primary: true, action: startExerciseFlow)
             ]
-        case .profile:
-            return [
-                CompanionAction(title: "Settings", systemImage: "gearshape", primary: true) {
-                    navigation.push(.settings, from: RautaNativeTabControl.zoomSourceID)
-                }
-            ]
         case .summary:
             return summaryCompanionActions
         }
@@ -510,6 +585,11 @@ struct WorkoutsScreen: View {
 
     private var summaryCompanionActions: [CompanionAction] {
         var actions: [CompanionAction] = []
+        if let today = todaysWorkout {
+            actions.append(CompanionAction(title: "Start \(today.name)", systemImage: "play.fill", primary: true) {
+                startFromRauta(today)
+            })
+        }
         if activeWorkout.session != nil {
             actions.append(CompanionAction(title: "Continue workout", systemImage: "figure.strengthtraining.traditional", primary: true) {
                 withAnimation(Theme.Motion.smoothOut(0.28)) {
@@ -524,13 +604,20 @@ struct WorkoutsScreen: View {
                !remaining.sessions.isEmpty && trainingRecords.data.sessions.contains(where: { $0.plannedProgramId == source.id }) {
                 actions.append(CompanionAction(title: "Adjust remaining week", systemImage: "arrow.triangle.2.circlepath", primary: true) {
                     adjustingPlan = true
+                    RautaSpeech.shared.say("Reshaping the rest of your week…", holds: true)
                     Task {
                         defer { adjustingPlan = false }
                         do {
+                            // Saving the plan is what RAUTA answers with its
+                            // result line; nothing more needs saying here.
                             let result = try await TrainingWorkflow.generateAndSavePlan(source: source)
                             if let program = result.result.program { TrainingPlan.projectPlannedWorkouts(TrainingPlan.sessionViews(program)) }
                             Haptics.trigger(.success)
-                        } catch { Haptics.trigger(.warning) }
+                        } catch {
+                            Haptics.trigger(.warning)
+                            let reason = (error as? TrainingPersistenceError)?.message ?? error.localizedDescription
+                            RautaSpeech.shared.say("I couldn't adjust your week. \(reason)")
+                        }
                     }
                 })
             } else if remaining.sessions.isEmpty {
@@ -625,10 +712,7 @@ struct WorkoutsScreen: View {
             )
         }
         actions.append(CompanionAction(title: "Finish workout", systemImage: "flag.checkered") {
-            Haptics.trigger(.success)
-            closeExercisePlayer()
-            activeWorkout.finish()
-            selectMainTab(.summary)
+            finishActiveWorkout()
         })
         return actions
     }
@@ -688,10 +772,37 @@ struct WorkoutsScreen: View {
     }
 
     private func finishActiveWorkout() {
-        Haptics.trigger(.success)
-        closeExercisePlayer()
-        activeWorkout.finish()
-        selectMainTab(.summary)
+        // The session only closes once its records are written; a refused
+        // write leaves it open to try again rather than pretending it saved.
+        switch activeWorkout.finish() {
+        case .failed(let reason):
+            Haptics.trigger(.warning)
+            finishIssue = reason
+        case .saved(let receipt):
+            Haptics.trigger(.success)
+            closeExercisePlayer()
+            selectMainTab(.summary)
+            // Drawn under the player as it closes, so the player shrinks away
+            // to reveal RAUTA celebrating.
+            withAnimation(.easeOut(duration: 0.25)) { celebration = receipt }
+        }
+    }
+
+    /// RAUTA is in its seat: the tab bar's one takes over and says hello.
+    private func landIntro() {
+        withAnimation(.easeOut(duration: 0.15)) { introPlaying = false }
+        Task {
+            try? await Task.sleep(for: .seconds(0.25))
+            greet()
+        }
+    }
+
+    private func closeCelebration() {
+        withAnimation(.easeInOut(duration: 0.3)) { celebration = nil }
+        Task {
+            try? await Task.sleep(for: .seconds(0.5))
+            greet()
+        }
     }
 
     private func updateRautaCompactState(_ compact: Bool) {
@@ -972,6 +1083,9 @@ struct RautaNativeTabControl: View {
     var wrapped = false
     @Binding var isPresented: Bool
     var onPresent: () -> Void
+    /// Where the character is drawn, in global coordinates.
+    var onSeat: (CGRect) -> Void = { _ in }
+    var lift: CGFloat = 0
     @State private var reactionKey = ""
     /// The action picked from the menu, run once the thought has folded back
     /// into RAUTA, so the page it opens grows out of the character itself.
@@ -1001,7 +1115,7 @@ struct RautaNativeTabControl: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Rauta actions")
-        .rautaThoughts(isPresented: $isPresented, onDismissed: runPendingAction) {
+        .rautaThoughts(isPresented: $isPresented, lift: lift, onDismissed: runPendingAction) {
             ForEach(actions) { action in
                 Button {
                     pendingAction = action.action
@@ -1036,6 +1150,7 @@ struct RautaNativeTabControl: View {
             .frame(width: characterSize, height: characterSize)
             .offset(y: -3)
             .allowsHitTesting(false)
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { onSeat($0) }
         }
         .frame(width: controlSize, height: controlSize)
         .contentShape(Circle())
@@ -1093,14 +1208,18 @@ private struct SummaryWorkoutsContent: View {
         )
         ScrollView {
             LazyVStack(spacing: 12) {
+                ProfileIdentityCard()
+
                 StreakStrip(workouts: completedWorkouts)
                     .allowsHitTesting(false)
 
                 MonthlySummaryDashboard(snapshot: month)
+
+                ProfileRecordsSection()
+                    .padding(.top, 12)
             }
             .padding(.horizontal, 12)
-            // The same run-out as Profile: enough to scroll the last card clear
-            // of the tab bar, no more.
+            // Enough to scroll the last card clear of the tab bar, no more.
             .padding(.bottom, 120)
         }
         .pageScroll()
@@ -1200,16 +1319,6 @@ private struct WorkoutListContent: View {
         return sections
     }
 
-    private var emptySymbol: String {
-        switch filter {
-        case .all: return "figure.strengthtraining.traditional"
-        case .today: return "calendar"
-        case .planned: return "calendar.badge.plus"
-        case .past: return "clock.arrow.circlepath"
-        case .fullBody, .upper, .lower, .push, .pull, .legs: return "line.3.horizontal.decrease"
-        }
-    }
-
     private var emptyTitle: String {
         switch filter {
         case .all: return "No workouts yet"
@@ -1236,7 +1345,7 @@ private struct WorkoutListContent: View {
         Group {
             if filteredWorkouts.isEmpty {
                 EmptyStatePlaceholder(
-                    systemImage: emptySymbol,
+                    mood: filter == .all ? .calm : .curious,
                     title: emptyTitle,
                     message: emptyMessage,
                     actionTitle: filter == .all ? nil : "Show all workouts",
@@ -1468,10 +1577,7 @@ private struct StreakStrip: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity)
-        .background {
-            shape
-                .fill(Theme.card)
-        }
+        .background { GradientCard(radius: 36, accent: Theme.primary) }
         // A week of fixed-width columns: text grows with Dynamic Type up to
         // the point where the columns can still hold it.
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
@@ -1610,10 +1716,9 @@ private struct WorkoutRow: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .frame(maxWidth: .infinity, minHeight: 100)
-            .background(
-                Theme.card.opacity(0.92),
-                in: RoundedRectangle(cornerRadius: 30, style: .continuous)
-            )
+            // Today's and upcoming workouts carry the warm light; finished
+            // ones sit back.
+            .background { GradientCard(radius: 30, accent: Theme.primary, strength: isPast ? 0.35 : 0.75) }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

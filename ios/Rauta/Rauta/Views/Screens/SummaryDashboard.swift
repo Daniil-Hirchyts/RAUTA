@@ -228,10 +228,7 @@ private struct SummaryMetricCard: View {
         .padding(14)
         .aspectRatio(1, contentMode: .fit)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            shape
-                .fill(Theme.card)
-        }
+        .background { GradientCard(radius: 30, accent: accent) }
         .accessibilityElement(children: .combine)
     }
 }
@@ -320,10 +317,7 @@ private struct MuscleHeatmapCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            shape
-                .fill(Theme.card)
-        }
+        .background { GradientCard(radius: 36, accent: Theme.destructive, strength: 0.8) }
     }
 
     private func muscleRow(_ entry: (muscle: MuscleId, value: Double)) -> some View {
