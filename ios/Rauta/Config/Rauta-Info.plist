@@ -27,7 +27,13 @@
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Rauta reads your body weight and workout access status so it can tailor training loads and keep your workout sync connected.</string>
+	<string>Rauta reads body weight for workout estimates and, when you ask, sleep and heart trends to help you review training readiness.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Rauta checks available times and adds workout events to your calendar when you ask.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Rauta uses the microphone when you dictate a training request.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Rauta transcribes your spoken training requests on your iPhone.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Rauta saves completed workouts, duration, and active calories to Apple Health when you choose to sync them.</string>
 	<key>UIBackgroundModes</key>

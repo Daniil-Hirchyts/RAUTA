@@ -141,6 +141,9 @@ enum AppBackup {
     }
 
     static func clearAllData() {
+        RautaAgent.shared.startOver()
+        WorkoutReminders.shared.removeAll()
+        CalendarService.shared.removeAllLinkedEvents()
         ActiveWorkoutStore.shared.setSession(nil, outcome: .cancelled)
         FavoritesStore.shared.replaceAll([])
         FiltersStore.shared.clearAll()

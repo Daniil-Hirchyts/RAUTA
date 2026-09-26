@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 struct SettingsScreen: View {
     private let store = AppStore.shared
+    private let agentModel = AgentModelStore.shared
     @State private var clearing = false
     @State private var importing = false
     @State private var connectingHealth = false
@@ -28,6 +29,36 @@ struct SettingsScreen: View {
                             settingsAction(title: "Priority muscles", icon: "figure.strengthtraining.traditional", value: prioritySummary, showsDivider: false) {
                                 store.navigation.push(.profilePriorities)
                             }
+                        }
+
+                        section("RAUTA's brain") {
+                            settingsRow(
+                                title: RautaModelCatalog.qwen35_2b.name,
+                                detail: agentModel.status,
+                                icon: "brain.head.profile",
+                                showsDivider: agentModel.installed
+                            ) {
+                                if agentModel.downloading {
+                                    ProgressView(value: agentModel.progress)
+                                        .frame(width: 64)
+                                } else if !agentModel.installed {
+                                    #if !targetEnvironment(simulator)
+                                    Button("Download") { agentModel.download() }
+                                        .font(Theme.sans(13, weight: .semibold))
+                                    #endif
+                                } else {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(Theme.success)
+                                }
+                            }
+                            #if !targetEnvironment(simulator)
+                            if agentModel.installed {
+                                settingsAction(title: "Remove downloaded model", icon: "trash",
+                                               destructive: true, showsDivider: false) {
+                                    try? agentModel.delete()
+                                }
+                            }
+                            #endif
                         }
 
                         section("Apple Health") {

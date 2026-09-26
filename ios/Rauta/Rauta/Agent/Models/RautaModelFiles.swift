@@ -39,7 +39,27 @@ nonisolated enum RautaModelFiles {
     }
 
     static func isInstalled(_ entry: RautaModelEntry) -> Bool {
-        FileManager.default.fileExists(atPath: snapshot(for: entry).appending(path: "config.json").path(percentEncoded: false))
+        isComplete(snapshot(for: entry))
+    }
+
+    /// Whether a snapshot folder holds what MLX loads: configuration,
+    /// tokenizer, and weights that are more than a stub.
+    ///
+    /// A snapshot's files are symlinks into the cache's blobs, so a size is read
+    /// from the file a link points at — the link itself is a few bytes, and
+    /// reading that made every finished download look incomplete.
+    static func isComplete(_ folder: URL) -> Bool {
+        let manager = FileManager.default
+        guard manager.fileExists(atPath: folder.appending(path: "config.json").path(percentEncoded: false)),
+              manager.fileExists(atPath: folder.appending(path: "tokenizer.json").path(percentEncoded: false)),
+              let files = try? manager.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
+        else { return false }
+        return files.contains { file in
+            guard file.pathExtension == "safetensors" else { return false }
+            let target = file.resolvingSymlinksInPath().path(percentEncoded: false)
+            let size = (try? manager.attributesOfItem(atPath: target)[.size] as? NSNumber)?.int64Value ?? 0
+            return size > 1_000_000
+        }
     }
 
     /// Removes a model's files. Conversations are kept elsewhere and stay.

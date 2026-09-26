@@ -243,10 +243,14 @@ enum EngineWorkout {
         exerciseIds: [String]? = nil,
         focusMuscles: [MuscleId]? = nil,
         workoutId: String? = nil,
-        now: String? = nil
+        now: String? = nil,
+        expectedBasis: PlanBasis? = nil
     ) async throws -> String {
         let input = Input(date: date, exerciseIds: exerciseIds, focusMuscles: focusMuscles, now: now)
         let program = try await buildProgramInBackground(input, prepare(input))
+        if let expectedBasis, PlanBasis.current() != expectedBasis {
+            throw TrainingPersistenceError("Training changed while the workout was being built. Ask for a fresh preview.")
+        }
         return try record(program, date: date, name: name, workoutId: workoutId)
     }
 

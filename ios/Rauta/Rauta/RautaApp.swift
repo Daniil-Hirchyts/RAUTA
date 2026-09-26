@@ -34,6 +34,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     }
 
     func applicationDidEnterBackground(_ application: UIApplication) {
+        RautaAgent.shared.stop()
+        AgentModelStore.shared.evict()
         AppStore.shared.persistNow()
     }
 
@@ -60,6 +62,16 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 }
 
 extension AppDelegate: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        guard let workoutId = response.notification.request.content.userInfo["workoutId"] as? String else { return }
+        let requestId = response.notification.request.identifier
+        let actionId = response.actionIdentifier
+        await WorkoutReminders.shared.handle(workoutId: workoutId, requestId: requestId, actionId: actionId)
+    }
+
     /// Called on the notification center's own queue; it reads only the
     /// request identifier, so it stays off the main actor.
     nonisolated func userNotificationCenter(

@@ -5,7 +5,16 @@ import SwiftUI
 struct PlannedSessionRow: View {
     let session: PlannedSessionView
     let index: Int
+    /// Rows already on screen before appear as they are; only new ones arrive.
+    var animated = true
+    /// A chevron for a row that opens its workout.
+    var opens = false
     @State private var shown = false
+
+    private var detail: String {
+        let exercises = Wording.countLabel(session.exerciseIds.count, "exercise")
+        return session.minutes > 0 ? "\(session.minutes) min · \(exercises)" : exercises
+    }
 
     var body: some View {
         HStack(spacing: 14) {
@@ -25,17 +34,24 @@ struct PlannedSessionRow: View {
                     .font(Theme.sans(17, weight: .bold))
                     .foregroundStyle(Theme.foreground)
                     .lineLimit(1)
-                Text("\(session.minutes) min · \(Wording.countLabel(session.exerciseIds.count, "exercise"))")
+                Text(detail)
                     .font(Theme.sans(13, weight: .medium))
                     .foregroundStyle(Theme.mutedForeground)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+
+            if opens {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Theme.mutedForeground)
+            }
         }
         .padding(14)
         .background { GradientCard(radius: Theme.Radius.xl, accent: Theme.primary, strength: 0.8) }
-        .opacity(shown ? 1 : 0)
-        .offset(y: shown ? 0 : 14)
+        .opacity(shown || !animated ? 1 : 0)
+        .offset(y: shown || !animated ? 0 : 14)
         .onAppear {
+            guard animated else { return }
             withAnimation(.spring(response: 0.42, dampingFraction: 0.8).delay(0.25 + Double(index) * 0.08)) {
                 shown = true
             }

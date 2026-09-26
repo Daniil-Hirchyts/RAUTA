@@ -49,6 +49,21 @@ scripts/ios-run.sh sim --arg --onboarding
 In Xcode, add it under Product → Scheme → Edit Scheme → Run → Arguments →
 "Arguments Passed On Launch" for the `Rauta` scheme.
 
+### RAUTA agent debug arguments
+
+Debug builds also take these, each applied once the launch intro has played:
+
+| Argument | Effect |
+|---|---|
+| `--agent-chat` | Opens the chat with RAUTA. |
+| `--agent-prompt "<text>"` | Opens the chat and sends `<text>`. |
+| `--agent-demo <page>` | Opens the chat on a sample conversation, held in memory only; the saved conversation and training data are untouched. `0` a swap with Undo and a plan preview, `1` facts, exercises and a Health request, `2` a week's schedule, `3` RAUTA mid-turn, then its answer landing, `4` the empty chat. |
+| `--rauta-menu` | Opens RAUTA's tab-bar menu. |
+| `--agent-lab [--agent-lab-autorun] [--agent-lab-only <id>]` | The on-device model bench (see `docs/research/agent-model-spike-2026-09-26.md`). |
+
+On the simulator the agent thinks with Apple's on-device model when the Mac
+has Apple Intelligence. On an iPhone it uses the downloaded MLX model.
+
 ## TestFlight
 
 ```bash

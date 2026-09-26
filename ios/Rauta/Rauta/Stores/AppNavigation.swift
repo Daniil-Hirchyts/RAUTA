@@ -234,6 +234,10 @@ final class AppSessionStore {
     /// A workout waiting to be shown on the Workout tab. Set by ``openWorkout(_:)``
     /// and cleared by the tab once it has opened it.
     var requestedWorkoutId: String?
+    /// Set by a workout notification or Shortcuts; the Workout tab consumes it.
+    var requestedStartWorkoutId: String?
+    /// Foreground handoff from Ask RAUTA in Shortcuts or Spotlight.
+    var requestedAgentPrompt: String?
 
     private var sequence = 0
 

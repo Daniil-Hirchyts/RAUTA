@@ -51,6 +51,127 @@ final class HealthService {
         return [weight]
     }
 
+    private static let readinessAccessKey = "rauta-health-readiness-requested"
+
+    var readinessAccessRequested: Bool {
+        Storage.defaults.bool(forKey: Self.readinessAccessKey)
+    }
+
+    private var readinessReadTypes: Set<HKObjectType> {
+        var types: Set<HKObjectType> = [HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!]
+        for identifier: HKQuantityTypeIdentifier in [
+            .restingHeartRate, .heartRateVariabilitySDNN,
+            .appleExerciseTime, .activeEnergyBurned,
+        ] {
+            if let type = HKObjectType.quantityType(forIdentifier: identifier) { types.insert(type) }
+        }
+        return types
+    }
+
+    func requestReadinessAccess() async -> Bool {
+        guard isAvailable else { return false }
+        do {
+            try await store.requestAuthorization(toShare: [], read: readinessReadTypes)
+            Storage.defaults.set(true, forKey: Self.readinessAccessKey)
+            return true
+        } catch { return false }
+    }
+
+    private struct ReadinessMeasurement: Sendable {
+        var value: Double
+        var at: Date
+    }
+
+    private struct SleepInterval: Sendable {
+        var start: Date
+        var end: Date
+    }
+
+    private func quantityMeasurements(
+        _ identifier: HKQuantityTypeIdentifier, unit: HKUnit, since: Date
+    ) async -> [ReadinessMeasurement] {
+        guard let type = HKObjectType.quantityType(forIdentifier: identifier) else { return [] }
+        return await withCheckedContinuation { continuation in
+            let predicate = HKQuery.predicateForSamples(withStart: since, end: Date(), options: [])
+            let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: 500,
+                                      sortDescriptors: nil) { _, samples, _ in
+                let values = (samples ?? []).compactMap { sample -> ReadinessMeasurement? in
+                    guard let sample = sample as? HKQuantitySample else { return nil }
+                    let value = sample.quantity.doubleValue(for: unit)
+                    return value.isFinite && value >= 0
+                        ? ReadinessMeasurement(value: value, at: sample.endDate) : nil
+                }
+                continuation.resume(returning: values)
+            }
+            store.execute(query)
+        }
+    }
+
+    private func sleepIntervals(since: Date) async -> [SleepInterval] {
+        let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
+        return await withCheckedContinuation { continuation in
+            let predicate = HKQuery.predicateForSamples(withStart: since, end: Date(), options: [])
+            let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: 500,
+                                      sortDescriptors: nil) { _, samples, _ in
+                let sleeping = (samples ?? []).compactMap { sample -> SleepInterval? in
+                    guard let sample = sample as? HKCategorySample else { return nil }
+                    let value = HKCategoryValueSleepAnalysis(rawValue: sample.value)
+                    guard value == .asleepUnspecified || value == .asleepCore
+                            || value == .asleepDeep || value == .asleepREM else { return nil }
+                    return SleepInterval(start: sample.startDate, end: sample.endDate)
+                }
+                continuation.resume(returning: sleeping)
+            }
+            store.execute(query)
+        }
+    }
+
+    private static func mean(_ values: [Double]) -> Double? {
+        guard !values.isEmpty else { return nil }
+        return values.reduce(0, +) / Double(values.count)
+    }
+
+    private static func mergedHours(_ intervals: [SleepInterval], since: Date) -> Double? {
+        let ranges = intervals.map { (max($0.start, since), $0.end) }
+            .filter { $0.1 > $0.0 }.sorted { $0.0 < $1.0 }
+        guard var first = ranges.first else { return nil }
+        var seconds = 0.0
+        for range in ranges.dropFirst() {
+            if range.0 <= first.1 { first.1 = max(first.1, range.1) }
+            else { seconds += first.1.timeIntervalSince(first.0); first = range }
+        }
+        seconds += first.1.timeIntervalSince(first.0)
+        return min(12, seconds / 3600)
+    }
+
+    func readinessSnapshot() async -> HealthReadinessSnapshot? {
+        guard isAvailable, readinessAccessRequested else { return nil }
+        let now = Date()
+        let lastDay = now.addingTimeInterval(-24 * 3600)
+        let previousDay = now.addingTimeInterval(-48 * 3600)
+        let week = now.addingTimeInterval(-8 * 24 * 3600)
+        async let sleep = sleepIntervals(since: lastDay)
+        async let hrv = quantityMeasurements(.heartRateVariabilitySDNN,
+                                              unit: .secondUnit(with: .milli), since: week)
+        async let resting = quantityMeasurements(.restingHeartRate,
+                                                  unit: .count().unitDivided(by: .minute()), since: week)
+        async let exercise = quantityMeasurements(.appleExerciseTime, unit: .minute(), since: previousDay)
+        async let energy = quantityMeasurements(.activeEnergyBurned, unit: .kilocalorie(), since: previousDay)
+        let hrvValues = await hrv
+        let restingValues = await resting
+        let exerciseValues = await exercise
+        let energyValues = await energy
+        return HealthReadinessSnapshot(
+            sleepHours: Self.mergedHours(await sleep, since: lastDay),
+            hrvTodayMs: Self.mean(hrvValues.filter { $0.at >= lastDay }.map(\.value)),
+            hrvBaselineMs: Self.mean(hrvValues.filter { $0.at < lastDay }.map(\.value)),
+            restingHeartRateToday: Self.mean(restingValues.filter { $0.at >= lastDay }.map(\.value)),
+            restingHeartRateBaseline: Self.mean(restingValues.filter { $0.at < lastDay }.map(\.value)),
+            exerciseMinutesYesterday: Self.mean(exerciseValues.filter { $0.at >= previousDay && $0.at < lastDay }.map(\.value)),
+            activeEnergyYesterday: Self.mean(energyValues.filter { $0.at >= previousDay && $0.at < lastDay }.map(\.value))
+        )
+    }
+
     func requestAccess() async -> AppleHealthConnectionResult {
         guard isAvailable else { return .unavailable }
         do {

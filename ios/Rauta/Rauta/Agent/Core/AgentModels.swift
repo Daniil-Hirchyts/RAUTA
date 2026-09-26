@@ -86,6 +86,7 @@ struct ToolOutcome {
     var endsTurn = true
     /// What the model reads back when the turn continues.
     var note: String?
+    var proposalApplied = false
 
     /// A refusal or a question back, said as it is and ending the turn.
     static func reply(_ text: String) -> ToolOutcome {
@@ -104,17 +105,22 @@ nonisolated struct AgentTurnEnded: Error {}
 enum AgentUndo {
     /// The whole record, for edits made while no workout runs.
     case records(before: PersistedTrainingState, after: PersistedTrainingState, workoutsBefore: [Workout], workoutsAfter: [Workout])
+    case plan(before: PersistedTrainingState, after: PersistedTrainingState,
+              workoutsBefore: [Workout], workoutsAfter: [Workout],
+              profileBefore: TrainingProfile, profileAfter: TrainingProfile)
     /// One logged set, back to what it held.
     case set(entryId: String, setId: String, before: PersistedSetObservation?, after: PersistedSetObservation?)
     /// A set added by logging, removed again.
     case addedSet(entryId: String, setId: String)
     /// One live exercise, sets and all, as it was before a swap.
-    case exercise(before: PersistedActiveExerciseDraft, after: PersistedActiveExerciseDraft)
+    case exercise(before: PersistedActiveExerciseDraft, after: PersistedActiveExerciseDraft,
+                  workoutBefore: Workout, workoutAfter: Workout)
     case profile(before: TrainingProfile, after: TrainingProfile)
     case equipment(before: FiltersStore.PersistedFilters, after: FiltersStore.PersistedFilters)
-    case pause
-    case resume
-    case reminder(id: String)
+    case pause(workoutId: String)
+    case resume(workoutId: String)
+    case reminder(id: String, fireDate: Date)
+    case removedReminder(id: String, fireDate: Date)
     case calendarEvent(id: String)
 }
 
@@ -122,12 +128,12 @@ enum AgentUndo {
 
 /// A change RAUTA prepared and the person has not yet said yes to.
 enum AgentProposal {
-    case plan(PlanPreview, sessionMinutes: Int?)
-    case workout(date: String, name: String, exerciseIds: [String], focus: [MuscleId])
-    case finishWorkout
-    case discardWorkout
-    case deleteWorkout(AgentWorkoutRef)
-    case calendar([AgentWorkoutRef])
+    case plan(PlanPreview, sessionMinutes: Int?, healthSnapshot: HealthReadinessSnapshot?)
+    case workout(date: String, name: String, exerciseIds: [String], focus: [MuscleId], basis: PlanBasis)
+    case finishWorkout(workoutId: String, basis: PlanBasis)
+    case discardWorkout(workoutId: String, basis: PlanBasis)
+    case deleteWorkout(AgentWorkoutRef, basis: PlanBasis)
+    case calendar(workout: AgentWorkoutRef, start: Date, end: Date)
 }
 
 // MARK: - The screen RAUTA acts through
@@ -135,7 +141,10 @@ enum AgentProposal {
 /// What only the main screen can do: it owns starting and finishing a workout
 /// (with the player and the celebration) and which workout is shown.
 struct AgentUIBridge {
-    var startWorkout: (Workout) -> Void
-    var finishWorkout: () -> Void
+    var startWorkout: (Workout) -> WorkoutStartOutcome
+    var finishWorkout: () -> Bool
     var openWorkout: (String) -> Void
+    /// Closes the chat, then opens an exercise's page over the tabs.
+    var openExercise: (String) -> Void
+    var dismissChat: () -> Void
 }

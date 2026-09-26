@@ -7,6 +7,156 @@ import Testing
 /// exercises found from the way people name them.
 @Suite("Agent seams", .serialized)
 struct AgentSeamsTests {
+    @Test func healthReadinessKeepsMissingDataMissingAndNeverSetsPain() {
+        let empty = HealthReadinessSnapshot(sleepHours: nil, hrvTodayMs: nil,
+            hrvBaselineMs: nil, restingHeartRateToday: nil,
+            restingHeartRateBaseline: nil, exerciseMinutesYesterday: nil,
+            activeEnergyYesterday: nil)
+        #expect(ReadinessMapper.map(empty) == nil)
+        var tired = empty
+        tired.sleepHours = 5.5
+        tired.hrvTodayMs = 30
+        tired.hrvBaselineMs = 45
+        let result = ReadinessMapper.map(tired)
+        #expect(result?.readiness.perceivedReadiness == .low)
+        #expect(result?.readiness.pain == nil)
+        #expect(result?.reasons.count == 2)
+    }
+
+    /// The Hub cache lays a snapshot out as symlinks into its blobs; the size
+    /// that counts is the blob's.
+    @Test func aDownloadedSnapshotIsCompleteThroughItsSymlinks() throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "rauta-snapshot-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let blobs = root.appending(path: "blobs")
+        let snapshot = root.appending(path: "snapshots/abc")
+        try FileManager.default.createDirectory(at: blobs, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: snapshot, withIntermediateDirectories: true)
+        func blob(_ name: String, bytes: Int) throws {
+            try Data(count: bytes).write(to: blobs.appending(path: name))
+        }
+        func link(_ file: String, to name: String) throws {
+            try FileManager.default.createSymbolicLink(
+                atPath: snapshot.appending(path: file).path(percentEncoded: false),
+                withDestinationPath: "../../blobs/\(name)")
+        }
+        try blob("config", bytes: 10)
+        try blob("tokenizer", bytes: 10)
+        try blob("stub", bytes: 10)
+        try link("config.json", to: "config")
+        try link("tokenizer.json", to: "tokenizer")
+        try link("model.safetensors", to: "stub")
+        #expect(!RautaModelFiles.isComplete(snapshot))
+
+        try blob("weights", bytes: 2_000_000)
+        try FileManager.default.removeItem(at: snapshot.appending(path: "model.safetensors"))
+        try link("model.safetensors", to: "weights")
+        #expect(RautaModelFiles.isComplete(snapshot))
+    }
+
+    @Test func agentWordsResolveDaysAndRejectInventedNumbers() {
+        #expect(AgentWords.day("next Friday", today: "2026-09-26") == "2026-10-02")
+        #expect(AgentWords.rescheduledDay("Thursday", workoutDate: "2026-09-30", today: "2026-09-26") == "2026-10-01")
+        #expect(AgentWords.said(90, in: "Make sessions forty minutes") == nil)
+        #expect(AgentWords.said(40, in: "Make sessions forty minutes") == 40)
+        #expect(AgentWords.said(22.5, in: "Log 8 reps at 22.5 kg") == 22.5)
+        #expect(AgentWords.said(25.0, in: "Log 8 reps at 22.5 kg") == nil)
+        #expect(!AgentWords.isDate("2026-02-30"))
+    }
+
+    @Test func hostRejectsPastDatesAndUnknownReplacements() async throws {
+        try await withIsolatedStores {
+            let bench = try #require(ExerciseResolver.resolve("barbell bench press").first?.exercise.id)
+            let id = WorkoutsStore.shared.createWorkout(
+                name: "Push", date: CalendarDate.shift(CalendarDate.today, by: 1),
+                exerciseIds: [bench]
+            )
+            let host = AgentToolHost()
+            host.begin("Move Push to 2020-01-01")
+            host.reschedule(workoutPhrase: id, dayPhrase: "2020-01-01")
+            #expect(WorkoutsStore.shared.workout(id)?.date != "2020-01-01")
+            #expect(host.outcome?.say.contains("today onward") == true)
+
+            host.begin("Swap bench for xyzzy in Push")
+            host.swap(workoutPhrase: id, exercisePhrase: "bench", replacementPhrase: "xyzzy")
+            #expect(WorkoutsStore.shared.workout(id)?.exerciseIds == [bench])
+            #expect(host.outcome?.say.contains("fitting replacement") == true)
+        }
+    }
+
+    @Test func hostRefusesAPlanWhenItsBasisChanged() async throws {
+        try await withIsolatedStores {
+            let host = AgentToolHost()
+            host.begin("Build a plan for two days a week")
+            await host.proposePlan(daysPerWeek: 2, sessionMinutes: nil)
+            guard case .proposal(let card) = host.outcome?.card else {
+                Issue.record("Expected a plan preview")
+                return
+            }
+            WorkoutsStore.shared.createWorkout(name: "Extra", date: CalendarDate.today,
+                                               exerciseIds: [])
+            let result = await host.apply(card.id)
+            #expect(result.say.contains("changed"))
+            #expect(TrainingRecordsStore.shared.data.programs.isEmpty)
+        }
+    }
+
+    @Test func deletingAWorkoutWaitsForApplyAndCanBeUndone() async throws {
+        try await withIsolatedStores {
+            let id = WorkoutsStore.shared.createWorkout(
+                name: "Push", date: CalendarDate.shift(CalendarDate.today, by: 1), exerciseIds: []
+            )
+            let host = AgentToolHost()
+            host.begin("Delete my Push workout")
+            host.proposeDelete("Push")
+            guard case .proposal(let card) = host.outcome?.card else {
+                Issue.record("Expected a delete preview")
+                return
+            }
+            #expect(WorkoutsStore.shared.workout(id) != nil)
+            let result = await host.apply(card.id)
+            #expect(result.proposalApplied)
+            #expect(WorkoutsStore.shared.workout(id) == nil)
+            let undo = try #require(result.undo)
+            #expect((await host.undo(undo)).say == "Undone.")
+            #expect(WorkoutsStore.shared.workout(id) != nil)
+        }
+    }
+
+    @Test func movingAWorkoutCanBeUndoneExactly() async throws {
+        try await withIsolatedStores {
+            let original = CalendarDate.shift(CalendarDate.today, by: 1)
+            let moved = CalendarDate.shift(CalendarDate.today, by: 2)
+            let id = WorkoutsStore.shared.createWorkout(name: "Push", date: original, exerciseIds: [])
+            let host = AgentToolHost()
+            host.begin("Move Push to \(moved)")
+            host.reschedule(workoutPhrase: id, dayPhrase: moved)
+            #expect(WorkoutsStore.shared.workout(id)?.date == moved)
+            let action = try #require(host.outcome?.undo)
+            #expect((await host.undo(action)).say == "Undone.")
+            #expect(WorkoutsStore.shared.workout(id)?.date == original)
+        }
+    }
+
+    @Test func aSupportedSwapCanBeUndone() async throws {
+        try await withIsolatedStores {
+            let bench = try #require(ExerciseResolver.resolve("barbell bench press").first?.exercise)
+            let id = WorkoutsStore.shared.createWorkout(
+                name: "Push", date: CalendarDate.shift(CalendarDate.today, by: 1),
+                exerciseIds: [bench.id]
+            )
+            let replacementId = try #require(TrainingWorkflow.replacementIds(bench.id, workoutId: id).first)
+            let replacement = try #require(ExerciseCatalogue.byId[replacementId])
+            let host = AgentToolHost()
+            host.begin("Swap \(bench.name) for \(replacement.name) in Push")
+            host.swap(workoutPhrase: id, exercisePhrase: bench.name,
+                      replacementPhrase: replacement.name)
+            #expect(WorkoutsStore.shared.workout(id)?.exerciseIds == [replacementId])
+            let action = try #require(host.outcome?.undo)
+            #expect((await host.undo(action)).say == "Undone.")
+            #expect(WorkoutsStore.shared.workout(id)?.exerciseIds == [bench.id])
+        }
+    }
     // MARK: Finding exercises
 
     @Test func namesFoldToTheCataloguesWords() {

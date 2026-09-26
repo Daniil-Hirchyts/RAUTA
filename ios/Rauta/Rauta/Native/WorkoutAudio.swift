@@ -25,10 +25,36 @@ enum WorkoutAudio {
     private static var wired = false
     private static var activeStyle: Style?
     private static var releaseTask: Task<Void, Never>?
+    private static var voiceHolds = 0
 
     /// The resting session. Set before anything can make a sound.
     static func configure() {
         try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+    }
+
+    static func beginVoice() throws {
+        voiceHolds += 1
+        guard voiceHolds == 1 else { return }
+        releaseTask?.cancel()
+        player.stop()
+        engine.stop()
+        activeStyle = nil
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.playAndRecord, mode: .default,
+                                    options: [.mixWithOthers, .defaultToSpeaker])
+            try session.setActive(true)
+        } catch {
+            voiceHolds = 0
+            configure()
+            throw error
+        }
+    }
+
+    static func endVoice() {
+        voiceHolds = max(0, voiceHolds - 1)
+        guard voiceHolds == 0 else { return }
+        release()
     }
 
     // MARK: Sounds
@@ -51,6 +77,7 @@ enum WorkoutAudio {
     // MARK: Playback
 
     private static func play(tones: [Double], note: Double, gap: Double, peak: Float, style: Style) {
+        guard voiceHolds == 0 else { return }
         guard let format, let buffer = makeTone(tones, note: note, gap: gap, peak: peak, format: format)
         else { return }
         releaseTask?.cancel()
@@ -118,6 +145,7 @@ enum WorkoutAudio {
     }
 
     private static func release() {
+        guard voiceHolds == 0 else { return }
         releaseTask = nil
         player.stop()
         engine.stop()

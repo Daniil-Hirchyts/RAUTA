@@ -124,6 +124,12 @@ struct WorkoutsScreen: View {
     private let filters = FiltersStore.shared
     @State private var mainTab: MainTab = .summary
     @State private var rautaMenuPresented = false
+    @State private var chatPresented = false
+    @State private var chatDictateOnOpen = false
+    @State private var chatFocusOnOpen = false
+    /// Navigation asked for from inside the chat, run once it has closed —
+    /// a page cannot be presented over it.
+    @State private var afterChat: (() -> Void)?
     @State private var rautaCompact = false
     @State private var exercisePlayerOpen = false
     /// Navigation asked for from inside the exercise player, run once the
@@ -235,6 +241,20 @@ struct WorkoutsScreen: View {
                     .onAppear { exercisePlayerOpen = false }
             }
         }
+        // Full screen, like the player: the chat grows out of RAUTA's tab
+        // button, and dragging it down throws it back in.
+        .fullScreenCover(isPresented: $chatPresented, onDismiss: {
+            chatDictateOnOpen = false
+            chatFocusOnOpen = false
+            let next = afterChat
+            afterChat = nil
+            next?()
+        }) {
+            RautaChatSheet(startDictation: chatDictateOnOpen, focusOnOpen: chatFocusOnOpen)
+                .interactiveDismissDisabled(false)
+                .presentationBackground(.clear)
+                .appZoomTransition(from: RautaNativeTabControl.zoomSourceID)
+        }
         .overlay {
             if let celebration {
                 WorkoutCelebration(receipt: celebration, onContinue: closeCelebration)
@@ -265,6 +285,9 @@ struct WorkoutsScreen: View {
                 rautaCompact = false
             }
         }
+        .onChange(of: chatPresented) { _, presented in
+            if presented { RautaSpeech.shared.hush() }
+        }
         .onChange(of: mainTab) { _, tab in
             if tab != .workout {
                 liveWorkoutPresented = false
@@ -273,6 +296,20 @@ struct WorkoutsScreen: View {
         .onChange(of: navigation.requestedWorkoutId, initial: true) { _, workoutId in
             guard let workoutId else { return }
             openRequestedWorkout(workoutId)
+        }
+        .onChange(of: navigation.requestedStartWorkoutId, initial: true) { _, workoutId in
+            guard let workoutId else { return }
+            navigation.requestedStartWorkoutId = nil
+            if let workout = WorkoutsStore.shared.workout(workoutId) {
+                _ = startFromRauta(workout)
+            }
+        }
+        .onChange(of: navigation.requestedAgentPrompt, initial: true) { _, prompt in
+            guard let prompt else { return }
+            navigation.requestedAgentPrompt = nil
+            chatDictateOnOpen = false
+            chatPresented = true
+            if !prompt.isEmpty { RautaAgent.shared.send(prompt) }
         }
         .task {
             WorkoutsScreen.introPlayed = true
@@ -284,6 +321,7 @@ struct WorkoutsScreen: View {
             greet()
         }
         .onChange(of: scenePhase) { _, phase in
+            if phase != .active { RautaAgent.shared.stop() }
             switch phase {
             case .background:
                 backgroundedAt = Date()
@@ -295,6 +333,50 @@ struct WorkoutsScreen: View {
             }
         }
         .task {
+            RautaAgent.shared.setBridge(AgentUIBridge(
+                startWorkout: { workout in
+                    let result = startFromRauta(workout)
+                    return result
+                },
+                finishWorkout: {
+                    let before = activeWorkout.session?.workoutId
+                    chatPresented = false
+                    finishActiveWorkout()
+                    return before != nil && activeWorkout.session == nil
+                },
+                openWorkout: { id in
+                    chatPresented = false
+                    openRequestedWorkout(id)
+                },
+                openExercise: { id in
+                    afterChat = {
+                        navigation.push(.exerciseDetail(exerciseId: id), from: RautaNativeTabControl.zoomSourceID)
+                    }
+                    chatPresented = false
+                },
+                dismissChat: { chatPresented = false }
+            ))
+            #if DEBUG
+            let debugArguments = ProcessInfo.processInfo.arguments
+            if debugArguments.contains("--rauta-menu") {
+                try? await Task.sleep(for: .seconds(4.6))
+                presentRautaMenu()
+            }
+            if debugArguments.contains("--agent-chat") || debugArguments.contains("--agent-demo") {
+                // After the launch intro, the way a person would open it.
+                try? await Task.sleep(for: .seconds(4.6))
+                if let index = debugArguments.firstIndex(of: "--agent-demo") {
+                    let page = debugArguments.indices.contains(index + 1) ? Int(debugArguments[index + 1]) ?? 0 : 0
+                    RautaAgent.shared.showDemo(page: page)
+                }
+                chatPresented = true
+            }
+            if let promptIndex = debugArguments.firstIndex(of: "--agent-prompt"),
+               debugArguments.indices.contains(promptIndex + 1) {
+                chatPresented = true
+                RautaAgent.shared.send(debugArguments[promptIndex + 1])
+            }
+            #endif
             // Restore any missing lightweight projection from its authoritative plan.
             for view in TrainingPlan.activePlannedSessions() where !TrainingPlan.isPlannedSessionRecorded(view.sessionId) {
                 TrainingPlan.ensurePlannedWorkout(view)
@@ -399,13 +481,18 @@ struct WorkoutsScreen: View {
 
     private func rautaTabControl(bottomInset: CGFloat) -> some View {
         RautaNativeTabControl(
-            mood: adjustingPlan ? .working : (activeWorkout.session == nil ? .calm : .focused),
+            mood: chatPresented ? .listening : (adjustingPlan ? .working : (activeWorkout.session == nil ? .calm : .focused)),
             activeTab: $mainTab,
             actionsForTab: companionActions(for:),
             workoutActive: activeWorkout.session != nil,
             wrapped: rautaCompact,
             isPresented: $rautaMenuPresented,
             onPresent: presentRautaMenu,
+            onAsk: { dictate in
+                chatDictateOnOpen = dictate
+                chatFocusOnOpen = !dictate
+                chatPresented = true
+            },
             onSeat: { rautaSeat = $0 },
             lift: exerciseBarLift
         )
@@ -451,6 +538,7 @@ struct WorkoutsScreen: View {
     }
 
     private func greet() {
+        guard !chatPresented else { return }
         RautaSpeech.shared.say(greeting)
     }
 
@@ -473,18 +561,21 @@ struct WorkoutsScreen: View {
 
     /// RAUTA starts the workout itself and takes you into it. A refusal is
     /// said in words, by RAUTA, rather than left to a buzz.
-    private func startFromRauta(_ workout: Workout) {
+    @discardableResult
+    private func startFromRauta(_ workout: Workout) -> WorkoutStartOutcome {
         _ = EngineWorkout.ensureEngineWorkout(workout.id)
-        if let refusal = activeWorkout.startAsOwnWorkout(workout).refusal {
+        let result = activeWorkout.startAsOwnWorkout(workout)
+        if let refusal = result.refusal {
             Haptics.trigger(.warning)
             RautaSpeech.shared.say(refusal)
-            return
+            return result
         }
         withAnimation(Theme.Motion.smoothOut(0.28)) {
             selectedWorkoutId = nil
             liveWorkoutPresented = true
             selectMainTab(.workout)
         }
+        return result
     }
 
     @ViewBuilder
@@ -1083,6 +1174,7 @@ struct RautaNativeTabControl: View {
     var wrapped = false
     @Binding var isPresented: Bool
     var onPresent: () -> Void
+    var onAsk: (Bool) -> Void
     /// Where the character is drawn, in global coordinates.
     var onSeat: (CGRect) -> Void = { _ in }
     var lift: CGFloat = 0
@@ -1116,6 +1208,10 @@ struct RautaNativeTabControl: View {
         .buttonStyle(.plain)
         .accessibilityLabel("Rauta actions")
         .rautaThoughts(isPresented: $isPresented, lift: lift, onDismissed: runPendingAction) {
+            RautaAskRow {
+                pendingAction = { onAsk(false) }
+                isPresented = false
+            }
             ForEach(actions) { action in
                 Button {
                     pendingAction = action.action
@@ -1155,6 +1251,34 @@ struct RautaNativeTabControl: View {
         .frame(width: controlSize, height: controlSize)
         .contentShape(Circle())
         .appZoomSource(Self.zoomSourceID, cornerRadius: controlSize / 2)
+    }
+}
+
+/// The first thing in RAUTA's menu: somewhere to start talking. It looks like a
+/// field because that is what it opens.
+private struct RautaAskRow: View {
+    var onAsk: () -> Void
+
+    var body: some View {
+        Button(action: onAsk) {
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Theme.primary)
+                Text("Ask me anything…")
+                    .font(Theme.sans(15, weight: .medium))
+                    .foregroundStyle(Theme.mutedForeground)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 42)
+            .background(Capsule().fill(Theme.input.opacity(0.55)))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Ask RAUTA")
+        .padding(.horizontal, 4)
+        .padding(.bottom, 6)
     }
 }
 

@@ -130,6 +130,12 @@ final class RautaDirector {
         return try body()
     }
 
+    func quietly<T>(_ body: () async throws -> T) async rethrows -> T {
+        quietDepth += 1
+        defer { quietDepth -= 1 }
+        return try await body()
+    }
+
     /// Something happened. Cues landing within a moment of each other are one
     /// event seen from several stores; the most meaningful of them is answered.
     private func cue(_ cue: RautaCue) {

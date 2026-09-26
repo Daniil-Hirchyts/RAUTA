@@ -30,6 +30,7 @@ nonisolated enum AgentWords {
         formatter.timeZone = calendar.timeZone
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
+        formatter.isLenient = false
         return formatter
     }()
 
@@ -95,6 +96,28 @@ nonisolated enum AgentWords {
         if lower.contains("next") { date = shift(date, by: 7) }
         while date < today { date = shift(date, by: 7) }
         return date
+    }
+
+    /// The days a schedule question covers, and what to call them: today,
+    /// tomorrow, a weekday, this week (to Sunday), next week, or else the next
+    /// seven days.
+    static func scheduleRange(_ text: String, today: String) -> (from: String, to: String, title: String) {
+        let lower = text.lowercased()
+        let sunday = shift(monday(of: today), by: 6)
+        if lower.contains("next week") {
+            let start = shift(monday(of: today), by: 7)
+            return (start, shift(start, by: 6), "Next week")
+        }
+        if lower.contains("this week") || lower.contains("rest of the week") {
+            return (today, sunday, "This week")
+        }
+        if lower.contains("tomorrow") { let day = shift(today, by: 1); return (day, day, "Tomorrow") }
+        if lower.contains("today") || lower.contains("tonight") { return (today, today, "Today") }
+        if weekday(in: lower) != nil, let day = day(lower, today: today) {
+            let names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            return (day, day, names[weekdayIndex(of: day) ?? 0])
+        }
+        return (today, shift(today, by: 6), "The next 7 days")
     }
 
     // MARK: Workouts
@@ -176,6 +199,21 @@ nonisolated enum AgentWords {
     static func said(_ value: Int?, in text: String) -> Int? {
         guard let value, numbers(in: text).contains(value) else { return nil }
         return value
+    }
+
+    static func said(_ value: Double?, in text: String) -> Double? {
+        guard let value, value.isFinite else { return nil }
+        if value.rounded() == value, value >= Double(Int.min), value < Double(Int.max),
+           numbers(in: text).contains(Int(value)) { return value }
+        let regex = try? NSRegularExpression(pattern: #"(?<!\d)\d+(?:[.,]\d+)?(?!\d)"#)
+        let range = NSRange(text.startIndex..., in: text)
+        for match in regex?.matches(in: text, range: range) ?? [] {
+            guard let span = Range(match.range, in: text),
+                  let said = Double(text[span].replacingOccurrences(of: ",", with: "."))
+            else { continue }
+            if said == value { return value }
+        }
+        return nil
     }
 
     // MARK: Muscles

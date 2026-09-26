@@ -216,6 +216,11 @@ final class TrainingProfileStore {
         }
     }
 
+    /// Restore an exact, validated profile after a guarded agent change.
+    func restoreProfile(_ previous: TrainingProfile) {
+        mutate { profile = Self.sanitizeProfile(previous.jsonTree) }
+    }
+
     func setMusclePriority(_ muscleId: MuscleId, _ level: MusclePriorityLevel?) {
         mutate {
             var rest = profile.priorityMuscles.filter { $0.muscleId != muscleId }

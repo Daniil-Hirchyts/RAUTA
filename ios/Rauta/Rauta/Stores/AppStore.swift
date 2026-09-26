@@ -1,5 +1,6 @@
 import Combine
 import SwiftUI
+import UIKit
 
 /// The one object every screen reaches for. It owns nothing itself: each store
 /// remains the authority on its own slice, and this is the wiring that starts
@@ -44,6 +45,12 @@ final class AppStore {
         LiveActivitySync.start()
         WorkoutBackgroundSession.shared.start()
         RestAlerts.shared.start()
+        WorkoutReminders.shared.start()
+        CalendarService.shared.startSync()
+        Task {
+            await RautaSpotlight.indexWorkouts()
+            await RautaSpotlight.indexExercises()
+        }
         HealthService.shared.startAutoSync()
         WatchConnectivityService.shared.start()
         iCloud.start()
@@ -54,6 +61,12 @@ final class AppStore {
             .store(in: &cancellables)
         activeWorkout.changed
             .sink { [weak self] in self?.applyKeepAwake() }
+            .store(in: &cancellables)
+        workouts.changed
+            .sink { Task { await RautaSpotlight.indexWorkouts() } }
+            .store(in: &cancellables)
+        NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)
+            .sink { _ in AgentModelStore.shared.evict() }
             .store(in: &cancellables)
     }
 
