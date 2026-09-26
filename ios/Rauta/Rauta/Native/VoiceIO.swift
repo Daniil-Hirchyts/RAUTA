@@ -26,18 +26,10 @@ final class VoiceIO {
         state = .requesting
         let id = UUID()
         operationID = id
-        let microphone = await withCheckedContinuation { continuation in
-            AVAudioApplication.requestRecordPermission { allowed in
-                continuation.resume(returning: allowed)
-            }
-        }
+        let microphone = await Self.microphoneAccess()
         guard operationID == id else { return }
         guard microphone else { error = "Microphone access is off. Enable it in Settings."; state = .idle; return }
-        let speech = await withCheckedContinuation { continuation in
-            SFSpeechRecognizer.requestAuthorization { status in
-                continuation.resume(returning: status == .authorized)
-            }
-        }
+        let speech = await Self.speechAccess()
         guard operationID == id else { return }
         guard speech else { error = "Speech access is off. Enable it in Settings."; state = .idle; return }
         guard SpeechTranscriber.isAvailable else {
@@ -82,7 +74,7 @@ final class VoiceIO {
             if operationID == id { state = .idle }
         }
         do {
-            let locale = await SpeechTranscriber.supportedLocale(equivalentTo: .current) ?? .current
+            let locale = await Self.transcriptionLocale()
             let transcriber = SpeechTranscriber(locale: locale, preset: .transcription)
             let modules: [any SpeechModule] = [transcriber]
             if let request = try await AssetInventory.assetInstallationRequest(supporting: modules) {
@@ -125,6 +117,40 @@ final class VoiceIO {
         let decibels = Double(recorder.averagePower(forChannel: 0))
         // -50 dB and below reads as silence; speech sits around -30 to -10.
         return max(0, min(1, (decibels + 50) / 45))
+    }
+
+    // The permission prompts answer on a background queue. Their callbacks
+    // are written in nonisolated functions so they don't inherit this class's
+    // main-actor isolation: a main-actor closure called off the main thread
+    // is a runtime trap, and was the crash on tapping the microphone.
+
+    /// The language to transcribe in: the phone's own if the transcriber has
+    /// it, else the first of the person's preferred languages it has — an
+    /// English-in-France phone should still be heard — else US English.
+    private static func transcriptionLocale() async -> Locale {
+        let candidates = [Locale.current]
+            + Locale.preferredLanguages.map(Locale.init(identifier:))
+            + [Locale(identifier: "en-US")]
+        for candidate in candidates {
+            if let supported = await SpeechTranscriber.supportedLocale(equivalentTo: candidate) { return supported }
+        }
+        return Locale(identifier: "en-US")
+    }
+
+    private nonisolated static func microphoneAccess() async -> Bool {
+        await withCheckedContinuation { continuation in
+            AVAudioApplication.requestRecordPermission { allowed in
+                continuation.resume(returning: allowed)
+            }
+        }
+    }
+
+    private nonisolated static func speechAccess() async -> Bool {
+        await withCheckedContinuation { continuation in
+            SFSpeechRecognizer.requestAuthorization { status in
+                continuation.resume(returning: status == .authorized)
+            }
+        }
     }
 
     func cancel() {

@@ -263,7 +263,11 @@ struct WorkoutsScreen: View {
         }
         .overlay {
             if introPlaying, !reduceMotion {
-                RautaLaunchIntro(seat: rautaSeat, onLanded: landIntro)
+                RautaLaunchIntro(
+                    seat: rautaSeat,
+                    mood: activeWorkout.session == nil ? .calm : .focused,
+                    onLanded: landIntro
+                )
                     .transition(.opacity)
             }
         }
@@ -326,6 +330,7 @@ struct WorkoutsScreen: View {
             case .background:
                 backgroundedAt = Date()
             case .active:
+                AgentModelStore.shared.refresh()
                 if let away = backgroundedAt, Date().timeIntervalSince(away) > 15 * 60 { greet() }
                 backgroundedAt = nil
             default:
@@ -466,11 +471,11 @@ struct WorkoutsScreen: View {
                 rautaTabControl(bottomInset: proxy.safeAreaInsets.bottom)
                     // Hidden while the arriving RAUTA flies in to take its place.
                     .opacity(introPlaying && !reduceMotion ? 0 : 1)
-                    // Covered by the player or the celebration, it neither
-                    // performs nor speaks: the RAUTA in front does.
+                    // Covered by the player, the chat or the celebration, it
+                    // neither performs nor speaks: the RAUTA in front does.
                     .environment(
                         \.rautaOnStage,
-                        onStage && !exercisePlayerOpen && celebration == nil
+                        onStage && !exercisePlayerOpen && !chatPresented && celebration == nil
                             && !(introPlaying && !reduceMotion)
                     )
             }

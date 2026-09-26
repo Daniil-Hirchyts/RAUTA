@@ -541,7 +541,9 @@ struct RautaChatBackdrop: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 40, paused: reduceMotion)) { timeline in
+        // At rest the light only breathes, and 20 frames a second is plenty;
+        // thinking and the answer's pulse move faster and get 30.
+        TimelineView(.animation(minimumInterval: thinking ? 1 / 30 : 1 / 20, paused: reduceMotion)) { timeline in
             let light = clock.step(to: timeline.date, thinking: thinking && !reduceMotion,
                                    listening: listening, answers: answers)
             let lightMode = colorScheme == .light
@@ -592,7 +594,7 @@ final class RautaLightClock {
     private var answers: Int?
 
     func step(to now: Date, thinking: Bool, listening: Bool, answers: Int) -> Light {
-        let dt = min(max(now.timeIntervalSince(last ?? now), 0), 1.0 / 24)
+        let dt = min(max(now.timeIntervalSince(last ?? now), 0), 1.0 / 15)
         last = now
         if let seen = self.answers, answers != seen { light.pulse = 0 }
         self.answers = answers

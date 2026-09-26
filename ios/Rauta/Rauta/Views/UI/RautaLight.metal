@@ -94,3 +94,95 @@ static float rautaHash(float2 cell) {
     half4 lit = mix(color, glow, half(field * 0.18 * strength));
     return mix(lit, ink, half(dotMask * (0.1 + field * 0.38) * strength));
 }
+
+/// RAUTA's light as the app opens: the chat's dot matrix, switching on.
+///
+/// Stray dots flicker on across the screen like a display waking. A ring
+/// closes in from the far corner, sweeping them up with bands of light running
+/// in behind it, and collapses on RAUTA. Out of the collapse the halo comes up
+/// and one shockwave leaves — it pushes the dots aside as it passes, so the
+/// grid itself is seen to move. The same progressive blur as the chat melts
+/// the dots toward the top and bottom edges.
+///
+/// - Parameters:
+///   - size: the backdrop's size in points.
+///   - source: where RAUTA appears, in points.
+///   - time: seconds since the start.
+///   - wake: 0…1, how many of the stray dots are on.
+///   - gather: 0…1, the closing ring's progress; 0 before it starts.
+///   - light: 0…1, how far the halo has come up.
+///   - pulse: 0…1 progress of the shockwave; 1 when there is none.
+///   - glow, ink: the wash's colour and the dots'.
+///   - strength: an overall scale.
+[[ stitchable ]] half4 rautaLaunch(
+    float2 position,
+    half4 color,
+    float2 size,
+    float2 source,
+    float time,
+    float wake,
+    float gather,
+    float light,
+    float pulse,
+    half4 glow,
+    half4 ink,
+    float strength
+) {
+    const float cell = 6.5;
+    float2 offset = position - source;
+    float r = length(offset);
+    float2 away = r > 0.001 ? offset / r : float2(0.0);
+
+    // The shockwave shifts where the grid is read, so the dots near its front
+    // are carried outward with it.
+    float front = pulse * length(size) * 0.75;
+    float wave = exp(-pow((r - front) / 44.0, 2.0)) * (1.0 - pulse);
+    float2 p = position - away * wave * 10.0;
+    float rp = length(p - source);
+
+    // The halo, as in the chat.
+    float base = rautaHalo(p, source, float2(size.x * 0.52, clamp(size.y * 0.4, 220.0, 330.0)));
+    float field = base * light * (1.0 + 0.07 * sin(time * 0.8));
+
+    // The closing ring, brighter the tighter it draws, gone as it lands.
+    float started = step(0.0001, gather);
+    float closing = started * (1.0 - smoothstep(0.9, 1.0, gather));
+    float far = length(max(source, size - source));
+    float ringAt = (1.0 - gather) * far;
+    float ring = exp(-pow((rp - ringAt) / 56.0, 2.0)) * closing * (0.3 + 0.5 * gather);
+    float inside = (1.0 - smoothstep(ringAt - 30.0, ringAt + 30.0, rp)) * started;
+    float bands = inside * closing * (0.05 + 0.1 * (0.5 + 0.5 * sin(rp * 0.045 + time * 6.0)));
+    // What the ring has passed over is swept; once it has closed, everything is.
+    float swept = max((1.0 - inside) * started, smoothstep(0.97, 1.0, gather));
+
+    // Stray dots: a scatter of cells flickering on, until the ring sweeps them.
+    float2 cellIndex = floor(p / cell);
+    float h = rautaHash(cellIndex);
+    float h2 = rautaHash(cellIndex + 17.0);
+    float stray = step(h, 0.26 * wake) * (1.0 - swept)
+        * (0.5 + 0.5 * sin(time * (3.0 + 6.0 * h2) + h2 * 6.2832));
+
+    field = saturate(field + ring + bands + stray * 0.34
+        + wave * 0.5 * smoothstep(0.0, 0.06, 1.0 - pulse));
+
+    // The dot matrix: one dot per cell, sized by the light.
+    float2 local = fract(p / cell) - 0.5;
+    float dist = length(local) * cell;
+    float twinkle = 1.0 + closing * 0.5 * sin(time * 5.0 + h * 6.2832);
+    float radius = cell * 0.4 * sqrt(saturate(field * twinkle));
+    float sharp = 1.0 - smoothstep(radius - 0.7, radius + 0.3, dist);
+
+    // The progressive blur toward the top and bottom edges.
+    const float blurTop = 140.0;
+    const float blurBottom = 180.0;
+    float steady = cell * 0.4 * sqrt(field);
+    float coverage = saturate(3.14159 * steady * steady / (cell * cell));
+    float blurred = max(
+        1.0 - smoothstep(blurTop * 0.3, blurTop, position.y),
+        smoothstep(size.y - blurBottom, size.y - blurBottom * 0.3, position.y)
+    );
+    float dotMask = mix(sharp, coverage, blurred) * smoothstep(0.03, 0.14, field);
+
+    half4 lit = mix(color, glow, half(field * 0.18 * strength));
+    return mix(lit, ink, half(dotMask * (0.1 + field * 0.38 + stray * 0.7) * strength));
+}

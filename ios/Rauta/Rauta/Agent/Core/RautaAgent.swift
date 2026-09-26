@@ -2,6 +2,7 @@ import Foundation
 import FoundationModels
 import MLX
 import Observation
+import os
 
 enum AgentPhase: Equatable { case idle, thinking, working, ready, failed }
 
@@ -11,6 +12,7 @@ enum AgentPhase: Equatable { case idle, thinking, working, ready, failed }
 @MainActor @Observable
 final class RautaAgent {
     static let shared = RautaAgent()
+    private static let log = Logger(subsystem: "com.hirchyts.gymlib", category: "agent")
 
     private(set) var items: [AgentItem] = []
     private(set) var phase: AgentPhase = .idle
@@ -87,25 +89,57 @@ final class RautaAgent {
 
     private func run(_ input: String, previous: [AgentItem], turn: Int, spoken: Bool) async {
         host.begin(input)
-        let tools = AgentToolRouter.tools(for: input, host: host)
-        let instructions = AgentContext.instructions(items: previous)
+        let today = CalendarDate.today
+        let running = ActiveWorkoutStore.shared.session != nil
         var reply: String?
         var failure: Error?
-        do {
-            #if targetEnvironment(simulator)
-            let model = SystemLanguageModel.default
-            guard model.availability == .available else { throw AgentModelUnavailable() }
-            let session = LanguageModelSession(model: model, tools: tools, instructions: instructions)
-            reply = try await session.respond(to: input,
-                options: GenerationOptions(temperature: 0.2, maximumResponseTokens: 180)).content
-            #else
-            guard let model = AgentModelStore.shared.model() else { throw AgentModelUnavailable() }
-            reply = try await AgentModelStore.respond(
-                model: model, tools: tools, instructions: instructions,
-                prompt: input, maximumTokens: 180
-            )
-            #endif
-        } catch { failure = error }
+
+        if let intent = AgentIntent.parse(input, today: today, running: running) {
+            // Plain requests never wait on the model, and never fail in it.
+            Self.log.info("Intent: \(String(describing: intent), privacy: .public)")
+            await host.perform(intent, input: input)
+        } else {
+            let tools = AgentToolRouter.tools(for: input, host: host)
+            let instructions = AgentContext.instructions(items: previous)
+            do {
+                #if targetEnvironment(simulator)
+                let model = SystemLanguageModel.default
+                guard model.availability == .available else { throw AgentModelUnavailable() }
+                let session = LanguageModelSession(model: model, tools: tools, instructions: instructions)
+                reply = try await session.respond(to: input,
+                    options: GenerationOptions(temperature: 0.2, maximumResponseTokens: 180)).content
+                #else
+                guard let model = AgentModelStore.shared.model() else { throw AgentModelUnavailable() }
+                reply = try await AgentModelStore.respond(
+                    model: model, tools: tools, instructions: instructions,
+                    prompt: input, maximumTokens: 180
+                )
+                #endif
+            } catch {
+                failure = error
+                if !(error is CancellationError) {
+                    Self.log.error("Model turn failed: \(String(describing: error), privacy: .public)")
+                }
+            }
+
+            // No tool ran. A malformed tool call, an empty answer, or words
+            // about the model's own limits are never shown: the likeliest
+            // reading of the request runs instead, still checked by the host.
+            if host.outcome == nil, !(failure is CancellationError), !(failure is AgentModelUnavailable),
+               turn == turnNumber, !Task.isCancelled {
+                let usable = reply.flatMap(AgentReply.clean)
+                let needsAction = AgentToolRouter.requiresTool(input)
+                if usable == nil || needsAction || failure != nil,
+                   let guess = AgentIntent.parse(input, today: today, running: running, loose: true) {
+                    Self.log.info("Fallback intent: \(String(describing: guess), privacy: .public)")
+                    host.begin(input)
+                    await host.perform(guess, input: input)
+                    reply = nil
+                } else {
+                    reply = needsAction ? nil : usable
+                }
+            }
+        }
 
         guard turn == turnNumber, !Task.isCancelled else { return }
         activity = nil
@@ -119,20 +153,19 @@ final class RautaAgent {
                 if let undo = result.undo { undoActions[id] = undo }
             }
             finish(.ready)
-        } else if AgentToolRouter.requiresTool(input) && failure == nil {
-            said = "I couldn't check or change that safely. Try asking again with a specific workout or exercise."
-            append(.rauta(said!))
-            finish(.failed)
-        } else if let reply, !reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let answer = String(reply.trimmingCharacters(in: .whitespacesAndNewlines).prefix(600))
-            append(.rauta(answer))
-            said = answer
-            if spoken { VoiceIO.shared.speak(answer) }
+        } else if let reply {
+            append(.rauta(reply))
+            said = reply
+            if spoken { VoiceIO.shared.speak(reply) }
             finish(.ready)
         } else if failure is CancellationError {
             phase = .idle
+        } else if let failure = failure as? AgentModelUnavailable {
+            append(.failure(failure.localizedDescription))
+            finish(.failed)
         } else {
-            append(.failure(failure?.localizedDescription ?? "I couldn't answer this time. Try again."))
+            append(.rauta(AgentReply.fallback))
+            said = AgentReply.fallback
             finish(.failed)
         }
         generation = nil

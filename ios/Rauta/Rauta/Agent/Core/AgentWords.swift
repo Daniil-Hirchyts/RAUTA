@@ -302,3 +302,60 @@ nonisolated enum AgentWords {
         return String(cleaned).split(separator: " ").map(String.init)
     }
 }
+
+// MARK: - Quantities and names said with their units
+
+nonisolated extension AgentWords {
+    /// The number said right before one of `units`: "3 days", "three times",
+    /// "4x a week".
+    static func count(of units: Set<String>, in text: String) -> Int? {
+        let list = words(text)
+        for (index, word) in list.enumerated() {
+            if let glued = word.firstMatch(of: #/^(\d+)x$/#), units.contains("x") { return Int(glued.1) }
+            guard index + 1 < list.count, units.contains(list[index + 1]) else { continue }
+            if let value = Int(word) ?? numberWords[word] { return value }
+        }
+        return nil
+    }
+
+    /// Session minutes as said: "45 minutes", "40 min", "an hour", "half an hour".
+    static func minutes(in text: String) -> Int? {
+        let lower = text.lowercased()
+        if lower.contains("hour and a half") || lower.contains("an hour and half") { return 90 }
+        if lower.contains("half an hour") || lower.contains("half hour") { return 30 }
+        if let said = count(of: ["min", "mins", "minute", "minutes"], in: lower) { return said }
+        if lower.contains("an hour") || lower.contains("one hour") || lower.contains("1 hour") { return 60 }
+        return nil
+    }
+
+    /// Reps as said: "8 reps", "10 x 60 kg", or a lone number beside a load.
+    static func reps(in text: String) -> Int? {
+        let lower = text.lowercased()
+        if let said = count(of: ["rep", "reps", "repetitions", "times"], in: lower) { return said }
+        if let times = lower.firstMatch(of: #/(\d+)\s*[x×]\s*\d/#) { return Int(times.1) }
+        let loads = kilograms(in: lower).map { Set([Int($0)]) } ?? []
+        let rest = numbers(in: lower).subtracting(loads)
+        return rest.count == 1 ? rest.first : nil
+    }
+
+    /// A load in kilograms as said: "60 kg", "22.5 kilos".
+    static func kilograms(in text: String) -> Double? {
+        let lower = text.lowercased()
+        guard let match = lower.firstMatch(of: #/(\d+(?:[.,]\d+)?)\s*(?:kg|kgs|kilo|kilos|kilogram|kilograms)\b/#)
+        else { return nil }
+        return Double(String(match.1).replacingOccurrences(of: ",", with: "."))
+    }
+
+    /// Whether every word of a catalogue name such as "ez barbell" is in `text`,
+    /// plurals and shorthand folded the way exercise names are.
+    static func mentions(_ name: String, in text: String) -> Bool {
+        let said = Set(ExerciseResolver.words(text))
+        let wanted = ExerciseResolver.words(name)
+        return !wanted.isEmpty && wanted.allSatisfy(said.contains)
+    }
+
+    /// Whether `text` names any gym equipment other than body weight.
+    static func mentionsEquipment(_ text: String) -> Bool {
+        ExerciseCatalogue.equipmentOptions.contains { $0 != "body weight" && mentions($0, in: text) }
+    }
+}

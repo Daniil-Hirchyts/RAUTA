@@ -140,6 +140,8 @@ struct AppPageView: View {
             EquipmentPresetScreen()
         case .exerciseAlternatives(let exerciseId, let workoutId):
             ExerciseAlternativesScreen(exerciseId: exerciseId, workoutId: workoutId)
+        case .policies:
+            PoliciesScreen()
         }
     }
 }

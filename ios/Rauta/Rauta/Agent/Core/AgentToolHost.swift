@@ -26,6 +26,14 @@ final class AgentToolHost {
     func cancel() { cancelled = true }
     func removeProposal(_ id: String) { proposals[id] = nil }
 
+    /// Ends the turn with words only.
+    func say(_ text: String) { finish(.reply(text)) }
+
+    /// The next workout still ahead, for a request that names none: "remind me".
+    private var nextWorkout: Workout? {
+        upcoming.first { $0.date >= today && $0.completion == nil }
+    }
+
     private func finish(_ result: ToolOutcome) {
         outcome = result
         activity = nil
@@ -101,10 +109,32 @@ final class AgentToolHost {
 
     func findExercise(_ phrase: String) {
         guard !cancelled else { return }
-        let matches = ExerciseResolver.resolve(phrase, limit: 6)
+        var ids = ExerciseResolver.resolve(phrase, limit: 6).map(\.exercise.id)
+        var title = "Exercises"
+        if ids.isEmpty {
+            // "Something for rear delts with dumbbells": the muscle and the
+            // equipment, rather than a name.
+            let muscles = Set(AgentWords.muscles(in: phrase))
+            if !muscles.isEmpty {
+                let named = Set(ExerciseCatalogue.equipmentOptions.filter { AgentWords.mentions($0, in: phrase) })
+                let owned = Set(FiltersStore.shared.gymEquipment)
+                ids = ExerciseCatalogue.allByName
+                    .filter { exercise in
+                        guard let primary = exercise.primaryMuscle, muscles.contains(primary),
+                              !exercise.name.localizedCaseInsensitiveContains("stretch") else { return false }
+                        return named.isEmpty || named.contains(exercise.equipment)
+                    }
+                    .sorted { lhs, rhs in
+                        let lhsOwned = owned.contains(lhs.equipment), rhsOwned = owned.contains(rhs.equipment)
+                        return lhsOwned != rhsOwned ? lhsOwned : lhs.name.count < rhs.name.count
+                    }
+                    .prefix(6).map(\.id)
+                title = "For \(muscles.count == 1 ? muscles.first!.label.lowercased() : "those muscles")"
+            }
+        }
         finish(.init(
-            say: matches.isEmpty ? "I couldn't find an exercise called \"\(phrase)\"." : "I found these exercises.",
-            card: matches.isEmpty ? nil : .exercises(title: "Exercises", ids: matches.map(\.exercise.id))
+            say: ids.isEmpty ? "I couldn't find an exercise for \"\(phrase)\"." : "I found these exercises.",
+            card: ids.isEmpty ? nil : .exercises(title: title, ids: ids)
         ))
     }
 
@@ -556,7 +586,7 @@ final class AgentToolHost {
 
     func startRest(seconds proposed: Int?) {
         guard !cancelled else { return }
-        guard !Set(AgentWords.words(input)).isDisjoint(with: ["start", "begin", "set"]) else {
+        guard !Set(AgentWords.words(input)).isDisjoint(with: ["start", "begin", "set", "take", "rest", "timer", "break"]) else {
             finish(.reply("Tell me to start a rest timer when you're ready.")); return
         }
         guard ActiveWorkoutStore.shared.session != nil else {
@@ -702,8 +732,9 @@ final class AgentToolHost {
                          card: .permission(.calendar)))
             return
         }
-        guard let day = AgentWords.day(phrase, today: today), day >= today else {
-            finish(.reply("Which day should I check?")); return
+        let day = AgentWords.day(phrase, today: today) ?? AgentWords.day(input, today: today) ?? today
+        guard day >= today else {
+            finish(.reply("Choose today or a later day to check.")); return
         }
         let slots = CalendarService.shared.freeSlots(on: day,
             minutes: Int(TrainingProfileStore.shared.profile.preferredSessionDurationMinutes))
@@ -722,8 +753,8 @@ final class AgentToolHost {
                          card: .permission(.calendar)))
             return
         }
-        guard let target = workout(phrase) ?? workout(input), target.completion == nil else {
-            finish(.reply("Which upcoming workout should I add to Calendar?")); return
+        guard let target = workout(phrase) ?? workout(input) ?? nextWorkout, target.completion == nil else {
+            finish(.reply("There's no upcoming workout to add to Calendar.")); return
         }
         let minutes = row(target).minutes
         guard let slot = CalendarService.shared.suggestedSlot(for: target, minutes: minutes) else {
@@ -745,8 +776,8 @@ final class AgentToolHost {
         guard !Set(AgentWords.words(input)).isDisjoint(with: ["remind", "reminder", "notify"]) else {
             finish(.reply("Tell me which workout needs a reminder.")); return
         }
-        guard let target = workout(phrase) ?? workout(input), target.completion == nil else {
-            finish(.reply("Which upcoming workout should I remind you about?")); return
+        guard let target = workout(phrase) ?? workout(input) ?? nextWorkout, target.completion == nil else {
+            finish(.reply("There's no upcoming workout to remind you about.")); return
         }
         guard !WorkoutReminders.shared.hasReminder(target.id) else {
             finish(.reply("That workout already has a reminder.")); return

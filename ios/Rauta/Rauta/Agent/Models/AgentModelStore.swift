@@ -14,14 +14,22 @@ final class AgentModelStore {
     private var loaded: MLXLanguageModel?
     private var task: Task<Void, Never>?
 
-    private init() {}
+    /// Whether RAUTA has a model to think with. Kept, not computed: views read
+    /// it on every redraw, and answering it means scanning the model folder on
+    /// an iPhone or asking the system model on the simulator. It changes only
+    /// on download, removal, or when the app comes back (see ``refresh()``).
+    private(set) var installed = false
 
-    var installed: Bool {
+    private init() { refresh() }
+
+    /// Checks again whether the model is there.
+    func refresh() {
         #if targetEnvironment(simulator)
-        return SystemLanguageModel.default.availability == .available
+        let available = SystemLanguageModel.default.availability == .available
         #else
-        return RautaModelFiles.isInstalled(RautaModelCatalog.qwen35_2b)
+        let available = RautaModelFiles.isInstalled(RautaModelCatalog.qwen35_2b)
         #endif
+        if available != installed { installed = available }
     }
 
     var status: String {
@@ -77,6 +85,7 @@ final class AgentModelStore {
                     throw AgentModelStoreError.incomplete
                 }
                 progress = 1
+                refresh()
                 // One real tool turn now, so the first question a person asks
                 // does not pay for the GPU warming up.
                 if let model = model() {
@@ -127,6 +136,7 @@ final class AgentModelStore {
         try RautaModelFiles.remove(RautaModelCatalog.qwen35_2b)
         progress = 0
         error = nil
+        refresh()
     }
 }
 

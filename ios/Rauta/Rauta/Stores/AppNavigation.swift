@@ -21,6 +21,7 @@ enum AppPage: Hashable {
     case workoutForm(exerciseIds: [String], workoutId: String?, engineFocusMuscles: [MuscleId]?)
     case equipmentPreset
     case exerciseAlternatives(exerciseId: String, workoutId: String)
+    case policies
 
     var typeName: String {
         switch self {
@@ -40,6 +41,7 @@ enum AppPage: Hashable {
         case .workoutForm: return "workout-form"
         case .equipmentPreset: return "equipment-preset"
         case .exerciseAlternatives: return "exercise-alternatives"
+        case .policies: return "policies"
         }
     }
 
@@ -269,6 +271,10 @@ final class AppSessionStore {
 #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--onboarding") {
             return [.onboarding]
+        }
+        // Straight to Settings → Policies & credits, onboarded or not.
+        if ProcessInfo.processInfo.arguments.contains("--policies") {
+            return [.workouts, .settings, .policies]
         }
 #endif
         let onboarding = TrainingProfileStore.shared.onboarding

@@ -194,6 +194,11 @@ struct SettingsScreen: View {
                         }
 
                         section("About") {
+                            settingsAction(title: "Policies & credits",
+                                           detail: "Privacy, the model, exercise data and licences",
+                                           icon: "doc.text", showsDivider: true) {
+                                store.navigation.push(.policies)
+                            }
                             settingsRow(title: "App version", icon: "info.circle", showsDivider: false) {
                                 Text(appVersion)
                                     .font(Theme.sans(14, weight: .medium))

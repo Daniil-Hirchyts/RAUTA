@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+"""Writes ios/Rauta/Rauta/Lib/OpenSourceNotices.swift: the licence of every Swift
+package the app resolves and every font it bundles, shown in Settings → Policies.
+
+Run after adding or updating a package or a font:
+
+    scripts/generate-open-source-notices.py [path/to/SourcePackages/checkouts]
+
+Package licences are read from the resolved checkouts (build them once first);
+font copyright lines from each font's own name table, with the SIL Open Font
+License text in scripts/licenses/OFL-1.1.txt.
+"""
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+RESOLVED = ROOT / "ios/Rauta/Rauta.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+FONTS = ROOT / "ios/Rauta/Rauta/Resources/Fonts"
+OFL = ROOT / "scripts/licenses/OFL-1.1.txt"
+OUTPUT = ROOT / "ios/Rauta/Rauta/Lib/OpenSourceNotices.swift"
+
+
+def find_checkouts() -> Path:
+    if len(sys.argv) > 1:
+        return Path(sys.argv[1])
+    for candidate in sorted((ROOT / "build/ios").glob("*/SourcePackages/checkouts")):
+        if any(candidate.iterdir()):
+            return candidate
+    sys.exit("No package checkouts found; build the app once or pass the checkouts path.")
+
+
+def first(folder: Path, names: list[str]) -> Path | None:
+    for entry in sorted(folder.iterdir()):
+        if entry.is_file() and any(entry.name.lower().startswith(n) for n in names):
+            return entry
+    return None
+
+
+def licence_name(text: str) -> str:
+    if "Apache License" in text and "Version 2.0" in text:
+        return "Apache License 2.0"
+    if "Permission is hereby granted, free of charge" in text:
+        return "MIT License"
+    return "See licence text"
+
+
+OWNERS = {
+    "apple": "Apple Inc. and the Swift project authors",
+    "swiftlang": "Apple Inc. and the Swift project authors",
+    "huggingface": "Hugging Face",
+    "ml-explore": "ml-explore",
+}
+
+
+def holder(*texts: str, owner: str) -> str:
+    """The first real copyright line: capitalised, with a year, not a template."""
+    import re
+    for text in texts:
+        for line in text.splitlines():
+            line = line.strip().lstrip("#").strip()
+            if (line.startswith("Copyright") and re.search(r"\d{4}", line)
+                    and "[yyyy]" not in line and "<dates>" not in line):
+                return line
+    return f"© {OWNERS.get(owner, owner)}"
+
+
+def font_copyright(path: Path) -> tuple[str, str]:
+    from fontTools.ttLib import TTFont
+    names = TTFont(path)["name"]
+    def get(i):
+        record = names.getName(i, 3, 1, 0x409) or names.getName(i, 1, 0, 0)
+        return str(record) if record else ""
+    import re
+    family = get(16) or get(1) or path.stem
+    family = re.sub(r"\s+(Thin|Light|Regular|Medium|Bold|Black|Heavy)$", "", family)
+    return family, get(0)
+
+
+def swift_string(text: str) -> str:
+    delimiter = "#"
+    while f'"""{delimiter}' in text:
+        delimiter += "#"
+    return f'{delimiter}"""\n{text.rstrip()}\n"""{delimiter}'
+
+
+def main() -> None:
+    checkouts = find_checkouts()
+    pins = json.loads(RESOLVED.read_text())["pins"]
+    texts: dict[str, str] = {}
+    packages, fonts = [], []
+
+    def text_key(text: str) -> str:
+        key = "text" + hashlib.sha1(text.encode()).hexdigest()[:8]
+        texts[key] = text
+        return key
+
+    for pin in sorted(pins, key=lambda p: p["identity"]):
+        folder = checkouts / pin["identity"]
+        location = pin["location"].removesuffix(".git")
+        owner = location.rstrip("/").split("/")[-2]
+        name = location.rstrip("/").split("/")[-1]
+        licence = first(folder, ["license", "copying"]) if folder.exists() else None
+        if licence is None:
+            sys.exit(f"No licence file for {pin['identity']} in {folder}")
+        text = licence.read_text(errors="replace")
+        notice = first(folder, ["notice"])
+        full = text + ("\n\nNOTICE\n\n" + notice.read_text(errors="replace") if notice else "")
+        notice_text = notice.read_text(errors="replace") if notice else ""
+        packages.append((pin["identity"], name, location, licence_name(text),
+                         holder(text, notice_text, owner=owner), text_key(full)))
+
+    template = OFL.read_text()
+    body = template[template.index("This Font Software is licensed"):]
+    for path in sorted(FONTS.glob("*.[ot]tf")):
+        family, copyright = font_copyright(path)
+        full = f"{copyright}\n\n{body}"
+        fonts.append((path.stem, family, "https://openfontlicense.org", "SIL Open Font License 1.1",
+                      copyright, text_key(full)))
+
+    def entries(items):
+        return "\n".join(
+            f'        .init(id: "{i}", name: "{n}", url: "{u}", license: "{l}", holder: {json.dumps(h, ensure_ascii=False)}, text: {k}),'
+            for i, n, u, l, h, k in items
+        )
+
+    lines = [
+        "// Generated by scripts/generate-open-source-notices.py from the resolved Swift",
+        "// packages and the bundled fonts. Do not edit by hand: run the script again.",
+        "",
+        "/// The licence of every package the app is built with and every font it ships.",
+        "nonisolated enum OpenSourceNotices {",
+        "    struct Notice: Identifiable, Sendable {",
+        "        let id: String",
+        "        let name: String",
+        "        let url: String",
+        "        let license: String",
+        "        let holder: String",
+        "        let text: String",
+        "    }",
+        "",
+        "    static let packages: [Notice] = [",
+        entries(packages),
+        "    ]",
+        "",
+        "    static let fonts: [Notice] = [",
+        entries(fonts),
+        "    ]",
+        "",
+    ]
+    for key, text in texts.items():
+        lines.append(f"    private static let {key} = {swift_string(text)}")
+        lines.append("")
+    lines.append("}")
+    OUTPUT.write_text("\n".join(lines) + "\n")
+    print(f"Wrote {OUTPUT.relative_to(ROOT)}: {len(packages)} packages, {len(fonts)} fonts, {len(texts)} texts")
+
+
+if __name__ == "__main__":
+    main()

@@ -64,6 +64,36 @@ struct AgentSeamsTests {
         #expect(!AgentWords.isDate("2026-02-30"))
     }
 
+    /// The two requests that failed on the iPhone — a schedule chip and a
+    /// workout build — run from their words to a card without the model.
+    @Test func plainRequestsReachACardWithoutTheModel() async throws {
+        try await withIsolatedStores {
+            let bench = try #require(ExerciseResolver.resolve("barbell bench press").first?.exercise.id)
+            _ = WorkoutsStore.shared.createWorkout(
+                name: "Push", date: CalendarDate.shift(CalendarDate.today, by: 1), exerciseIds: [bench])
+            let host = AgentToolHost()
+
+            let ask = "What's coming up?"
+            host.begin(ask)
+            await host.perform(try #require(AgentIntent.parse(ask, today: CalendarDate.today, running: false)), input: ask)
+            guard case .sessions(_, let rows)? = host.outcome?.card else {
+                Issue.record("No schedule card: \(host.outcome?.say ?? "nothing")"); return
+            }
+            #expect(rows.map(\.title) == ["Push"])
+
+            let build = "Build the workout for shoulders and legs"
+            host.begin(build)
+            await host.perform(try #require(AgentIntent.parse(build, today: CalendarDate.today, running: false)), input: build)
+            guard case .proposal(let proposal)? = host.outcome?.card else {
+                Issue.record("No workout preview: \(host.outcome?.say ?? "nothing")"); return
+            }
+            #expect(proposal.state == .pending)
+            #expect(!(proposal.rows.first?.exerciseIds.isEmpty ?? true))
+            // A preview only: nothing was saved.
+            #expect(WorkoutsStore.shared.workouts.count == 1)
+        }
+    }
+
     @Test func hostRejectsPastDatesAndUnknownReplacements() async throws {
         try await withIsolatedStores {
             let bench = try #require(ExerciseResolver.resolve("barbell bench press").first?.exercise.id)
