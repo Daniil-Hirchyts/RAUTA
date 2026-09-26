@@ -81,6 +81,7 @@ step "Archive"
 rm -rf "$ARCHIVE"
 xcodebuild -project "$PROJECT" -scheme Rauta -configuration Release \
   -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" \
+  -skipPackagePluginValidation \
   "${SIGNING[@]}" archive
 [[ -d "$ARCHIVE" ]] || fail "archive was not produced"
 WATCH_APP="$ARCHIVE/Products/Applications/Rauta.app/Watch/RautaWatch.app"

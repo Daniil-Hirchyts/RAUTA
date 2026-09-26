@@ -270,7 +270,39 @@ enum TrainingPlan {
         now: String? = nil,
         sourceProgramId: String? = nil
     ) async -> TrainingWeekOutcome? {
+        guard let outcome = await previewTrainingPlanForDates(
+            dates: rawDates, now: now, sourceProgramId: sourceProgramId
+        ) else { return nil }
+        switch outcome {
+        case .blocked(let block):
+            return .blocked(block)
+        case .ready(let preview):
+            do {
+                let sessions = try commit(preview)
+                return .created(programId: preview.program.id, sessions: sessions, issues: preview.issues)
+            } catch {
+                return .blocked(PlanBlock(
+                    reason: .input,
+                    message: (error as? TrainingPersistenceError)?.message
+                        ?? "The plan could not be saved.",
+                    page: nil,
+                    issues: []
+                ))
+            }
+        }
+    }
+
+    /// The same plan `createTrainingPlanForDates` would keep, built but not kept.
+    /// Nil when the caller went away before the plan was ready.
+    static func previewTrainingPlanForDates(
+        dates rawDates: [String],
+        now: String? = nil,
+        sourceProgramId: String? = nil,
+        readiness: Readiness? = nil,
+        overrides: TrainingEngineAdapter.PreferenceOverrides = .init()
+    ) async -> PlanPreviewOutcome? {
         let now = now ?? ISOTime.now()
+        let basis = PlanBasis.current(now: now, readiness: readiness)
         let today = String(now.prefix(10))
         var seen = Set<String>()
         let dates = rawDates
@@ -307,7 +339,10 @@ enum TrainingPlan {
                 let at = ISOTime.parse("\(date)T00:00:00.000Z") ?? 0
                 return Int(((at - weekStartMillis) / DAY_MS).rounded())
             }
-            return PlanGeneration.request(weekStart: weekStart, offsets: offsets, now: now)
+            return PlanGeneration.request(
+                weekStart: weekStart, offsets: offsets, now: now,
+                readiness: readiness, overrides: overrides
+            )
         }
         guard let results = await PlanGeneration.generate(requests) else { return nil }
 
@@ -358,25 +393,32 @@ enum TrainingPlan {
         program.durationWeeks = program.weeks.count
         Generate.namespaceProgramIds(&program, program.id)
 
-        let source = sourceProgramId.flatMap { id in
-            TrainingRecordsStore.shared.data.programs.first { $0.id == id }
+        return .ready(PlanPreview(
+            kind: .newPlan,
+            program: program,
+            sessions: sessionViews(program),
+            issues: issues,
+            sourceProgramId: sourceProgramId,
+            basis: basis
+        ))
+    }
+
+    /// Keeps a previewed plan: saved as the active program, its sessions put on
+    /// the workout list. Keeping the same preview twice changes nothing more.
+    @discardableResult
+    static func commit(_ preview: PlanPreview) throws -> [PlannedSessionView] {
+        let store = TrainingRecordsStore.shared
+        switch preview.kind {
+        case .newPlan:
+            let source = preview.sourceProgramId.flatMap { id in
+                store.data.programs.first { $0.id == id }
+            }
+            try store.saveProgram(preview.program, manualSourceProgramId: source?.id)
+        case .adjustWeek:
+            try store.saveProgram(preview.program)
         }
-        do {
-            try TrainingRecordsStore.shared.saveProgram(
-                program, manualSourceProgramId: source?.id
-            )
-        } catch {
-            return .blocked(PlanBlock(
-                reason: .input,
-                message: (error as? TrainingPersistenceError)?.message
-                    ?? "The plan could not be saved.",
-                page: nil,
-                issues: []
-            ))
-        }
-        let sessions = sessionViews(program)
-        projectPlannedWorkouts(sessions)
-        return .created(programId: program.id, sessions: sessions, issues: issues)
+        projectPlannedWorkouts(preview.sessions)
+        return preview.sessions
     }
 
 }
@@ -387,11 +429,18 @@ enum TrainingPlan {
 enum PlanGeneration {
     /// One week's request, from the profile, equipment and history as they are
     /// now.
-    static func request(weekStart: String?, offsets: [Int], now: String) -> ProgramGenerationRequest {
+    static func request(
+        weekStart: String?,
+        offsets: [Int],
+        now: String,
+        readiness: Readiness? = nil,
+        overrides: TrainingEngineAdapter.PreferenceOverrides = .init()
+    ) -> ProgramGenerationRequest {
         var request = TrainingWorkflow.buildTrainingRequest(
-            TrainingEngineAdapter.buildEngineInputs(),
+            TrainingEngineAdapter.buildEngineInputs(overrides: overrides),
             now: now,
-            availableDays: offsets
+            availableDays: offsets,
+            readiness: readiness
         )
         if let weekStart { request.schedule.weekStart = weekStart }
         return request

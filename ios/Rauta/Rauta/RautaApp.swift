@@ -8,8 +8,17 @@ struct RautaApp: App {
 
     var body: some Scene {
         WindowGroup {
+#if DEBUG
+            if AgentLab.isRequested {
+                AgentLabScreen()
+            } else {
+                RootView()
+                    .environment(\.appStore, AppStore.shared)
+            }
+#else
             RootView()
                 .environment(\.appStore, AppStore.shared)
+#endif
         }
     }
 }

@@ -610,8 +610,8 @@ struct WorkoutsScreen: View {
                         do {
                             // Saving the plan is what RAUTA answers with its
                             // result line; nothing more needs saying here.
-                            let result = try await TrainingWorkflow.generateAndSavePlan(source: source)
-                            if let program = result.result.program { TrainingPlan.projectPlannedWorkouts(TrainingPlan.sessionViews(program)) }
+                            let preview = try await TrainingWorkflow.previewAdjustedWeek(source: source)
+                            try TrainingPlan.commit(preview)
                             Haptics.trigger(.success)
                         } catch {
                             Haptics.trigger(.warning)

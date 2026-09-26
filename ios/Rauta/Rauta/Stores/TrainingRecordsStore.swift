@@ -365,6 +365,57 @@ final class TrainingRecordsStore {
         }
     }
 
+    // MARK: Taking a change back
+
+    /// Puts one set back to what it held before a change, but only while it
+    /// still holds exactly what that change left. A set logged since — from the
+    /// Watch, say — is newer than the undo and stays.
+    func revertSetObservation(
+        exerciseEntryId: String,
+        setDraftId: String,
+        expected: PersistedSetObservation?,
+        restoring previous: PersistedSetObservation?
+    ) throws {
+        try withActiveDraft { draft in
+            guard let exerciseIndex = draft.exercises.firstIndex(where: { $0.id == exerciseEntryId }),
+                  let setIndex = draft.exercises[exerciseIndex].sets.firstIndex(where: {
+                      $0.id == setDraftId
+                  })
+            else { throw TrainingPersistenceError("Set not found") }
+            guard draft.exercises[exerciseIndex].sets[setIndex].observation == expected else {
+                throw TrainingPersistenceError("This set has changed since")
+            }
+            draft.exercises[exerciseIndex].sets[setIndex].observation = previous
+        }
+    }
+
+    /// Puts one live exercise back as it was, sets and all, while it is still
+    /// exactly as a change left it. Swapping back would prescribe it afresh;
+    /// this restores what was there.
+    func restoreActiveExercise(
+        _ previous: PersistedActiveExerciseDraft,
+        expected: PersistedActiveExerciseDraft
+    ) throws {
+        guard previous.id == expected.id else {
+            throw TrainingPersistenceError("These are different exercises")
+        }
+        try withActiveDraft { draft in
+            guard let index = draft.exercises.firstIndex(where: { $0.id == expected.id }) else {
+                throw TrainingPersistenceError("Exercise not found")
+            }
+            guard draft.exercises[index] == expected else {
+                throw TrainingPersistenceError("This exercise has changed since")
+            }
+            draft.exercises[index] = previous
+        }
+    }
+
+    /// Returns the whole record to an earlier state, through the same validation
+    /// as any other write — unlike `replaceAll`, which trusts an import.
+    func restore(_ previous: PersistedTrainingState) throws {
+        try commit(previous)
+    }
+
     // MARK: Completion
 
     @discardableResult

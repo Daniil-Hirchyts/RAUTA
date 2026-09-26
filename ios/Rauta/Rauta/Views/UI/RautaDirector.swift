@@ -68,6 +68,9 @@ final class RautaDirector {
     /// Characters currently on stage, by the frame they occupy.
     private var stage: [UUID: CGRect] = [:]
 
+    /// Above zero while a change is being made that is answered somewhere else.
+    private var quietDepth = 0
+
     private init() {}
 
     // MARK: Lifecycle
@@ -119,9 +122,18 @@ final class RautaDirector {
 
     // MARK: Cues
 
+    /// Makes a change whose result is already being shown — in the chat, say —
+    /// so the stores are still followed but RAUTA does not announce it twice.
+    func quietly<T>(_ body: () throws -> T) rethrows -> T {
+        quietDepth += 1
+        defer { quietDepth -= 1 }
+        return try body()
+    }
+
     /// Something happened. Cues landing within a moment of each other are one
     /// event seen from several stores; the most meaningful of them is answered.
     private func cue(_ cue: RautaCue) {
+        guard quietDepth == 0 else { return }
         if let pendingCue, pendingCue.salience >= cue.salience { return }
         pendingCue = cue
         guard flushTask == nil else { return }

@@ -128,7 +128,8 @@ enum TrainingWorkflow {
         now: String,
         source: PersistedProgramRecord? = nil,
         availableDays: [Int] = DEFAULT_TRAINING_DAYS,
-        adaptationMode: TrainingAdaptationMode = .remainingWeek
+        adaptationMode: TrainingAdaptationMode = .remainingWeek,
+        readiness: Readiness? = nil
     ) -> ProgramGenerationRequest {
         let store = TrainingRecordsStore.shared
         let remaining: RemainingSlots? = (source != nil && adaptationMode == .remainingWeek)
@@ -182,7 +183,7 @@ enum TrainingWorkflow {
             history: store.trainingHistory(),
             exercises: ExerciseCatalogue.all,
             now: now,
-            readiness: nil,
+            readiness: readiness,
             metadata: nil,
             policy: policy
         )
@@ -201,7 +202,8 @@ enum TrainingWorkflow {
         now: String = ISOTime.now(),
         source: PersistedProgramRecord? = nil,
         availableDays: [Int] = DEFAULT_TRAINING_DAYS,
-        adaptationMode: TrainingAdaptationMode = .remainingWeek
+        adaptationMode: TrainingAdaptationMode = .remainingWeek,
+        readiness: Readiness? = nil
     ) async throws -> PlanAttempt {
         let setup = setup ?? TrainingEngineAdapter.buildEngineInputs()
         let request = buildTrainingRequest(
@@ -209,7 +211,8 @@ enum TrainingWorkflow {
             now: now,
             source: source,
             availableDays: availableDays,
-            adaptationMode: adaptationMode
+            adaptationMode: adaptationMode,
+            readiness: readiness
         )
         guard !request.schedule.days.isEmpty else {
             throw TrainingPersistenceError(
@@ -239,24 +242,29 @@ enum TrainingWorkflow {
         return Generate.generateTrainingProgram(request)
     }
 
-    @discardableResult
-    static func generateAndSavePlan(
-        setup: TrainingEngineAdapter.PlanSetup? = nil,
+    /// The rest of a plan's week, reshaped around what has happened since, and
+    /// held back for somebody to keep. Throws the engine's refusal as a reason.
+    static func previewAdjustedWeek(
+        source: PersistedProgramRecord,
         now: String = ISOTime.now(),
-        source: PersistedProgramRecord? = nil,
-        availableDays: [Int] = DEFAULT_TRAINING_DAYS
-    ) async throws -> PlanAttempt {
-        let attempt = try await planTrainingWeek(
-            setup: setup, now: now, source: source, availableDays: availableDays
-        )
+        readiness: Readiness? = nil
+    ) async throws -> PlanPreview {
+        let basis = PlanBasis.current(now: now, readiness: readiness)
+        let attempt = try await planTrainingWeek(now: now, source: source, readiness: readiness)
         guard let program = attempt.result.program else {
             throw TrainingPersistenceError(
                 "No plan could be created (\(attempt.result.statusName)). "
                     + "Check available equipment and future training days."
             )
         }
-        try TrainingRecordsStore.shared.saveProgram(program)
-        return attempt
+        return PlanPreview(
+            kind: .adjustWeek,
+            program: program,
+            sessions: TrainingPlan.sessionViews(program),
+            issues: attempt.result.issues,
+            sourceProgramId: source.id,
+            basis: basis
+        )
     }
 
     /// The alternatives that still fit this exercise's place in the workout.

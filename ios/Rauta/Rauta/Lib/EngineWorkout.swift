@@ -11,6 +11,8 @@ enum EngineWorkout {
         var avoidExerciseIds: [String]?
         var availableEquipment: [String]?
         var now: String?
+        /// How the person says they are today; sore muscles rank lower.
+        var readiness: Readiness?
 
         init(
             date: String,
@@ -18,7 +20,8 @@ enum EngineWorkout {
             focusMuscles: [MuscleId]? = nil,
             avoidExerciseIds: [String]? = nil,
             availableEquipment: [String]? = nil,
-            now: String? = nil
+            now: String? = nil,
+            readiness: Readiness? = nil
         ) {
             self.date = date
             self.exerciseIds = exerciseIds
@@ -26,6 +29,7 @@ enum EngineWorkout {
             self.avoidExerciseIds = avoidExerciseIds
             self.availableEquipment = availableEquipment
             self.now = now
+            self.readiness = readiness
         }
     }
 
@@ -73,7 +77,8 @@ enum EngineWorkout {
         }
         var request = TrainingWorkflow.buildTrainingRequest(
             TrainingEngineAdapter.buildEngineInputs(overrides: overrides),
-            now: now
+            now: now,
+            readiness: input.readiness
         )
         request.schedule = TrainingSchedule(
             weekStart: mondayFor(input.date),
@@ -216,13 +221,15 @@ enum EngineWorkout {
         date: String,
         focusMuscles: [MuscleId],
         previousExerciseIds: [String]? = nil,
-        availableEquipment: [String]? = nil
+        availableEquipment: [String]? = nil,
+        readiness: Readiness? = nil
     ) async throws -> [String] {
         let input = Input(
             date: date,
             focusMuscles: focusMuscles,
             avoidExerciseIds: previousExerciseIds,
-            availableEquipment: availableEquipment
+            availableEquipment: availableEquipment,
+            readiness: readiness
         )
         let program = try await buildProgramInBackground(input, prepare(input))
         return program.weeks.first?.sessions.first?.exercises.map(\.exerciseId) ?? []

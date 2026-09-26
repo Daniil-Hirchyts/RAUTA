@@ -130,6 +130,9 @@ enum TrainingEngineAdapter {
         var dislikedExerciseIds: [String]?
         var excludedExerciseIds: [String]?
         var strengthExerciseIds: [String]?
+        /// A session length to plan for instead of the profile's, for a plan
+        /// shown before the profile is changed to match it.
+        var sessionMinutes: Double?
 
         init(
             goal: TrainingGoal? = nil,
@@ -137,7 +140,8 @@ enum TrainingEngineAdapter {
             preferredExerciseIds: [String]? = nil,
             dislikedExerciseIds: [String]? = nil,
             excludedExerciseIds: [String]? = nil,
-            strengthExerciseIds: [String]? = nil
+            strengthExerciseIds: [String]? = nil,
+            sessionMinutes: Double? = nil
         ) {
             self.goal = goal
             self.availableEquipment = availableEquipment
@@ -145,6 +149,7 @@ enum TrainingEngineAdapter {
             self.dislikedExerciseIds = dislikedExerciseIds
             self.excludedExerciseIds = excludedExerciseIds
             self.strengthExerciseIds = strengthExerciseIds
+            self.sessionMinutes = sessionMinutes
         }
     }
 
@@ -155,7 +160,7 @@ enum TrainingEngineAdapter {
         configurations: [PersistedLoadConfiguration] = [],
         equipmentLoadIncrements: [String: Double] = [:]
     ) -> PlanningPreferences {
-        let preferred = profile.preferredSessionDurationMinutes
+        let preferred = overrides.sessionMinutes ?? profile.preferredSessionDurationMinutes
         let loads = buildLoadPreferences(
             equipment: equipment,
             configurations: configurations,

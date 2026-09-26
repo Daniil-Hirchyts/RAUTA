@@ -221,14 +221,14 @@ build() {
   if [[ "$VERBOSE" == true ]]; then
     xcodebuild build -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
       -destination "$destination" -derivedDataPath "$DERIVED" \
-      -clonedSourcePackagesDirPath "$PACKAGES" \
+      -clonedSourcePackagesDirPath "$PACKAGES" -skipPackagePluginValidation \
       ${signing[@]+"${signing[@]}"} 2>&1 | tee "$LOG" || status=$?
   else
     # Only what needs a person: errors, warnings in our own sources, signing
     # trouble, and the verdict. Everything else is in the log.
     xcodebuild build -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
       -destination "$destination" -derivedDataPath "$DERIVED" \
-      -clonedSourcePackagesDirPath "$PACKAGES" \
+      -clonedSourcePackagesDirPath "$PACKAGES" -skipPackagePluginValidation \
       ${signing[@]+"${signing[@]}"} >"$LOG" 2>&1 || status=$?
     grep -E "error:|/ios/Rauta/.*warning:|[Pp]rovisioning profile|[Ss]igning for|\*\* BUILD" "$LOG" \
       | grep -v "^note:" | sort -u || true

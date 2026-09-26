@@ -37,7 +37,7 @@ final class FiltersStore {
 
     static func validEquipment(_ value: String) -> Bool { equipmentSet.contains(value) }
 
-    struct PersistedFilters {
+    struct PersistedFilters: Equatable {
         var selectedMuscles: [MuscleId]
         var selectedEquipment: [String]
         var gymEquipment: [String]
@@ -94,6 +94,17 @@ final class FiltersStore {
 
     func persist() {
         Storage.writeEnvelope(Self.storageKey, state: snapshotTree, version: Self.version)
+    }
+
+    /// Everything `apply` restores, as it is now.
+    var snapshot: PersistedFilters {
+        PersistedFilters(
+            selectedMuscles: selectedMuscles,
+            selectedEquipment: selectedEquipment,
+            gymEquipment: gymEquipment,
+            equipmentPresets: equipmentPresets,
+            equipmentLoadIncrements: equipmentLoadIncrements
+        )
     }
 
     var snapshotTree: JSONValue {
