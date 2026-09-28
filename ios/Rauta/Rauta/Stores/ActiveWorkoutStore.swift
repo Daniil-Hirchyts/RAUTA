@@ -330,7 +330,7 @@ final class ActiveWorkoutStore {
         // A discarded session is still evidence of the sets it did produce, so
         // they are kept as a partial session rather than thrown away.
         if let session {
-            _ = try? WorkoutTransition.recordCancelIntent(session)
+            Storage.attempt("Recording a cancelled workout") { try WorkoutTransition.recordCancelIntent(session) }
             WorkoutTransition.recoverWorkoutTransition()
         }
         setSession(nil, outcome: .cancelled)

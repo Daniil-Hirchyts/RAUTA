@@ -580,7 +580,7 @@ struct WorkoutsScreen: View {
     }
 
     private var summaryContent: some View {
-        SummaryWorkoutsContent()
+        SummaryWorkoutsContent(past: timeline.past)
     }
 
     private func companionActions(for tab: MainTab) -> [CompanionAction] {

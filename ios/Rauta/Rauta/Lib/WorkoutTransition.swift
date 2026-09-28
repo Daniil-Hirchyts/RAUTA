@@ -268,7 +268,7 @@ enum WorkoutTransition {
 
     /// Clears the journal entry for a transition that ran to completion.
     static func settleWorkoutTransition() {
-        try? TrainingRecordsStore.shared.clearTransition()
+        Storage.attempt("Clearing a settled transition") { try TrainingRecordsStore.shared.clearTransition() }
     }
 
     /// The structured session a finish wrote, looked for the same way recovery

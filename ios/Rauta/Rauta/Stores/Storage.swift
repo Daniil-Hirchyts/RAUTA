@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// Where a persisted store keeps its state.
 ///
@@ -8,6 +9,20 @@ import Foundation
 enum Storage {
     /// The standard defaults; tests point this at a suite of their own.
     static var defaults = UserDefaults.standard
+
+    nonisolated private static let log = Logger(subsystem: "com.hirchyts.gymlib", category: "persistence")
+
+    /// `try?` that leaves a trace: for a step whose failure the caller has
+    /// chosen to carry on past, but which should never fail unseen.
+    @discardableResult
+    nonisolated static func attempt<T>(_ step: String, _ body: () throws -> T) -> T? {
+        do {
+            return try body()
+        } catch {
+            log.error("\(step, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
+    }
 
     static func readEnvelope(_ key: String) -> (state: JSONValue, version: Int)? {
         guard let text = defaults.string(forKey: key),
@@ -44,7 +59,9 @@ enum Storage {
         // First launch on this build: move the value out of user defaults,
         // letting it go only once the file holds it.
         guard let text = defaults.string(forKey: key), let migrated = envelope(from: text) else { return nil }
-        if (try? write(Data(text.utf8), to: url)) != nil { defaults.removeObject(forKey: key) }
+        if attempt("Moving \(name) out of user defaults", { try write(Data(text.utf8), to: url) }) != nil {
+            defaults.removeObject(forKey: key)
+        }
         return migrated
     }
 
@@ -55,7 +72,7 @@ enum Storage {
             "state": state,
             "version": .number(Double(version)),
         ])
-        try? write(Data(envelope.canonical.utf8), to: fileURL(name))
+        attempt("Writing \(name)") { try write(Data(envelope.canonical.utf8), to: fileURL(name)) }
     }
 
     static func removeFile(_ name: String) {

@@ -23,6 +23,8 @@ final class AppStore {
     let iCloud = ICloudSync.shared
 
     private var cancellables = Set<AnyCancellable>()
+    /// Spotlight follows every workout change, one re-index at a time.
+    private let spotlightIndexing = CoalescedWork { await RautaSpotlight.indexWorkouts() }
     private var bootstrapped = false
 
     private init() {}
@@ -63,7 +65,7 @@ final class AppStore {
             .sink { [weak self] in self?.applyKeepAwake() }
             .store(in: &cancellables)
         workouts.changed
-            .sink { Task { await RautaSpotlight.indexWorkouts() } }
+            .sink { [spotlightIndexing] in spotlightIndexing.request() }
             .store(in: &cancellables)
         NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)
             .sink { _ in AgentModelStore.shared.evict() }

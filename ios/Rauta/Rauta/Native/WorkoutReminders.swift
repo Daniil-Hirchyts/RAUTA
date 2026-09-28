@@ -22,6 +22,9 @@ final class WorkoutReminders {
     private static let accessRequestedKey = "rauta-reminders-access-requested"
     private var reminders: [String: Reminder]
     private var cancellable: AnyCancellable?
+    /// One reconcile at a time: two interleaved across their awaits could
+    /// schedule the same reminder twice.
+    private lazy var reconciling = CoalescedWork { [weak self] in await self?.reconcile() }
 
     private init() {
         reminders = Storage.defaults.data(forKey: key)
@@ -51,9 +54,9 @@ final class WorkoutReminders {
         center.setNotificationCategories([category])
         guard cancellable == nil else { return }
         cancellable = WorkoutsStore.shared.changed.sink { [weak self] in
-            Task { @MainActor in await self?.reconcile() }
+            self?.reconciling.request()
         }
-        Task { await reconcile() }
+        reconciling.request()
     }
 
     private func persist() {

@@ -231,11 +231,10 @@ enum RautaScheduler {
             return Outcome(activity: next, play: reaction)
         }
 
+        // A source never blocks itself out of continuing; only its cooldown
+        // does.
         let holding = activity.isHeld(at: now)
-            && activity.holder!.priority >= source.priority
-            // A source never blocks itself out of continuing; only its cooldown
-            // does.
-            && activity.holder != source
+            && activity.holder.map { $0.priority >= source.priority && $0 != source } == true
 
         let impactInterrupt = source == .interaction
             && (reaction == .recoil || reaction == .wobble)

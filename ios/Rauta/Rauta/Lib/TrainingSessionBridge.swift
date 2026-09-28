@@ -130,16 +130,18 @@ enum TrainingSessionBridge {
             )),
                   let prescribed = program.weeks.first?.sessions.first?.exercises.first
             else { continue }
-            try? store.addExercise(
-                exerciseId,
-                targets: prescribed.workingSets.map { set in
-                    PersistedSetTarget(
-                        reps: set.targetReps,
-                        rir: set.targetRir,
-                        resistance: set.resistance
-                    )
-                }
-            )
+            Storage.attempt("Adding \(exerciseId) to the draft") {
+                try store.addExercise(
+                    exerciseId,
+                    targets: prescribed.workingSets.map { set in
+                        PersistedSetTarget(
+                            reps: set.targetReps,
+                            rir: set.targetRir,
+                            resistance: set.resistance
+                        )
+                    }
+                )
+            }
         }
 
         guard let current = store.data.activeWorkout else { return }
@@ -149,7 +151,7 @@ enum TrainingSessionBridge {
         let retainedHistory = current.exercises
             .filter { !exerciseIds.contains($0.exerciseId) }
             .map(\.id)
-        try? store.reorderExercises(requested + retainedHistory)
+        Storage.attempt("Reordering the draft") { try store.reorderExercises(requested + retainedHistory) }
     }
 
     /// The planned session a draft is performing, read back out of the immutable
@@ -226,13 +228,15 @@ enum TrainingSessionBridge {
         let store = TrainingRecordsStore.shared
         guard let draft = store.data.activeWorkout else { return nil }
         if !draftHasObservations(draft) {
-            try? store.cancelWorkout()
+            Storage.attempt("Cancelling an empty draft") { try store.cancelWorkout() }
             return nil
         }
         let covered = activePlannedCoverage(store.data)?.complete ?? true
-        return try? store.completeWorkout(
-            status: outcome == .finished && covered ? .completed : .partial,
-            completedAt: completedAt
-        )
+        return Storage.attempt("Closing the draft") {
+            try store.completeWorkout(
+                status: outcome == .finished && covered ? .completed : .partial,
+                completedAt: completedAt
+            )
+        } ?? nil
     }
 }

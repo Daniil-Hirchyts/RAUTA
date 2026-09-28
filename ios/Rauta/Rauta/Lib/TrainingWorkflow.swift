@@ -125,8 +125,8 @@ enum TrainingWorkflow {
         readiness: Readiness? = nil
     ) -> ProgramGenerationRequest {
         let store = TrainingRecordsStore.shared
-        let remaining: RemainingSlots? = (source != nil && adaptationMode == .remainingWeek)
-            ? remainingTrainingSlots(source!, now)
+        let remaining: RemainingSlots? = adaptationMode == .remainingWeek
+            ? source.map { remainingTrainingSlots($0, now) }
             : nil
         let sourceWeek = remaining?.week
 

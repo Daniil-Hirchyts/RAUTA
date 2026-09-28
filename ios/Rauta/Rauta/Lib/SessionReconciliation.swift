@@ -165,11 +165,11 @@ enum SessionReconciler {
             if decision.draft == .close {
                 // Writes a partial session when the draft holds observations and
                 // clears it when it does not.
-                _ = try? store.abortWorkout(
-                    completedAt: TrainingSessionBridge.draftClosingTime(draft)
-                )
+                Storage.attempt("Closing a leftover draft") {
+                    try store.abortWorkout(completedAt: TrainingSessionBridge.draftClosingTime(draft))
+                }
             } else {
-                try? store.cancelWorkout()
+                Storage.attempt("Cancelling a leftover draft") { try store.cancelWorkout() }
             }
         }
 

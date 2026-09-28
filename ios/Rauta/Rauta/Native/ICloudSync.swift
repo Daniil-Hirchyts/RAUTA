@@ -201,12 +201,14 @@ final class ICloudSync {
         let meta = readMeta()
         let localChangedAt = meta.localChangedAt
         let meaningful = AppBackup.hasMeaningfulData()
+        // Timestamps compare as ISO strings. Without both, the cloud copy never
+        // counts as newer and the local data always does.
+        let cloudIsNewer = remote.flatMap { remote in localChangedAt.map { remote.updatedAt > $0 } } ?? false
+        let localIsNewer = remote.flatMap { remote in localChangedAt.map { $0 > remote.updatedAt } } ?? true
 
-        if let remote,
-           !meaningful || (localChangedAt != nil && remote.updatedAt > localChangedAt!) {
+        if let remote, !meaningful || cloudIsNewer {
             do { try restoreCloudData(remote) } catch { report(error) }
-        } else if meaningful,
-                  remote == nil || localChangedAt == nil || localChangedAt! > remote!.updatedAt {
+        } else if meaningful, localIsNewer {
             uploadLocalData()
         } else {
             status = .synced

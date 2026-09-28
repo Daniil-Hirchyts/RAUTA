@@ -309,18 +309,19 @@ nonisolated enum InputValidation {
                     if let timestamp = set.timestamp {
                         let at = ISOTime.parse(timestamp)
                         check(
-                            ISOTime.valid(timestamp) && at != nil && at! >= startedAt && at! <= completedAt,
+                            ISOTime.valid(timestamp) && at.map { $0 >= startedAt && $0 <= completedAt } == true,
                             path + ".set.timestamp"
                         )
                     }
                     if let plannedSetId = set.plannedSetId {
                         let prior = plannedSets[plannedSetId]
-                        let valid = prior == nil
-                            || (prior!.exerciseId == performed.exerciseId
-                                && prior!.sessionId == session.id
-                                && !prior!.sides.contains(set.side)
-                                && !prior!.sides.contains(.both)
-                                && set.side != .both)
+                        let valid = prior.map { prior in
+                            prior.exerciseId == performed.exerciseId
+                                && prior.sessionId == session.id
+                                && !prior.sides.contains(set.side)
+                                && !prior.sides.contains(.both)
+                                && set.side != .both
+                        } ?? true
                         check(valid, path + ".plannedSetId")
                         plannedSets[plannedSetId] = PlannedSetUse(
                             sides: (prior?.sides ?? []) + [set.side],

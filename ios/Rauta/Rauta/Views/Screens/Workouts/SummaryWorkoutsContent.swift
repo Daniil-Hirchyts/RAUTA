@@ -5,19 +5,15 @@ import SwiftUI
 /// training history: with nothing passed in, SwiftUI has no reason to run this
 /// body again until a store it reads changes.
 struct SummaryWorkoutsContent: View {
-    private let workouts = WorkoutsStore.shared
+    /// The timeline's past, from the screen that already keeps it split.
+    let past: [Workout]
     private let trainingRecords = TrainingRecordsStore.shared
-    private let activeWorkout = ActiveWorkoutStore.shared
     /// Off while Summary is away, on as it comes back: the cards arrive
     /// against it once per visit.
     @State private var arrived = false
 
     var body: some View {
-        let completedWorkouts = WorkoutTimeline(
-            workouts: workouts.workouts,
-            records: trainingRecords.data,
-            activeWorkoutId: activeWorkout.session?.workoutId
-        ).past.filter { $0.completion != nil }
+        let completedWorkouts = past.filter { $0.completion != nil }
         let month = MonthlySummarySnapshot(
             workouts: completedWorkouts,
             history: trainingRecords.trainingHistory()
@@ -55,9 +51,10 @@ struct SummaryWorkoutsContent: View {
 
 private struct StreakStrip: View {
     let workouts: [Workout]
-    private var streak: Streak { StreakBuilder.build(workouts) }
 
     var body: some View {
+        // Built once per render; it walks every completed workout.
+        let streak = StreakBuilder.build(workouts)
         VStack(spacing: 14) {
             HStack(alignment: .center, spacing: 14) {
                 VStack(alignment: .leading, spacing: 3) {
