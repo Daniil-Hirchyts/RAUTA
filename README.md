@@ -69,7 +69,7 @@ has Apple Intelligence. On an iPhone it uses the downloaded MLX model.
 ### Licences in Settings
 
 Settings → Policies & credits lists every Swift package and bundled font with
-its licence text, from `ios/Rauta/Rauta/Lib/OpenSourceNotices.swift`. The file
+its licence text, from `ios/Rauta/Rauta/Lib/Generated/OpenSourceNotices.swift`. The file
 is generated; after adding or updating a package or a font, build once and run:
 
 ```bash

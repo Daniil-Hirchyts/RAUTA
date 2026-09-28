@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes ios/Rauta/Rauta/Lib/OpenSourceNotices.swift: the licence of every Swift
+"""Writes ios/Rauta/Rauta/Lib/Generated/OpenSourceNotices.swift: the licence of every Swift
 package the app resolves and every font it bundles, shown in Settings → Policies.
 
 Run after adding or updating a package or a font:
@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 RESOLVED = ROOT / "ios/Rauta/Rauta.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
 FONTS = ROOT / "ios/Rauta/Rauta/Resources/Fonts"
 OFL = ROOT / "scripts/licenses/OFL-1.1.txt"
-OUTPUT = ROOT / "ios/Rauta/Rauta/Lib/OpenSourceNotices.swift"
+OUTPUT = ROOT / "ios/Rauta/Rauta/Lib/Generated/OpenSourceNotices.swift"
 
 
 def find_checkouts() -> Path:

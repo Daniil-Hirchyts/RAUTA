@@ -296,3 +296,35 @@ struct FrostedBackground: View {
             )
     }
 }
+
+/// Words with a band of light sweeping across them, over and over.
+struct ShimmerText: View {
+    let text: String
+    var font: Font
+    var period: Double = 1.8
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(paused: reduceMotion)) { timeline in
+            let t = timeline.date.timeIntervalSinceReferenceDate
+            // The band's centre runs from well before the first letter to well
+            // past the last, so it enters and leaves cleanly.
+            let centre = reduceMotion ? 0.5 : (t.truncatingRemainder(dividingBy: period) / period) * 2.2 - 0.6
+            Text(text)
+                .font(font)
+                .foregroundStyle(
+                    LinearGradient(
+                        stops: [
+                            .init(color: Theme.mutedForeground.opacity(0.55), location: 0),
+                            .init(color: Theme.foreground, location: 0.5),
+                            .init(color: Theme.mutedForeground.opacity(0.55), location: 1),
+                        ],
+                        startPoint: UnitPoint(x: centre - 0.35, y: 0.5),
+                        endPoint: UnitPoint(x: centre + 0.35, y: 0.5)
+                    )
+                )
+                .contentTransition(.opacity)
+                .animation(.easeInOut(duration: 0.25), value: text)
+        }
+    }
+}
