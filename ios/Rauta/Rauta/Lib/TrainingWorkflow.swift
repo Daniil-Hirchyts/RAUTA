@@ -5,6 +5,8 @@ enum TrainingAdaptationMode: String {
     case nextWeek = "next_week"
 }
 
+/// Mon–Sun as offsets from the week the engine is asked to plan. The only
+/// genuinely week-specific answer the profile cannot already give.
 let DEFAULT_TRAINING_DAYS: [Int] = [0, 2, 4]
 
 @MainActor
@@ -18,15 +20,6 @@ enum TrainingWorkflow {
         cachedIndex = index
         return index
     }
-
-    static let planningEquipment: [String] = ExerciseCatalogue.equipmentOptions + [
-        "bench", "rack", "pull-up bar", "low bar", "chair", "step",
-        "band anchor", "towel", "suspension straps",
-    ]
-
-    /// Mon–Sun as offsets from the week the engine is asked to plan. The only
-    /// genuinely week-specific answer the profile cannot already give.
-    static let defaultTrainingDays = DEFAULT_TRAINING_DAYS
 
     struct RemainingSlots {
         var week: TrainingWeek?

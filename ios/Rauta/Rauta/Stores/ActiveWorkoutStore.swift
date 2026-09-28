@@ -112,11 +112,6 @@ final class ActiveWorkoutStore {
 
     // MARK: Lifecycle
 
-    /// Opens a session for `workout`, or says why it will not.
-    ///
-    /// A refusal used to be a bare `false`, which left every caller to invent
-    /// its own guess at the reason. The reason is always known here, so it is
-    /// returned.
     /// Whether `workout` came from a plan that has since been replaced. No plan
     /// can take its session any more, but it is still a workout.
     static func planWasReplaced(_ workout: Workout) -> Bool {
@@ -143,6 +138,11 @@ final class ActiveWorkoutStore {
         return outcome
     }
 
+    /// Opens a session for `workout`, or says why it will not.
+    ///
+    /// A refusal used to be a bare `false`, which left every caller to invent
+    /// its own guess at the reason. The reason is always known here, so it is
+    /// returned.
     @discardableResult
     func start(_ workout: Workout) -> WorkoutStartOutcome {
         start(workout, carrying: nil)

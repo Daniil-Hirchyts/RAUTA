@@ -82,7 +82,6 @@ extension Theme {
     static var secondaryForeground: Color { palette.secondaryForeground }
     static var muted: Color { palette.muted }
     static var mutedForeground: Color { palette.mutedForeground }
-    static var accent: Color { palette.primary }
     static var destructive: Color { ThemePalette.destructive }
 
     static var border: Color { palette.border }
@@ -145,16 +144,12 @@ extension Theme {
 
 extension Theme {
     enum Radius {
-        static let xs: CGFloat = 2
         static let sm: CGFloat = 12
         static let md: CGFloat = 16
         static let lg: CGFloat = 20
         static let xl: CGFloat = 25
         static let xl2: CGFloat = 30
         static let xl3: CGFloat = 36
-        static let xl4: CGFloat = 42
-        /// `--radius`, the base control curve.
-        static let base: CGFloat = 14
     }
 
     enum Metrics {
@@ -179,12 +174,8 @@ extension Theme {
         static let pageEnter: Double = 0.30
         static let pageExit: Double = 0.20
         static let textSwap: Double = 0.15
-        static let digit: Double = 0.5
         static let digitStagger: Double = 0.07
-        static let checkBox: Double = 0.2
         static let checkDraw: Double = 0.35
-        static let stagger: Double = 0.5
-        static let staggerStep: Double = 0.04
         static let matrixCycle: Double = 1.2
     }
 
@@ -192,7 +183,6 @@ extension Theme {
         /// `cubic-bezier(0.34, 1.56, 0.64, 1)` — the springy release the web app
         /// used for everything that pops into place.
         static let spring = Animation.timingCurve(0.34, 1.56, 0.64, 1, duration: Duration.fast)
-        static let bounce = Animation.timingCurve(0.34, 1.85, 0.64, 1, duration: 0.35)
         /// `cubic-bezier(0.22, 1, 0.36, 1)`.
         static let smoothOut = Animation.timingCurve(0.22, 1, 0.36, 1, duration: Duration.fast)
         static func smoothOut(_ duration: Double) -> Animation {

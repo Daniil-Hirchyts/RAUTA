@@ -97,16 +97,6 @@ enum AppPage: Hashable {
         }
     }
 
-    var hasControls: Bool {
-        switch self {
-        case .settings, .workoutDestination, .reuseWorkout, .exerciseAlternatives,
-             .summaryStreak, .summaryActivity, .summaryMuscles, .summaryRecords:
-            return false
-        default:
-            return true
-        }
-    }
-
     var preferredWorkoutId: String? {
         switch self {
         case .addExercises(let id), .workoutDestination(_, let id):

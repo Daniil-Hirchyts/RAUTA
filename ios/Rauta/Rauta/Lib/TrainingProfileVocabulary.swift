@@ -56,8 +56,6 @@ enum ProfileVocabulary {
         )),
     ]
 
-    static let experienceLevels: [Experience] = experienceChoices.map(\.experience)
-
     static func choice(for experience: Experience) -> ProfileChoice {
         experienceChoices.first { $0.experience == experience }?.choice
             ?? ProfileChoice(title: experience.rawValue, description: "")

@@ -523,8 +523,6 @@ final class TrainingRecordsStore {
         try commit(next)
     }
 
-    // MARK: Coverage and stations
-
     // MARK: History
 
     func trainingHistory(

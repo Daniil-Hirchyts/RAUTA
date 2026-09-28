@@ -229,8 +229,6 @@ nonisolated struct LoadGrid: Codable, Hashable, Sendable {
         self.minimumKg = nil
         self.maximumKg = nil
     }
-
-    var isDiscrete: Bool { availableLoadsKg != nil }
 }
 
 nonisolated enum MusclePriorityLevel: String, Codable, CaseIterable, Hashable, Sendable {
@@ -313,8 +311,6 @@ nonisolated struct ResistanceValue: Codable, Hashable, Sendable {
     static func assistance(_ kg: Double, basis: LoadBasis, stationId: String) -> ResistanceValue {
         ResistanceValue(type: .assistance, kg: kg, basis: basis, stationId: stationId)
     }
-
-    var isMeasured: Bool { type == .externalLoad || type == .assistance }
 }
 
 nonisolated enum SetType: String, Codable, CaseIterable, Hashable, Sendable {

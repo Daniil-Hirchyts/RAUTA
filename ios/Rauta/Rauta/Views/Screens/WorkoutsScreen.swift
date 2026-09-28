@@ -1729,9 +1729,6 @@ private struct WorkoutFilterChip: View {
 private struct StreakStrip: View {
     let workouts: [Workout]
     private var streak: Streak { StreakBuilder.build(workouts) }
-    private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: 36, style: .continuous)
-    }
 
     var body: some View {
         VStack(spacing: 14) {
