@@ -110,7 +110,7 @@ enum SummaryAnalytics {
                 id: workout.id,
                 workoutId: workout.id,
                 title: workout.name,
-                completedAt: Date(timeIntervalSince1970: completedMs / 1_000),
+                completedAt: Date(epochMillis: completedMs),
                 durationSeconds: completion.durationMs / 1_000,
                 sets: sets,
                 exerciseIds: exerciseIds,
@@ -125,7 +125,7 @@ enum SummaryAnalytics {
                 id: session.id,
                 workoutId: nil,
                 title: "Workout",
-                completedAt: Date(timeIntervalSince1970: completedMs / 1_000),
+                completedAt: Date(epochMillis: completedMs),
                 durationSeconds: session.durationSeconds ?? 0,
                 sets: session.exercises.reduce(0) { $0 + $1.sets.filter(Volume.isWorkingSet).count },
                 exerciseIds: session.exercises.map(\.exerciseId),
@@ -243,7 +243,7 @@ enum SummaryAnalytics {
     static func records(_ sessions: [PersistedCompletedSession]) -> [ExerciseRecord] {
         var best: [String: ExerciseRecord] = [:]
         for session in sessions {
-            let done = ISOTime.parse(session.completedAt).map { Date(timeIntervalSince1970: $0 / 1_000) } ?? .distantPast
+            let done = ISOTime.parse(session.completedAt).map { Date(epochMillis: $0) } ?? .distantPast
             for exercise in session.exercises {
                 for set in exercise.sets where Volume.isWorkingSet(set) {
                     guard set.resistance.type == .externalLoad, let kg = set.resistance.kg, kg > 0 else { continue }

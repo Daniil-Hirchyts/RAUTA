@@ -11,11 +11,11 @@ struct PlayerTimerStrip: View {
     var body: some View {
         TimelineView(.periodic(from: .now, by: 0.25)) { context in
             let session = store.activeWorkout.session
-            let restUntil = session?.restUntil.map { Date(timeIntervalSince1970: $0 / 1_000) }
+            let restUntil = session?.restUntil.map { Date(epochMillis: $0) }
             let remaining = restUntil.map { $0.timeIntervalSince(context.date) } ?? -1
             let resting = remaining > 0
             let anchor = session.map {
-                Date(timeIntervalSince1970: ($0.setPhaseStartedAt ?? $0.startedAt) / 1_000)
+                Date(epochMillis: $0.setPhaseStartedAt ?? $0.startedAt)
             } ?? context.date
             let seconds = resting
                 ? Int(remaining.rounded(.up))

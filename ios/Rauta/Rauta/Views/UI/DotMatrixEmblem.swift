@@ -19,7 +19,7 @@ struct DotMatrixEmblem: View {
     /// Which dots are lit, row by row, from the name.
     private var pattern: [[Bool]] {
         let text = seed.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        var hash = Self.fnv1a(text.isEmpty ? "you" : text)
+        var hash = (text.isEmpty ? "you" : text).stableHash
         let half = (Self.grid + 1) / 2
         var rows: [[Bool]] = []
         for _ in 0..<Self.grid {
@@ -89,14 +89,5 @@ struct DotMatrixEmblem: View {
                 )
             }
         }
-    }
-
-    private static func fnv1a(_ text: String) -> UInt64 {
-        var hash: UInt64 = 14_695_981_039_346_656_037
-        for byte in text.utf8 {
-            hash ^= UInt64(byte)
-            hash = hash &* 1_099_511_628_211
-        }
-        return hash
     }
 }

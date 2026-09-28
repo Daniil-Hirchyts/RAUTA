@@ -91,7 +91,7 @@ struct PlanWeekScreen: View {
                     fitRauta(contentHeight: height)
                 }
                 .frame(minHeight: visibleHeight, alignment: .bottom)
-                .animation(.spring(response: 0.42, dampingFraction: 0.86), value: phase)
+                .animation(Theme.Motion.settle, value: phase)
             }
             // The container is already the room between the title bar and
             // the button; the insets are the bars themselves, outside it.

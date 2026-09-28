@@ -42,7 +42,7 @@ struct SummaryRecordsScreen: View {
                                 row(record)
                             }
                         }
-                        .background { GradientCard(radius: 30, accent: Theme.primary, strength: 0.5) }
+                        .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.primary, strength: 0.5) }
                     }
                 }
                 .padding(.horizontal, Theme.Metrics.contentInset)
@@ -63,7 +63,7 @@ struct SummaryRecordsScreen: View {
                 ExerciseMediaView(exerciseId: record.exerciseId)
                     .padding(3)
                     .frame(width: 48, height: 48)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.muted.opacity(0.7)))
+                    .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous).fill(Theme.muted.opacity(0.7)))
                 VStack(alignment: .leading, spacing: 3) {
                     Text(exercise.map { WorkoutAgenda.name($0) } ?? "Exercise")
                         .font(Theme.sans(15, weight: .semibold))

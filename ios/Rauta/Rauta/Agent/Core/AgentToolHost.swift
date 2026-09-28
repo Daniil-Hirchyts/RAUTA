@@ -213,10 +213,9 @@ final class AgentToolHost {
         guard let replacement, allowed.contains(replacement.id) else {
             finish(.reply("I couldn't find a fitting replacement. Ask for alternatives to see what fits.")); return
         }
-        let recordsBefore = TrainingRecordsStore.shared.data
-        let workoutsBefore = WorkoutsStore.shared.workouts
+        let before = AgentUndo.Snapshot.now()
         let running = ActiveWorkoutStore.shared.session?.workoutId == target.id
-        let entryBefore = running ? recordsBefore.activeWorkout?.exercises.first { $0.exerciseId == original.id } : nil
+        let entryBefore = running ? before.records.activeWorkout?.exercises.first { $0.exerciseId == original.id } : nil
         do {
             try RautaDirector.shared.quietly {
                 if running, target.planned != nil {
@@ -242,17 +241,14 @@ final class AgentToolHost {
                     try TrainingEdits.updateScheduledWorkoutExercises(target.id, ids)
                 }
             }
-            let recordsAfter = TrainingRecordsStore.shared.data
-            let workoutsAfter = WorkoutsStore.shared.workouts
             let undo: AgentUndo? = {
                 if running, let entryBefore,
-                   let entryAfter = recordsAfter.activeWorkout?.exercises.first(where: { $0.id == entryBefore.id }),
+                   let entryAfter = TrainingRecordsStore.shared.data.activeWorkout?.exercises.first(where: { $0.id == entryBefore.id }),
                    let workoutAfter = WorkoutsStore.shared.workout(target.id) {
                     return .exercise(before: entryBefore, after: entryAfter,
                                      workoutBefore: target, workoutAfter: workoutAfter)
                 }
-                if !running { return .records(before: recordsBefore, after: recordsAfter,
-                                               workoutsBefore: workoutsBefore, workoutsAfter: workoutsAfter) }
+                if !running { return .records(since: before) }
                 return nil
             }()
             finish(.init(say: "Swapped \(original.name) for \(replacement.name) in \(target.name).",
@@ -261,14 +257,14 @@ final class AgentToolHost {
         } catch { finish(.reply(error.localizedDescription)) }
     }
 
-    func editExercises(workoutPhrase: String, exercisePhrase: String, action: String) {
+    /// Adds or removes one exercise. The edit must also be the word the person
+    /// used, so a misread action never changes a workout.
+    func editExercises(workoutPhrase: String, exercisePhrase: String, edit: ExerciseEdit?) {
         guard !cancelled else { return }
-        let words = Set(AgentWords.words(input))
-        let adding = action.lowercased() == "add" && words.contains("add")
-        let removing = action.lowercased() == "remove" && words.contains("remove")
-        guard adding || removing else {
+        guard let edit, Set(AgentWords.words(input)).contains(edit.rawValue) else {
             finish(.reply("Tell me whether to add or remove an exercise.")); return
         }
+        let adding = edit == .add
         guard ActiveWorkoutStore.shared.session == nil,
               let target = workout(workoutPhrase) ?? workout(input),
               target.completion == nil else {
@@ -301,8 +297,7 @@ final class AgentToolHost {
             guard next.count > 1 else { finish(.reply("Keep at least one exercise in the workout.")); return }
             next.removeAll { $0 == exercise.id }
         }
-        let before = TrainingRecordsStore.shared.data
-        let workoutsBefore = WorkoutsStore.shared.workouts
+        let before = AgentUndo.Snapshot.now()
         do {
             try RautaDirector.shared.quietly {
                 try TrainingEdits.updateScheduledWorkoutExercises(target.id, next)
@@ -310,8 +305,7 @@ final class AgentToolHost {
             finish(.init(say: adding ? "Added \(exercise.name) to \(target.name)." : "Removed \(exercise.name) from \(target.name).",
                          card: .change(title: adding ? "Exercise added" : "Exercise removed",
                                        detail: exercise.name, systemImage: adding ? "plus.circle" : "minus.circle"),
-                         undo: .records(before: before, after: TrainingRecordsStore.shared.data,
-                                        workoutsBefore: workoutsBefore, workoutsAfter: WorkoutsStore.shared.workouts)))
+                         undo: .records(since: before)))
         } catch { finish(.reply(error.localizedDescription)) }
     }
 
@@ -329,14 +323,12 @@ final class AgentToolHost {
             finish(.reply("Tell me a day from today onward to move it to.")); return
         }
         if target.date == date { finish(.reply("\(target.name) is already on \(spoken(date)).")); return }
-        let recordsBefore = TrainingRecordsStore.shared.data
-        let workoutsBefore = WorkoutsStore.shared.workouts
+        let before = AgentUndo.Snapshot.now()
         do {
             try RautaDirector.shared.quietly { try TrainingEdits.rescheduleWorkout(target.id, date: date) }
             finish(.init(say: "Moved \(target.name) to \(spoken(date)).",
                          card: .change(title: "Workout moved", detail: "\(spoken(target.date)) → \(spoken(date))", systemImage: "calendar"),
-                         undo: .records(before: recordsBefore, after: TrainingRecordsStore.shared.data,
-                                        workoutsBefore: workoutsBefore, workoutsAfter: WorkoutsStore.shared.workouts)))
+                         undo: .records(since: before)))
         } catch { finish(.reply(error.localizedDescription)) }
     }
 
@@ -847,8 +839,7 @@ final class AgentToolHost {
                 proposals[id] = nil
                 return .reply("Training changed since I built that workout. Ask me to refresh it.")
             }
-            let before = TrainingRecordsStore.shared.data
-            let workoutsBefore = WorkoutsStore.shared.workouts
+            let before = AgentUndo.Snapshot.now()
             do {
                 _ = try await RautaDirector.shared.quietly {
                     try await EngineWorkout.createWorkout(date: date, name: name,
@@ -859,8 +850,7 @@ final class AgentToolHost {
                 return .init(say: "Created \(name) for \(spoken(date)).",
                              card: .change(title: "Workout created", detail: name,
                                            systemImage: "plus.circle"),
-                             undo: .records(before: before, after: TrainingRecordsStore.shared.data,
-                                            workoutsBefore: workoutsBefore, workoutsAfter: WorkoutsStore.shared.workouts),
+                             undo: .records(since: before),
                              proposalApplied: true)
             } catch { return .reply(error.localizedDescription) }
         case .finishWorkout(let workoutId, let basis):
@@ -895,16 +885,14 @@ final class AgentToolHost {
                 proposals[id] = nil
                 return .reply("That workout changed. Ask me again before deleting it.")
             }
-            let before = TrainingRecordsStore.shared.data
-            let workoutsBefore = WorkoutsStore.shared.workouts
+            let before = AgentUndo.Snapshot.now()
             do {
                 try RautaDirector.shared.quietly { try TrainingEdits.deleteScheduledWorkout(ref.id) }
                 proposals[id] = nil
                 return .init(say: "Deleted \(ref.name) from \(spoken(ref.date)).",
                              card: .change(title: "Workout deleted", detail: ref.name,
                                            systemImage: "trash"),
-                             undo: .records(before: before, after: TrainingRecordsStore.shared.data,
-                                            workoutsBefore: workoutsBefore, workoutsAfter: WorkoutsStore.shared.workouts),
+                             undo: .records(since: before),
                              proposalApplied: true)
             } catch { return .reply(error.localizedDescription) }
         case .calendar(let ref, let start, let end):

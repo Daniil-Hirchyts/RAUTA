@@ -123,9 +123,9 @@ struct WorkoutCelebration: View {
                 .padding(.vertical, 14)
                 .background(Theme.card)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
                 .strokeBorder(color, lineWidth: 2)
         )
         .accessibilityElement(children: .combine)

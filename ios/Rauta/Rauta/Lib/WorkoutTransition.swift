@@ -45,7 +45,7 @@ enum WorkoutTransition {
             },
             shell: PersistedTransitionShell(
                 workoutName: workout.name,
-                workoutDate: CalendarDate.toISO(Date(timeIntervalSince1970: startedAtMs / 1000)),
+                workoutDate: CalendarDate.toISO(Date(epochMillis: startedAtMs)),
                 exerciseIds: workout.exerciseIds,
                 startedAtMs: startedAtMs
             ),

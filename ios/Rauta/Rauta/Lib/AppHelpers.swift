@@ -177,15 +177,8 @@ enum ActiveWorkout {
         now - elapsedMs(session, now: now)
     }
 
-    /// "MM:SS", widening to "H:MM:SS" only once the workout passes an hour.
     static func formatDuration(_ ms: Double) -> String {
-        let totalSeconds = Int(Swift.max(0, ms) / 1000)
-        let seconds = totalSeconds % 60
-        let minutes = (totalSeconds / 60) % 60
-        let hours = totalSeconds / 3600
-        return hours > 0
-            ? String(format: "%d:%02d:%02d", hours, minutes, seconds)
-            : String(format: "%02d:%02d", minutes, seconds)
+        ElapsedClock.format(seconds: Int(Swift.max(0, ms) / 1000))
     }
 
     static func status(_ session: ActiveWorkoutSession, _ exerciseId: String) -> ExerciseStatus {

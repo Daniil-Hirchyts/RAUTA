@@ -102,6 +102,11 @@ struct ToolOutcome {
 /// the model writes words of its own about it.
 nonisolated struct AgentTurnEnded: Error {}
 
+/// Which way an exercise edit goes.
+nonisolated enum ExerciseEdit: String, Sendable {
+    case add, remove
+}
+
 // MARK: - Undo
 
 /// How to take one change back, exactly — and only while nothing has moved
@@ -123,6 +128,22 @@ enum AgentUndo {
     case equipment(before: FiltersStore.PersistedFilters, after: FiltersStore.PersistedFilters)
     case pause(workoutId: String)
     case resume(workoutId: String)
+
+    /// The records and workouts as they stood before a change.
+    struct Snapshot {
+        let records: PersistedTrainingState
+        let workouts: [Workout]
+
+        static func now() -> Snapshot {
+            Snapshot(records: TrainingRecordsStore.shared.data, workouts: WorkoutsStore.shared.workouts)
+        }
+    }
+
+    /// Takes the records and workouts back to `snapshot` from where they stand now.
+    static func records(since snapshot: Snapshot) -> AgentUndo {
+        .records(before: snapshot.records, after: TrainingRecordsStore.shared.data,
+                 workoutsBefore: snapshot.workouts, workoutsAfter: WorkoutsStore.shared.workouts)
+    }
     case reminder(id: String, fireDate: Date)
     case removedReminder(id: String, fireDate: Date)
     case calendarEvent(id: String)

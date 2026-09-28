@@ -21,9 +21,9 @@ struct WarmupScreen: View {
     @State private var finishing = false
 
     private var until: Date {
-        Date(timeIntervalSince1970: (session.warmupUntil ?? session.startedAt) / 1_000)
+        Date(epochMillis: session.warmupUntil ?? session.startedAt)
     }
-    private var start: Date { Date(timeIntervalSince1970: session.startedAt / 1_000) }
+    private var start: Date { Date(epochMillis: session.startedAt) }
 
     private var moves: [WarmupRoutine.Move] {
         WarmupRoutine.moves(
@@ -144,7 +144,7 @@ struct WarmupScreen: View {
             ExerciseMediaView(exerciseId: exercise.id)
                 .padding(3)
                 .frame(width: 44, height: 44)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.muted.opacity(0.7)))
+                .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous).fill(Theme.muted.opacity(0.7)))
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(Theme.sans(10, weight: .black))

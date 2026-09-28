@@ -24,7 +24,7 @@ struct SummaryStreakScreen: View {
                     MonthPager(month: $month, earliest: earliest)
                     MonthCalendarGrid(month: month, trained: days)
                         .padding(14)
-                        .background { GradientCard(radius: 30, accent: Theme.lime, strength: 0.5) }
+                        .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.lime, strength: 0.5) }
                     Text(summaryLine(days))
                         .font(Theme.sans(13, weight: .medium))
                         .foregroundStyle(Theme.mutedForeground)
@@ -66,7 +66,7 @@ struct SummaryStreakScreen: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background { GradientCard(radius: 30, accent: Theme.primary) }
+        .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.primary) }
     }
 
     private func summaryLine(_ days: Set<String>) -> String {

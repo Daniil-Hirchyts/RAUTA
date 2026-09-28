@@ -285,7 +285,7 @@ struct WorkoutDetailScreen: View {
                                let exercise = ExerciseCatalogue.byId[currentId] {
                                 LiveExerciseCard(
                                     exercise: exercise,
-                                    restSeconds: prescriptions[currentId]?.restSeconds ?? 90,
+                                    restSeconds: prescriptions[currentId]?.restSeconds ?? PlannedExercisePrescription.fallbackRestSeconds,
                                     onDetail: {
                                         store.navigation.push(
                                             .exerciseDetail(exerciseId: exercise.id),
@@ -637,14 +637,14 @@ struct CurrentExerciseAccessory: View {
                 return "\(Num.trimmed(reps)) reps"
             }
             if let target = set.target?.reps {
-                return set.setType == .warmup ? "Warm-up · \(repRangeText(target))" : repRangeText(target)
+                return set.setType == .warmup ? "Warm-up · \(target.label) reps" : "\(target.label) reps"
             }
         }
         if let reps = draft?.sets.reversed().compactMap({ $0.observation?.reps }).first {
             return "\(Num.trimmed(reps)) reps"
         }
         if let target = draft?.sets.compactMap({ $0.target?.reps }).first {
-            return repRangeText(target)
+            return "\(target.label) reps"
         }
         return "— reps"
     }
@@ -681,17 +681,17 @@ struct CurrentExerciseAccessory: View {
         .accessibilityHint("Opens the current exercise")
         // A fixed-height bar accessory: text grows while it still fits.
         .dynamicTypeSize(...DynamicTypeSize.xxLarge)
-        .animation(.spring(response: 0.42, dampingFraction: 0.86), value: compact)
+        .animation(Theme.Motion.settle, value: compact)
     }
 
     private var setTimer: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let session = store.activeWorkout.session
-            let restUntil = session?.restUntil.map { Date(timeIntervalSince1970: $0 / 1_000) }
+            let restUntil = session?.restUntil.map { Date(epochMillis: $0) }
             let remaining = restUntil.map { $0.timeIntervalSince(context.date) } ?? -1
             let isResting = remaining > 0
             let anchor = session.map {
-                Date(timeIntervalSince1970: ($0.setPhaseStartedAt ?? $0.startedAt) / 1_000)
+                Date(epochMillis: $0.setPhaseStartedAt ?? $0.startedAt)
             } ?? context.date
             let seconds = isResting
                 ? Int(remaining.rounded(.up))
@@ -702,26 +702,15 @@ struct CurrentExerciseAccessory: View {
                     .font(Theme.sans(compact ? 7 : 8, weight: .black))
                     .kerning(0.8)
                     .foregroundStyle(isResting ? Theme.primary : Theme.mutedForeground)
-                Text(clock(seconds))
+                Text(WorkoutClock.format(seconds))
                     .font(Theme.sans(compact ? 11 : 13, weight: .bold))
                     .monospacedDigit()
                     .foregroundStyle(Theme.foreground)
             }
             .frame(width: compact ? 42 : 52, alignment: .trailing)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(isResting ? "Rest timer, \(clock(seconds))" : "Set timer, \(clock(seconds))")
+            .accessibilityLabel(isResting ? "Rest timer, \(WorkoutClock.format(seconds))" : "Set timer, \(WorkoutClock.format(seconds))")
         }
-    }
-
-    private func repRangeText(_ range: RepRange) -> String {
-        if range.min == range.max {
-            return "\(Num.trimmed(range.max)) reps"
-        }
-        return "\(Num.trimmed(range.min))–\(Num.trimmed(range.max)) reps"
-    }
-
-    private func clock(_ seconds: Int) -> String {
-        "\(seconds / 60):\(String(format: "%02d", seconds % 60))"
     }
 }
 
@@ -880,7 +869,7 @@ struct ActiveExerciseDrawer: View {
     private var paused: Bool { store.activeWorkout.session?.runningSince == nil }
 
     private var restEnds: Date? {
-        store.activeWorkout.session?.restUntil.map { Date(timeIntervalSince1970: $0 / 1_000) }
+        store.activeWorkout.session?.restUntil.map { Date(epochMillis: $0) }
     }
 
     private var playerRauta: some View {
@@ -1412,11 +1401,7 @@ private struct WorkoutExerciseRow: View {
 private struct WorkoutPrescriptionStrip: View {
     let prescription: PlannedExercisePrescription
 
-    private var reps: String {
-        prescription.reps.min == prescription.reps.max
-            ? Num.trimmed(prescription.reps.max)
-            : "\(Num.trimmed(prescription.reps.min))–\(Num.trimmed(prescription.reps.max))"
-    }
+    private var reps: String { prescription.reps.label }
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {

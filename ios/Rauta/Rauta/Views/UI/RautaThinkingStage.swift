@@ -150,7 +150,7 @@ struct RautaThinkingStage: View {
         .padding(.vertical, chip.label.isEmpty ? 11 : 7)
         .glassSurface(
             .tinted(Theme.primary.opacity(0.18)),
-            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+            in: RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
         )
         .scaleEffect(pose.scale)
         .opacity(pose.opacity)

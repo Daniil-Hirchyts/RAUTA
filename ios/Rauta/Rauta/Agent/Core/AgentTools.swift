@@ -139,8 +139,8 @@ nonisolated struct AgentEditExercisesTool: Tool {
         @Guide(description: "add or remove, matching the user's words.") var action: String
     }
     @concurrent func call(arguments: Arguments) async throws -> String {
-        await host.editExercises(workoutPhrase: arguments.workout,
-                                 exercisePhrase: arguments.exercise, action: arguments.action)
+        await host.editExercises(workoutPhrase: arguments.workout, exercisePhrase: arguments.exercise,
+                                 edit: ExerciseEdit(rawValue: arguments.action.lowercased()))
         throw AgentTurnEnded()
     }
 }

@@ -42,6 +42,27 @@ nonisolated enum Num {
 
 // MARK: - ISO time
 
+nonisolated extension String {
+    /// FNV-1a over the UTF-8 bytes: the same for the same text on every
+    /// launch, which `hashValue` is not.
+    var stableHash: UInt64 {
+        var hash: UInt64 = 14_695_981_039_346_656_037
+        for byte in utf8 {
+            hash ^= UInt64(byte)
+            hash = hash &* 1_099_511_628_211
+        }
+        return hash
+    }
+}
+
+nonisolated extension Date {
+    /// The instant `millis` milliseconds after 1970, the unit every stored
+    /// time uses.
+    init(epochMillis millis: Double) {
+        self.init(timeIntervalSince1970: millis / 1000)
+    }
+}
+
 nonisolated enum ISOTime {
     /// Milliseconds since epoch for an ISO-8601 instant, or nil.
     static func parse(_ iso: String) -> Double? {
@@ -59,7 +80,7 @@ nonisolated enum ISOTime {
 
     /// `2026-01-02T03:04:05.678Z` — the shape every stored instant uses.
     static func string(fromMillis millis: Double) -> String {
-        string(from: Date(timeIntervalSince1970: millis / 1000))
+        string(from: Date(epochMillis: millis))
     }
 
     static func string(from date: Date) -> String {

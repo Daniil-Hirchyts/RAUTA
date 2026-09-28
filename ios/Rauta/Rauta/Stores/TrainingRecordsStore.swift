@@ -122,7 +122,7 @@ final class TrainingRecordsStore {
         if data.sessions.contains(where: { $0.plannedSessionId == plannedSessionId }) {
             throw TrainingPersistenceError("This planned session has already been recorded")
         }
-        guard let record = data.programs.first(where: { $0.id == programId }) else {
+        guard data.programs.contains(where: { $0.id == programId }) else {
             throw TrainingPersistenceError("Program not found")
         }
         if ProgramRecords.isSupersededPlannedSession(data, programId, plannedSessionId) {
@@ -132,10 +132,7 @@ final class TrainingRecordsStore {
             throw TrainingPersistenceError("This planned session is no longer active")
         }
 
-        let program = ProgramRecords.toEngineProgram(record.snapshot)
-        guard let session = program.weeks.flatMap(\.sessions).first(where: {
-            $0.id == plannedSessionId
-        }) else {
+        guard let session = ProgramRecords.plannedSession(data, programId, plannedSessionId)?.session else {
             throw TrainingPersistenceError("Planned session not found")
         }
 
@@ -169,10 +166,7 @@ final class TrainingRecordsStore {
         sourceWorkoutId: String? = nil
     ) throws -> String {
         if data.activeWorkout != nil { throw TrainingPersistenceError("A workout is already active") }
-        guard let record = data.programs.first(where: { $0.id == programId }),
-              let session = ProgramRecords.toEngineProgram(record.snapshot).weeks
-                .flatMap(\.sessions).first(where: { $0.id == plannedSessionId })
-        else {
+        guard let session = ProgramRecords.plannedSession(data, programId, plannedSessionId)?.session else {
             return try startFreeWorkout(exerciseIds: exerciseIds, startedAt: startedAt, sourceWorkoutId: sourceWorkoutId)
         }
 

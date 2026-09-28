@@ -38,16 +38,5 @@ nonisolated extension WorkoutActivityAttributes.ContentState {
 
     var isComplete: Bool { totalCount > 0 && completedCount >= totalCount }
 
-    /// "MM:SS", widening to "H:MM:SS" past an hour — the same shape the app
-    /// renders, so the Lock Screen and the screen agree.
-    var elapsedText: String {
-        let total = max(0, Int(elapsed))
-        let seconds = total % 60
-        let minutes = (total / 60) % 60
-        let hours = total / 3600
-
-        return hours > 0
-            ? String(format: "%d:%02d:%02d", hours, minutes, seconds)
-            : String(format: "%02d:%02d", minutes, seconds)
-    }
+    var elapsedText: String { ElapsedClock.format(seconds: Int(max(0, elapsed))) }
 }

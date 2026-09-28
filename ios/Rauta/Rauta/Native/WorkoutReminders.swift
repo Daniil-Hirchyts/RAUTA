@@ -19,6 +19,7 @@ final class WorkoutReminders {
 
     private let center = UNUserNotificationCenter.current()
     private let key = "rauta-workout-reminders"
+    private static let accessRequestedKey = "rauta-reminders-access-requested"
     private var reminders: [String: Reminder]
     private var cancellable: AnyCancellable?
 
@@ -27,17 +28,17 @@ final class WorkoutReminders {
             .flatMap { try? JSONDecoder().decode([String: Reminder].self, from: $0) } ?? [:]
     }
 
-    var hasRequestedAccess: Bool { Storage.defaults.bool(forKey: "rauta-reminders-access-requested") }
+    var hasRequestedAccess: Bool { Storage.defaults.bool(forKey: Self.accessRequestedKey) }
 
     func requestAccess() async -> Bool {
         let settings = await center.notificationSettings()
         if settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional {
-            Storage.defaults.set(true, forKey: "rauta-reminders-access-requested")
+            Storage.defaults.set(true, forKey: Self.accessRequestedKey)
             return true
         }
         guard settings.authorizationStatus == .notDetermined else { return false }
         let allowed = (try? await center.requestAuthorization(options: [.alert, .sound])) == true
-        Storage.defaults.set(true, forKey: "rauta-reminders-access-requested")
+        Storage.defaults.set(true, forKey: Self.accessRequestedKey)
         return allowed
     }
 

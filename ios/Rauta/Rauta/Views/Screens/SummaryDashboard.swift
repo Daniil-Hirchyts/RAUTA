@@ -24,11 +24,11 @@ struct MonthlySummarySnapshot {
             guard let completedAt = workout.completion?.completedAt,
                   let millis = ISOTime.parse(completedAt)
             else { return false }
-            return interval.contains(Date(timeIntervalSince1970: millis / 1_000))
+            return interval.contains(Date(epochMillis: millis))
         }
         let monthSessions = history.sessions.filter { session in
             guard let millis = ISOTime.parse(session.completedAt) else { return false }
-            return interval.contains(Date(timeIntervalSince1970: millis / 1_000))
+            return interval.contains(Date(epochMillis: millis))
         }
 
         monthTitle = CalendarDate.string(from: now, template: "MMMM")
@@ -49,7 +49,7 @@ struct MonthlySummarySnapshot {
             guard let completion = workout.completion,
                   let millis = ISOTime.parse(completion.completedAt)
             else { continue }
-            let date = Date(timeIntervalSince1970: millis / 1_000)
+            let date = Date(epochMillis: millis)
             let bin = Self.weekBin(for: date, calendar: calendar)
             workoutBins[bin] += 1
             durationBins[bin] += completion.durationMs / 1_000
@@ -57,7 +57,7 @@ struct MonthlySummarySnapshot {
         if monthWorkouts.isEmpty {
             for session in monthSessions {
                 guard let millis = ISOTime.parse(session.completedAt) else { continue }
-                let date = Date(timeIntervalSince1970: millis / 1_000)
+                let date = Date(epochMillis: millis)
                 let bin = Self.weekBin(for: date, calendar: calendar)
                 workoutBins[bin] += 1
                 durationBins[bin] += session.durationSeconds ?? 0
@@ -154,17 +154,17 @@ struct MonthlySummaryDashboard: View {
                         title: "Training time",
                         systemImage: "timer",
                         accent: Theme.gold,
-                        value: Self.duration(snapshot.totalDurationSeconds),
+                        value: SummaryAnalytics.duration(snapshot.totalDurationSeconds),
                         detail: snapshot.workoutCount == 0
                             ? "no time logged yet"
-                            : "\(Self.duration(snapshot.averageDurationSeconds)) average",
+                            : "\(SummaryAnalytics.duration(snapshot.averageDurationSeconds)) average",
                         bars: snapshot.weeklyDurationSeconds
                     )
                 }
                 .summaryArrival(3)
             }
 
-            SummaryCardLink(page: .summaryMuscles(month: month), zoomID: "summary-muscles", cornerRadius: 36) {
+            SummaryCardLink(page: .summaryMuscles(month: month), zoomID: "summary-muscles", cornerRadius: Theme.Radius.xl3) {
                 MuscleHeatmapCard(snapshot: snapshot)
             }
             .summaryArrival(4)
@@ -173,15 +173,6 @@ struct MonthlySummaryDashboard: View {
         // up to the point where they can still hold it.
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
-
-    private static func duration(_ seconds: Double) -> String {
-        let minutes = Int((seconds / 60).rounded())
-        guard minutes >= 60 else { return "\(minutes)m" }
-        let hours = minutes / 60
-        let remainder = minutes % 60
-        return remainder == 0 ? "\(hours)h" : "\(hours)h \(remainder)m"
-    }
-
 }
 
 private struct SummaryMetricCard: View {
@@ -193,7 +184,7 @@ private struct SummaryMetricCard: View {
     let bars: [Double]
 
     private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: 30, style: .continuous)
+        RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
     }
 
     var body: some View {
@@ -238,7 +229,7 @@ private struct SummaryMetricCard: View {
         .padding(14)
         .aspectRatio(1, contentMode: .fit)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background { GradientCard(radius: 30, accent: accent) }
+        .background { GradientCard(radius: Theme.Radius.xl2, accent: accent) }
         .accessibilityElement(children: .combine)
     }
 }
@@ -304,7 +295,7 @@ private struct MuscleHeatmapCard: View {
     let snapshot: MonthlySummarySnapshot
 
     private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: 36, style: .continuous)
+        RoundedRectangle(cornerRadius: Theme.Radius.xl3, style: .continuous)
     }
 
     var body: some View {
@@ -354,7 +345,7 @@ private struct MuscleHeatmapCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background { GradientCard(radius: 36, accent: Theme.destructive, strength: 0.8) }
+        .background { GradientCard(radius: Theme.Radius.xl3, accent: Theme.destructive, strength: 0.8) }
     }
 
     private func muscleRow(_ entry: (muscle: MuscleId, value: Double)) -> some View {

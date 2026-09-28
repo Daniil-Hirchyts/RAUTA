@@ -58,7 +58,7 @@ enum WarmupRoutine {
     static func moves(for exerciseIds: [String], seconds: Double, seed: String) -> [Move] {
         guard seconds > 0 else { return [] }
         let count = seconds >= 600 ? 5 : 4
-        var hash = stableHash(seed)
+        var hash = seed.stableHash
         func pick(_ pool: [String], avoiding taken: [String]) -> String? {
             let open = pool.filter { !taken.contains($0) && ExerciseCatalogue.has($0) }
             guard !open.isEmpty else { return nil }
@@ -87,15 +87,5 @@ enum WarmupRoutine {
         guard !moves.isEmpty else { return nil }
         let index = moves.firstIndex { elapsed < $0.end } ?? moves.count - 1
         return (index, moves[index])
-    }
-
-    /// FNV-1a, so the same workout picks the same moves on every launch.
-    private static func stableHash(_ text: String) -> UInt64 {
-        var hash: UInt64 = 14_695_981_039_346_656_037
-        for byte in text.utf8 {
-            hash ^= UInt64(byte)
-            hash = hash &* 1_099_511_628_211
-        }
-        return hash
     }
 }

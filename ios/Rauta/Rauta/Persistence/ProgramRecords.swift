@@ -19,6 +19,20 @@ nonisolated enum ProgramRecords {
         )
     }
 
+    /// A stored plan's session, with the plan it belongs to, as the engine
+    /// reads them.
+    static func plannedSession(
+        _ data: PersistedTrainingState,
+        _ programId: String?,
+        _ sessionId: String?
+    ) -> (program: TrainingProgram, session: PlannedSession)? {
+        guard let record = data.programs.first(where: { $0.id == programId }) else { return nil }
+        let program = toEngineProgram(record.snapshot)
+        guard let session = program.weeks.flatMap(\.sessions).first(where: { $0.id == sessionId })
+        else { return nil }
+        return (program, session)
+    }
+
     static func toEngineProgram(_ snapshot: PersistedProgramSnapshot) -> TrainingProgram {
         TrainingProgram(
             id: snapshot.id,

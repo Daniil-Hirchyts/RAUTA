@@ -162,7 +162,7 @@ final class ActiveWorkoutStore {
         }
 
         let now = ActiveWorkout.nowMillis()
-        let date = CalendarDate.toISO(Date(timeIntervalSince1970: now / 1000))
+        let date = CalendarDate.toISO(Date(epochMillis: now))
         // Every workout opens with the warm-up chosen in Settings, whichever
         // way it was started.
         let warmup = SettingsStore.shared.warmupLength.seconds
@@ -214,7 +214,7 @@ final class ActiveWorkoutStore {
         )
         if let warmupUntil {
             RestAlerts.shared.schedule(
-                deadline: Date(timeIntervalSince1970: warmupUntil / 1_000),
+                deadline: Date(epochMillis: warmupUntil),
                 exerciseName: exerciseIds.first.flatMap(ExerciseCatalogue.name),
                 kind: .warmup
             )
@@ -367,7 +367,7 @@ final class ActiveWorkoutStore {
         mutate { session = current }
         if announce { WorkoutAudio.play(.restStart) }
         RestAlerts.shared.schedule(
-            deadline: Date(timeIntervalSince1970: deadlineMs / 1_000),
+            deadline: Date(epochMillis: deadlineMs),
             exerciseName: exerciseName
         )
     }
@@ -382,7 +382,7 @@ final class ActiveWorkoutStore {
         current.setPhaseStartedAt = deadlineMs
         mutate { session = current }
         RestAlerts.shared.schedule(
-            deadline: Date(timeIntervalSince1970: deadlineMs / 1_000),
+            deadline: Date(epochMillis: deadlineMs),
             exerciseName: current.currentExerciseId.flatMap(ExerciseCatalogue.name),
             kind: .warmup
         )
@@ -411,7 +411,7 @@ final class ActiveWorkoutStore {
         current.setPhaseStartedAt = deadlineMs
         mutate { session = current }
         RestAlerts.shared.schedule(
-            deadline: Date(timeIntervalSince1970: deadlineMs / 1_000),
+            deadline: Date(epochMillis: deadlineMs),
             exerciseName: exerciseName
         )
     }

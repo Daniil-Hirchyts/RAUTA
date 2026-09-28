@@ -328,7 +328,7 @@ extension AgentToolHost {
         case .alternatives(let exercise):
             alternatives(exercise, workoutPhrase: input)
         case .editExercise(let exercise, let adding):
-            editExercises(workoutPhrase: input, exercisePhrase: exercise, action: adding ? "add" : "remove")
+            editExercises(workoutPhrase: input, exercisePhrase: exercise, edit: adding ? .add : .remove)
         case .deleteWorkout:
             proposeDelete(input)
         case .startWorkout:

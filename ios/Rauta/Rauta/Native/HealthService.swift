@@ -322,8 +322,8 @@ final class HealthService {
         }
 
         let success = await saveCompletedWorkout(WorkoutExport(
-            startDate: Date(timeIntervalSince1970: session.startedAt / 1000),
-            endDate: Date(timeIntervalSince1970: (session.startedAt + durationMs) / 1000),
+            startDate: Date(epochMillis: session.startedAt),
+            endDate: Date(epochMillis: session.startedAt + durationMs),
             activeCalories: settings.syncActiveCalories ? activeCalories : nil,
             workoutId: session.workoutId,
             workoutName: session.workoutName

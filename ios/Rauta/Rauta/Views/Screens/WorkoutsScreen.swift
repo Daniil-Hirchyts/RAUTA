@@ -895,7 +895,7 @@ struct WorkoutsScreen: View {
                     activeWorkout.setCurrentExercise(exercise.id)
                 }
                 Haptics.trigger(.selection)
-                withAnimation(.spring(response: 0.48, dampingFraction: 0.86)) {
+                withAnimation(Theme.Motion.settleSlow) {
                     exercisePlayerOpen = true
                 }
             }
@@ -947,13 +947,13 @@ struct WorkoutsScreen: View {
 
     private func updateRautaCompactState(_ compact: Bool) {
         guard compact != rautaCompact else { return }
-        withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
+        withAnimation(Theme.Motion.settle) {
             rautaCompact = compact
         }
     }
 
     private func restSeconds(for exerciseId: String) -> Double {
-        TrainingSessionBridge.activePrescriptions()[exerciseId]?.restSeconds ?? 90
+        TrainingSessionBridge.activePrescriptions()[exerciseId]?.restSeconds ?? PlannedExercisePrescription.fallbackRestSeconds
     }
 }
 
@@ -1000,7 +1000,7 @@ private struct NativeExerciseBottomAccessory: View {
             exercise: exercise,
             onOpen: {
                 Haptics.trigger(.selection)
-                withAnimation(.spring(response: 0.48, dampingFraction: 0.86)) {
+                withAnimation(Theme.Motion.settleSlow) {
                     isPresented = true
                 }
             },
@@ -1030,7 +1030,7 @@ private struct NativeWorkoutCompleteAccessory: View {
     var body: some View {
         Button {
             Haptics.trigger(.selection)
-            withAnimation(.spring(response: 0.48, dampingFraction: 0.86)) {
+            withAnimation(Theme.Motion.settleSlow) {
                 isPresented = true
             }
         } label: {
@@ -1408,7 +1408,7 @@ private struct SummaryWorkoutsContent: View {
                 ProfileIdentityCard()
                     .summaryArrival(0)
 
-                SummaryCardLink(page: .summaryStreak, zoomID: "summary-streak", cornerRadius: 36) {
+                SummaryCardLink(page: .summaryStreak, zoomID: "summary-streak", cornerRadius: Theme.Radius.xl3) {
                     StreakStrip(workouts: completedWorkouts)
                 }
                 .summaryArrival(1)
@@ -1781,7 +1781,7 @@ private struct StreakStrip: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity)
-        .background { GradientCard(radius: 36, accent: Theme.primary) }
+        .background { GradientCard(radius: Theme.Radius.xl3, accent: Theme.primary) }
         // A week of fixed-width columns: text grows with Dynamic Type up to
         // the point where the columns can still hold it.
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
@@ -1947,11 +1947,11 @@ private struct WorkoutRow: View {
             .frame(maxWidth: .infinity, minHeight: 100)
             // Today's and upcoming workouts carry the warm light; finished
             // ones sit back.
-            .background { GradientCard(radius: 30, accent: Theme.primary, strength: isPast ? 0.35 : 0.75) }
+            .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.primary, strength: isPast ? 0.35 : 0.75) }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .appZoomSource(Self.zoomSourceID(workout.id), cornerRadius: 30)
+        .appZoomSource(Self.zoomSourceID(workout.id), cornerRadius: Theme.Radius.xl2)
         .frame(maxWidth: .infinity)
     }
 

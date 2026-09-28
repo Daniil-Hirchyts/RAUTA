@@ -31,12 +31,7 @@ struct ActiveSetLog: View {
     private var context: StationContext? {
         if let stationContext { return stationContext }
         guard let exercise else { return nil }
-        return Resistance.resolveLoadContext(
-            for: exercise,
-            mode: mode,
-            settings: store.trainingRecords.data.settings,
-            equipmentIncrementKg: store.filters.equipmentLoadIncrements[exercise.equipment]
-        )
+        return loadContext(for: exercise, mode: mode)
     }
 
     private var target: PersistedSetTarget? {
@@ -368,8 +363,7 @@ struct ActiveSetLog: View {
     }
 
     private func plannedReps(_ set: PersistedActiveSetDraft) -> String {
-        guard let reps = set.target?.reps else { return "—" }
-        return reps.min == reps.max ? Num.trimmed(reps.max) : "\(Num.trimmed(reps.min))–\(Num.trimmed(reps.max))"
+        set.target?.reps.label ?? "—"
     }
 
     private var resolvedSubmitLabel: String {
@@ -378,9 +372,7 @@ struct ActiveSetLog: View {
     }
 
     private func targetSummary(_ target: PersistedSetTarget) -> String {
-        let reps = target.reps.min == target.reps.max
-            ? Num.trimmed(target.reps.max)
-            : "\(Num.trimmed(target.reps.min))–\(Num.trimmed(target.reps.max))"
+        let reps = target.reps.label
         let load = Resistance.isMeasuredInKg(target.resistance.type) && target.resistance.kg != nil
             ? " · \(Resistance.format(target.resistance))"
             : ""
@@ -506,14 +498,18 @@ struct ActiveSetLog: View {
         var side: SetSide
     }
 
-    private func defaultEditorValue(for exercise: ExerciseSummary) -> EditorValue {
-        let defaultMode = Resistance.modes(for: exercise).first ?? .externalLoad
-        let defaultContext = Resistance.resolveLoadContext(
+    private func loadContext(for exercise: ExerciseSummary, mode: ResistanceMode) -> StationContext {
+        Resistance.resolveLoadContext(
             for: exercise,
-            mode: defaultMode,
+            mode: mode,
             settings: store.trainingRecords.data.settings,
             equipmentIncrementKg: store.filters.equipmentLoadIncrements[exercise.equipment]
         )
+    }
+
+    private func defaultEditorValue(for exercise: ExerciseSummary) -> EditorValue {
+        let defaultMode = Resistance.modes(for: exercise).first ?? .externalLoad
+        let defaultContext = loadContext(for: exercise, mode: defaultMode)
         let planned = draft?.sets.first { $0.target != nil }?.target
         let previous = draft?.sets.reversed().first { $0.observation?.completed == true }?.observation
         let engine = draft.flatMap {
@@ -550,12 +546,7 @@ struct ActiveSetLog: View {
 
     private func changeMode(_ nextMode: ResistanceMode) {
         guard nextMode != mode, let exercise else { return }
-        let nextContext = Resistance.resolveLoadContext(
-            for: exercise,
-            mode: nextMode,
-            settings: store.trainingRecords.data.settings,
-            equipmentIncrementKg: store.filters.equipmentLoadIncrements[exercise.equipment]
-        )
+        let nextContext = loadContext(for: exercise, mode: nextMode)
         mode = nextMode
         stationContext = nextContext
         kilograms = carriedLoad(mode: nextMode, context: nextContext)

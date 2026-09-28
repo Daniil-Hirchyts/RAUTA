@@ -158,12 +158,7 @@ enum TrainingSessionBridge {
         _ data: PersistedTrainingState,
         _ draft: PersistedActiveWorkoutDraft
     ) -> PlannedSession? {
-        guard let record = data.programs.first(where: { $0.id == draft.plannedProgramId })
-        else { return nil }
-        return ProgramRecords.toEngineProgram(record.snapshot)
-            .weeks
-            .flatMap(\.sessions)
-            .first { $0.id == draft.plannedSessionId }
+        ProgramRecords.plannedSession(data, draft.plannedProgramId, draft.plannedSessionId)?.session
     }
 
     /// How much of the running session's prescription has been performed, or nil

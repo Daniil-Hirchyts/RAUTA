@@ -161,14 +161,14 @@ struct WorkoutDestinationScreen: View {
                         ExerciseMediaView(exerciseId: exercise.id)
                             .padding(3)
                             .frame(width: 46, height: 46)
-                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.muted.opacity(0.7)))
+                            .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous).fill(Theme.muted.opacity(0.7)))
                     }
                     if exercises.count > 5 {
                         Text("+\(exercises.count - 5)")
                             .font(Theme.sans(13, weight: .bold))
                             .foregroundStyle(Theme.mutedForeground)
                             .frame(width: 46, height: 46)
-                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.muted.opacity(0.7)))
+                            .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous).fill(Theme.muted.opacity(0.7)))
                     }
                 }
                 .accessibilityHidden(true)

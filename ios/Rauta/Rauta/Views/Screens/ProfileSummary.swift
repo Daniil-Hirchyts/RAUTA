@@ -137,7 +137,7 @@ struct ProfileRecordsSection: View {
             )
             ProfileRecordCard(
                 systemImage: "timer",
-                value: durationLabel(records.trainingSeconds),
+                value: SummaryAnalytics.duration(records.trainingSeconds),
                 label: "Training time",
                 accent: Theme.gold
             )
@@ -154,14 +154,6 @@ struct ProfileRecordsSection: View {
                 accent: Theme.ember
             )
         }
-    }
-
-    private func durationLabel(_ seconds: Double) -> String {
-        let minutes = Int((seconds / 60).rounded())
-        guard minutes >= 60 else { return "\(minutes)m" }
-        let hours = minutes / 60
-        let remainder = minutes % 60
-        return remainder == 0 ? "\(hours)h" : "\(hours)h \(remainder)m"
     }
 }
 

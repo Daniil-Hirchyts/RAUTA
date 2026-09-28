@@ -119,8 +119,9 @@ final class WatchConnectivityService: NSObject, WCSessionDelegate {
                   let workout = WorkoutsStore.shared.workout(session.workoutId),
                   let reference = workout.planned,
                   let plan = TrainingPlan.plannedSessionView(reference.programId, reference.sessionId)
-            else { return 90 }
-            return plan.prescription.first(where: { $0.exerciseId == currentExerciseId })?.restSeconds ?? 90
+            else { return PlannedExercisePrescription.fallbackRestSeconds }
+            return plan.prescription.first(where: { $0.exerciseId == currentExerciseId })?.restSeconds
+                ?? PlannedExercisePrescription.fallbackRestSeconds
         }()
 
         return RautaWatchWorkoutSnapshot(

@@ -22,6 +22,9 @@ struct PlannedExercisePrescription: Hashable, Identifiable {
     var loadBasis: LoadBasis?
     var restSeconds: Double
 
+    /// The rest a timer counts down when nothing was prescribed.
+    static let fallbackRestSeconds: Double = 90
+
     var id: String { exerciseId }
 }
 
@@ -155,11 +158,8 @@ enum TrainingPlan {
         _ data: PersistedTrainingState? = nil
     ) -> PlannedSessionView? {
         let data = data ?? TrainingRecordsStore.shared.data
-        guard let record = data.programs.first(where: { $0.id == programId }) else { return nil }
-        let program = ProgramRecords.toEngineProgram(record.snapshot)
-        guard let session = program.weeks.flatMap(\.sessions).first(where: { $0.id == sessionId })
-        else { return nil }
-        return toView(program, session)
+        guard let planned = ProgramRecords.plannedSession(data, programId, sessionId) else { return nil }
+        return toView(planned.program, planned.session)
     }
 
     /// Whether the structured history already holds this planned session.

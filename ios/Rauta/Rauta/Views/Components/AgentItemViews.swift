@@ -405,7 +405,7 @@ struct AgentProposalCardView: View {
         }
         .background { GradientCard(radius: Theme.Radius.xl, accent: accent, strength: 0.8) }
         .opacity(proposal.state == .dismissed || proposal.state == .expired ? 0.65 : 1)
-        .animation(.spring(response: 0.36, dampingFraction: 0.86), value: proposal.state)
+        .animation(Theme.Motion.settleQuick, value: proposal.state)
     }
 
     private var header: some View {
@@ -486,7 +486,7 @@ struct AgentSessionsCard: View {
             if shown.count < rows.count {
                 AgentCardDivider()
                 Button {
-                    withAnimation(.spring(response: 0.36, dampingFraction: 0.86)) { expanded = true }
+                    withAnimation(Theme.Motion.settleQuick) { expanded = true }
                 } label: {
                     HStack(spacing: 6) {
                         Text("Show all \(rows.count)")

@@ -31,4 +31,10 @@ struct FormattingTests {
         #expect(ActiveWorkout.formatDuration(3_661_000) == "1:01:01")
         #expect(ActiveWorkout.formatDuration(-1) == "00:00")
     }
+
+    @Test func repRanges() {
+        #expect(RepRange(min: 8, max: 12).label == "8–12")
+        #expect(RepRange(min: 10, max: 10).label == "10")
+        #expect(RepRange(min: 6.5, max: 8).label == "6.5–8")
+    }
 }

@@ -81,7 +81,7 @@ enum WorkoutActivityBridge {
             completedCount: content.completedCount,
             totalCount: content.totalCount,
             timerStart: content.timerStartEpochMs > 0
-                ? Date(timeIntervalSince1970: content.timerStartEpochMs / 1000)
+                ? Date(epochMillis: content.timerStartEpochMs)
                 : nil,
             elapsed: content.elapsedMs / 1000,
             isPaused: content.isPaused,

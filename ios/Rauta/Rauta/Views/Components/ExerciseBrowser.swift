@@ -120,7 +120,7 @@ struct ExerciseFilterBar: View {
                         Haptics.trigger(.selection)
                         state.presentedFilter = .equipment
                     }
-                    .appZoomSource(ExerciseFilterKind.equipment.zoomSourceID(zoomPrefix), cornerRadius: 20)
+                    .appZoomSource(ExerciseFilterKind.equipment.zoomSourceID(zoomPrefix), cornerRadius: Theme.Radius.lg)
                     .transition(chipMelt)
 
                     ExerciseFilterChip(title: "Favorites", selected: state.favoritesOnly) {
@@ -179,7 +179,7 @@ struct ExerciseFilterBar: View {
         .modifier(
             OptionalZoomSource(
                 id: open ? nil : ExerciseFilterKind.muscles.zoomSourceID(zoomPrefix),
-                cornerRadius: 20
+                cornerRadius: Theme.Radius.lg
             )
         )
         .glassSurface(

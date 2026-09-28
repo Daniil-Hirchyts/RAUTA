@@ -61,8 +61,8 @@ struct SummaryActivityScreen: View {
                 }
                 .padding(.horizontal, Theme.Metrics.contentInset)
                 .padding(.bottom, 32)
-                .animation(.spring(response: 0.42, dampingFraction: 0.86), value: month)
-                .animation(.spring(response: 0.42, dampingFraction: 0.86), value: metric)
+                .animation(Theme.Motion.settle, value: month)
+                .animation(Theme.Motion.settle, value: metric)
             }
             .pageScroll()
         }
@@ -91,7 +91,7 @@ struct SummaryActivityScreen: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background { GradientCard(radius: 30, accent: accent) }
+        .background { GradientCard(radius: Theme.Radius.xl2, accent: accent) }
     }
 
     private struct WeekBar: Identifiable {
@@ -157,7 +157,7 @@ struct SummaryActivityScreen: View {
             .accessibilityLabel("Weekly \(metric == .workouts ? "sessions" : "training time")")
         }
         .padding(16)
-        .background { GradientCard(radius: 30, accent: accent, strength: 0.5) }
+        .background { GradientCard(radius: Theme.Radius.xl2, accent: accent, strength: 0.5) }
     }
 
     private func format(_ value: Double) -> String {

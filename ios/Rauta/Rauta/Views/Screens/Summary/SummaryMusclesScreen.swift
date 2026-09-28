@@ -30,7 +30,7 @@ struct SummaryMusclesScreen: View {
                     BodyHeatmapPair(muscles: loads.map(\.muscle), weights: weights, height: 330)
                         .padding(.vertical, 16)
                         .frame(maxWidth: .infinity)
-                        .background { GradientCard(radius: 36, accent: Theme.destructive, strength: 0.8) }
+                        .background { GradientCard(radius: Theme.Radius.xl3, accent: Theme.destructive, strength: 0.8) }
 
                     if loads.isEmpty {
                         Text("No sets logged in \(SummaryAnalytics.monthTitle(month)).")
@@ -48,7 +48,7 @@ struct SummaryMusclesScreen: View {
                             }
                         }
                         .padding(.horizontal, 16)
-                        .background { GradientCard(radius: 30, accent: Theme.ember, strength: 0.5) }
+                        .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.ember, strength: 0.5) }
 
                         Text("Effective sets a week: a set for a muscle the exercise works directly, half for one it helps. The marked band is what your plan aims for.")
                             .font(Theme.sans(12, weight: .medium))
@@ -58,7 +58,7 @@ struct SummaryMusclesScreen: View {
                 }
                 .padding(.horizontal, Theme.Metrics.contentInset)
                 .padding(.bottom, 32)
-                .animation(.spring(response: 0.42, dampingFraction: 0.86), value: month)
+                .animation(Theme.Motion.settle, value: month)
             }
             .pageScroll()
         }

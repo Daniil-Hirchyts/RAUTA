@@ -183,6 +183,11 @@ extension Theme {
         /// `cubic-bezier(0.34, 1.56, 0.64, 1)` — the springy release the web app
         /// used for everything that pops into place.
         static let spring = Animation.timingCurve(0.34, 1.56, 0.64, 1, duration: Duration.fast)
+        /// The calm, barely-overshooting spring content settles into place
+        /// with; quick for small parts, slow for whole panels.
+        static let settle = Animation.spring(response: 0.42, dampingFraction: 0.86)
+        static let settleQuick = Animation.spring(response: 0.36, dampingFraction: 0.86)
+        static let settleSlow = Animation.spring(response: 0.48, dampingFraction: 0.86)
         /// `cubic-bezier(0.22, 1, 0.36, 1)`.
         static let smoothOut = Animation.timingCurve(0.22, 1, 0.36, 1, duration: Duration.fast)
         static func smoothOut(_ duration: Double) -> Animation {

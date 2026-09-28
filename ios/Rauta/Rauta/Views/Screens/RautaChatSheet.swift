@@ -211,7 +211,7 @@ struct RautaChatSheet: View {
                 .padding(.horizontal, 14)
                 .padding(.top, 6)
                 .padding(.bottom, 12)
-                .animation(.spring(response: 0.36, dampingFraction: 0.86), value: agent.phase)
+                .animation(Theme.Motion.settleQuick, value: agent.phase)
             }
             .scrollDismissesKeyboard(.interactively)
             .defaultScrollAnchor(.bottom)

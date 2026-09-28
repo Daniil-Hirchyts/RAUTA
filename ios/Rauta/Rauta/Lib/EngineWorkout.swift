@@ -37,7 +37,7 @@ enum EngineWorkout {
         guard let millis = ISOTime.parse("\(date)T00:00:00.000Z") else { return date }
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-        let start = Date(timeIntervalSince1970: millis / 1000)
+        let start = Date(epochMillis: millis)
         let weekday = calendar.component(.weekday, from: start)
         let offset = (weekday + 5) % 7
         let monday = calendar.date(byAdding: .day, value: -offset, to: start) ?? start

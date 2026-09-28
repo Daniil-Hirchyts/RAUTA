@@ -184,7 +184,7 @@ final class RautaDirector {
         let seconds = Int(((restUntil - Date().timeIntervalSince1970 * 1000) / 1000).rounded())
         guard seconds > 0 else { return line }
         let clock = seconds >= 60
-            ? "\(seconds / 60):\(String(format: "%02d", seconds % 60))"
+            ? WorkoutClock.format(seconds)
             : "\(seconds) s"
         return "\(line) Rest \(clock)."
     }
@@ -310,7 +310,7 @@ final class RautaDirector {
             if session.runningSince == nil {
                 phase = .paused
             } else if let restUntil = session.restUntil, restUntil > now {
-                let deadline = Date(timeIntervalSince1970: restUntil / 1000)
+                let deadline = Date(epochMillis: restUntil)
                 phase = .resting(until: deadline)
                 restTask = Task { @MainActor [weak self] in
                     try? await Task.sleep(for: .milliseconds(Int(restUntil - now)))

@@ -476,6 +476,11 @@ nonisolated struct IndexedExercise: Hashable, Sendable {
 nonisolated struct RepRange: Codable, Hashable, Sendable {
     var min: Double
     var max: Double
+
+    /// "8–12", or "10" when the range is a single count.
+    var label: String {
+        min == max ? Num.trimmed(max) : "\(Num.trimmed(min))–\(Num.trimmed(max))"
+    }
 }
 
 nonisolated enum PlannedSetType: String, Codable, Hashable, Sendable {

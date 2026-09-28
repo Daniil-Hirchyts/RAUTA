@@ -299,7 +299,7 @@ struct SettingsScreen: View {
             guard let value = store.iCloud.lastSyncedAt, let millis = ISOTime.parse(value) else {
                 return "Backed up automatically"
             }
-            let saved = Date(timeIntervalSince1970: millis / 1000)
+            let saved = Date(epochMillis: millis)
             return "Saved · \(saved.formatted(date: .omitted, time: .shortened))"
         }
     }

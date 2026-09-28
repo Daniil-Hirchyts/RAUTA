@@ -104,7 +104,7 @@ enum TrainingWorkflow {
         guard let nowMillis = ISOTime.parse(now) else { return now }
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
-        let date = Date(timeIntervalSince1970: nowMillis / 1000)
+        let date = Date(epochMillis: nowMillis)
         let startOfDay = calendar.startOfDay(for: date)
         let weekday = calendar.component(.weekday, from: startOfDay)
         // `weekday` is 1 = Sunday. Days until the next Monday, wrapping to 7.
