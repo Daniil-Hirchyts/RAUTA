@@ -12,11 +12,6 @@ struct ProfileIdentityCard: View {
         return value.isEmpty ? "You" : value
     }
 
-    private var initials: String {
-        let letters = displayName.split(separator: " ").prefix(2).compactMap(\.first)
-        return String(letters).uppercased()
-    }
-
     private var profileLine: String {
         "\(Int(profile.age)) years · \(ProfileVocabulary.experienceLabel(profile.trainingExperience))"
     }
@@ -42,11 +37,7 @@ struct ProfileIdentityCard: View {
             store.navigation.push(.profileBasics, from: "summary-identity")
         } label: {
             HStack(spacing: 14) {
-                Text(initials)
-                    .font(Theme.sans(19, weight: .black))
-                    .foregroundStyle(Theme.primaryForeground)
-                    .frame(width: 52, height: 52)
-                    .background(Theme.primaryGradient, in: Circle())
+                DotMatrixEmblem(seed: profile.name, size: 56)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(displayName)
@@ -93,7 +84,7 @@ struct ProfileRecordsSection: View {
     /// The four record figures, from one pass over the history. Building the
     /// training history converts every logged session, so it is done once per
     /// render rather than once per figure.
-    private struct Records {
+    struct Records {
         var workouts: Int
         var trainingSeconds: Double
         var bestStreak: Int
@@ -129,34 +120,40 @@ struct ProfileRecordsSection: View {
                 .foregroundStyle(Theme.mutedForeground)
                 .padding(.horizontal, 4)
 
-            LazyVGrid(columns: recordColumns, spacing: 10) {
-                ProfileRecordCard(
-                    systemImage: "figure.strengthtraining.traditional",
-                    value: "\(records.workouts)",
-                    label: "Workouts",
-                    accent: Theme.primary
-                )
-                ProfileRecordCard(
-                    systemImage: "timer",
-                    value: durationLabel(records.trainingSeconds),
-                    label: "Training time",
-                    accent: Theme.gold
-                )
-                ProfileRecordCard(
-                    systemImage: "flame.fill",
-                    value: "\(records.bestStreak)",
-                    label: "Best streak",
-                    accent: Theme.lime
-                )
-                ProfileRecordCard(
-                    systemImage: "checkmark.circle",
-                    value: "\(records.exercisesLogged)",
-                    label: "Exercises logged",
-                    accent: Theme.ember
-                )
+            SummaryCardLink(page: .summaryRecords, zoomID: "summary-records", cornerRadius: 28) {
+                recordGrid(records)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func recordGrid(_ records: Records) -> some View {
+        LazyVGrid(columns: recordColumns, spacing: 10) {
+            ProfileRecordCard(
+                systemImage: "figure.strengthtraining.traditional",
+                value: "\(records.workouts)",
+                label: "Workouts",
+                accent: Theme.primary
+            )
+            ProfileRecordCard(
+                systemImage: "timer",
+                value: durationLabel(records.trainingSeconds),
+                label: "Training time",
+                accent: Theme.gold
+            )
+            ProfileRecordCard(
+                systemImage: "flame.fill",
+                value: "\(records.bestStreak)",
+                label: "Best streak",
+                accent: Theme.lime
+            )
+            ProfileRecordCard(
+                systemImage: "checkmark.circle",
+                value: "\(records.exercisesLogged)",
+                label: "Exercises logged",
+                accent: Theme.ember
+            )
+        }
     }
 
     private func durationLabel(_ seconds: Double) -> String {
@@ -168,7 +165,7 @@ struct ProfileRecordsSection: View {
     }
 }
 
-private struct ProfileRecordCard: View {
+struct ProfileRecordCard: View {
     let systemImage: String
     let value: String
     let label: String

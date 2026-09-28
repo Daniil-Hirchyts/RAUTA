@@ -122,13 +122,26 @@ struct SettingsScreen: View {
                                     label: "Haptic feedback"
                                 )
                             }
-                            settingsRow(title: "Sound chimes", detail: "Cue after key actions", icon: "bell.badge", showsDivider: true) {
+                            warmupRow
+                                .overlay(alignment: .bottom) {
+                                    Rectangle().fill(Theme.border).frame(height: 1)
+                                }
+                            settingsRow(title: "Workout sounds", detail: "Countdowns, rest and logged sets", icon: "speaker.wave.2", showsDivider: true) {
+                                AppSwitch(
+                                    isOn: Binding(
+                                        get: { store.settings.workoutSoundsEnabled },
+                                        set: { enabled in store.settings.update { $0.workoutSoundsEnabled = enabled } }
+                                    ),
+                                    label: "Workout sounds"
+                                )
+                            }
+                            settingsRow(title: "Interface sounds", detail: "RAUTA, favourites and saves", icon: "bell.badge", showsDivider: true) {
                                 AppSwitch(
                                     isOn: Binding(
                                         get: { store.settings.soundChimesEnabled },
                                         set: { enabled in store.settings.update { $0.soundChimesEnabled = enabled } }
                                     ),
-                                    label: "Sound chimes"
+                                    label: "Interface sounds"
                                 )
                             }
                             settingsRow(title: "Keep screen awake", detail: "Prevent auto-lock in workouts", icon: "iphone", showsDivider: false) {
@@ -141,6 +154,22 @@ struct SettingsScreen: View {
                                 )
                             }
                         }
+
+                        #if DEBUG
+                        // Every sound, whatever the switches say: for listening
+                        // to the set on a device.
+                        section("Sound lab") {
+                            ForEach(Array(RautaSound.allCases.enumerated()), id: \.element) { index, sound in
+                                settingsAction(
+                                    title: sound.rawValue.replacingOccurrences(of: "rauta-", with: ""),
+                                    icon: "speaker.wave.2",
+                                    showsDivider: index < RautaSound.allCases.count - 1
+                                ) {
+                                    WorkoutAudio.audition(sound)
+                                }
+                            }
+                        }
+                        #endif
 
                         section("Appearance") {
                             appearanceRow
@@ -279,6 +308,32 @@ struct SettingsScreen: View {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
         return build.map { "\(version) (\($0))" } ?? version
+    }
+
+    /// How long the warm-up that opens every workout runs, or none at all.
+    private var warmupRow: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                rowIcon("figure.cooldown")
+                rowLabel(
+                    title: "Warm-up",
+                    detail: store.settings.warmupLength == .off
+                        ? "Workouts start straight away"
+                        : "Guided moves before every workout"
+                )
+            }
+            GlassSegmentedPicker(
+                title: "Warm-up",
+                options: WarmupLength.allCases,
+                selection: Binding(
+                    get: { store.settings.warmupLength },
+                    set: { length in store.settings.update { $0.warmupSeconds = length.seconds } }
+                ),
+                label: \.label
+            )
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
     }
 
     /// The theme: the iPhone's own, or light or dark for good. The change

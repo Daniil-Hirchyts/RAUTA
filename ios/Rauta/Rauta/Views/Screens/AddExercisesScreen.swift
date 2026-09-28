@@ -230,23 +230,21 @@ struct AddExercisesScreen: View {
                 withAnimation(.easeOut(duration: 0.2)) { thinking = false }
             }
             do {
-                let exerciseIds = try await EngineWorkout.propose(
+                // Built and saved in one go, then opened on the workout page
+                // like any other workout: RAUTA's menu there offers another
+                // take until it is started.
+                let workoutId = try await EngineWorkout.createWorkout(
                     date: CalendarDate.today,
                     focusMuscles: focus,
                     availableEquipment: store.filters.selectedEquipment
                 )
-                guard !exerciseIds.isEmpty else {
-                    Haptics.trigger(.warning)
-                    RautaSpeech.shared.say(
-                        "Nothing fits those muscles with this equipment. Widen the filters and ask me again.",
-                        reaction: .frustrated
-                    )
-                    return
-                }
                 Haptics.trigger(.medium)
-                RautaSpeech.shared.hush()
-                store.navigation.push(
-                    .workoutForm(exerciseIds: exerciseIds, workoutId: nil, engineFocusMuscles: focus)
+                store.navigation.selectedIds = []
+                store.navigation.openWorkout(workoutId)
+                try? await Task.sleep(for: .seconds(0.7))
+                RautaSpeech.shared.say(
+                    "Here's today's. Want another take? Tap me.",
+                    reaction: .wink
                 )
             } catch is CancellationError {
                 RautaSpeech.shared.hush()

@@ -146,23 +146,27 @@ struct EquipmentGrid: View {
                     Haptics.trigger(.selection)
                     onToggle(equipment)
                 } label: {
+                    // Built like an exercise card: the artwork and its name
+                    // sit on one card, with nothing laid between them.
                     VStack(spacing: 0) {
-                        EquipmentImageView(equipment: equipment)
-                            .frame(maxWidth: .infinity)
+                        Color.clear
                             .aspectRatio(1, contentMode: .fit)
-                            .background(equipmentMedia)
+                            .overlay {
+                                EquipmentImageView(equipment: equipment)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            }
 
                         Text(Wording.titleCase(equipment))
                             .font(Theme.sans(16, weight: .semibold))
+                            .kerning(-0.16)
                             .foregroundStyle(Theme.foreground)
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
+                            .frame(height: 72)
                             .padding(.horizontal, 14)
-                            .padding(.vertical, 12)
-                            .frame(minHeight: 52)
                     }
                     .frame(maxWidth: .infinity)
-                    .background { GradientCard(radius: Theme.Metrics.cardRadius, accent: Theme.primary, strength: checked ? 1 : 0.45) }
+                    .background { GradientCard(radius: Theme.Metrics.cardRadius, accent: Theme.primary, strength: checked ? 1 : 0.55) }
                     .clipShape(
                         RoundedRectangle(cornerRadius: Theme.Metrics.cardRadius, style: .continuous)
                     )
@@ -184,18 +188,6 @@ struct EquipmentGrid: View {
                 .accessibilityLabel(Wording.titleCase(equipment))
                 .accessibilityAddTraits(checked ? [.isSelected] : [])
             }
-        }
-    }
-
-    private var equipmentMedia: some View {
-        ZStack {
-            Theme.card
-            RadialGradient(
-                colors: [Theme.mix(Theme.card, Theme.foreground, 0.07), .clear],
-                center: UnitPoint(x: 0.5, y: 0.42),
-                startRadius: 0,
-                endRadius: 120
-            )
         }
     }
 }

@@ -124,6 +124,10 @@ struct WorkoutsScreen: View {
     private let filters = FiltersStore.shared
     @State private var mainTab: MainTab = .summary
     @State private var rautaMenuPresented = false
+    /// True for the one update in which the tab bar sits on RAUTA's slot. A tap
+    /// on the glass around RAUTA selects that slot; turning this back off in
+    /// the next update is what moves the tab bar back to the page it was on.
+    @State private var rautaTabBounce = false
     @State private var chatPresented = false
     @State private var chatDictateOnOpen = false
     @State private var chatFocusOnOpen = false
@@ -215,6 +219,7 @@ struct WorkoutsScreen: View {
                         },
                         onFinishExercise: {
                             Haptics.trigger(.success)
+                            WorkoutAudio.play(.exerciseDone)
                             activeWorkout.completeCurrent()
                         },
                         onFinish: finishActiveWorkout,
@@ -255,6 +260,16 @@ struct WorkoutsScreen: View {
                 .presentationBackground(.clear)
                 .appZoomTransition(from: RautaNativeTabControl.zoomSourceID)
         }
+        // Every workout opens with its warm-up, however it was started: from
+        // the page, from RAUTA, from Siri or a reminder.
+        .overlay {
+            if let session = activeWorkout.session, session.warmupUntil != nil, celebration == nil {
+                WarmupScreen(session: session, onDone: exercisePlayerOpener)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: activeWorkout.session?.warmupUntil != nil)
         .overlay {
             if let celebration {
                 WorkoutCelebration(receipt: celebration, onContinue: closeCelebration)
@@ -382,8 +397,11 @@ struct WorkoutsScreen: View {
                 RautaAgent.shared.send(debugArguments[promptIndex + 1])
             }
             #endif
-            // Restore any missing lightweight projection from its authoritative plan.
-            for view in TrainingPlan.activePlannedSessions() where !TrainingPlan.isPlannedSessionRecorded(view.sessionId) {
+            // Restore any missing lightweight projection from its authoritative
+            // plan. Only days still ahead: a past day with no record is one the
+            // person deleted or skipped, not one to bring back as unfinished.
+            for view in TrainingPlan.activePlannedSessions()
+            where view.date >= CalendarDate.today && !TrainingPlan.isPlannedSessionRecorded(view.sessionId) {
                 TrainingPlan.ensurePlannedWorkout(view)
             }
         }
@@ -419,7 +437,9 @@ struct WorkoutsScreen: View {
             // separate trailing control without merging it into the three
             // navigation destinations.
             Tab(value: NativeTabSelection.rauta, role: .prominent) {
-                Color.clear
+                // Never meant to be seen: the slot is RAUTA's button. If the
+                // tab bar shows it for a frame, it is the app's own shell.
+                Theme.shell.ignoresSafeArea()
             } label: {
                 Image(uiImage: NativeTabIcons.transparentPlaceholder)
                     // The drawn RAUTA over this slot is hidden from
@@ -435,16 +455,26 @@ struct WorkoutsScreen: View {
             }
         )
         .overlay { nativeRautaControl }
+        .onChange(of: rautaTabBounce) { _, bounced in
+            guard bounced else { return }
+            withTransaction(Transaction(animation: nil)) { rautaTabBounce = false }
+        }
     }
 
+    /// RAUTA's slot is a button, not a page. Selecting it opens RAUTA's menu,
+    /// and the selection is really made and then undone: a getter that never
+    /// reports the RAUTA slot leaves the tab bar on it, showing an empty page.
     private var nativeTabSelection: Binding<NativeTabSelection> {
         Binding(
-            get: { .page(mainTab) },
+            get: { rautaTabBounce ? .rauta : .page(mainTab) },
             set: { selection in
                 switch selection {
                 case .page(let tab):
+                    rautaTabBounce = false
                     mainTab = tab
                 case .rauta:
+                    guard !rautaTabBounce else { return }
+                    rautaTabBounce = true
                     presentRautaMenu()
                 }
             }
@@ -476,6 +506,7 @@ struct WorkoutsScreen: View {
                     .environment(
                         \.rautaOnStage,
                         onStage && !exercisePlayerOpen && !chatPresented && celebration == nil
+                            && activeWorkout.session?.warmupUntil == nil
                             && !(introPlaying && !reduceMotion)
                     )
             }
@@ -525,6 +556,7 @@ struct WorkoutsScreen: View {
 
     private func presentRautaMenu() {
         Haptics.trigger(.selection)
+        WorkoutAudio.play(.menuOpen)
         RautaSpeech.shared.hush()
         rautaMenuPresented = true
     }
@@ -575,6 +607,7 @@ struct WorkoutsScreen: View {
             RautaSpeech.shared.say(refusal)
             return result
         }
+        WorkoutAudio.play(.workoutStart)
         withAnimation(Theme.Motion.smoothOut(0.28)) {
             selectedWorkoutId = nil
             liveWorkoutPresented = true
@@ -709,6 +742,7 @@ struct WorkoutsScreen: View {
                             let preview = try await TrainingWorkflow.previewAdjustedWeek(source: source)
                             try TrainingPlan.commit(preview)
                             Haptics.trigger(.success)
+                            WorkoutAudio.play(.planBuilt)
                         } catch {
                             Haptics.trigger(.warning)
                             let reason = (error as? TrainingPersistenceError)?.message ?? error.localizedDescription
@@ -754,11 +788,20 @@ struct WorkoutsScreen: View {
                     workoutDetailActionRequest = .share
                 }
             )
-            actions.append(
-                CompanionAction(title: "Copy to today", systemImage: "doc.on.doc") {
-                    workoutDetailActionRequest = .duplicate
-                }
-            )
+            if workoutDetailActionState.canRegenerate {
+                actions.append(
+                    CompanionAction(title: "Try another workout", systemImage: "arrow.clockwise") {
+                        workoutDetailActionRequest = .regenerate
+                    }
+                )
+            }
+            if !workoutDetailActionState.isEmpty {
+                actions.append(
+                    CompanionAction(title: "Reuse workout", systemImage: "arrow.triangle.2.circlepath") {
+                        workoutDetailActionRequest = .reuse
+                    }
+                )
+            }
 
             if !workoutDetailActionState.isEmpty, workoutDetailActionState.canEdit {
                 actions.append(
@@ -876,6 +919,7 @@ struct WorkoutsScreen: View {
             finishIssue = reason
         case .saved(let receipt):
             Haptics.trigger(.success)
+            WorkoutAudio.play(.workoutFinish)
             closeExercisePlayer()
             selectMainTab(.summary)
             // Drawn under the player as it closes, so the player shrinks away
@@ -1105,7 +1149,6 @@ private struct WorkoutTabHost: View {
                 workoutId: id,
                 onOpenExercisePlayer: onOpenExercisePlayer,
                 onBackToWorkouts: closeWorkout,
-                onReplaceWorkout: { self.selectedWorkoutId = $0 },
                 externalActionRequest: $detailActionRequest,
                 onActionStateChange: { detailActionState = $0 }
             )
@@ -1314,6 +1357,28 @@ struct WorkoutTimeline {
         self.upcoming = upcoming.sorted { $0.date < $1.date }
         self.past = past.sorted { $0.date > $1.date }
     }
+
+    /// The workouts more exercises can still go into, soonest first: still to
+    /// come, not overdue, and open to editing right now. A planned workout
+    /// can't change while another one runs, nor once its plan was replaced.
+    static func destinations(
+        workouts: [Workout],
+        records: PersistedTrainingState,
+        activeWorkoutId: String?,
+        excluding excludedId: String? = nil,
+        today: String = CalendarDate.today
+    ) -> [Workout] {
+        WorkoutTimeline(workouts: workouts, records: records, activeWorkoutId: activeWorkoutId)
+            .upcoming
+            .filter { workout in
+                if workout.id == excludedId { return false }
+                if workout.id == activeWorkoutId { return true }
+                guard workout.date >= today else { return false }
+                guard let planned = workout.planned else { return true }
+                if activeWorkoutId != nil { return false }
+                return ProgramRecords.isStartablePlannedSession(records, planned.programId, planned.sessionId)
+            }
+    }
 }
 
 /// The Summary tab. It reads the stores itself rather than being handed its
@@ -1324,6 +1389,9 @@ private struct SummaryWorkoutsContent: View {
     private let workouts = WorkoutsStore.shared
     private let trainingRecords = TrainingRecordsStore.shared
     private let activeWorkout = ActiveWorkoutStore.shared
+    /// Off while Summary is away, on as it comes back: the cards arrive
+    /// against it once per visit.
+    @State private var arrived = false
 
     var body: some View {
         let completedWorkouts = WorkoutTimeline(
@@ -1338,14 +1406,18 @@ private struct SummaryWorkoutsContent: View {
         ScrollView {
             LazyVStack(spacing: 12) {
                 ProfileIdentityCard()
+                    .summaryArrival(0)
 
-                StreakStrip(workouts: completedWorkouts)
-                    .allowsHitTesting(false)
+                SummaryCardLink(page: .summaryStreak, zoomID: "summary-streak", cornerRadius: 36) {
+                    StreakStrip(workouts: completedWorkouts)
+                }
+                .summaryArrival(1)
 
                 MonthlySummaryDashboard(snapshot: month)
 
                 ProfileRecordsSection()
                     .padding(.top, 12)
+                    .summaryArrival(5)
             }
             .padding(.horizontal, 12)
             // Enough to scroll the last card clear of the tab bar, no more.
@@ -1353,6 +1425,12 @@ private struct SummaryWorkoutsContent: View {
         }
         .pageScroll()
         .scrollIndicators(.hidden)
+        .environment(\.summaryArrived, arrived)
+        .onAppear {
+            arrived = false
+            Task { @MainActor in arrived = true }
+        }
+        .onDisappear { arrived = false }
     }
 }
 
@@ -1690,9 +1768,9 @@ private struct StreakStrip: View {
             }
 
             HStack(spacing: 4) {
-                ForEach(streak.week) { day in
+                ForEach(Array(streak.week.enumerated()), id: \.element.id) { index, day in
                     VStack(spacing: 6) {
-                        Flame(lit: day.workouts > 0)
+                        Flame(lit: day.workouts > 0, alive: day.isToday || day.workouts > 0, phase: Double(index) * 1.7)
                             .frame(width: day.isToday ? 38.4 : 30.4, height: day.isToday ? 48 : 38)
                             .frame(height: 48, alignment: .bottom).opacity(day.isFuture ? 0.6 : 1)
                         Text(CalendarDate.weekdayShort(day.date)).font(Theme.sans(10, weight: .semibold))
@@ -1726,10 +1804,35 @@ private struct StreakStrip: View {
     }
 }
 
-private struct Flame: View {
+struct Flame: View {
     var lit: Bool
+    /// Flickers: a lit day's flame, and today's even before it is lit.
+    var alive = false
+    var phase: Double = 0
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        if alive, !reduceMotion {
+            TimelineView(.animation(minimumInterval: 1 / 24)) { timeline in
+                let t = timeline.date.timeIntervalSinceReferenceDate + phase
+                // Two slow waves out of step, so it never settles into a beat.
+                let sway = sin(t * 2.3) * 0.5 + sin(t * 3.7) * 0.5
+                flame
+                    .scaleEffect(
+                        x: 1 + 0.025 * sin(t * 3.1),
+                        y: 1 + (lit ? 0.05 : 0.025) * sway,
+                        anchor: .bottom
+                    )
+                    .brightness(lit ? 0.04 * sway : 0)
+                    .opacity(lit ? 1 : 0.75 + 0.25 * (0.5 + 0.5 * sin(t * 1.6)))
+            }
+        } else {
+            flame
+        }
+    }
+
+    private var flame: some View {
         ZStack {
             FlameShape()
                 .fill(lit ? Theme.rust : Theme.muted)

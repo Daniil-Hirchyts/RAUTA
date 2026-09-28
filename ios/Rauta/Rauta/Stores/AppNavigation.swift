@@ -2,6 +2,13 @@ import Foundation
 import Observation
 import Combine
 
+/// What the Summary activity page is measuring.
+enum SummaryMetric: String, Hashable, CaseIterable {
+    case workouts, time
+
+    var label: String { self == .workouts ? "Workouts" : "Time" }
+}
+
 /// The pages the training profile is edited on. Grouped the way Settings groups
 /// its rows, so one page answers several related questions.
 enum AppPage: Hashable {
@@ -18,10 +25,19 @@ enum AppPage: Hashable {
     case addExercises(preferredWorkoutId: String?)
     case exerciseDetail(exerciseId: String)
     case workoutDestination(exerciseIds: [String], preferredWorkoutId: String?)
-    case workoutForm(exerciseIds: [String], workoutId: String?, engineFocusMuscles: [MuscleId]?)
+    /// A new workout from an existing one, or its exercises into another.
+    case reuseWorkout(sourceWorkoutId: String)
+    /// A workout opened from inside a flow — a plan RAUTA just built — so
+    /// going back returns to that flow.
+    case plannedWorkout(workoutId: String)
     case equipmentPreset
     case exerciseAlternatives(exerciseId: String, workoutId: String)
     case policies
+    /// Summary's detail pages, one behind each card. A month is "yyyy-MM".
+    case summaryStreak
+    case summaryActivity(month: String, metric: SummaryMetric)
+    case summaryMuscles(month: String)
+    case summaryRecords
 
     var typeName: String {
         switch self {
@@ -38,10 +54,15 @@ enum AppPage: Hashable {
         case .addExercises: return "add-exercises"
         case .exerciseDetail: return "exercise-detail"
         case .workoutDestination: return "workout-destination"
-        case .workoutForm: return "workout-form"
+        case .reuseWorkout: return "reuse-workout"
+        case .plannedWorkout: return "planned-workout"
         case .equipmentPreset: return "equipment-preset"
         case .exerciseAlternatives: return "exercise-alternatives"
         case .policies: return "policies"
+        case .summaryStreak: return "summary-streak"
+        case .summaryActivity: return "summary-activity"
+        case .summaryMuscles: return "summary-muscles"
+        case .summaryRecords: return "summary-records"
         }
     }
 
@@ -56,15 +77,8 @@ enum AppPage: Hashable {
         case .exerciseAlternatives(let exerciseId, let workoutId):
             return !workoutId.trimmingCharacters(in: .whitespaces).isEmpty
                 && ExerciseCatalogue.has(exerciseId)
-        case .workoutForm(let exerciseIds, let workoutId, let engineFocusMuscles):
-            if let workoutId, workoutId.trimmingCharacters(in: .whitespaces).isEmpty {
-                return false
-            }
-            guard !exerciseIds.isEmpty, exerciseIds.allSatisfy(ExerciseCatalogue.has) else {
-                return false
-            }
-            if let engineFocusMuscles, engineFocusMuscles.isEmpty { return false }
-            return true
+        case .reuseWorkout(let id), .plannedWorkout(let id):
+            return !id.trimmingCharacters(in: .whitespaces).isEmpty
         default:
             return true
         }
@@ -85,7 +99,8 @@ enum AppPage: Hashable {
 
     var hasControls: Bool {
         switch self {
-        case .settings, .workoutDestination, .exerciseAlternatives:
+        case .settings, .workoutDestination, .reuseWorkout, .exerciseAlternatives,
+             .summaryStreak, .summaryActivity, .summaryMuscles, .summaryRecords:
             return false
         default:
             return true
@@ -106,9 +121,12 @@ enum AppPage: Hashable {
         case .exerciseDetail(let exerciseId): return "exercise-detail:\(exerciseId)"
         case .exerciseAlternatives(let exerciseId, let workoutId):
             return "exercise-alternatives:\(workoutId):\(exerciseId)"
-        case .workoutForm(let exerciseIds, let workoutId, let focus):
-            let focusKey = focus.map { $0.map(\.rawValue).joined(separator: ",") } ?? "manual"
-            return "workout-form:\(workoutId ?? "new"):\(exerciseIds.joined(separator: ",")):\(focusKey)"
+        case .reuseWorkout(let id), .plannedWorkout(let id):
+            return "\(typeName):\(id)"
+        case .summaryActivity(let month, let metric):
+            return "\(typeName):\(month):\(metric.rawValue)"
+        case .summaryMuscles(let month):
+            return "\(typeName):\(month)"
         case .addExercises:
             return "\(typeName):\(preferredWorkoutId ?? "new")"
         case .workoutDestination(let exerciseIds, let id):
@@ -132,9 +150,10 @@ enum AppPage: Hashable {
         case .workoutDestination(let exerciseIds, let id):
             object["exerciseIds"] = .array(exerciseIds.map(JSONValue.string))
             object["preferredWorkoutId"] = id.map(JSONValue.string) ?? .null
-        case .workoutForm(let exerciseIds, let workoutId, _):
-            object["exerciseIds"] = .array(exerciseIds.map(JSONValue.string))
-            object["workoutId"] = workoutId.map(JSONValue.string) ?? .null
+        case .reuseWorkout(let id):
+            object["sourceWorkoutId"] = .string(id)
+        case .plannedWorkout(let id):
+            object["workoutId"] = .string(id)
         case .exerciseAlternatives(let exerciseId, let workoutId):
             object["exerciseId"] = .string(exerciseId)
             object["workoutId"] = .string(workoutId)
@@ -184,14 +203,10 @@ enum AppPage: Hashable {
                   ExerciseCatalogue.has(exerciseId)
             else { return nil }
             return .exerciseDetail(exerciseId: exerciseId)
-        case "workout-form":
-            return .workoutForm(
-                exerciseIds: Sanitize.uniqueStrings(object["exerciseIds"]) {
-                    ExerciseCatalogue.has($0)
-                },
-                workoutId: optionalString("workoutId"),
-                engineFocusMuscles: nil
-            )
+        case "reuse-workout":
+            return optionalString("sourceWorkoutId").map { .reuseWorkout(sourceWorkoutId: $0) }
+        case "planned-workout":
+            return optionalString("workoutId").map { .plannedWorkout(workoutId: $0) }
         case "exercise-alternatives":
             guard let exerciseId = optionalString("exerciseId"),
                   ExerciseCatalogue.has(exerciseId),

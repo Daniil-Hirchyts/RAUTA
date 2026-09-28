@@ -44,6 +44,16 @@ struct ActiveSetLog: View {
             ?? draft?.sets.first { $0.target != nil }?.target
     }
 
+    /// The target the header shows: the set the counter is loaded from, so the
+    /// two always agree. An extra set with no target of its own reads against
+    /// the working sets.
+    private var headerTarget: (label: String?, target: PersistedSetTarget)? {
+        if let set = selectedSet, let own = set.target, let draft {
+            return (setTitle(set, in: draft), own)
+        }
+        return target.map { (nil, $0) }
+    }
+
     private var allSetsCompleted: Bool {
         guard let sets = draft?.sets, !sets.isEmpty else { return false }
         return sets.allSatisfy { $0.observation?.completed == true }
@@ -83,25 +93,20 @@ struct ActiveSetLog: View {
         .onChange(of: selectedSetId) { _, _ in loadCurrent() }
     }
 
-    private var activeSession: ActiveWorkoutSession? { store.activeWorkout.session }
-    private var restUntil: Date? {
-        activeSession?.restUntil.map { Date(timeIntervalSince1970: $0 / 1_000) }
-    }
-    private var setPhaseStartedAt: Date? {
-        guard let session = activeSession else { return nil }
-        let epochMs = session.setPhaseStartedAt ?? session.startedAt
-        return Date(timeIntervalSince1970: epochMs / 1_000)
-    }
-
     private var header: some View {
         HStack(spacing: 8) {
-            if let target {
-                Text(targetSummary(target))
+            if let headerTarget {
+                Text([headerTarget.label, targetSummary(headerTarget.target)]
+                    .compactMap { $0 }
+                    .joined(separator: " · "))
                     .font(Theme.sans(11, weight: .bold))
                     .foregroundStyle(Theme.primary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
+                    .contentTransition(.opacity)
+                    .animation(.easeInOut(duration: 0.2), value: selectedSet?.id)
             }
             if let progressionNote {
                 Text(progressionText(progressionNote))
@@ -112,35 +117,6 @@ struct ActiveSetLog: View {
             } else {
                 Spacer(minLength: 0)
             }
-            phaseTimer
-        }
-    }
-
-    private var phaseTimer: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
-            let remaining = restUntil.map { $0.timeIntervalSince(context.date) } ?? -1
-            let isResting = remaining > 0
-            let elapsedAnchor = setPhaseStartedAt ?? context.date
-            let seconds = isResting
-                ? Int(remaining.rounded(.up))
-                : max(0, Int(context.date.timeIntervalSince(elapsedAnchor).rounded(.down)))
-
-            HStack(spacing: 5) {
-                Text(isResting ? "REST" : "SET")
-                    .font(Theme.sans(9, weight: .black))
-                    .kerning(1.1)
-                    .foregroundStyle(isResting ? Theme.primary : Theme.mutedForeground)
-                Text(restClock(seconds))
-                    .font(Theme.sans(11, weight: .bold))
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.foreground)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(Theme.muted.opacity(0.6), in: Capsule())
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(isResting ? "Rest timer" : "Current set timer")
-            .accessibilityValue(restClock(seconds))
         }
     }
 
@@ -169,17 +145,22 @@ struct ActiveSetLog: View {
                         Button {
                             selectedSetId = set.id
                         } label: {
+                            let done = set.observation?.completed == true
                             HStack {
-                                Text("\(index + 1)").frame(width: 22, alignment: .leading)
-                                Text(set.observation?.resistance.map(Resistance.format) ?? "—")
+                                Text(setNumber(set, in: draft))
+                                    .foregroundStyle(set.setType == .warmup ? Theme.primary : (done ? Theme.foreground : Theme.mutedForeground))
+                                    .frame(width: 22, alignment: .leading)
+                                Text(done ? set.observation?.resistance.map(Resistance.format) ?? "—" : plannedLoad(set))
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                Text(set.observation?.reps.map(Num.trimmed) ?? "—")
+                                Text(done ? set.observation?.reps.map(Num.trimmed) ?? "—" : plannedReps(set))
                                     .frame(width: 44, alignment: .trailing)
-                                Text(set.observation?.rir.map(Num.trimmed) ?? "—")
+                                Text(done ? set.observation?.rir.map(Num.trimmed) ?? "—" : set.target.map { Num.trimmed($0.rir) } ?? "—")
                                     .frame(width: 44, alignment: .trailing)
                             }
                             .font(Theme.sans(15, weight: .semibold))
-                            .foregroundStyle(set.observation?.completed == true ? Theme.foreground : Theme.mutedForeground)
+                            // Not yet logged: the row shows what the set asks
+                            // for, quieter than what was done.
+                            .foregroundStyle(done ? Theme.foreground : Theme.mutedForeground.opacity(0.75))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 12)
                             .background(
@@ -188,6 +169,7 @@ struct ActiveSetLog: View {
                             )
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel(set.setType == .warmup ? "Warm-up set" : "Set \(setNumber(set, in: draft))")
                         .accessibilityAddTraits(selectedSet?.id == set.id ? .isSelected : [])
                     }
                 }
@@ -257,7 +239,7 @@ struct ActiveSetLog: View {
                         variant: .ghost,
                         expands: true
                     ) {
-                        Haptics.trigger(.success)
+                        // The caller confirms the finish: one success, not two.
                         onFinishExercise()
                     }
                 } else {
@@ -358,10 +340,36 @@ struct ActiveSetLog: View {
 
     private var submitLabel: String {
         guard let draft else { return "Log set" }
-        if let selectedSet, let index = draft.sets.firstIndex(where: { $0.id == selectedSet.id }) {
-            return "Save set \(index + 1)"
+        if let selectedSet {
+            return selectedSet.setType == .warmup
+                ? "Log warm-up"
+                : "Log set \(setNumber(selectedSet, in: draft))"
         }
-        return "Log set \(draft.sets.count + 1)"
+        return "Log set \(draft.sets.filter { $0.setType != .warmup }.count + 1)"
+    }
+
+    /// "W" for a warm-up, otherwise the set's place among the sets that count:
+    /// warm-ups ramp up to the work, they are not part of it.
+    private func setNumber(_ set: PersistedActiveSetDraft, in draft: PersistedActiveExerciseDraft) -> String {
+        guard set.setType != .warmup else { return "W" }
+        let counted = draft.sets.filter { $0.setType != .warmup }
+        return "\((counted.firstIndex { $0.id == set.id } ?? counted.count) + 1)"
+    }
+
+    private func setTitle(_ set: PersistedActiveSetDraft, in draft: PersistedActiveExerciseDraft) -> String {
+        set.setType == .warmup ? "Warm-up" : "Set \(setNumber(set, in: draft))"
+    }
+
+    private func plannedLoad(_ set: PersistedActiveSetDraft) -> String {
+        guard let target = set.target, Resistance.isMeasuredInKg(target.resistance.type),
+              target.resistance.kg != nil
+        else { return "—" }
+        return Resistance.format(target.resistance)
+    }
+
+    private func plannedReps(_ set: PersistedActiveSetDraft) -> String {
+        guard let reps = set.target?.reps else { return "—" }
+        return reps.min == reps.max ? Num.trimmed(reps.max) : "\(Num.trimmed(reps.min))–\(Num.trimmed(reps.max))"
     }
 
     private var resolvedSubmitLabel: String {
@@ -373,7 +381,7 @@ struct ActiveSetLog: View {
         let reps = target.reps.min == target.reps.max
             ? Num.trimmed(target.reps.max)
             : "\(Num.trimmed(target.reps.min))–\(Num.trimmed(target.reps.max))"
-        let load = Resistance.isMeasuredInKg(target.resistance.type)
+        let load = Resistance.isMeasuredInKg(target.resistance.type) && target.resistance.kg != nil
             ? " · \(Resistance.format(target.resistance))"
             : ""
         return "\(reps) reps · RIR \(Num.trimmed(target.rir))\(load)"
@@ -455,7 +463,9 @@ struct ActiveSetLog: View {
                 )
             }
             closeEditor()
-            store.activeWorkout.startRest(seconds: restSeconds, exerciseName: exercise?.name)
+            // The set's own sound covers the rest starting.
+            WorkoutAudio.play(.setLogged)
+            store.activeWorkout.startRest(seconds: restSeconds, exerciseName: exercise?.name, announce: false)
             issue = nil
             Haptics.trigger(.success)
         } catch { capture(error) }
@@ -594,10 +604,6 @@ struct ActiveSetLog: View {
         guard let kg = note.kg else { return note.text }
         let each = note.basis == .perImplement ? " each" : ""
         return "\(Resistance.formatKg(kg)) kg\(each) · \(note.text)"
-    }
-
-    private func restClock(_ seconds: Int) -> String {
-        "\(seconds / 60):\(String(format: "%02d", seconds % 60))"
     }
 
     private func closeEditor() {

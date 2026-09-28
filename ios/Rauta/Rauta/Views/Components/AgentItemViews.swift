@@ -374,7 +374,7 @@ struct AgentProposalCardView: View {
 
             if !proposal.rows.isEmpty, proposal.state != .dismissed {
                 AgentCardDivider()
-                AgentAgenda(rows: proposal.rows)
+                WorkoutAgenda(rows: proposal.rows)
             }
 
             switch proposal.state {
@@ -480,7 +480,7 @@ struct AgentSessionsCard: View {
                     .foregroundStyle(Theme.mutedForeground)
                     .padding(14)
             } else {
-                AgentAgenda(rows: shown, onOpen: onOpen)
+                WorkoutAgenda(rows: shown, onOpen: onOpen)
             }
 
             if shown.count < rows.count {
@@ -516,128 +516,6 @@ struct AgentCardDivider: View {
     }
 }
 
-/// Workouts as a calendar's list view draws them: each day once, down the
-/// side, with its workouts beside it — what each is, how long it takes, and
-/// the exercises in it, pictured and named.
-struct AgentAgenda: View {
-    let rows: [AgentSessionRow]
-    var onOpen: ((String) -> Void)?
-
-    private static let dayColumn: CGFloat = 44
-
-    private var days: [(date: String, rows: [AgentSessionRow])] {
-        var order: [String] = []
-        var byDay: [String: [AgentSessionRow]] = [:]
-        for row in rows {
-            if byDay[row.date] == nil { order.append(row.date) }
-            byDay[row.date, default: []].append(row)
-        }
-        return order.map { ($0, byDay[$0] ?? []) }
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(days.enumerated()), id: \.element.date) { index, day in
-                if index > 0 { AgentCardDivider(inset: 14) }
-                HStack(alignment: .top, spacing: 12) {
-                    dayLabel(day.date)
-                        .frame(width: Self.dayColumn)
-                        .padding(.top, 2)
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(Array(day.rows.enumerated()), id: \.element.id) { position, row in
-                            if position > 0 { AgentCardDivider().padding(.vertical, 12) }
-                            workout(row)
-                        }
-                    }
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 14)
-            }
-        }
-    }
-
-    private func dayLabel(_ date: String) -> some View {
-        let today = date == CalendarDate.today
-        return VStack(spacing: 0) {
-            Text(today ? "TODAY" : CalendarDate.weekdayShort(date).uppercased())
-                .font(Theme.sans(10, weight: .black))
-                .kerning(today ? 0.4 : 1.2)
-                .foregroundStyle(Theme.primary)
-            Text(CalendarDate.dayOfMonth(date))
-                .font(Theme.sans(24, weight: .black))
-                .foregroundStyle(Theme.foreground)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(CalendarDate.format(date, "EEEEdMMMM"))
-    }
-
-    @ViewBuilder private func workout(_ row: AgentSessionRow) -> some View {
-        if let onOpen {
-            Button { onOpen(row.id) } label: { workoutBody(row, opens: true) }
-                .buttonStyle(.plain)
-                .accessibilityHint("Opens this workout")
-        } else {
-            workoutBody(row, opens: false)
-        }
-    }
-
-    private func workoutBody(_ row: AgentSessionRow, opens: Bool) -> some View {
-        let exercises = row.exerciseIds.compactMap { ExerciseCatalogue.byId[$0] }
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(row.title)
-                    .font(Theme.sans(17, weight: .bold))
-                    .foregroundStyle(Theme.foreground)
-                    .lineLimit(1)
-                Spacer(minLength: 4)
-                Text(detail(row))
-                    .font(Theme.sans(13, weight: .semibold))
-                    .foregroundStyle(Theme.mutedForeground)
-                    .lineLimit(1)
-                if opens {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(Theme.mutedForeground)
-                }
-            }
-            if !exercises.isEmpty {
-                HStack(spacing: 6) {
-                    ForEach(exercises.prefix(4), id: \.id) { exercise in
-                        ExerciseMediaView(exerciseId: exercise.id)
-                            .padding(3)
-                            .frame(width: 42, height: 42)
-                            .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Theme.muted.opacity(0.7)))
-                    }
-                    if exercises.count > 4 {
-                        Text("+\(exercises.count - 4)")
-                            .font(Theme.sans(13, weight: .bold))
-                            .foregroundStyle(Theme.mutedForeground)
-                            .frame(width: 42, height: 42)
-                            .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Theme.muted.opacity(0.7)))
-                    }
-                }
-                .accessibilityHidden(true)
-                Text(exercises.prefix(3).map { Self.name($0) }.joined(separator: " · ")
-                     + (exercises.count > 3 ? " …" : ""))
-                    .font(Theme.sans(13, weight: .medium))
-                    .foregroundStyle(Theme.mutedForeground)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-    }
-
-    private func detail(_ row: AgentSessionRow) -> String {
-        row.minutes > 0 ? "\(row.minutes) min" : Wording.countLabel(row.exerciseIds.count, "exercise")
-    }
-
-    static func name(_ exercise: ExerciseSummary) -> String {
-        exercise.name.replacingOccurrences(of: "_", with: " ").capitalized
-    }
-}
-
 /// Exercises from the library, each opening its own page.
 struct AgentExercisesCard: View {
     let title: String
@@ -669,7 +547,7 @@ struct AgentExercisesCard: View {
                 .frame(width: 56, height: 56)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(AgentAgenda.name(exercise))
+                Text(WorkoutAgenda.name(exercise))
                     .font(Theme.sans(15, weight: .semibold))
                     .foregroundStyle(Theme.foreground)
                     .lineLimit(2)
@@ -829,15 +707,5 @@ struct AgentDownloadCard: View {
         }
         .padding(16)
         .background { GradientCard(radius: Theme.Radius.xl, accent: Theme.primary, strength: 0.9) }
-    }
-}
-
-extension AgentSessionRow {
-    /// The row as the plan screen draws a session.
-    var plannedView: PlannedSessionView {
-        PlannedSessionView(
-            programId: "", sessionId: id, date: date, title: title,
-            exerciseIds: exerciseIds, focus: [], workingSets: 0, minutes: minutes, prescription: []
-        )
     }
 }

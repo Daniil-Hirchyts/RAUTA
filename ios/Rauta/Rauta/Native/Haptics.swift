@@ -38,9 +38,9 @@ enum Haptics {
         // is exactly what RAUTA reacts to — whether or not haptics are on.
         RautaDirector.shared.feedback(input)
         let settings = SettingsStore.shared
-        if settings.soundChimesEnabled, input == .success || input == .warning {
-            WorkoutAudio.chime(input == .success ? 740 : 420)
-        }
+        // A success is sounded where it happens, by what it was — a set, a
+        // plan — so only a refusal has a sound of its own here.
+        if input == .warning { WorkoutAudio.play(.warning) }
         guard settings.hapticsEnabled else { return }
 
         switch input {

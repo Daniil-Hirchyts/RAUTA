@@ -165,8 +165,12 @@ struct SelectionChip: View {
 /// situation feels, a title that says what is missing, a line on how to get
 /// some, and optionally the one action that fixes it. Every empty list in the
 /// app uses this, so they all read the same way.
+///
+/// On a page where RAUTA is already in view, a `symbol` stands in for it, so
+/// the page does not show two of it.
 struct EmptyStatePlaceholder: View {
     var mood: RautaMood = .curious
+    var symbol: String? = nil
     let title: String
     let message: String
     var actionTitle: String? = nil
@@ -174,9 +178,19 @@ struct EmptyStatePlaceholder: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            RautaCharacter(mood: mood, reactionKey: title, reaction: .peek)
-                .frame(width: 96, height: 96)
-                .accessibilityHidden(true)
+            if let symbol {
+                Image(systemName: symbol)
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(Theme.mutedForeground)
+                    .frame(width: 64, height: 64)
+                    .background(Theme.muted.opacity(0.7), in: Circle())
+                    .padding(.bottom, 4)
+                    .accessibilityHidden(true)
+            } else {
+                RautaCharacter(mood: mood, reactionKey: title, reaction: .peek)
+                    .frame(width: 96, height: 96)
+                    .accessibilityHidden(true)
+            }
 
             Text(title)
                 .font(Theme.sans(18, weight: .bold))

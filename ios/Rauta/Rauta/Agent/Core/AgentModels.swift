@@ -2,14 +2,18 @@ import Foundation
 
 // MARK: - Transcript
 
-/// One planned or scheduled session as a card row. Enough to draw it with
-/// `PlannedSessionRow`, and plain enough to keep in the conversation file.
+/// One planned or scheduled session as a card row. Enough to draw it in a
+/// `WorkoutAgenda`, and plain enough to keep in the conversation file.
 nonisolated struct AgentSessionRow: Codable, Hashable, Sendable, Identifiable {
     var id: String
     var date: String
     var title: String
     var minutes: Int
     var exerciseIds: [String]
+    /// Working sets, when the row comes from a prescription.
+    var sets: Int? = nil
+    /// The muscles the session is built around.
+    var focus: [MuscleId]? = nil
 }
 
 /// Something RAUTA shows rather than says: what it changed, a plan waiting for

@@ -10,6 +10,57 @@ import UIKit
 /// and on a locked screen, lowers other audio while it sounds, and pauses a
 /// podcast rather than talking over it. A moment after the last cue the session
 /// lets go and the music comes back up.
+/// The app's sounds: one family, made for Rauta by `scripts/sounds/generate.py`
+/// and bundled as `rauta-<name>.caf`.
+enum RautaSound: String, CaseIterable {
+    case tick3 = "rauta-tick-3"
+    case tick2 = "rauta-tick-2"
+    case tick1 = "rauta-tick-1"
+    case go = "rauta-go"
+    case restOver = "rauta-rest-over"
+    case warmupOver = "rauta-warmup-over"
+    case restStart = "rauta-rest-start"
+    case setLogged = "rauta-set-logged"
+    case exerciseDone = "rauta-exercise-done"
+    case workoutStart = "rauta-workout-start"
+    case workoutFinish = "rauta-workout-finish"
+    case menuOpen = "rauta-menu-open"
+    case planBuilt = "rauta-plan-built"
+    case favoriteOn = "rauta-favorite-on"
+    case favoriteOff = "rauta-favorite-off"
+    case warning = "rauta-warning"
+
+    /// Which switch in Settings it answers to, and how it is played.
+    enum Channel {
+        /// Countdowns and rest: heard with the phone in a pocket, over music.
+        case cue
+        /// The rest of a workout's moments: a set logged, a workout done.
+        case workout
+        /// The app's own taps and answers.
+        case interface
+    }
+
+    var channel: Channel {
+        switch self {
+        case .tick3, .tick2, .tick1, .go, .restOver, .warmupOver: return .cue
+        case .restStart, .setLogged, .exerciseDone, .workoutStart, .workoutFinish: return .workout
+        case .menuOpen, .planBuilt, .favoriteOn, .favoriteOff, .warning: return .interface
+        }
+    }
+
+    /// The tick for a countdown's last seconds, rising to the end.
+    static func tick(secondsLeft: Int) -> RautaSound {
+        switch secondsLeft {
+        case ...1: return .tick1
+        case 2: return .tick2
+        default: return .tick3
+        }
+    }
+
+    /// The file a notification plays, from the bundle's root.
+    var notificationFile: String { rawValue + ".caf" }
+}
+
 @MainActor
 enum WorkoutAudio {
     enum Style: Equatable {
@@ -20,12 +71,18 @@ enum WorkoutAudio {
     }
 
     private static let engine = AVAudioEngine()
+    /// Cues and workout moments on one node, the app's taps on another, so a
+    /// tap never waits behind a countdown.
     private static let player = AVAudioPlayerNode()
+    private static let interfacePlayer = AVAudioPlayerNode()
     private static let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1)
     private static var wired = false
     private static var activeStyle: Style?
     private static var releaseTask: Task<Void, Never>?
     private static var voiceHolds = 0
+    /// Buffers still playing; the session lets go once none are.
+    private static var playing = 0
+    private static var buffers: [RautaSound: AVAudioPCMBuffer] = [:]
 
     /// The resting session. Set before anything can make a sound.
     static func configure() {
@@ -37,8 +94,10 @@ enum WorkoutAudio {
         guard voiceHolds == 1 else { return }
         releaseTask?.cancel()
         player.stop()
+        interfacePlayer.stop()
         engine.stop()
         activeStyle = nil
+        playing = 0
         let session = AVAudioSession.sharedInstance()
         do {
             try session.setCategory(.playAndRecord, mode: .default,
@@ -59,27 +118,59 @@ enum WorkoutAudio {
 
     // MARK: Sounds
 
-    /// A short interface chime after a key action.
-    static func chime(_ frequency: Double) {
-        play(tones: [frequency], note: 0.17, gap: 0, peak: 0.08, style: .chime)
+    /// Plays one of the app's sounds, if its switch in Settings is on.
+    static func play(_ sound: RautaSound) {
+        let settings = SettingsStore.shared
+        switch sound.channel {
+        case .cue, .workout: guard settings.workoutSoundsEnabled else { return }
+        case .interface: guard settings.soundChimesEnabled else { return }
+        }
+        guard let buffer = buffer(for: sound) else { return }
+        play(buffer, style: sound.channel == .interface ? .chime : .cue, on: sound.channel == .interface ? interfacePlayer : player)
     }
 
-    /// One of the last seconds of a countdown.
-    static func tick() {
-        play(tones: [880], note: 0.09, gap: 0, peak: 0.32, style: .cue)
+    /// One of the last seconds of a countdown, rising to the end.
+    static func tick(secondsLeft: Int = 1) {
+        play(.tick(secondsLeft: secondsLeft))
     }
 
-    /// Time to go: the countdown is over, the rest is done.
+    /// Time to go: the countdown is over.
     static func go() {
-        play(tones: [660, 990], note: 0.16, gap: 0.04, peak: 0.38, style: .cue)
+        play(.go)
+    }
+
+    #if DEBUG
+    /// Every sound, whatever the switches say: for listening to the set.
+    static func audition(_ sound: RautaSound) {
+        guard let buffer = buffer(for: sound) else { return }
+        play(buffer, style: .cue, on: player)
+    }
+    #endif
+
+    /// The bundled file, read once into memory. A file whose format does not
+    /// match the player's would stop the engine, so it is refused and the
+    /// sound falls back to a plain tone rather than to nothing.
+    private static func buffer(for sound: RautaSound) -> AVAudioPCMBuffer? {
+        if let cached = buffers[sound] { return cached }
+        guard let format else { return nil }
+        if let url = Bundle.main.url(forResource: sound.rawValue, withExtension: "caf"),
+           let file = try? AVAudioFile(forReading: url),
+           file.processingFormat.sampleRate == format.sampleRate,
+           file.processingFormat.channelCount == format.channelCount,
+           let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length)),
+           (try? file.read(into: buffer)) != nil {
+            buffers[sound] = buffer
+            return buffer
+        }
+        let fallback = makeTone([sound.channel == .interface ? 740 : 880], note: 0.12, gap: 0, peak: 0.3, format: format)
+        buffers[sound] = fallback
+        return fallback
     }
 
     // MARK: Playback
 
-    private static func play(tones: [Double], note: Double, gap: Double, peak: Float, style: Style) {
-        guard voiceHolds == 0 else { return }
-        guard let format, let buffer = makeTone(tones, note: note, gap: gap, peak: peak, format: format)
-        else { return }
+    private static func play(_ buffer: AVAudioPCMBuffer, style: Style, on node: AVAudioPlayerNode) {
+        guard voiceHolds == 0, let format else { return }
         releaseTask?.cancel()
 
         let session = AVAudioSession.sharedInstance()
@@ -108,8 +199,10 @@ enum WorkoutAudio {
 
         do {
             if !wired {
-                if !engine.attachedNodes.contains(player) { engine.attach(player) }
-                try engine.connectNode(player, to: engine.mainMixerNode, format: format)
+                for node in [player, interfacePlayer] {
+                    if !engine.attachedNodes.contains(node) { engine.attach(node) }
+                    try engine.connectNode(node, to: engine.mainMixerNode, format: format)
+                }
                 wired = true
             }
             if !engine.isRunning {
@@ -120,12 +213,16 @@ enum WorkoutAudio {
             release()
             return
         }
-        player.scheduleBuffer(buffer, at: nil, options: []) {
-            Task { @MainActor in scheduleRelease() }
+        playing += 1
+        node.scheduleBuffer(buffer, at: nil, options: []) {
+            Task { @MainActor in
+                playing = max(0, playing - 1)
+                if playing == 0 { scheduleRelease() }
+            }
         }
-        guard !player.isPlaying else { return }
+        guard !node.isPlaying else { return }
         do {
-            try player.playAudio()
+            try node.playAudio()
         } catch {
             // No playback means no completion callback to release the
             // session, so let go now rather than leave other audio ducked.
@@ -148,6 +245,8 @@ enum WorkoutAudio {
         guard voiceHolds == 0 else { return }
         releaseTask = nil
         player.stop()
+        interfacePlayer.stop()
+        playing = 0
         engine.stop()
         let session = AVAudioSession.sharedInstance()
         // Deactivating is what brings ducked music back up and resumes a paused

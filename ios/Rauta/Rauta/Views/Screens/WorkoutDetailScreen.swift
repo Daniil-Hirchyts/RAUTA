@@ -5,7 +5,8 @@ import UniformTypeIdentifiers
 enum WorkoutDetailExternalAction: Hashable {
     case start
     case share
-    case duplicate
+    case reuse
+    case regenerate
     case addExercise
     case delete
 }
@@ -16,6 +17,8 @@ struct WorkoutDetailActionState: Equatable {
     var isEmpty = false
     var canEdit = false
     var canDelete = false
+    /// RAUTA built it and nobody has started it: RAUTA can build it again.
+    var canRegenerate = false
 
     static let none = WorkoutDetailActionState(workoutId: nil)
 }
@@ -25,7 +28,6 @@ struct WorkoutDetailScreen: View {
     let workoutId: String
     var onOpenExercisePlayer: (() -> Void)? = nil
     var onBackToWorkouts: (() -> Void)? = nil
-    var onReplaceWorkout: ((String) -> Void)? = nil
     var externalActionRequest: Binding<WorkoutDetailExternalAction?>? = nil
     var onActionStateChange: ((WorkoutDetailActionState) -> Void)? = nil
 
@@ -83,9 +85,11 @@ struct WorkoutDetailScreen: View {
         return workout.planned == nil || !hasAnotherActiveWorkout
     }
     /// A workout from a replaced plan can still be trained or cleared away;
-    /// only editing it as part of that plan is closed.
+    /// only editing it as part of that plan is closed. A trained one can be
+    /// cleared away too, taking its logged sets with it.
     private var canDeleteWorkout: Bool {
-        canEditWorkout || (plannedUnavailable && !isPast && session == nil)
+        guard store.activeWorkout.session?.workoutId != workoutId else { return false }
+        return canEditWorkout || (plannedUnavailable && session == nil) || isPast
     }
     private var canStartWorkout: Bool {
         !isPast && store.activeWorkout.session == nil
@@ -210,7 +214,7 @@ struct WorkoutDetailScreen: View {
                             onOpenExercisePlayer?()
                         },
                         onAlternative: { openAlternative(id) },
-                        onToggle: { store.activeWorkout.toggleComplete(id) },
+                        onToggle: { toggleComplete(id) },
                         onRemove: { remove(id) },
                         onMove: canEditWorkout ? { move(id, by: $0, among: rows) } : nil
                     )
@@ -314,7 +318,7 @@ struct WorkoutDetailScreen: View {
                                             )
                                         },
                                         onAlternative: { openAlternative(id) },
-                                        onToggle: { store.activeWorkout.toggleComplete(id) },
+                                        onToggle: { toggleComplete(id) },
                                         onRemove: { remove(id) },
                                         onMove: canEditWorkout ? { move(id, by: $0, among: rows) } : nil
                                     )
@@ -349,6 +353,14 @@ struct WorkoutDetailScreen: View {
                 )
             }
         }
+    }
+
+    /// Checks an exercise off, or back on; checking one off is a moment.
+    private func toggleComplete(_ id: String) {
+        if store.activeWorkout.session?.completedIds.contains(id) == false {
+            WorkoutAudio.play(.exerciseDone)
+        }
+        store.activeWorkout.toggleComplete(id)
     }
 
     private func nextExercise(_ session: ActiveWorkoutSession) -> String? {
@@ -386,14 +398,14 @@ struct WorkoutDetailScreen: View {
         )
     }
 
-    private func duplicate() {
-        RautaSpeech.shared.working("Copying it to today…")
+    /// RAUTA builds the workout again around the same muscles, in place.
+    private func regenerate() {
+        RautaSpeech.shared.working("Trying another combination…")
         Task {
             do {
-                let id = try await EngineWorkout.duplicateWithEngine(workoutId, date: CalendarDate.today)
-                onReplaceWorkout?(id)
-                Haptics.trigger(.success)
-                RautaSpeech.shared.say("It's on today. Start it whenever you're ready.", reaction: .wink)
+                try await EngineWorkout.regenerate(workoutId)
+                Haptics.trigger(.medium)
+                RautaSpeech.shared.say("How about this one?", reaction: .wink)
             } catch {
                 RautaSpeech.shared.hush()
                 capture(error)
@@ -463,8 +475,8 @@ struct WorkoutDetailScreen: View {
     private func confirmAction() {
         do {
             switch confirmation {
-            case .deleteWorkout:
-                try TrainingEdits.deleteScheduledWorkout(workoutId)
+            case .deleteWorkout, .deleteCompletedWorkout:
+                try TrainingEdits.deleteWorkout(workoutId)
                 confirmation = nil
                 backToWorkouts()
             default:
@@ -486,6 +498,7 @@ struct WorkoutDetailScreen: View {
             isPast ? "past" : "future",
             canEditWorkout ? "editable" : "locked",
             canStartWorkout ? "startable" : "blocked",
+            EngineWorkout.canRegenerate(workout) ? "rebuildable" : "fixed",
             String(workout.exerciseIds.count),
         ].joined(separator: "|")
     }
@@ -503,7 +516,8 @@ struct WorkoutDetailScreen: View {
                 canStart: canStartWorkout,
                 isEmpty: workout.exerciseIds.isEmpty,
                 canEdit: canEditWorkout,
-                canDelete: canDeleteWorkout
+                canDelete: canDeleteWorkout,
+                canRegenerate: EngineWorkout.canRegenerate(workout)
             )
         )
     }
@@ -517,14 +531,18 @@ struct WorkoutDetailScreen: View {
             countingDown = true
         case .share:
             sharePayload = WorkoutSharePayload(text: WorkoutSharing.text(workout))
-        case .duplicate:
-            duplicate()
+        case .reuse:
+            guard !workout.exerciseIds.isEmpty else { return }
+            store.navigation.push(.reuseWorkout(sourceWorkoutId: workout.id), from: RautaNativeTabControl.zoomSourceID)
+        case .regenerate:
+            guard EngineWorkout.canRegenerate(workout) else { return }
+            regenerate()
         case .addExercise:
             beginExerciseFlow(preferredWorkoutId: workout.id)
         case .delete:
             guard canDeleteWorkout else { return }
             Haptics.trigger(.warning)
-            confirmation = .deleteWorkout
+            confirmation = TrainingEdits.isHistory(workout) ? .deleteCompletedWorkout : .deleteWorkout
         }
     }
 }
@@ -587,12 +605,12 @@ private struct WorkoutStartCountdown: View {
         }
         .task(id: remaining) {
             if remaining <= 0 {
-                WorkoutAudio.go()
+                WorkoutAudio.play(.workoutStart)
                 Haptics.trigger(.heavy)
                 onComplete()
                 return
             }
-            WorkoutAudio.tick()
+            WorkoutAudio.tick(secondsLeft: remaining)
             Haptics.trigger(.light)
             try? await Task.sleep(for: .seconds(1))
             guard !Task.isCancelled else { return }
@@ -619,7 +637,7 @@ struct CurrentExerciseAccessory: View {
                 return "\(Num.trimmed(reps)) reps"
             }
             if let target = set.target?.reps {
-                return repRangeText(target)
+                return set.setType == .warmup ? "Warm-up · \(repRangeText(target))" : repRangeText(target)
             }
         }
         if let reps = draft?.sets.reversed().compactMap({ $0.observation?.reps }).first {
@@ -776,6 +794,12 @@ struct ActiveExerciseDrawer: View {
                     .accessibilityAddTraits(.isButton)
                     .accessibilityLabel("Open \(exercise.name) details")
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    // The rest's last seconds, over the exercise, big enough
+                    // to read from across the gym.
+                    .overlay(alignment: .bottom) {
+                        FinalCountdown(until: restEnds)
+                            .frame(width: min(336, proxy.size.width - 32), height: mediaProxy.size.height)
+                    }
             }
             .padding(.top, Swift.max(appSafeAreaInsets.top, 18) + 32)
             .frame(maxWidth: .infinity)
@@ -812,12 +836,20 @@ struct ActiveExerciseDrawer: View {
             .padding(.horizontal, Theme.Metrics.contentInset)
             .padding(.top, 18)
 
+            PlayerTimerStrip(restSeconds: restSeconds)
+                .padding(.horizontal, Theme.Metrics.contentInset)
+                .padding(.top, 12)
+                .opacity(revealDetails ? 1 : 0)
+
             ActiveSetLog(
                 exerciseId: exercise.id,
                 restSeconds: restSeconds,
                 hasNextExercise: hasNextExercise,
                 onFinishExercise: onFinishExercise
             )
+                // A new exercise is a new log: its counter, measure and station
+                // are loaded afresh rather than carried over from the last one.
+                .id(exercise.id)
                 .fixedSize(horizontal: false, vertical: true)
                 .opacity(revealDetails ? 1 : 0)
                 .offset(y: revealDetails ? 0 : 18)
@@ -847,6 +879,10 @@ struct ActiveExerciseDrawer: View {
 
     private var paused: Bool { store.activeWorkout.session?.runningSince == nil }
 
+    private var restEnds: Date? {
+        store.activeWorkout.session?.restUntil.map { Date(timeIntervalSince1970: $0 / 1_000) }
+    }
+
     private var playerRauta: some View {
         // Quiet here: the rest ring and RAUTA's face say enough while you
         // train, and its menu is one tap away.
@@ -856,6 +892,20 @@ struct ActiveExerciseDrawer: View {
                 paused ? store.activeWorkout.resume() : store.activeWorkout.pause()
             } label: {
                 Label(paused ? "Resume workout" : "Pause workout", systemImage: paused ? "play.fill" : "pause.fill")
+            }
+            if resting {
+                Button {
+                    Haptics.trigger(.selection)
+                    store.activeWorkout.extendRest(by: 30, exerciseName: exercise.name)
+                } label: {
+                    Label("30 seconds more", systemImage: "plus.circle")
+                }
+                Button {
+                    Haptics.trigger(.selection)
+                    store.activeWorkout.endRest()
+                } label: {
+                    Label("Skip rest", systemImage: "forward.fill")
+                }
             }
             Button(action: onFinishExercise) {
                 Label(hasNextExercise ? "Next exercise" : "Finish exercise", systemImage: "forward.end.fill")

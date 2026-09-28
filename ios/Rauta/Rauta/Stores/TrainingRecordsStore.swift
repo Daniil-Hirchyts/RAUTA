@@ -474,6 +474,35 @@ final class TrainingRecordsStore {
         try commit(next)
     }
 
+    /// Removes the sessions a workout was trained in, so it leaves the history,
+    /// the streak and the records with the workout itself. A session names its
+    /// workout; an older one without that link is matched by its planned slot.
+    ///
+    /// Refused while the workout is being trained or its start or finish is
+    /// still being written.
+    @discardableResult
+    func deleteCompletedSessions(
+        sourceWorkoutId: String,
+        planned: PlannedWorkoutReference?
+    ) throws -> [PersistedCompletedSession] {
+        if data.activeWorkout?.sourceWorkoutId == sourceWorkoutId
+            || data.transition?.sourceWorkoutId == sourceWorkoutId {
+            throw TrainingPersistenceError("Finish or end this workout before deleting it.")
+        }
+        let matches: (PersistedCompletedSession) -> Bool = { session in
+            if session.sourceWorkoutId == sourceWorkoutId { return true }
+            guard session.sourceWorkoutId == nil, let planned else { return false }
+            return session.plannedProgramId == planned.programId
+                && session.plannedSessionId == planned.sessionId
+        }
+        let removed = data.sessions.filter(matches)
+        guard !removed.isEmpty else { return [] }
+        var next = data
+        next.sessions.removeAll(where: matches)
+        try commit(next)
+        return removed
+    }
+
     // MARK: Transition journal
 
     /// Writes one transition at a time. A pending intent must be settled first.

@@ -48,6 +48,7 @@ struct AppModal<Content: View>: View {
 enum ConfirmationKind: String, Identifiable {
     case clearData = "clear-data"
     case deleteWorkout = "delete-workout"
+    case deleteCompletedWorkout = "delete-completed-workout"
     case discardSession = "discard-session"
     case finishWorkout = "finish-workout"
     case finishWorkoutPartial = "finish-workout-partial"
@@ -76,6 +77,14 @@ enum ConfirmationKind: String, Identifiable {
                 description: "The exercises stay in the library. "
                     + "Only this day's plan and its recorded time go.",
                 title: "Delete workout?",
+                destructive: true
+            )
+        case .deleteCompletedWorkout:
+            return Copy(
+                action: "Delete workout",
+                description: "Its logged sets leave your history, streak and records. "
+                    + "Apple Health keeps its own copy.",
+                title: "Delete this workout?",
                 destructive: true
             )
         case .discardSession:

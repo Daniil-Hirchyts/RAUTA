@@ -1,8 +1,15 @@
 import SwiftUI
 
+/// One of the inputs RAUTA is weighing, as it orbits: a symbol for what kind of
+/// input it is, and the input itself. Some are the symbol alone.
+struct ThinkingChip: Hashable {
+    var symbol: String
+    var label: String = ""
+}
+
 /// RAUTA at work, as a scene rather than a spinner: the character in the middle
 /// working away, the real inputs it is weighing orbiting it, rings pulsing out
-/// from it, warm light drifting behind, and a thought above saying which of
+/// from it, warm light drifting behind, and underneath, a line saying which of
 /// those inputs it is turning over.
 ///
 /// Nothing here claims progress. The chips and the thoughts are the request
@@ -11,8 +18,8 @@ import SwiftUI
 struct RautaThinkingStage: View {
     /// What RAUTA is turning over, one at a time.
     var thoughts: [String]
-    /// The inputs, as short labels.
-    var chips: [String]
+    /// The inputs, as symbols and short labels.
+    var chips: [ThinkingChip]
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var start = Date()
@@ -24,7 +31,7 @@ struct RautaThinkingStage: View {
         TimelineView(.animation(paused: reduceMotion)) { timeline in
             let t = timeline.date.timeIntervalSince(start)
             GeometryReader { proxy in
-                let center = CGPoint(x: proxy.size.width / 2, y: proxy.size.height * 0.56)
+                let center = CGPoint(x: proxy.size.width / 2, y: proxy.size.height * 0.42)
                 ZStack {
                     aurora(t, in: proxy.size)
 
@@ -48,9 +55,11 @@ struct RautaThinkingStage: View {
                         if pose.front { chipView(chip, pose: pose) }
                     }
 
+                    // The thought reads under the scene, not in a bubble:
+                    // RAUTA is busy, and the line says with what.
                     thought(at: t)
-                        .frame(maxWidth: min(300, proxy.size.width - 48))
-                        .position(x: center.x, y: center.y - Self.characterSize * 0.5 - 70)
+                        .frame(maxWidth: min(320, proxy.size.width - 48))
+                        .position(x: center.x, y: min(proxy.size.height - 44, center.y + 176))
                 }
             }
         }
@@ -125,42 +134,42 @@ struct RautaThinkingStage: View {
         )
     }
 
-    private func chipView(_ label: String, pose: OrbitPose) -> some View {
-        Text(label)
-            .font(Theme.sans(13, weight: .bold))
-            .foregroundStyle(Theme.foreground)
-            .lineLimit(1)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .glassSurface(.tinted(Theme.primary.opacity(0.18)), in: Capsule())
-            .scaleEffect(pose.scale)
-            .opacity(pose.opacity)
-            .position(pose.point)
+    private func chipView(_ chip: ThinkingChip, pose: OrbitPose) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: chip.symbol)
+                .font(.system(size: chip.label.isEmpty ? 16 : 13, weight: .semibold))
+                .foregroundStyle(Theme.primary)
+            if !chip.label.isEmpty {
+                Text(chip.label)
+                    .font(Theme.sans(13, weight: .bold))
+                    .foregroundStyle(Theme.foreground)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, chip.label.isEmpty ? 11 : 12)
+        .padding(.vertical, chip.label.isEmpty ? 11 : 7)
+        .glassSurface(
+            .tinted(Theme.primary.opacity(0.18)),
+            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+        )
+        .scaleEffect(pose.scale)
+        .opacity(pose.opacity)
+        .position(pose.point)
     }
 
-    /// The thought above RAUTA, changing every few seconds.
+    /// The line under the scene, changing every few seconds.
     private func thought(at t: TimeInterval) -> some View {
         let index = thoughts.isEmpty ? 0 : Int(t / Self.thoughtSeconds) % thoughts.count
         let text = thoughts.isEmpty ? "Working on it…" : thoughts[index]
-        let glass = GlassTone.tinted(Theme.card.opacity(0.5))
-        return VStack(spacing: 3) {
-            Text(text)
-                .font(Theme.sans(16, weight: .semibold))
-                .foregroundStyle(Theme.foreground)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 12)
-                .glassSurface(glass, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .id(index)
-                .transition(.asymmetric(
-                    insertion: .scale(scale: 0.92).combined(with: .opacity),
-                    removal: .opacity
-                ))
-            Color.clear.frame(width: 12, height: 12).glassSurface(glass, in: Circle())
-            Color.clear.frame(width: 7, height: 7).glassSurface(glass, in: Circle())
-        }
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: index)
+        return ShimmerText(text: text, font: Theme.sans(17, weight: .semibold))
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .id(index)
+            .transition(.asymmetric(
+                insertion: .offset(y: 8).combined(with: .opacity),
+                removal: .opacity
+            ))
+            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: index)
     }
 }
 
@@ -168,7 +177,7 @@ struct RautaThinkingStage: View {
 /// request itself.
 enum ThinkingInputs {
     @MainActor
-    static func plan(dates: [String]) -> (thoughts: [String], chips: [String]) {
+    static func plan(dates: [String]) -> (thoughts: [String], chips: [ThinkingChip]) {
         let store = AppStore.shared
         let profile = store.trainingProfile.profile
         let goal = ProfileVocabulary.goalLabel(profile.goal)
@@ -182,25 +191,37 @@ enum ThinkingInputs {
         thoughts.append("Setting sets and reps for \(goal.lowercased())…")
         if !priorities.isEmpty { thoughts.append("Giving \(priorities.joined(separator: " and ")) a little extra…") }
 
-        var chips = dates.sorted().prefix(4).map { CalendarDate.format($0, "EEEd") }
-        chips.append(goal)
-        chips.append("\(minutes) min")
-        if equipment > 0 { chips.append(Wording.countLabel(equipment, "item")) }
-        chips += priorities.map { $0.capitalized }
-        return (thoughts, Array(chips.prefix(8)))
+        var chips = dates.sorted().prefix(4).map { ThinkingChip(symbol: "calendar", label: CalendarDate.format($0, "EEEd")) }
+        chips.append(ThinkingChip(symbol: goalSymbol(profile.goal), label: goal))
+        chips.append(ThinkingChip(symbol: "timer", label: "\(minutes) min"))
+        if equipment > 0 { chips.append(ThinkingChip(symbol: "dumbbell.fill", label: "\(equipment)")) }
+        chips += priorities.map { ThinkingChip(symbol: "scope", label: $0.capitalized) }
+        chips.append(ThinkingChip(symbol: "chart.line.uptrend.xyaxis"))
+        return (thoughts, Array(chips.prefix(9)))
     }
 
     @MainActor
-    static func workout(muscles: [MuscleId], equipmentCount: Int) -> (thoughts: [String], chips: [String]) {
+    static func workout(muscles: [MuscleId], equipmentCount: Int) -> (thoughts: [String], chips: [ThinkingChip]) {
         let names = muscles.prefix(3).map { $0.label.lowercased() }
         var thoughts = ["Picking exercises for \(names.isEmpty ? "the whole body" : names.joined(separator: ", "))…"]
         if equipmentCount > 0 {
             thoughts.append("Using what you have: \(Wording.countLabel(equipmentCount, "item"))…")
         }
         thoughts.append("Fitting it into today…")
-        var chips = muscles.prefix(4).map(\.label)
-        if equipmentCount > 0 { chips.append(Wording.countLabel(equipmentCount, "item")) }
-        chips.append("Today")
+        var chips = muscles.prefix(4).map { ThinkingChip(symbol: "figure.strengthtraining.traditional", label: $0.label) }
+        if equipmentCount > 0 { chips.append(ThinkingChip(symbol: "dumbbell.fill", label: "\(equipmentCount)")) }
+        chips.append(ThinkingChip(symbol: "sun.max.fill", label: "Today"))
+        chips.append(ThinkingChip(symbol: "list.number"))
         return (thoughts, chips)
+    }
+
+    private static func goalSymbol(_ goal: TrainingGoal) -> String {
+        switch goal {
+        case .hypertrophy, .strengthHypertrophy: return "figure.strengthtraining.traditional"
+        case .strength, .power: return "bolt.fill"
+        case .generalFitness: return "heart.fill"
+        case .muscularEndurance: return "arrow.triangle.2.circlepath"
+        case .fatLossSupport: return "flame.fill"
+        }
     }
 }

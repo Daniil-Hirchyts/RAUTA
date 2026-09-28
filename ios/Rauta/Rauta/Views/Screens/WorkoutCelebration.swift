@@ -18,16 +18,13 @@ struct WorkoutCelebration: View {
         VStack(spacing: 0) {
             Spacer(minLength: 12)
 
-            RautaSays(
-                text: receipt.rautaLine,
-                mood: .proud,
-                reaction: .celebrate,
-                reactionKey: receipt.id,
-                size: 176
-            )
-            .padding(.horizontal, 28)
-            .scaleEffect(shown ? 1 : 0.86)
-            .opacity(shown ? 1 : 0)
+            // RAUTA celebrates without a speech bubble: the title and the
+            // numbers under it say what happened.
+            RautaCharacter(mood: .proud, reactionKey: receipt.id, reaction: .celebrate)
+                .frame(width: 176, height: 176)
+                .accessibilityHidden(true)
+                .scaleEffect(shown ? 1 : 0.86)
+                .opacity(shown ? 1 : 0)
 
             VStack(spacing: 6) {
                 Text(receipt.workoutName.uppercased())
@@ -81,6 +78,8 @@ struct WorkoutCelebration: View {
             withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.5, dampingFraction: 0.74)) {
                 shown = true
             }
+            // Not printed any more, but still said to VoiceOver.
+            AccessibilityNotification.Announcement(receipt.rautaLine).post()
         }
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)

@@ -38,6 +38,9 @@ struct Workout: Codable, Hashable, Sendable, Identifiable {
     var createdAt: String
     var updatedAt: String
     var planned: PlannedWorkoutReference?
+    /// The muscles RAUTA was asked to build this workout around, when RAUTA
+    /// built it. Until it is started, RAUTA can build it again around them.
+    var rautaFocus: [MuscleId]? = nil
 }
 
 extension Sequence where Element == Workout {
@@ -119,6 +122,8 @@ final class WorkoutsStore {
             let planned = sanitizePlannedReference(object["planned"])
             let name = (object["name"]?.stringValue ?? "Workout")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
+            let rautaFocus = (object["rautaFocus"]?.arrayValue ?? [])
+                .compactMap { $0.stringValue.flatMap(MuscleId.init(rawValue:)) }
 
             result.append(Workout(
                 id: id,
@@ -128,7 +133,8 @@ final class WorkoutsStore {
                 completion: completion,
                 createdAt: object["createdAt"]?.stringValue ?? "",
                 updatedAt: object["updatedAt"]?.stringValue ?? "",
-                planned: planned
+                planned: planned,
+                rautaFocus: rautaFocus.isEmpty ? nil : rautaFocus
             ))
         }
         return PersistedWorkouts(workouts: result)
@@ -194,7 +200,8 @@ final class WorkoutsStore {
         name: String,
         date: String,
         exerciseIds: [String],
-        planned: PlannedWorkoutReference? = nil
+        planned: PlannedWorkoutReference? = nil,
+        rautaFocus: [MuscleId]? = nil
     ) -> String {
         let id = Self.makeId()
         let now = ISOTime.now()
@@ -212,7 +219,8 @@ final class WorkoutsStore {
             completion: nil,
             createdAt: now,
             updatedAt: now,
-            planned: planned
+            planned: planned,
+            rautaFocus: rautaFocus?.isEmpty == false ? rautaFocus : nil
         )
         mutate { workouts.append(workout) }
         return id

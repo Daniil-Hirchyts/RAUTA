@@ -67,7 +67,10 @@ final class ActiveWorkoutStore {
             accumulatedMs: Swift.max(0, object["accumulatedMs"]?.numberValue ?? 0),
             startedAt: startedAt,
             setPhaseStartedAt: validTimestamp(object["setPhaseStartedAt"]) ?? now,
-            restUntil: validTimestamp(object["restUntil"])
+            restUntil: validTimestamp(object["restUntil"]),
+            // A warm-up still running when the app closed is picked back up;
+            // one that ran out meanwhile is over.
+            warmupUntil: validTimestamp(object["warmupUntil"]).flatMap { $0 > now ? $0 : nil }
         )
     }
 
@@ -147,7 +150,7 @@ final class ActiveWorkoutStore {
 
     private func start(_ workout: Workout, carrying prescription: PlannedWorkoutReference?) -> WorkoutStartOutcome {
         if workout.completion != nil {
-            return .refused("This workout is already finished. Copy it to today to train it again.")
+            return .refused("This workout is already finished. Reuse it to train it again.")
         }
         if session?.workoutId == workout.id { return .started }
         if session != nil {
@@ -160,6 +163,10 @@ final class ActiveWorkoutStore {
 
         let now = ActiveWorkout.nowMillis()
         let date = CalendarDate.toISO(Date(timeIntervalSince1970: now / 1000))
+        // Every workout opens with the warm-up chosen in Settings, whichever
+        // way it was started.
+        let warmup = SettingsStore.shared.warmupLength.seconds
+        let warmupUntil: Double? = warmup > 0 ? now + warmup * 1_000 : nil
         // Write down the start before any of it happens, so a relaunch between
         // the draft landing and the shell appearing can put back the session the
         // person was already looking at rather than losing it.
@@ -199,11 +206,19 @@ final class ActiveWorkoutStore {
                 runningSince: now,
                 accumulatedMs: 0,
                 startedAt: now,
-                setPhaseStartedAt: now,
-                restUntil: nil
+                setPhaseStartedAt: warmupUntil ?? now,
+                restUntil: nil,
+                warmupUntil: warmupUntil
             ),
             outcome: nil
         )
+        if let warmupUntil {
+            RestAlerts.shared.schedule(
+                deadline: Date(timeIntervalSince1970: warmupUntil / 1_000),
+                exerciseName: exerciseIds.first.flatMap(ExerciseCatalogue.name),
+                kind: .warmup
+            )
+        }
         if WorkoutsStore.shared.workout(workout.id) != nil {
             WorkoutsStore.shared.updateWorkout(workout.id, WorkoutsStore.WorkoutPatch(date: date))
         }
@@ -339,17 +354,47 @@ final class ActiveWorkoutStore {
     /// Starts a rest phase from the authoritative session clock. The same
     /// deadline drives both the UI and the local notification, so reopening a
     /// tab or sheet cannot restart the countdown.
-    func startRest(seconds: TimeInterval, exerciseName: String?) {
+    /// `announce` sounds the rest's start: from the Watch, RAUTA or Siri. A set
+    /// logged in the app has already sounded.
+    func startRest(seconds: TimeInterval, exerciseName: String?, announce: Bool = true) {
         guard var current = session else { return }
         let durationMs = Swift.max(1, seconds.rounded()) * 1_000
         let deadlineMs = ActiveWorkout.nowMillis() + durationMs
         current.restUntil = deadlineMs
         current.setPhaseStartedAt = deadlineMs
+        // A logged set means the warm-up is done, however much of it ran.
+        current.warmupUntil = nil
         mutate { session = current }
+        if announce { WorkoutAudio.play(.restStart) }
         RestAlerts.shared.schedule(
             deadline: Date(timeIntervalSince1970: deadlineMs / 1_000),
             exerciseName: exerciseName
         )
+    }
+
+    // MARK: Warm-up
+
+    /// A minute more (or `seconds`) of warm-up, from where it stands.
+    func extendWarmup(by seconds: TimeInterval) {
+        guard var current = session, let warmupUntil = current.warmupUntil else { return }
+        let deadlineMs = Swift.max(warmupUntil, ActiveWorkout.nowMillis()) + Swift.max(1, seconds.rounded()) * 1_000
+        current.warmupUntil = deadlineMs
+        current.setPhaseStartedAt = deadlineMs
+        mutate { session = current }
+        RestAlerts.shared.schedule(
+            deadline: Date(timeIntervalSince1970: deadlineMs / 1_000),
+            exerciseName: current.currentExerciseId.flatMap(ExerciseCatalogue.name),
+            kind: .warmup
+        )
+    }
+
+    /// Ends the warm-up now, early or on time: the first set's clock starts.
+    func endWarmup() {
+        guard var current = session, current.warmupUntil != nil else { return }
+        current.warmupUntil = nil
+        current.setPhaseStartedAt = ActiveWorkout.nowMillis()
+        mutate { session = current }
+        if RestAlerts.shared.kind == .warmup { RestAlerts.shared.cancel() }
     }
 
     /// Pushes the shared rest deadline out by `seconds`.

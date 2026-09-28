@@ -372,15 +372,21 @@ struct ExerciseBrowseEmptyState: View {
     private var favoritesEmpty: Bool { state.favoritesOnly && !hasFavorites }
 
     var body: some View {
+        // RAUTA is already on this page, in the tab bar: the empty list shows
+        // what is missing rather than a second RAUTA.
         EmptyStatePlaceholder(
-            // Puzzled by a search that found nothing; curious about favorites
-            // that are still to come.
-            mood: query.isEmpty && state.favoritesOnly ? .curious : .confused,
+            symbol: symbol,
             title: title,
             message: message,
             actionTitle: actionTitle,
             action: action
         )
+    }
+
+    private var symbol: String {
+        if !query.isEmpty { return "magnifyingglass" }
+        if state.favoritesOnly { return "heart" }
+        return "line.3.horizontal.decrease"
     }
 
     private var title: String {

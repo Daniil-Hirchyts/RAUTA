@@ -24,13 +24,21 @@ import UserNotifications
 final class RestAlerts {
     static let shared = RestAlerts()
 
+    /// What is counting down: a rest between sets, or the warm-up before the
+    /// first one. The same countdown, told differently.
+    enum Kind: String {
+        case rest, warmup
+    }
+
     nonisolated static let notificationID = "rauta-rest-timer-complete"
 
     private(set) var deadline: Date?
+    private(set) var kind: Kind = .rest
     private var exerciseName: String?
 
     private let center = UNUserNotificationCenter.current()
     private let deadlineKey = "rauta-rest-timer-deadline"
+    private let kindKey = "rauta-rest-timer-kind"
     private var countdownTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
@@ -43,6 +51,7 @@ final class RestAlerts {
         let stored = UserDefaults.standard.double(forKey: deadlineKey)
         if stored > Date().timeIntervalSince1970 {
             deadline = Date(timeIntervalSince1970: stored)
+            kind = UserDefaults.standard.string(forKey: kindKey).flatMap(Kind.init(rawValue:)) ?? .rest
         }
     }
 
@@ -54,10 +63,12 @@ final class RestAlerts {
         if deadline != nil { arm() }
     }
 
-    func schedule(deadline fireDate: Date, exerciseName: String?) {
+    func schedule(deadline fireDate: Date, exerciseName: String?, kind: Kind = .rest) {
         deadline = fireDate
+        self.kind = kind
         self.exerciseName = exerciseName
         UserDefaults.standard.set(fireDate.timeIntervalSince1970, forKey: deadlineKey)
+        UserDefaults.standard.set(kind.rawValue, forKey: kindKey)
         requestPermissionIfNeeded()
         arm()
     }
@@ -73,6 +84,7 @@ final class RestAlerts {
         countdownTask?.cancel()
         countdownTask = nil
         UserDefaults.standard.removeObject(forKey: deadlineKey)
+        UserDefaults.standard.removeObject(forKey: kindKey)
     }
 
     private func becameActive() {
@@ -93,7 +105,7 @@ final class RestAlerts {
         guard let deadline else { return }
         if deadline.timeIntervalSinceNow > 0.5 {
             post(
-                content(exerciseName: exerciseName, sound: true),
+                content(exerciseName: exerciseName, kind: kind, sound: true),
                 trigger: UNTimeIntervalNotificationTrigger(timeInterval: deadline.timeIntervalSinceNow, repeats: false)
             )
         }
@@ -102,12 +114,12 @@ final class RestAlerts {
             // Every step below runs only if the app is running at that moment:
             // a suspended app simply does not get here, and its notification
             // speaks for it.
-            for secondsLeft in [3.0, 2.0, 1.0] {
-                let wait = deadline.timeIntervalSinceNow - secondsLeft
+            for secondsLeft in [3, 2, 1] {
+                let wait = deadline.timeIntervalSinceNow - Double(secondsLeft)
                 guard wait > -0.4 else { continue }
                 if wait > 0 { try? await Task.sleep(for: .seconds(wait)) }
                 guard !Task.isCancelled, let self, self.deadline == deadline else { return }
-                self.tick()
+                self.tick(secondsLeft)
             }
 
             let untilWithdraw = deadline.timeIntervalSinceNow - Self.withdrawLead
@@ -127,35 +139,45 @@ final class RestAlerts {
         }
     }
 
-    private func tick() {
-        WorkoutAudio.tick()
+    private func tick(_ secondsLeft: Int) {
+        WorkoutAudio.tick(secondsLeft: secondsLeft)
         if UIApplication.shared.applicationState == .active { Haptics.trigger(.light) }
     }
 
     private func finish() {
         let name = exerciseName
+        let finished = kind
         clear()
 
         let application = UIApplication.shared
-        WorkoutAudio.go()
+        WorkoutAudio.play(finished == .warmup ? .warmupOver : .restOver)
         if application.applicationState == .active {
             center.removeDeliveredNotifications(withIdentifiers: [Self.notificationID])
             Haptics.trigger(.heavy)
         } else if application.isProtectedDataAvailable {
             // A locked phone has nothing to read; one in someone's hand, in
             // another app, gets a word on what the sound was.
-            post(content(exerciseName: name, sound: false), trigger: nil)
+            post(content(exerciseName: name, kind: finished, sound: false), trigger: nil)
         }
     }
 
     // MARK: Notifications
 
-    private func content(exerciseName: String?, sound: Bool) -> UNMutableNotificationContent {
+    private func content(exerciseName: String?, kind: Kind, sound: Bool) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
-        content.title = "Rest complete"
-        content.body = exerciseName.map { "Ready for your next set of \($0)." }
-            ?? "Ready for your next set."
-        content.sound = sound ? .default : nil
+        switch kind {
+        case .rest:
+            content.title = "Rest complete"
+            content.body = exerciseName.map { "Ready for your next set of \($0)." }
+                ?? "Ready for your next set."
+        case .warmup:
+            content.title = "Warm-up done"
+            content.body = exerciseName.map { "First up: \(Wording.titleCase($0))." }
+                ?? "Time for the first set."
+        }
+        content.sound = sound
+            ? UNNotificationSound(named: UNNotificationSoundName((kind == .warmup ? RautaSound.warmupOver : .restOver).notificationFile))
+            : nil
         content.interruptionLevel = .timeSensitive
         content.relevanceScore = 1
         return content

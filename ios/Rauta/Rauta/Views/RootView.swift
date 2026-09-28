@@ -126,15 +126,13 @@ struct AppPageView: View {
         case .exerciseDetail(let exerciseId):
             ExerciseDetailScreen(exerciseId: exerciseId)
         case .workoutDestination(let exerciseIds, let preferredWorkoutId):
-            WorkoutDestinationScreen(
-                exerciseIds: exerciseIds,
-                preferredWorkoutId: preferredWorkoutId
-            )
-        case .workoutForm(let exerciseIds, let workoutId, let focusMuscles):
-            WorkoutFormScreen(
-                initialExerciseIds: exerciseIds,
+            WorkoutDestinationScreen(mode: .exercises(exerciseIds, preferredWorkoutId: preferredWorkoutId))
+        case .reuseWorkout(let sourceWorkoutId):
+            WorkoutDestinationScreen(mode: .reuse(sourceWorkoutId: sourceWorkoutId))
+        case .plannedWorkout(let workoutId):
+            WorkoutDetailScreen(
                 workoutId: workoutId,
-                focusMuscles: focusMuscles
+                onBackToWorkouts: navigation.pop
             )
         case .equipmentPreset:
             EquipmentPresetScreen()
@@ -142,6 +140,14 @@ struct AppPageView: View {
             ExerciseAlternativesScreen(exerciseId: exerciseId, workoutId: workoutId)
         case .policies:
             PoliciesScreen()
+        case .summaryStreak:
+            SummaryStreakScreen()
+        case .summaryActivity(let month, let metric):
+            SummaryActivityScreen(month: month, metric: metric)
+        case .summaryMuscles(let month):
+            SummaryMusclesScreen(month: month)
+        case .summaryRecords:
+            SummaryRecordsScreen()
         }
     }
 }

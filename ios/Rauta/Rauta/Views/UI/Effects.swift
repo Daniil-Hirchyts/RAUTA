@@ -141,6 +141,7 @@ struct LikeButton: View {
         let button = Button {
             if !liked && animated && !reduceMotion { burst() }
             Haptics.trigger(.selection)
+            if animated { WorkoutAudio.play(liked ? .favoriteOff : .favoriteOn) }
             action()
         } label: {
             heartContent

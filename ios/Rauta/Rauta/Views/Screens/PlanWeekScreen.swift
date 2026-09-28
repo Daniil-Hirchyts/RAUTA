@@ -17,6 +17,16 @@ struct PlanWeekScreen: View {
     @State private var selectedDates: Set<String> = []
     @State private var phase = Phase.choosing
     @State private var work: Task<Void, Never>?
+    /// The scroll view's height between the title bar and the button, so the
+    /// calendar can sit at the foot of it with RAUTA centred above.
+    @State private var visibleHeight: CGFloat = 0
+    /// As large as the room above the calendar allows: RAUTA grows on a tall
+    /// phone and gives way on a short one, so the calendar ends just above the
+    /// button. Settled from the page's measured height.
+    @State private var rautaSize: CGFloat = 130
+
+    private static let spacing: CGFloat = 10
+    private static let rautaRange: ClosedRange<CGFloat> = 96...180
 
     private var continuing: Bool { sourceProgramId != nil }
     private var minutes: Int { Int(store.trainingProfile.profile.preferredSessionDurationMinutes) }
@@ -28,25 +38,29 @@ struct PlanWeekScreen: View {
             onBack: store.navigation.pop
         ) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(spacing: Self.spacing) {
                     if phase == .working {
                         // RAUTA at work over the request itself: the days,
                         // the goal and the kit orbit it while it plans.
                         let inputs = ThinkingInputs.plan(dates: Array(selectedDates))
                         RautaThinkingStage(thoughts: inputs.thoughts, chips: inputs.chips)
-                            .frame(height: 520)
+                            .frame(height: max(520, visibleHeight - 24))
                             .padding(.horizontal, -Theme.Metrics.contentInset)
                             .transition(.opacity.combined(with: .scale(scale: 0.96)))
                     } else {
+                        // RAUTA is the subject here: centred, its line under
+                        // it and kept there, not spoken and folded away.
                         RautaSays(
                             text: line,
                             mood: mood,
                             reaction: reaction,
                             reactionKey: phaseKey,
-                            size: 96,
-                            layout: .beside,
-                            transient: true
+                            size: rautaSize,
+                            layout: .stacked,
+                            trims: true
                         )
+                        .padding(.horizontal, 12)
+                        .frame(maxWidth: .infinity)
                         .transition(.opacity)
                     }
 
@@ -69,8 +83,22 @@ struct PlanWeekScreen: View {
                 }
                 .padding(.horizontal, Theme.Metrics.contentInset)
                 .padding(.top, 4)
-                .padding(.bottom, 24)
+                .padding(.bottom, 12)
+                // The scroller asks for the content's own height: whatever it
+                // falls short of the room, or runs past it, RAUTA takes up or
+                // gives back.
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                    fitRauta(contentHeight: height)
+                }
+                .frame(minHeight: visibleHeight, alignment: .bottom)
                 .animation(.spring(response: 0.42, dampingFraction: 0.86), value: phase)
+            }
+            // The container is already the room between the title bar and
+            // the button; the insets are the bars themselves, outside it.
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.containerSize.height
+            } action: { _, height in
+                visibleHeight = max(0, height)
             }
             .pageScroll()
         } controls: {
@@ -103,6 +131,20 @@ struct PlanWeekScreen: View {
     }
 
     // MARK: RAUTA's part
+
+    private func fitRauta(contentHeight: CGFloat) {
+        guard visibleHeight > 0, phase == .choosing || isBlocked else { return }
+        // Damped: the block grows a little faster than the character does,
+        // so a full step would overshoot and swing.
+        let next = min(Self.rautaRange.upperBound, max(Self.rautaRange.lowerBound, rautaSize + (visibleHeight - contentHeight) * 0.6))
+        guard abs(next - rautaSize) > 1 else { return }
+        rautaSize = next
+    }
+
+    private var isBlocked: Bool {
+        if case .blocked = phase { return true }
+        return false
+    }
 
     private var line: String {
         switch phase {
@@ -174,12 +216,24 @@ struct PlanWeekScreen: View {
 
     // MARK: The result
 
+    /// The week RAUTA built, each day's workout pictured and named. It is
+    /// already saved, so each one opens.
     private func sessionList(_ sessions: [PlannedSessionView]) -> some View {
-        VStack(spacing: 8) {
-            ForEach(Array(sessions.sorted { $0.date < $1.date }.enumerated()), id: \.element.id) { index, session in
-                PlannedSessionRow(session: session, index: index)
-            }
+        let ordered = sessions.sorted { $0.date < $1.date }
+        let rows = ordered.map { session in
+            AgentSessionRow.planned(session, id: plannedWorkoutId(session) ?? session.sessionId)
         }
+        return WorkoutAgenda(rows: rows, onOpen: { id in
+            guard store.workouts.workout(id) != nil else { return }
+            Haptics.trigger(.selection)
+            store.navigation.push(.plannedWorkout(workoutId: id))
+        })
+        .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.primary, strength: 0.7) }
+        .modifier(Arrival())
+    }
+
+    private func plannedWorkoutId(_ session: PlannedSessionView) -> String? {
+        store.workouts.workouts.first { $0.planned?.sessionId == session.sessionId }?.id
     }
 
     // MARK: Work
@@ -209,6 +263,7 @@ struct PlanWeekScreen: View {
                 phase = .choosing
             case .created(_, let sessions, _):
                 Haptics.trigger(.success)
+                WorkoutAudio.play(.planBuilt)
                 phase = .built(sessions)
             case .blocked(let block):
                 Haptics.trigger(.warning)
@@ -251,57 +306,56 @@ struct PlanWeekScreen: View {
     }
 }
 
+/// The built week arriving from below, the way RAUTA hands it over.
+private struct Arrival: ViewModifier {
+    @State private var shown = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(shown ? 1 : 0)
+            .offset(y: shown || reduceMotion ? 0 : 16)
+            .onAppear {
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.8).delay(0.2)) { shown = true }
+            }
+    }
+}
+
 private struct PlanDatePicker: View {
     @Binding var selectedDates: Set<String>
     var onSelectionChange: () -> Void
 
-    private var calendar: Calendar { Calendar.current }
-    private var earliestDate: Date { calendar.startOfDay(for: Date()) }
-
-    private var selection: Binding<Set<DateComponents>> {
-        Binding(
-            get: {
-                Set(selectedDates.compactMap { iso in
-                    guard let date = CalendarDate.parse(iso) else { return nil }
-                    return calendar.dateComponents([.year, .month, .day], from: date)
-                })
-            },
-            set: { values in
-                selectedDates = Set(values.compactMap { components in
-                    guard let date = calendar.date(from: components) else { return nil }
-                    let iso = CalendarDate.toISO(date)
-                    return iso >= CalendarDate.today ? iso : nil
-                })
-                Haptics.trigger(.selection)
-                onSelectionChange()
-            }
-        )
-    }
-
     var body: some View {
-        MultiDatePicker(
-            "Training dates",
-            selection: selection,
-            in: earliestDate...
+        RautaCalendar(
+            selection: .multiple($selectedDates),
+            label: "Training dates",
+            onChange: onSelectionChange
         )
-        .labelsHidden()
-        .tint(Theme.primary)
-        .padding(12)
-        .frame(maxWidth: .infinity)
-        .background { GradientCard(radius: Theme.Radius.xl3, accent: Theme.primary, strength: 0.7) }
     }
 }
 
+/// A workout's day, asked on top of the page with the app's calendar.
+///
+/// Without a `confirmTitle`, choosing a day is the answer: the modal closes and
+/// the workout moves. With one, the day is only chosen until the button under
+/// the calendar confirms it — for creating something on that day.
 struct WorkoutDateCalendarModal: View {
     var isPresented: Bool
-    @State private var selectedDate: Date
+    var confirmTitle: String? = nil
+    @State private var selectedDate: String
     let onClose: () -> Void
     let onSelect: (String) -> Void
 
-    init(isPresented: Bool, date: String, onClose: @escaping () -> Void, onSelect: @escaping (String) -> Void) {
-        let parsed = CalendarDate.parse(date) ?? Date()
+    init(
+        isPresented: Bool,
+        date: String,
+        confirmTitle: String? = nil,
+        onClose: @escaping () -> Void,
+        onSelect: @escaping (String) -> Void
+    ) {
         self.isPresented = isPresented
-        _selectedDate = State(initialValue: parsed)
+        self.confirmTitle = confirmTitle
+        _selectedDate = State(initialValue: max(date, CalendarDate.today))
         self.onClose = onClose
         self.onSelect = onSelect
     }
@@ -309,28 +363,30 @@ struct WorkoutDateCalendarModal: View {
     var body: some View {
         AppModal(
             isPresented: isPresented,
-            label: "Choose workout date",
+            label: confirmTitle ?? "Choose workout date",
             onClose: onClose,
             panelPadding: 6
         ) {
-            DatePicker(
-                "Workout date",
-                selection: $selectedDate,
-                displayedComponents: .date
-            )
-            .datePickerStyle(.graphical)
-            .labelsHidden()
-            .tint(Theme.primary)
-            .padding(12)
-            .glassSurface(
-                .clear,
-                in: RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous),
-                border: Theme.Glassware.edge
-            )
-            .onChange(of: selectedDate) { _, newValue in
-                Haptics.trigger(.success)
-                onClose()
-                onSelect(CalendarDate.toISO(newValue))
+            VStack(spacing: 10) {
+                RautaCalendar(
+                    selection: .single($selectedDate),
+                    label: "Workout date",
+                    onChange: {
+                        guard confirmTitle == nil else { return }
+                        Haptics.trigger(.success)
+                        onClose()
+                        onSelect(selectedDate)
+                    }
+                )
+                if let confirmTitle {
+                    AppButton(confirmTitle, size: .cta, expands: true) {
+                        Haptics.trigger(.success)
+                        onClose()
+                        onSelect(selectedDate)
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.bottom, 6)
+                }
             }
         }
     }

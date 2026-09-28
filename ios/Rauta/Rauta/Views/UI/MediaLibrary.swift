@@ -402,7 +402,7 @@ struct AnimatedImageView: UIViewRepresentable {
     }
 }
 
-/// Equipment artwork, on the warm card ground the grid draws it against.
+/// Equipment artwork, drawn straight on the card that holds it.
 struct EquipmentImageView: View {
     var equipment: String
 

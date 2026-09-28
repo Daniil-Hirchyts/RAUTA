@@ -25,6 +25,9 @@ struct RautaSays: View {
     var size: CGFloat = 104
     var layout: Layout = .stacked
     var transient = false
+    /// Lets the empty margin above the artwork overlap what is above, so a
+    /// larger RAUTA fits in the same room. For a page tight on height.
+    var trims = false
 
     @State private var showing = true
     /// Bumped by a tap on RAUTA, to say the line again.
@@ -45,6 +48,7 @@ struct RautaSays: View {
         case .stacked:
             VStack(spacing: 3) {
                 character
+                    .padding(.top, trims ? -size * 0.12 : 0)
                 trail(axis: .vertical)
                     .padding(.top, -size * 0.12)
                     .modifier(Spoken(showing: showing, anchor: .top, reduceMotion: reduceMotion, delay: 0))

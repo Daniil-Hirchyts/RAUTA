@@ -834,6 +834,7 @@ final class AgentToolHost {
                     }
                 }
                 proposals[id] = nil
+                WorkoutAudio.play(.planBuilt)
                 return .init(say: "Your new plan is ready.",
                              card: .change(title: "Plan applied", detail: "\(preview.sessions.count) workouts", systemImage: "checkmark.circle"),
                              undo: .plan(before: before, after: TrainingRecordsStore.shared.data,
@@ -852,7 +853,7 @@ final class AgentToolHost {
                 _ = try await RautaDirector.shared.quietly {
                     try await EngineWorkout.createWorkout(date: date, name: name,
                                                           exerciseIds: ids, focusMuscles: focus,
-                                                          expectedBasis: basis)
+                                                          rautaBuilt: true, expectedBasis: basis)
                 }
                 proposals[id] = nil
                 return .init(say: "Created \(name) for \(spoken(date)).",

@@ -236,22 +236,62 @@ enum EngineWorkout {
     }
 
     /// Builds the workout's session off the main actor, then records it.
+    ///
+    /// A workout RAUTA picked the exercises for — `focusMuscles` and no
+    /// `exerciseIds`, or `rautaBuilt` for a proposal RAUTA picked earlier —
+    /// remembers those muscles, so it can be built again.
     @discardableResult
     static func createWorkout(
         date: String,
         name: String? = nil,
         exerciseIds: [String]? = nil,
         focusMuscles: [MuscleId]? = nil,
+        rautaBuilt: Bool? = nil,
+        availableEquipment: [String]? = nil,
         workoutId: String? = nil,
         now: String? = nil,
         expectedBasis: PlanBasis? = nil
     ) async throws -> String {
-        let input = Input(date: date, exerciseIds: exerciseIds, focusMuscles: focusMuscles, now: now)
+        let input = Input(
+            date: date,
+            exerciseIds: exerciseIds,
+            focusMuscles: focusMuscles,
+            availableEquipment: availableEquipment,
+            now: now
+        )
         let program = try await buildProgramInBackground(input, prepare(input))
         if let expectedBasis, PlanBasis.current() != expectedBasis {
             throw TrainingPersistenceError("Training changed while the workout was being built. Ask for a fresh preview.")
         }
-        return try record(program, date: date, name: name, workoutId: workoutId)
+        let rautaFocus = (rautaBuilt ?? (exerciseIds?.isEmpty ?? true)) ? focusMuscles : nil
+        return try record(program, date: date, name: name, workoutId: workoutId, rautaFocus: rautaFocus)
+    }
+
+    /// Builds a RAUTA-built workout again around the same muscles, with other
+    /// exercises where there are other good ones, in place: same day, same
+    /// name, same workout. Only for a workout nobody has started.
+    static func regenerate(_ workoutId: String) async throws {
+        guard let workout = WorkoutsStore.shared.workout(workoutId),
+              let focus = workout.rautaFocus, !focus.isEmpty,
+              canRegenerate(workout)
+        else { throw TrainingPersistenceError("This workout can't be rebuilt any more.") }
+        let basis = PlanBasis.current()
+        let input = Input(date: workout.date, focusMuscles: focus, avoidExerciseIds: workout.exerciseIds)
+        let program = try await buildProgramInBackground(input, prepare(input))
+        guard let current = WorkoutsStore.shared.workout(workoutId), canRegenerate(current),
+              PlanBasis.current() == basis
+        else { throw TrainingPersistenceError("Training changed while the workout was being rebuilt.") }
+        _ = try record(program, date: current.date, name: current.name, workoutId: workoutId, rautaFocus: focus)
+    }
+
+    /// RAUTA built it and it has not been trained: nothing started, nothing
+    /// logged, nothing finished.
+    static func canRegenerate(_ workout: Workout) -> Bool {
+        guard workout.rautaFocus?.isEmpty == false, workout.completion == nil else { return false }
+        let records = TrainingRecordsStore.shared.data
+        if ActiveWorkoutStore.shared.session?.workoutId == workout.id { return false }
+        if records.activeWorkout?.sourceWorkoutId == workout.id { return false }
+        return !records.sessions.contains { $0.sourceWorkoutId == workout.id }
     }
 
     /// The same, in place — for migrating one legacy workout as it is opened.
@@ -269,7 +309,8 @@ enum EngineWorkout {
         _ program: TrainingProgram,
         date: String,
         name: String?,
-        workoutId: String?
+        workoutId: String?,
+        rautaFocus: [MuscleId]? = nil
     ) throws -> String {
         try TrainingRecordsStore.shared.saveProgram(program, activate: false, kind: .workout)
         guard let view = TrainingPlan.sessionViews(program).first else {
@@ -293,19 +334,25 @@ enum EngineWorkout {
             name: title,
             date: date,
             exerciseIds: view.exerciseIds,
-            planned: PlannedWorkoutReference(programId: program.id, sessionId: view.sessionId)
+            planned: PlannedWorkoutReference(programId: program.id, sessionId: view.sessionId),
+            rautaFocus: rautaFocus
         )
     }
 
-    static func duplicateWithEngine(_ workoutId: String, date: String) async throws -> String {
+    /// A new workout made from an existing one: the same name and exercises on
+    /// another day, prescribed afresh from where training is now.
+    static func reuse(_ workoutId: String, date: String) async throws -> String {
         guard let source = WorkoutsStore.shared.workout(workoutId) else {
             throw TrainingPersistenceError("Workout not found.")
         }
-        return try await createWorkout(
-            date: date,
-            name: "\(source.name) copy",
-            exerciseIds: source.exerciseIds
-        )
+        guard date >= CalendarDate.today else {
+            throw TrainingPersistenceError("Choose today or a future date.")
+        }
+        let exerciseIds = source.exerciseIds.filter(ExerciseCatalogue.has)
+        guard !exerciseIds.isEmpty else {
+            throw TrainingPersistenceError("This workout has no exercises to reuse.")
+        }
+        return try await createWorkout(date: date, name: source.name, exerciseIds: exerciseIds)
     }
 
     /// Migrates a legacy unfinished workout when it next becomes relevant.

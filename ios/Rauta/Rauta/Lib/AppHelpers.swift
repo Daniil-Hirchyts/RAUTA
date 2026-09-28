@@ -146,6 +146,9 @@ struct ActiveWorkoutSession: Codable, Hashable, Sendable {
     /// Epoch ms when the current rest period ends. While this is in the future
     /// the UI counts down; afterwards the next set counts up from that instant.
     var restUntil: Double?
+    /// Epoch ms when the warm-up that opens the workout ends. Set only while
+    /// the warm-up is on; the first set is due when it is cleared.
+    var warmupUntil: Double? = nil
 }
 
 enum ExerciseStatus: String { case pending, active, completed }

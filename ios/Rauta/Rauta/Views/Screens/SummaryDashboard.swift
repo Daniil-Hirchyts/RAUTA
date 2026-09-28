@@ -101,7 +101,7 @@ struct MonthlySummarySnapshot {
     }
 
     private static func weekBin(for date: Date, calendar: Calendar) -> Int {
-        Swift.max(0, Swift.min(4, calendar.component(.weekOfMonth, from: date) - 1))
+        SummaryAnalytics.weekBin(for: date, calendar: calendar)
     }
 
     private static func exerciseFallbackVolume(_ workouts: [Workout]) -> [MuscleId: Double] {
@@ -127,6 +127,7 @@ struct MonthlySummarySnapshot {
 
 struct MonthlySummaryDashboard: View {
     let snapshot: MonthlySummarySnapshot
+    private let month = SummaryAnalytics.monthKey()
 
     private let columns = [
         GridItem(.flexible(), spacing: 10),
@@ -136,28 +137,37 @@ struct MonthlySummaryDashboard: View {
     var body: some View {
         VStack(spacing: 12) {
             LazyVGrid(columns: columns, spacing: 10) {
-                SummaryMetricCard(
-                    title: "Workouts",
-                    systemImage: "figure.strengthtraining.traditional",
-                    accent: Theme.primary,
-                    value: "\(snapshot.workoutCount)",
-                    detail: snapshot.workoutCount == 1 ? "session this month" : "sessions this month",
-                    bars: snapshot.weeklyWorkoutCounts
-                )
+                SummaryCardLink(page: .summaryActivity(month: month, metric: .workouts), zoomID: "summary-workouts") {
+                    SummaryMetricCard(
+                        title: "Workouts",
+                        systemImage: "figure.strengthtraining.traditional",
+                        accent: Theme.primary,
+                        value: "\(snapshot.workoutCount)",
+                        detail: snapshot.workoutCount == 1 ? "session this month" : "sessions this month",
+                        bars: snapshot.weeklyWorkoutCounts
+                    )
+                }
+                .summaryArrival(2)
 
-                SummaryMetricCard(
-                    title: "Training time",
-                    systemImage: "timer",
-                    accent: Theme.gold,
-                    value: Self.duration(snapshot.totalDurationSeconds),
-                    detail: snapshot.workoutCount == 0
-                        ? "no time logged yet"
-                        : "\(Self.duration(snapshot.averageDurationSeconds)) average",
-                    bars: snapshot.weeklyDurationSeconds
-                )
+                SummaryCardLink(page: .summaryActivity(month: month, metric: .time), zoomID: "summary-time") {
+                    SummaryMetricCard(
+                        title: "Training time",
+                        systemImage: "timer",
+                        accent: Theme.gold,
+                        value: Self.duration(snapshot.totalDurationSeconds),
+                        detail: snapshot.workoutCount == 0
+                            ? "no time logged yet"
+                            : "\(Self.duration(snapshot.averageDurationSeconds)) average",
+                        bars: snapshot.weeklyDurationSeconds
+                    )
+                }
+                .summaryArrival(3)
             }
 
-            MuscleHeatmapCard(snapshot: snapshot)
+            SummaryCardLink(page: .summaryMuscles(month: month), zoomID: "summary-muscles", cornerRadius: 36) {
+                MuscleHeatmapCard(snapshot: snapshot)
+            }
+            .summaryArrival(4)
         }
         // Square cards and fixed chart columns: text grows with Dynamic Type
         // up to the point where they can still hold it.
@@ -233,11 +243,17 @@ private struct SummaryMetricCard: View {
     }
 }
 
+/// A month's five weeks as small bars. They grow into place as Summary
+/// arrives, and this week's bar breathes, the one still being filled.
 private struct WeeklyBars: View {
     let values: [Double]
     let accent: Color
 
+    @Environment(\.summaryArrived) private var arrived
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     private var maximum: Double { Swift.max(values.max() ?? 0, 1) }
+    private var currentWeek: Int { SummaryAnalytics.weekBin(for: Date()) }
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 5) {
@@ -249,7 +265,12 @@ private struct WeeklyBars: View {
                                 ? accent.opacity(0.42 + 0.58 * value / maximum)
                                 : Theme.foreground.opacity(0.07)
                         )
-                        .frame(width: 6, height: Swift.max(4, 28 * value / maximum))
+                        .frame(width: 6, height: Swift.max(4, 28 * value / maximum * (arrived ? 1 : 0.1)))
+                        .modifier(Breathing(active: index == currentWeek && value > 0 && !reduceMotion))
+                        .animation(
+                            arrived ? .spring(response: 0.6, dampingFraction: 0.72).delay(0.25 + Double(index) * 0.05) : nil,
+                            value: arrived
+                        )
                         .frame(maxHeight: 28, alignment: .bottom)
 
                     Text("W\(index + 1)")
@@ -260,6 +281,22 @@ private struct WeeklyBars: View {
             }
         }
         .accessibilityHidden(true)
+    }
+}
+
+/// A slow rise and fall in brightness: something still in progress.
+private struct Breathing: ViewModifier {
+    let active: Bool
+
+    func body(content: Content) -> some View {
+        if active {
+            TimelineView(.animation(minimumInterval: 1 / 20)) { timeline in
+                let t = timeline.date.timeIntervalSinceReferenceDate
+                content.opacity(0.62 + 0.38 * (0.5 + 0.5 * sin(t * 2.2)))
+            }
+        } else {
+            content
+        }
     }
 }
 
@@ -377,16 +414,23 @@ private struct MuscleHeatmapCard: View {
     }
 }
 
-private struct BodyHeatmapPair: View {
+struct BodyHeatmapPair: View {
     let muscles: [MuscleId]
     let weights: [MuscleId: Double]
+    var height: CGFloat = 238
+
+    @Environment(\.summaryArrived) private var arrived
 
     var body: some View {
         HStack(spacing: 2) {
             figure(.front)
             figure(.back)
         }
-        .frame(height: 238)
+        .frame(height: height)
+        // The map warms up as Summary arrives.
+        .opacity(arrived ? 1 : 0.35)
+        .scaleEffect(arrived ? 1 : 0.97)
+        .animation(arrived ? .easeOut(duration: 0.7).delay(0.3) : nil, value: arrived)
         .allowsHitTesting(false)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(

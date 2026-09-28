@@ -6,6 +6,32 @@ enum HealthStatus: String, Codable, Hashable, Sendable {
     case idle, connected, unavailable, error
 }
 
+/// How long the warm-up that opens every workout runs.
+enum WarmupLength: Int, CaseIterable, Hashable, Sendable {
+    case off = 0
+    case three = 180
+    case five = 300
+    case ten = 600
+
+    /// The engine's own estimate of a warm-up, which session lengths count on.
+    static let standard = WarmupLength.three
+
+    var seconds: Double { Double(rawValue) }
+
+    var label: String {
+        switch self {
+        case .off: return "Off"
+        case .three: return "3 min"
+        case .five: return "5 min"
+        case .ten: return "10 min"
+        }
+    }
+
+    init(seconds: Double?) {
+        self = seconds.flatMap { value in Self.allCases.first { $0.seconds == value } } ?? .standard
+    }
+}
+
 /// Which theme the app wears: the iPhone's own, or one chosen for good.
 enum AppAppearance: String, Codable, Hashable, CaseIterable, Sendable {
     case system, light, dark
@@ -19,7 +45,13 @@ struct SettingsPreferences: Codable, Hashable, Sendable {
     var autoSyncWorkouts: Bool
     var syncActiveCalories: Bool
     var hapticsEnabled: Bool
+    /// Sounds for the app's own taps and answers: RAUTA's menu, favourites,
+    /// a saved change. The stored name is from when these were chimes.
     var soundChimesEnabled: Bool
+    /// Sounds during a workout: countdowns, rest, a logged set.
+    var workoutSoundsEnabled: Bool
+    /// The warm-up at the start of every workout, in seconds; 0 is none.
+    var warmupSeconds: Double
     var keepAwake: Bool
     var appearance: AppAppearance
     /// A preset's name, or `#RRGGBB` for a colour picked by hand.
@@ -34,6 +66,8 @@ struct SettingsPreferences: Codable, Hashable, Sendable {
         syncActiveCalories: true,
         hapticsEnabled: true,
         soundChimesEnabled: false,
+        workoutSoundsEnabled: true,
+        warmupSeconds: WarmupLength.standard.seconds,
         keepAwake: false,
         appearance: .system,
         accent: "ember"
@@ -71,6 +105,8 @@ final class SettingsStore {
             syncActiveCalories: object["syncActiveCalories"]?.boolValue != false,
             hapticsEnabled: object["hapticsEnabled"]?.boolValue != false,
             soundChimesEnabled: object["soundChimesEnabled"]?.boolValue == true,
+            workoutSoundsEnabled: object["workoutSoundsEnabled"]?.boolValue != false,
+            warmupSeconds: WarmupLength(seconds: object["warmupSeconds"]?.numberValue).seconds,
             keepAwake: object["keepAwake"]?.boolValue == true,
             appearance: object["appearance"]?.stringValue
                 .flatMap(AppAppearance.init(rawValue:)) ?? .system,
@@ -113,6 +149,8 @@ final class SettingsStore {
     var syncActiveCalories: Bool { preferences.syncActiveCalories }
     var hapticsEnabled: Bool { preferences.hapticsEnabled }
     var soundChimesEnabled: Bool { preferences.soundChimesEnabled }
+    var workoutSoundsEnabled: Bool { preferences.workoutSoundsEnabled }
+    var warmupLength: WarmupLength { WarmupLength(seconds: preferences.warmupSeconds) }
     var keepAwake: Bool { preferences.keepAwake }
     var appearance: AppAppearance { preferences.appearance }
     var accent: AppAccent { AppAccent(storage: preferences.accent) }

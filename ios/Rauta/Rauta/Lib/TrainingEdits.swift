@@ -40,6 +40,10 @@ enum TrainingEdits {
                     && !previous.contains {
                         $0.planned?.sessionId == session.id && $0.completion != nil
                     }
+                    // A past day with no workout on screen was deleted or
+                    // skipped: it is not carried into the next revision.
+                    && (previous.contains { $0.planned?.sessionId == session.id }
+                        || String(session.scheduledAt.prefix(10)) >= CalendarDate.today)
             }
         guard let targetIndex = pending.firstIndex(where: { $0.id == sessionId }) else {
             throw TrainingPersistenceError("This session has already been recorded.")
@@ -163,6 +167,39 @@ enum TrainingEdits {
             WorkoutsStore.shared.replaceAll(previous)
             throw error
         }
+    }
+
+    /// Deletes any workout: one still to come, one from a replaced plan, or one
+    /// already trained. A trained workout takes its logged sessions with it, so
+    /// history, streak and records stop counting it.
+    static func deleteWorkout(_ workoutId: String) throws {
+        let records = TrainingRecordsStore.shared
+        guard let workout = WorkoutsStore.shared.workout(workoutId) else {
+            throw TrainingPersistenceError("This workout cannot be deleted.")
+        }
+        if ActiveWorkoutStore.shared.session?.workoutId == workoutId
+            || records.data.activeWorkout?.sourceWorkoutId == workoutId
+            || records.data.transition?.sourceWorkoutId == workoutId {
+            throw TrainingPersistenceError("Finish or end this workout before deleting it.")
+        }
+        guard isHistory(workout) else {
+            try deleteScheduledWorkout(workoutId)
+            return
+        }
+        // The sessions go first: if the app stopped in between, what is left
+        // is a workout that can still be seen and deleted, never sessions that
+        // count in the stats with nothing on screen to delete.
+        try records.deleteCompletedSessions(sourceWorkoutId: workoutId, planned: workout.planned)
+        WorkoutsStore.shared.deleteWorkout(workoutId)
+    }
+
+    /// Trained already, finished or not: completed, or with a session on record.
+    static func isHistory(_ workout: Workout) -> Bool {
+        if workout.completion != nil { return true }
+        let sessions = TrainingRecordsStore.shared.data.sessions
+        if sessions.contains(where: { $0.sourceWorkoutId == workout.id }) { return true }
+        guard let planned = workout.planned else { return false }
+        return sessions.contains { $0.plannedSessionId == planned.sessionId }
     }
 
     static func deleteScheduledWorkout(_ workoutId: String) throws {
