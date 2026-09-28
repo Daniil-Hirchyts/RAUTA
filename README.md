@@ -27,6 +27,7 @@ catalogue tooling the Swift code was ported from, now live in a separate
 ```bash
 scripts/ios-run.sh sim       # the iPhone 18 Pro Swift simulator
 scripts/ios-run.sh device    # the connected iPhone
+scripts/ios-run.sh test      # RautaTests on the simulator (--only <Suite> for one suite)
 ```
 
 Builds are incremental and kept in `build/ios/<sim|device>/`. Run

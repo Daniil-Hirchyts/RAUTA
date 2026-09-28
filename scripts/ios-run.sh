@@ -6,6 +6,7 @@
 #
 #   scripts/ios-run.sh sim                    # the iPhone 18 Pro Swift simulator
 #   scripts/ios-run.sh device                 # the connected iPhone
+#   scripts/ios-run.sh test                   # run RautaTests on the simulator
 #
 # Options:
 #   --no-build              install and launch the last build as it is
@@ -21,9 +22,12 @@
 #   --arg <value>           launch argument for the app (repeatable),
 #                           e.g. --arg --onboarding
 #   --clean                 start from an empty build folder
+#   --only <Suite>          test only: run one suite or test, e.g. PersistenceTests
+#                           or PersistenceTests/roundTrip (repeatable)
 #
 # Build output lives in build/ios/<sim|device>/, and the full log of the last
-# build in build/ios/<sim|device>/build.log.
+# build in build/ios/<sim|device>/build.log. Tests share the simulator build
+# folder; their log and result bundle go to build/ios/test/.
 #
 # Device builds sign automatically with the project's team. When ASC_KEY_ID and
 # ASC_ISSUER are set — in the environment or in an untracked .env.ios at the repo
@@ -53,14 +57,14 @@ fi
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
 fail() { printf '\033[31merror: %s\033[0m\n' "$1" >&2; exit 1; }
-usage() { sed -n '2,32p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//'; }
 
 TARGET="${1:-}"
 case "$TARGET" in
-  sim|device) shift ;;
+  sim|device|test) shift ;;
   -h|--help) usage; exit 0 ;;
   "") usage; exit 2 ;;
-  *) fail "unknown target: $TARGET (use sim or device)" ;;
+  *) fail "unknown target: $TARGET (use sim, device or test)" ;;
 esac
 
 BUILD=true
@@ -74,6 +78,7 @@ UDID=""
 APPEARANCE=""
 APP_ENV=()
 APP_ARGS=()
+ONLY=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -90,18 +95,21 @@ while [[ $# -gt 0 ]]; do
       [[ "${2:-}" == *=* ]] || fail "--env needs KEY=VALUE"
       APP_ENV+=("$2"); shift 2 ;;
     --arg) APP_ARGS+=("${2:?--arg needs a value}"); shift 2 ;;
+    --only) ONLY+=("-only-testing:RautaTests/${2:?--only needs a suite or test name}"); shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) fail "unknown option: $1" ;;
   esac
 done
 
 if [[ "$TARGET" == device && -z "$UDID" ]]; then UDID="${RAUTA_DEVICE:-}"; fi
-if [[ -n "$APPEARANCE" && "$TARGET" != sim ]]; then fail "--appearance only applies to the simulator"; fi
+if [[ -n "$APPEARANCE" && "$TARGET" == device ]]; then fail "--appearance only applies to the simulator"; fi
+if [[ ${#ONLY[@]} -gt 0 && "$TARGET" != test ]]; then fail "--only only applies to test"; fi
 if [[ -n "$APPEARANCE" && "$APPEARANCE" != light && "$APPEARANCE" != dark ]]; then
   fail "--appearance must be light or dark"
 fi
 
-BUILD_DIR="$ROOT/build/ios/$TARGET"
+# Tests reuse the simulator build, so a test run after a sim run is incremental.
+if [[ "$TARGET" == test ]]; then BUILD_DIR="$ROOT/build/ios/sim"; else BUILD_DIR="$ROOT/build/ios/$TARGET"; fi
 DERIVED="$BUILD_DIR/DerivedData"
 LOG="$BUILD_DIR/build.log"
 # Reuse the packages Xcode already resolved for the project when they are
@@ -244,6 +252,32 @@ app_path() {
   echo "$DERIVED/Build/Products/$CONFIG-$platform/$APP_NAME"
 }
 
+# MARK: - Test
+
+run_tests() {
+  local results="$ROOT/build/ios/test"
+  local bundle="$results/last.xcresult"
+  local test_log="$results/test.log"
+  mkdir -p "$results"
+  rm -rf "$bundle"
+  if [[ "$CLEAN" == true ]]; then rm -rf "$BUILD_DIR"; fi
+
+  step "Test"
+  local status=0
+  xcodebuild test -project "$PROJECT" -scheme "$SCHEME" \
+    -destination "platform=iOS Simulator,id=$UDID" -derivedDataPath "$DERIVED" \
+    -clonedSourcePackagesDirPath "$PACKAGES" -skipPackagePluginValidation \
+    -resultBundlePath "$bundle" ${ONLY[@]+"${ONLY[@]}"} >"$test_log" 2>&1 || status=$?
+  if [[ "$VERBOSE" == true ]]; then cat "$test_log"; fi
+  # Failures, warnings in our own sources, Swift Testing's summary lines, and
+  # the verdict.
+  grep -E "[0-9]: error: |/ios/Rauta/.*warning:|✘|recorded an issue|Test run with|\*\* TEST" "$test_log" \
+    | grep -v "^note:" | sort -u || true
+  if [[ $status -ne 0 ]]; then
+    fail "tests failed — full log: $test_log, results: $bundle"
+  fi
+}
+
 # MARK: - Install and launch
 
 install_and_launch() {
@@ -291,7 +325,11 @@ install_and_launch() {
 }
 
 step "Target"
-if [[ "$TARGET" == sim ]]; then resolve_simulator; else resolve_device; fi
-if [[ "$BUILD" == true ]]; then build; fi
-install_and_launch
+if [[ "$TARGET" == device ]]; then resolve_device; else resolve_simulator; fi
+if [[ "$TARGET" == test ]]; then
+  run_tests
+else
+  if [[ "$BUILD" == true ]]; then build; fi
+  install_and_launch
+fi
 printf '\n\033[32mdone in %ss\033[0m\n' "$(( $(date +%s) - STARTED ))"
