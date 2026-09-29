@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// The warm-up that opens every workout, over the whole app until it is done:
-/// the time left in large numerals, the move to do now playing big, and the
-/// one after it underneath.
+/// the time left in large numerals, then the step to do now — the part of the
+/// body lit on the body map, and in a few words what to do with it — and the
+/// step after it underneath.
 ///
 /// It runs on the session's own deadline, so leaving the app or locking the
 /// phone loses nothing; the end is sounded by ``RestAlerts`` like a rest's.
@@ -25,8 +26,8 @@ struct WarmupScreen: View {
     }
     private var start: Date { Date(epochMillis: session.startedAt) }
 
-    private var moves: [WarmupRoutine.Move] {
-        WarmupRoutine.moves(
+    private var steps: [WarmupRoutine.Step] {
+        WarmupRoutine.steps(
             for: session.exerciseIds,
             seconds: until.timeIntervalSince(start),
             seed: session.workoutId
@@ -34,12 +35,13 @@ struct WarmupScreen: View {
     }
 
     var body: some View {
-        let moves = moves
+        let steps = steps
         TimelineView(.periodic(from: .now, by: 0.5)) { context in
             let elapsed = context.date.timeIntervalSince(start)
             let remaining = max(0, until.timeIntervalSince(context.date))
             let total = max(1, until.timeIntervalSince(start))
-            let current = WarmupRoutine.current(moves, elapsed: elapsed)
+            let current = WarmupRoutine.current(steps, elapsed: elapsed)
+            let finalSeconds = FinalCountdown.isShowing(until: until, at: context.date)
 
             VStack(spacing: 0) {
                 header(remaining: remaining, progress: min(1, elapsed / total))
@@ -48,14 +50,16 @@ struct WarmupScreen: View {
                 Spacer(minLength: 12)
 
                 if let current {
-                    move(current.move, index: current.index, count: moves.count, elapsed: elapsed)
-                    if current.index + 1 < moves.count {
-                        upNext(moves[current.index + 1])
-                            .padding(.top, 18)
-                    } else if let first = session.exerciseIds.first.flatMap({ ExerciseCatalogue.byId[$0] }) {
-                        upNext(title: "THEN", exercise: first)
-                            .padding(.top, 18)
+                    step(current.step, index: current.index, count: steps.count, elapsed: elapsed, finalSeconds: finalSeconds)
+                    Group {
+                        if current.index + 1 < steps.count {
+                            upNext("NEXT", steps[current.index + 1].title)
+                        } else if let first = session.exerciseIds.first.flatMap({ ExerciseCatalogue.byId[$0] }) {
+                            upNext("THEN", WorkoutAgenda.name(first))
+                        }
                     }
+                    .padding(.top, 18)
+                    .opacity(finalSeconds ? 0 : 1)
                 }
 
                 Spacer(minLength: 12)
@@ -67,6 +71,7 @@ struct WarmupScreen: View {
             .padding(.bottom, max(safeAreaInsets.bottom, 14) + 4)
             .opacity(shown ? 1 : 0)
             .offset(y: shown || reduceMotion ? 0 : 16)
+            .animation(.spring(response: 0.5, dampingFraction: 0.84), value: finalSeconds)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background { background }
@@ -106,60 +111,57 @@ struct WarmupScreen: View {
         }
     }
 
-    private func move(_ move: WarmupRoutine.Move, index: Int, count: Int, elapsed: Double) -> some View {
-        let name = ExerciseCatalogue.byId[move.exerciseId].map { WorkoutAgenda.name($0) } ?? "Move"
-        let left = max(0, Int((move.end - elapsed).rounded(.up)))
-        return VStack(spacing: 10) {
-            ExerciseMediaView(exerciseId: move.exerciseId, animated: true)
-                .aspectRatio(1, contentMode: .fit)
-                .frame(maxWidth: 300, maxHeight: 300)
-                .overlay { FinalCountdown(until: until) }
-                .id(move.exerciseId)
-                .transition(.opacity.combined(with: .scale(scale: 0.96)))
-            Text(name)
-                .font(Theme.sans(24, weight: .bold))
-                .foregroundStyle(Theme.foreground)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .minimumScaleFactor(0.8)
-            Text("Move \(index + 1) of \(count) · \(WorkoutClock.format(left)) on this one")
-                .font(Theme.sans(13, weight: .semibold))
-                .foregroundStyle(Theme.mutedForeground)
-                .contentTransition(.numericText(countsDown: true))
+    /// The step: the body map lighting what it works, its name, and what to
+    /// do. In the last seconds the map steps aside for the countdown.
+    private func step(_ step: WarmupRoutine.Step, index: Int, count: Int, elapsed: Double, finalSeconds: Bool) -> some View {
+        let left = max(0, Int((step.end - elapsed).rounded(.up)))
+        return VStack(spacing: 12) {
+            WarmupBodyMap(muscles: step.muscles)
+                .frame(height: 250)
+                .opacity(finalSeconds ? 0 : 1)
+                .scaleEffect(finalSeconds ? 0.92 : 1)
+                .overlay {
+                    if finalSeconds {
+                        FinalCountdown(until: until)
+                            .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                    }
+                }
+            VStack(spacing: 8) {
+                Text(step.title)
+                    .font(Theme.sans(24, weight: .bold))
+                    .foregroundStyle(Theme.foreground)
+                    .multilineTextAlignment(.center)
+                Text(step.instruction)
+                    .font(Theme.sans(16, weight: .medium))
+                    .foregroundStyle(Theme.foreground.opacity(0.78))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 330)
+                Text("Step \(index + 1) of \(count) · \(WorkoutClock.format(left)) left")
+                    .font(Theme.sans(13, weight: .semibold))
+                    .foregroundStyle(Theme.mutedForeground)
+                    .contentTransition(.numericText(countsDown: true))
+                    .padding(.top, 2)
+            }
+            .id(step.id)
+            .transition(.opacity.combined(with: .offset(y: 8)))
         }
-        .animation(.spring(response: 0.45, dampingFraction: 0.86), value: move.exerciseId)
+        .animation(.spring(response: 0.45, dampingFraction: 0.86), value: step.id)
         .accessibilityElement(children: .combine)
     }
 
-    private func upNext(_ move: WarmupRoutine.Move) -> some View {
-        Group {
-            if let exercise = ExerciseCatalogue.byId[move.exerciseId] {
-                upNext(title: "NEXT", exercise: exercise)
-            }
+    private func upNext(_ label: String, _ title: String) -> some View {
+        HStack(spacing: 8) {
+            Text(label)
+                .font(Theme.sans(10, weight: .black))
+                .kerning(1.4)
+                .foregroundStyle(Theme.mutedForeground)
+            Text(title)
+                .font(Theme.sans(15, weight: .semibold))
+                .foregroundStyle(Theme.foreground.opacity(0.85))
+                .lineLimit(1)
         }
-    }
-
-    private func upNext(title: String, exercise: ExerciseSummary) -> some View {
-        HStack(spacing: 12) {
-            ExerciseMediaView(exerciseId: exercise.id)
-                .padding(3)
-                .frame(width: 44, height: 44)
-                .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous).fill(Theme.muted.opacity(0.7)))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(Theme.sans(10, weight: .black))
-                    .kerning(1.4)
-                    .foregroundStyle(Theme.mutedForeground)
-                Text(WorkoutAgenda.name(exercise))
-                    .font(Theme.sans(15, weight: .semibold))
-                    .foregroundStyle(Theme.foreground)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(10)
-        .frame(maxWidth: 340)
-        .background { GradientCard(radius: Theme.Radius.xl, accent: Theme.primary, strength: 0.4) }
         .accessibilityElement(children: .combine)
     }
 
@@ -209,5 +211,33 @@ struct WarmupScreen: View {
         Haptics.trigger(.success)
         store.activeWorkout.endWarmup()
         onDone()
+    }
+}
+
+/// The front and back of the body, the muscles a warm-up step works lit, the
+/// rest resting. The light moves as the steps change.
+private struct WarmupBodyMap: View {
+    let muscles: [MuscleId]
+
+    var body: some View {
+        HStack(spacing: 6) {
+            figure(.front)
+            figure(.back)
+        }
+        .animation(.easeInOut(duration: 0.5), value: muscles)
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Warming up: " + muscles.map(\.label).joined(separator: ", "))
+    }
+
+    private func figure(_ side: BodySide) -> some View {
+        BodyFigure(
+            view: BodyPaths.view(side),
+            selectedMuscles: muscles,
+            selectedColor: Theme.primary,
+            showsSelectionGlow: false,
+            compact: true
+        )
+        .frame(maxWidth: .infinity)
     }
 }

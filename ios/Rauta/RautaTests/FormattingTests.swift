@@ -20,7 +20,10 @@ struct FormattingTests {
         #expect(WorkoutClock.format(0) == "0:00")
         #expect(WorkoutClock.format(9) == "0:09")
         #expect(WorkoutClock.format(90) == "1:30")
-        #expect(WorkoutClock.format(3_600) == "60:00")
+        #expect(WorkoutClock.format(3_599) == "59:59")
+        // Past an hour it shows hours, like the workout's own elapsed time.
+        #expect(WorkoutClock.format(3_600) == "1:00:00")
+        #expect(WorkoutClock.format(66_105) == "18:21:45")
         #expect(WorkoutClock.format(-5) == "0:00")
     }
 

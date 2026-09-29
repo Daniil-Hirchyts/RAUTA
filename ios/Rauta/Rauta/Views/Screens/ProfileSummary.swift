@@ -37,7 +37,7 @@ struct ProfileIdentityCard: View {
             store.navigation.push(.profileBasics, from: "summary-identity")
         } label: {
             HStack(spacing: 14) {
-                DotMatrixEmblem(seed: profile.name, size: 56)
+                DotMatrixEmblem(seed: profile.name)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(displayName)

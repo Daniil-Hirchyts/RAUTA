@@ -57,7 +57,8 @@ struct PlanWeekScreen: View {
                             reactionKey: phaseKey,
                             size: rautaSize,
                             layout: .stacked,
-                            trims: true
+                            trims: true,
+                            plain: true
                         )
                         .padding(.horizontal, 12)
                         .frame(maxWidth: .infinity)

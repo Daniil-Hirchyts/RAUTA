@@ -57,8 +57,10 @@ struct RautaThinkingStage: View {
 
                     // The thought reads under the scene, not in a bubble:
                     // RAUTA is busy, and the line says with what.
+                    // A fixed box, anchored at its top: a line of two rows and
+                    // one of one start in the same place, so nothing shifts.
                     thought(at: t)
-                        .frame(maxWidth: min(320, proxy.size.width - 48))
+                        .frame(width: min(320, proxy.size.width - 48), height: 64, alignment: .top)
                         .position(x: center.x, y: min(proxy.size.height - 44, center.y + 176))
                 }
             }
@@ -165,11 +167,9 @@ struct RautaThinkingStage: View {
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
             .id(index)
-            .transition(.asymmetric(
-                insertion: .offset(y: 8).combined(with: .opacity),
-                removal: .opacity
-            ))
-            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: index)
+            .frame(maxWidth: .infinity)
+            .transition(.opacity)
+            .animation(.easeInOut(duration: 0.35), value: index)
     }
 }
 

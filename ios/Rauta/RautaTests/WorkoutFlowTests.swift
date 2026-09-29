@@ -150,25 +150,27 @@ struct WorkoutFlowTests {
 
     // MARK: Warm-up
 
-    @Test func everyWarmupMoveIsInTheLibrary() {
-        for id in WarmupRoutine.allIds {
-            #expect(ExerciseCatalogue.has(id), "Missing warm-up move \(id)")
+    @Test func everyWarmupStepSaysWhatToDoAndWhere() {
+        for plan in WarmupRoutine.pulse + WarmupRoutine.upper + WarmupRoutine.lower + WarmupRoutine.full {
+            #expect(!plan.muscles.isEmpty, "\(plan.title) lights nothing")
+            #expect(plan.instruction.count > 20, "\(plan.title) says too little")
         }
     }
 
     @Test func aWarmupOpensWithThePulseAndSharesItsTime() throws {
         let bench = try #require(ExerciseResolver.resolve("barbell bench press").first?.exercise.id)
-        let moves = WarmupRoutine.moves(for: [bench], seconds: 180, seed: "w1")
-        #expect(moves.count == 4)
-        #expect(WarmupRoutine.pulse.contains(try #require(moves.first).exerciseId))
-        #expect(moves.first?.start == 0)
-        #expect(moves.last?.end == 180)
-        for (earlier, later) in zip(moves, moves.dropFirst()) {
+        let steps = WarmupRoutine.steps(for: [bench], seconds: 180, seed: "w1")
+        #expect(steps.count == 4)
+        #expect(WarmupRoutine.pulse.map(\.instruction).contains(try #require(steps.first).instruction))
+        #expect(steps.dropFirst().map(\.title) == WarmupRoutine.upper.prefix(3).map(\.title))
+        #expect(steps.first?.start == 0)
+        #expect(steps.last?.end == 180)
+        for (earlier, later) in zip(steps, steps.dropFirst()) {
             #expect(earlier.end == later.start)
         }
-        #expect(WarmupRoutine.moves(for: [bench], seconds: 180, seed: "w1") == moves)
-        #expect(WarmupRoutine.moves(for: [bench], seconds: 600, seed: "w1").count == 5)
-        #expect(WarmupRoutine.moves(for: [bench], seconds: 0, seed: "w1").isEmpty)
+        #expect(WarmupRoutine.steps(for: [bench], seconds: 180, seed: "w1") == steps)
+        #expect(WarmupRoutine.steps(for: [bench], seconds: 600, seed: "w1").count == 5)
+        #expect(WarmupRoutine.steps(for: [bench], seconds: 0, seed: "w1").isEmpty)
         #expect(WarmupRoutine.region(for: [bench]) == .upper)
     }
 

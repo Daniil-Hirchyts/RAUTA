@@ -28,6 +28,9 @@ struct RautaSays: View {
     /// Lets the empty margin above the artwork overlap what is above, so a
     /// larger RAUTA fits in the same room. For a page tight on height.
     var trims = false
+    /// The line as plain text under RAUTA, with no bubble or trail: for a page
+    /// where RAUTA is the subject and its words are the page's own.
+    var plain = false
 
     @State private var showing = true
     /// Bumped by a tap on RAUTA, to say the line again.
@@ -49,9 +52,11 @@ struct RautaSays: View {
             VStack(spacing: 3) {
                 character
                     .padding(.top, trims ? -size * 0.12 : 0)
-                trail(axis: .vertical)
-                    .padding(.top, -size * 0.12)
-                    .modifier(Spoken(showing: showing, anchor: .top, reduceMotion: reduceMotion, delay: 0))
+                if !plain {
+                    trail(axis: .vertical)
+                        .padding(.top, -size * 0.12)
+                        .modifier(Spoken(showing: showing, anchor: .top, reduceMotion: reduceMotion, delay: 0))
+                }
                 panel
                     .multilineTextAlignment(.center)
                     .modifier(Spoken(showing: showing, anchor: .top, reduceMotion: reduceMotion, delay: 0.06))
@@ -80,7 +85,24 @@ struct RautaSays: View {
         .accessibilityHidden(!transient)
     }
 
-    private var panel: some View {
+    @ViewBuilder private var panel: some View {
+        if plain {
+            Text(text)
+                .font(Theme.sans(19, weight: .semibold))
+                .tracking(-0.2)
+                .lineSpacing(3)
+                .foregroundStyle(Theme.foreground)
+                .fixedSize(horizontal: false, vertical: true)
+                .contentTransition(.opacity)
+                .animation(.easeInOut(duration: 0.25), value: text)
+                .padding(.horizontal, 12)
+                .padding(.top, 6)
+        } else {
+            bubble
+        }
+    }
+
+    private var bubble: some View {
         Text(text)
             .font(Theme.sans(17, weight: .semibold))
             .tracking(-0.2)

@@ -85,6 +85,8 @@ struct CurrentExerciseAccessory: View {
                     .font(Theme.sans(compact ? 11 : 13, weight: .bold))
                     .monospacedDigit()
                     .foregroundStyle(Theme.foreground)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
             .frame(width: compact ? 42 : 52, alignment: .trailing)
             .accessibilityElement(children: .ignore)
@@ -106,6 +108,10 @@ struct ActiveExerciseDrawer: View {
     let onDismiss: () -> Void
     @State private var revealDetails = false
     @State private var resting = false
+    /// The rest's last seconds: the timer has left its corner for the
+    /// exercise's place, big enough to read from across the gym.
+    @State private var finalSeconds = false
+    @Namespace private var timerSpace
     // `.ignoresSafeArea()` below zeroes out the geometry proxy's own
     // safeAreaInsets, so the top clearance comes from the app-wide value
     // captured before anything here started ignoring the safe area.
@@ -161,15 +167,21 @@ struct ActiveExerciseDrawer: View {
                     .onTapGesture(perform: onDetail)
                     .accessibilityAddTraits(.isButton)
                     .accessibilityLabel("Open \(exercise.name) details")
+                    // In the rest's last seconds the exercise steps aside for
+                    // the timer, which takes its place.
+                    .opacity(finalSeconds ? 0 : 1)
+                    .scaleEffect(finalSeconds ? 0.9 : 1)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                    // The rest's last seconds, over the exercise, big enough
-                    // to read from across the gym.
-                    .overlay(alignment: .bottom) {
-                        FinalCountdown(until: restEnds)
-                            .frame(width: min(336, proxy.size.width - 32), height: mediaProxy.size.height)
+                    .overlay {
+                        if finalSeconds {
+                            FinalCountdown(until: restEnds)
+                                .frame(width: min(336, proxy.size.width - 32), height: mediaSize)
+                                .matchedGeometryEffect(id: "rest-timer", in: timerSpace)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                        }
                     }
             }
-            .padding(.top, Swift.max(appSafeAreaInsets.top, 18) + 32)
+            .padding(.top, Swift.max(appSafeAreaInsets.top, 18) + 60)
             .frame(maxWidth: .infinity)
             .layoutPriority(-1)
 
@@ -204,11 +216,6 @@ struct ActiveExerciseDrawer: View {
             .padding(.horizontal, Theme.Metrics.contentInset)
             .padding(.top, 18)
 
-            PlayerTimerStrip(restSeconds: restSeconds)
-                .padding(.horizontal, Theme.Metrics.contentInset)
-                .padding(.top, 12)
-                .opacity(revealDetails ? 1 : 0)
-
             ActiveSetLog(
                 exerciseId: exercise.id,
                 restSeconds: restSeconds,
@@ -225,12 +232,27 @@ struct ActiveExerciseDrawer: View {
                 .padding(.horizontal, Theme.Metrics.contentInset)
                 .padding(.bottom, Swift.max(proxy.safeAreaInsets.bottom, 14))
         }
+        // The clock, in the corner beside RAUTA. Its own layer, so its
+        // ticking never touches RAUTA or the menu RAUTA holds open.
+        .overlay(alignment: .topLeading) {
+            ZStack(alignment: .leading) {
+                if !finalSeconds {
+                    PlayerCornerTimer()
+                        .matchedGeometryEffect(id: "rest-timer", in: timerSpace)
+                        .opacity(revealDetails ? 1 : 0)
+                }
+            }
+            .frame(height: 52)
+            .padding(.top, Swift.max(appSafeAreaInsets.top, 18) + 2)
+            .padding(.leading, Theme.Metrics.contentInset + 4)
+        }
         // RAUTA keeps the workout: it holds its actions and keeps the rest.
         .overlay(alignment: .topTrailing) {
             playerRauta
                 .padding(.top, Swift.max(appSafeAreaInsets.top, 18) + 2)
                 .padding(.trailing, Theme.Metrics.contentInset + 4)
         }
+        .task(id: store.activeWorkout.session?.restUntil) { await followFinalSeconds() }
         .background {
             ZStack {
                 Theme.background
@@ -284,6 +306,28 @@ struct ActiveExerciseDrawer: View {
         }
         .background { RestRing(until: session.restUntil, total: restSeconds) }
         .task(id: store.activeWorkout.session?.restUntil) { await followRest() }
+    }
+
+    /// Moves the timer to the exercise's place for the rest's last seconds and
+    /// back to its corner once "Go" has shown.
+    private func followFinalSeconds() async {
+        func show(_ value: Bool) {
+            guard finalSeconds != value else { return }
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { finalSeconds = value }
+        }
+        guard let until = restEnds else { return show(false) }
+        let untilShowing = until.timeIntervalSinceNow - FinalCountdown.window
+        if untilShowing > 0 {
+            show(false)
+            try? await Task.sleep(for: .seconds(untilShowing))
+            guard !Task.isCancelled else { return }
+        }
+        guard FinalCountdown.isShowing(until: until) else { return show(false) }
+        show(true)
+        let untilGone = until.timeIntervalSinceNow + FinalCountdown.goHold
+        if untilGone > 0 { try? await Task.sleep(for: .seconds(untilGone)) }
+        guard !Task.isCancelled else { return }
+        show(false)
     }
 
     /// Resting while the deadline is ahead; RAUTA eases off until it passes.
