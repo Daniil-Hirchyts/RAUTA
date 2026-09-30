@@ -459,7 +459,6 @@ struct ActiveSetLog: View {
             WorkoutAudio.play(.setLogged)
             store.activeWorkout.startRest(seconds: restSeconds, exerciseName: exercise?.name, announce: false)
             issue = nil
-            Haptics.trigger(.success)
         } catch { capture(error) }
     }
 

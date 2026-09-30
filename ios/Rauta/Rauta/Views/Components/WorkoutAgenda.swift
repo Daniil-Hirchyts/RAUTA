@@ -76,7 +76,10 @@ struct WorkoutAgenda: View {
 
     @ViewBuilder private func workout(_ row: AgentSessionRow) -> some View {
         if let onOpen {
-            Button { onOpen(row.id) } label: { workoutBody(row, opens: true) }
+            Button {
+                WorkoutAudio.touch(.tap)
+                onOpen(row.id)
+            } label: { workoutBody(row, opens: true) }
                 .buttonStyle(.plain)
                 .accessibilityHint(accessory == .add ? "Adds to this workout" : "Opens this workout")
         } else {

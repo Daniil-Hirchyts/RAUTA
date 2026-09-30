@@ -84,7 +84,10 @@ struct AgentChangeCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             if undo == .available {
-                Button(action: onUndo) {
+                Button {
+                    Haptics.trigger(.selection, sound: .off)
+                    onUndo()
+                } label: {
                     Text("Undo")
                         .font(Theme.sans(15, weight: .bold))
                         .foregroundStyle(Theme.primary)
@@ -236,6 +239,7 @@ struct AgentSessionsCard: View {
             if shown.count < rows.count {
                 AgentCardDivider()
                 Button {
+                    Haptics.trigger(.selection)
                     withAnimation(Theme.Motion.settleQuick) { expanded = true }
                 } label: {
                     HStack(spacing: 6) {

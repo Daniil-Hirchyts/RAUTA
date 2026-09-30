@@ -20,6 +20,8 @@ struct ExerciseCard: View {
     var index: Int = 0
     var selectMode: Bool = false
     var selected: Bool = false
+    /// How many are chosen so far: each one picked sounds a step higher.
+    var selectionCount: Int = 0
     /// The id its detail page grows out of; unique to the grid it sits in.
     var zoomSourceID: String?
     var onOpenDetail: (ExerciseSummary) -> Void
@@ -65,7 +67,7 @@ struct ExerciseCard: View {
     private var cardButton: some View {
         Button {
             if selectMode {
-                Haptics.trigger(.selection)
+                Haptics.trigger(.selection, sound: selected ? .drop(selectionCount - 1) : .pick(selectionCount + 1))
                 onToggleSelect(exercise.id)
             } else {
                 Haptics.trigger(.light)
@@ -143,7 +145,7 @@ struct EquipmentGrid: View {
             ForEach(options, id: \.self) { equipment in
                 let checked = selected.contains(equipment)
                 Button {
-                    Haptics.trigger(.selection)
+                    Haptics.trigger(.selection, sound: checked ? .drop(selected.count - 1) : .pick(selected.count + 1))
                     onToggle(equipment)
                 } label: {
                     // Built like an exercise card: the artwork and its name

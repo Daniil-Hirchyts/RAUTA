@@ -24,6 +24,7 @@ final class RautaAgent {
     /// Whether the chat is on screen. When it is not, RAUTA says its answer in
     /// its own bubble on the tab bar instead.
     var presented = false
+    @ObservationIgnored private var answersAloud = false
     @ObservationIgnored private var settle: Task<Void, Never>?
     /// A design review is running on sample items; nothing may be written.
     @ObservationIgnored private var demo = false
@@ -88,6 +89,10 @@ final class RautaAgent {
     }
 
     private func run(_ input: String, previous: [AgentItem], turn: Int, spoken: Bool) async {
+        // A dictated turn is answered out loud, in words; RAUTA's notes would
+        // only talk over them.
+        answersAloud = spoken
+        defer { answersAloud = false }
         host.begin(input)
         let today = CalendarDate.today
         let running = ActiveWorkoutStore.shared.session != nil
@@ -301,6 +306,7 @@ final class RautaAgent {
         item.undo = undo
         items.append(item)
         freshItemId = item.id
+        if case .rauta(let text) = content, presented, !answersAloud { WorkoutAudio.voice(text) }
         if items.count > 120 { items.removeFirst(items.count - 120) }
         persist()
         return item.id

@@ -120,6 +120,7 @@ struct RautaChatSheet: View {
                 .modifier(Bob(active: working && !reduceMotion))
             Menu {
                 Button {
+                    Haptics.trigger(.selection, sound: .delete)
                     agent.startOver()
                     draft = ""
                 } label: {
@@ -224,6 +225,7 @@ struct RautaChatSheet: View {
             .overlay(alignment: .bottom) {
                 if !atBottom {
                     Button {
+                        Haptics.trigger(.selection)
                         withAnimation(.easeOut(duration: 0.3)) { proxy.scrollTo(Self.bottomID, anchor: .bottom) }
                     } label: {
                         Image(systemName: "arrow.down")
@@ -440,7 +442,9 @@ struct RautaChatSheet: View {
         Button {
             switch action {
             case .send: send()
-            case .stop: agent.stop()
+            case .stop:
+                Haptics.trigger(.selection, sound: .off)
+                agent.stop()
             case .talk, .stopDictation: dictate()
             case .none: break
             }
@@ -491,7 +495,7 @@ struct RautaChatSheet: View {
         guard canSend else { return }
         let text = draft
         draft = ""
-        Haptics.trigger(.light)
+        Haptics.trigger(.light, sound: .send)
         agent.send(text)
     }
 

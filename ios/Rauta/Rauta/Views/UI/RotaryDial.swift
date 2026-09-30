@@ -116,6 +116,6 @@ struct RotaryDial: View {
     }
     private func commit(_ next: Double) {
         let next = range.snap(next); guard next != value else { return }
-        onChange(next); Haptics.trigger(.selection)
+        Haptics.trigger(.selection, sound: next > value ? .up : .down); onChange(next)
     }
 }

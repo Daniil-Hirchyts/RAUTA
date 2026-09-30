@@ -8,9 +8,6 @@ struct SummaryWorkoutsContent: View {
     /// The timeline's past, from the screen that already keeps it split.
     let past: [Workout]
     private let trainingRecords = TrainingRecordsStore.shared
-    /// Off while Summary is away, on as it comes back: the cards arrive
-    /// against it once per visit.
-    @State private var arrived = false
 
     var body: some View {
         let completedWorkouts = past.filter { $0.completion != nil }
@@ -21,18 +18,18 @@ struct SummaryWorkoutsContent: View {
         ScrollView {
             LazyVStack(spacing: 12) {
                 ProfileIdentityCard()
-                    .summaryArrival(0)
+                    .pageArrival(0)
 
                 SummaryCardLink(page: .summaryStreak, zoomID: "summary-streak", cornerRadius: Theme.Radius.xl3) {
                     StreakStrip(workouts: completedWorkouts)
                 }
-                .summaryArrival(1)
+                .pageArrival(1)
 
                 MonthlySummaryDashboard(snapshot: month)
 
                 ProfileRecordsSection()
                     .padding(.top, 12)
-                    .summaryArrival(5)
+                    .pageArrival(5)
             }
             .padding(.horizontal, 12)
             // Enough to scroll the last card clear of the tab bar, no more.
@@ -40,12 +37,7 @@ struct SummaryWorkoutsContent: View {
         }
         .pageScroll()
         .scrollIndicators(.hidden)
-        .environment(\.summaryArrived, arrived)
-        .onAppear {
-            arrived = false
-            Task { @MainActor in arrived = true }
-        }
-        .onDisappear { arrived = false }
+        .arrivesAsPage()
     }
 }
 

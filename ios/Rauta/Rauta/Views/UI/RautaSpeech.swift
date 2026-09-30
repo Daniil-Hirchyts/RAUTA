@@ -56,7 +56,8 @@ final class RautaSpeech {
         let id = nextId
         line = Line(id: id, text: text, mood: mood, reaction: reaction)
         AccessibilityNotification.Announcement(text).post()
-        show(text)
+        // Heard only where it is seen: a line nobody is shown is not said.
+        if show(text) { WorkoutAudio.voice(text, tone: RautaPhrase.Tone(reaction: reaction, mood: mood)) }
 
         hushTask?.cancel()
         let seconds = holds ? Self.longestHold : min(7, 2.8 + Double(text.count) * 0.05)
@@ -101,9 +102,9 @@ final class RautaSpeech {
         RautaThoughts.shared.hush(id)
     }
 
-    private func show(_ text: String) {
-        guard let speaker = speakers.last, speaker.frame != .zero else { return }
-        RautaThoughts.shared.say(
+    private func show(_ text: String) -> Bool {
+        guard let speaker = speakers.last, speaker.frame != .zero else { return false }
+        return RautaThoughts.shared.say(
             id: speaker.id,
             anchor: speaker.frame,
             lift: speaker.lift,

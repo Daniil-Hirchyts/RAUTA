@@ -102,7 +102,6 @@ struct WorkoutsScreen: View {
                             id != session.currentExerciseId && !session.completedIds.contains(id)
                         },
                         onFinishExercise: {
-                            Haptics.trigger(.success)
                             WorkoutAudio.play(.exerciseDone)
                             activeWorkout.completeCurrent()
                         },
@@ -190,6 +189,10 @@ struct WorkoutsScreen: View {
         }
         .onChange(of: chatPresented) { _, presented in
             if presented { RautaSpeech.shared.hush() }
+            WorkoutAudio.touch(presented ? .open : .close)
+        }
+        .onChange(of: exercisePlayerOpen) { _, open in
+            WorkoutAudio.touch(open ? .open : .close)
         }
         .onChange(of: mainTab) { _, tab in
             if tab != .workout {
@@ -439,7 +442,6 @@ struct WorkoutsScreen: View {
     }
 
     private func presentRautaMenu() {
-        Haptics.trigger(.selection)
         WorkoutAudio.play(.menuOpen)
         RautaSpeech.shared.hush()
         rautaMenuPresented = true
@@ -625,7 +627,6 @@ struct WorkoutsScreen: View {
                             // result line; nothing more needs saying here.
                             let preview = try await TrainingWorkflow.previewAdjustedWeek(source: source)
                             try TrainingPlan.commit(preview)
-                            Haptics.trigger(.success)
                             WorkoutAudio.play(.planBuilt)
                         } catch {
                             Haptics.trigger(.warning)
@@ -802,7 +803,6 @@ struct WorkoutsScreen: View {
             Haptics.trigger(.warning)
             finishIssue = reason
         case .saved(let receipt):
-            Haptics.trigger(.success)
             WorkoutAudio.play(.workoutFinish)
             closeExercisePlayer()
             selectMainTab(.summary)

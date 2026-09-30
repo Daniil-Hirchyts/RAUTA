@@ -55,7 +55,7 @@ struct EquipmentPresets: View {
                             name: preset.name,
                             selected: sameSelection(selectedEquipment, preset.equipment),
                             onDelete: {
-                                Haptics.trigger(.warning)
+                                Haptics.trigger(.warning, sound: .delete)
                                 store.filters.deleteEquipmentPreset(preset.id)
                             }
                         ) { apply(preset.equipment) }

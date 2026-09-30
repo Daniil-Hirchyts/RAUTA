@@ -7,6 +7,8 @@ struct OnboardingScreen: View {
             onboarding: true
         ) {
             Haptics.trigger(.success)
+            var rng = SystemRandomNumberGenerator()
+            WorkoutAudio.play(RautaPhrase.arrival(using: &rng), level: 0.24, felt: 0)
             AppStore.shared.trainingProfile.completeOnboarding()
             AppStore.shared.navigation.reset([.workouts])
         }
@@ -106,7 +108,9 @@ struct ProfileStepFlow: View {
                 if index == steps.count - 1 { onFinish() }
                 else {
                     withAnimation(Theme.Motion.pageEnter) { index += 1 }
-                    Haptics.trigger(.medium)
+                    // A step further: a note that climbs with the pages.
+                    var rng = SystemRandomNumberGenerator()
+                    WorkoutAudio.play(RautaPhrase.progress(index, using: &rng), felt: 1)
                 }
             }.id(index)
         }

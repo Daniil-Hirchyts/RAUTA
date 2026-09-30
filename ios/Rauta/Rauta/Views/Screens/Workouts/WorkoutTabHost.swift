@@ -41,6 +41,8 @@ struct WorkoutTabHost: View {
             },
             set: { routes in
                 guard routes.isEmpty else { return }
+                // Swiped back or dragged down to the list.
+                if selectedWorkoutId != nil || liveWorkoutPresented { WorkoutAudio.touch(.close) }
                 detailActionState = .none
                 detailActionRequest = nil
                 selectedWorkoutId = nil
@@ -63,6 +65,9 @@ struct WorkoutTabHost: View {
                         .appZoomTransition(from: WorkoutRow.zoomSourceID(route.workoutId))
                 }
         }
+        // On the stack, not the list: coming back from a workout is not the
+        // tab opening, and the rows stay where the workout shrinks back to.
+        .arrivesAsPage(sounds: path.wrappedValue.isEmpty)
     }
 
     @ViewBuilder
@@ -118,7 +123,7 @@ struct WorkoutTabHost: View {
 
     private func openWorkout(_ workout: Workout) {
         _ = EngineWorkout.ensureEngineWorkout(workout.id)
-        Haptics.trigger(.selection)
+        Haptics.trigger(.selection, sound: .open)
         detailActionState = .none
         detailActionRequest = nil
         if activeWorkoutId == workout.id {
@@ -131,6 +136,7 @@ struct WorkoutTabHost: View {
     }
 
     private func closeWorkout() {
+        WorkoutAudio.touch(.close)
         detailActionState = .none
         detailActionRequest = nil
         selectedWorkoutId = nil

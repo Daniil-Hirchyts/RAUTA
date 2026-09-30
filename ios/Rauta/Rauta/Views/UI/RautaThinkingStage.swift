@@ -26,6 +26,8 @@ struct RautaThinkingStage: View {
 
     private static let characterSize: CGFloat = 150
     private static let thoughtSeconds: TimeInterval = 2.4
+    /// How long a ring takes to leave; three are out at a time.
+    private static let ringSeconds: TimeInterval = 2.4
 
     var body: some View {
         TimelineView(.animation(paused: reduceMotion)) { timeline in
@@ -66,9 +68,21 @@ struct RautaThinkingStage: View {
             }
         }
         .onAppear { start = Date() }
+        .task { await ponder() }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(thoughts.first ?? "Working")
         .accessibilityAddTraits(.updatesFrequently)
+    }
+
+    /// One soft note, and one soft touch, as each ring leaves RAUTA: a slow
+    /// wandering line for as long as the work takes, never the same twice.
+    private func ponder() async {
+        var degree = 2
+        var rng = SystemRandomNumberGenerator()
+        while !Task.isCancelled {
+            WorkoutAudio.play(RautaPhrase.thought(after: &degree, using: &rng), level: 0.1, felt: 0.4)
+            try? await Task.sleep(for: .seconds(Self.ringSeconds / 3))
+        }
     }
 
     // MARK: Pieces
@@ -99,7 +113,7 @@ struct RautaThinkingStage: View {
     /// Rings breathing out of RAUTA, one after another.
     private func drawRings(_ context: GraphicsContext, at center: CGPoint, time t: TimeInterval) {
         guard !reduceMotion else { return }
-        let period = 2.4
+        let period = Self.ringSeconds
         for ring in 0..<3 {
             let phase = ((t + Double(ring) * period / 3).truncatingRemainder(dividingBy: period)) / period
             let radius = 70 + 150 * phase

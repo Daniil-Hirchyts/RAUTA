@@ -285,7 +285,7 @@ struct ActiveExerciseDrawer: View {
             }
             if resting {
                 Button {
-                    Haptics.trigger(.selection)
+                    Haptics.trigger(.selection, sound: .up)
                     store.activeWorkout.extendRest(by: 30, exerciseName: exercise.name)
                 } label: {
                     Label("30 seconds more", systemImage: "plus.circle")

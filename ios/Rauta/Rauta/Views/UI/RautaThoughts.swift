@@ -121,18 +121,21 @@ final class RautaThoughts: ObservableObject {
     }
 
     /// RAUTA saying `text` from the character at `anchor`. A line from the same
-    /// character changes in place; a line never goes over an open menu.
-    func say(id: UUID, anchor: CGRect, lift: CGFloat, text: String, close: @escaping () -> Void) {
+    /// character changes in place; a line never goes over an open menu. False
+    /// when the line was not shown.
+    @discardableResult
+    func say(id: UUID, anchor: CGRect, lift: CGFloat, text: String, close: @escaping () -> Void) -> Bool {
         if let current = bubble {
-            if current.isMenu { return }
+            if current.isMenu { return false }
             if current.id == id, foldTask == nil {
                 bubble?.content = .line(text)
                 bubble?.anchor = anchor
                 bubble?.lift = lift
-                return
+                return true
             }
         }
         open(Bubble(id: id, anchor: anchor, lift: lift, content: .line(text), close: close, onDismissed: nil))
+        return bubble?.id == id
     }
 
     private func open(_ next: Bubble) {

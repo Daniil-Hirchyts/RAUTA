@@ -111,8 +111,8 @@ struct ProfileExperienceControl: View {
     private func healthToggle(_ title: String, isOn: Bool, action: @escaping () -> Void) -> some View {
         Toggle(title, isOn: Binding(
             get: { isOn },
-            set: { _ in
-                Haptics.trigger(.selection)
+            set: { value in
+                Haptics.trigger(.selection, sound: value ? .on : .off)
                 action()
             }
         ))

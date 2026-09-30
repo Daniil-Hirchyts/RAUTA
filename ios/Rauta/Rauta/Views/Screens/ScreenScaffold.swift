@@ -145,7 +145,10 @@ struct SelectionChip: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            WorkoutAudio.touch(.tick)
+            action()
+        } label: {
             Text(title)
                 .font(Theme.sans(13, weight: .semibold))
                 .foregroundStyle(selected ? Theme.primaryForeground : Theme.secondaryForeground)

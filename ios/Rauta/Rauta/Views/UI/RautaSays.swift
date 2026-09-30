@@ -132,6 +132,7 @@ struct RautaSays: View {
 
     /// Out, then — for a transient line — back in once it has been read.
     private func speak() async {
+        WorkoutAudio.voice(text, tone: RautaPhrase.Tone(reaction: reaction, mood: mood))
         guard transient else {
             showing = true
             return

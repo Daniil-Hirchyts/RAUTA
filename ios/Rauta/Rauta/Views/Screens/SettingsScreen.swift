@@ -155,22 +155,6 @@ struct SettingsScreen: View {
                             }
                         }
 
-                        #if DEBUG
-                        // Every sound, whatever the switches say: for listening
-                        // to the set on a device.
-                        section("Sound lab") {
-                            ForEach(Array(RautaSound.allCases.enumerated()), id: \.element) { index, sound in
-                                settingsAction(
-                                    title: sound.rawValue.replacingOccurrences(of: "rauta-", with: ""),
-                                    icon: "speaker.wave.2",
-                                    showsDivider: index < RautaSound.allCases.count - 1
-                                ) {
-                                    WorkoutAudio.audition(sound)
-                                }
-                            }
-                        }
-                        #endif
-
                         section("Appearance") {
                             appearanceRow
                                 .overlay(alignment: .bottom) {

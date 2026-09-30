@@ -1,0 +1,447 @@
+<title>Rauta Sound Audition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@700;900&family=Geist:wght@400;500;600&display=swap">
+<style>
+  /* Layout: one column of pack strips, each a card; a sticky bar holds the
+     view switch and the tally. Rauta's own palette and faces. */
+  :root {
+    --bg: #F6F2ED; --card: #FFFFFF; --sunk: #EFE9E2; --fg: #1C1512; --muted: #74675E;
+    --line: #E4DBD1; --accent: #F25200; --accent-ink: #FFFFFF;
+    --good: #3F8F3A; --good-ink: #FFFFFF; --bad: #D63A24; --bad-ink: #FFFFFF;
+    --dot: #B9AC9F; --dot-off: #E6DED5;
+    --display: "Doto", ui-monospace, "SF Mono", Menlo, monospace;
+    --body: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #171311; --card: #261E1A; --sunk: #1E1815; --fg: #F6F0E5; --muted: #A89A8E;
+      --line: #3A2E28; --accent: #FF5700; --accent-ink: #060606;
+      --good: #C6E7BC; --good-ink: #10240C; --bad: #FF7966; --bad-ink: #2A0702;
+      --dot: #8A7B70; --dot-off: #3C302A; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #171311; --card: #261E1A; --sunk: #1E1815; --fg: #F6F0E5; --muted: #A89A8E;
+    --line: #3A2E28; --accent: #FF5700; --accent-ink: #060606;
+    --good: #C6E7BC; --good-ink: #10240C; --bad: #FF7966; --bad-ink: #2A0702;
+    --dot: #8A7B70; --dot-off: #3C302A; color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font: 400 15px/1.45 var(--body); }
+  button, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 0; background: none; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  h1, h2, h3, p, ul { margin: 0; padding: 0; }
+  ul { list-style: none; }
+
+  .page { max-width: 760px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: flex; flex-direction: column; gap: 20px; }
+
+  .intro { display: flex; flex-direction: column; gap: 8px; }
+  .eyebrow { font: 900 13px/1 var(--display); letter-spacing: 0.18em; color: var(--accent); }
+  h1 { font: 900 38px/1 var(--display); letter-spacing: -0.01em; text-wrap: balance; }
+  .intro p { color: var(--muted); max-width: 62ch; }
+
+  .bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+    margin-inline: -16px; padding: 10px 16px; border-bottom: 1px solid var(--line);
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+  .switch { display: inline-flex; background: var(--sunk); border-radius: 999px; padding: 3px; }
+  .switch button { padding: 7px 16px; border-radius: 999px; font-weight: 500; color: var(--muted); }
+  .switch button[aria-pressed="true"] { background: var(--card); color: var(--fg); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); }
+  .tally { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .stack { display: flex; flex-direction: column; gap: 14px; }
+
+  .pack { background: var(--card); border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+  .pack > header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+  .who { min-width: 0; flex: 1 1 220px; }
+  .who h2 { font: 900 28px/1.05 var(--display); }
+  .who p { color: var(--muted); margin-top: 4px; }
+
+  .scenes { display: flex; flex-wrap: wrap; gap: 8px; }
+  .scene { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px 8px 11px; border-radius: 999px;
+    background: var(--sunk); font-weight: 500; font-size: 14px; }
+  .scene svg, .play svg { width: 12px; height: 12px; fill: currentColor; flex: none; }
+  .scene .stop, .play .stop { display: none; }
+  .is-playing .go { display: none; }
+  .is-playing .stop { display: block; }
+  .scene.is-playing { background: var(--accent); color: var(--accent-ink); }
+
+  details > summary { cursor: pointer; font-weight: 500; color: var(--muted); padding: 6px 0; list-style: none; display: flex; align-items: center; gap: 8px; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform 0.15s; }
+  details[open] > summary::before { transform: rotate(45deg); }
+  .group { font: 700 12px/1 var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); padding: 16px 0 4px; }
+
+  .clip { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .group + ul > .clip:first-child, .list > .clip:first-child { border-top: 0; }
+  .play { width: 40px; height: 40px; border-radius: 50%; background: var(--sunk); display: grid; place-items: center; }
+  .play.is-playing { background: var(--accent); color: var(--accent-ink); }
+  .what { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .what strong { font-weight: 600; }
+  .what small { color: var(--muted); font-size: 13px; }
+
+  /* A sound's outline as a dot matrix: five rows of unlit dots, lit from the
+     bottom up to the level of each slice, and swept by the accent as it plays. */
+  .shape { display: flex; gap: 2px; height: 30px; margin-top: 5px; }
+  .shape i { position: relative; width: 4px; height: 30px; flex: none;
+    background: radial-gradient(circle at 2px 3px, var(--dot-off) 1.5px, transparent 1.9px) 0 0 / 4px 6px repeat-y; }
+  .shape i::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--h) * 6px);
+    background: radial-gradient(circle at 2px 3px, var(--lit, var(--dot)) 1.5px, transparent 1.9px) 0 0 / 4px 6px repeat-y; }
+  .shape i.on { --lit: var(--accent); }
+
+  .rate { display: inline-flex; gap: 6px; flex: none; }
+  .rate button { min-width: 50px; padding: 8px 12px; border-radius: 999px; background: var(--sunk); font-weight: 500; font-size: 14px; color: var(--muted); }
+  .rate .yes[aria-pressed="true"] { background: var(--good); color: var(--good-ink); }
+  .rate .no[aria-pressed="true"] { background: var(--bad); color: var(--bad-ink); }
+
+  .picker { display: flex; flex-wrap: wrap; gap: 6px; }
+  .picker button { padding: 7px 13px; border-radius: 999px; background: var(--sunk); font-size: 14px; font-weight: 500; color: var(--muted); }
+  .picker button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+  .about { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+  .about h2 { font: 900 28px/1.05 var(--display); }
+  .about p { color: var(--muted); margin-top: 4px; }
+
+  .verdict { display: flex; flex-direction: column; gap: 12px; }
+  .verdict h2 { font: 900 24px/1.05 var(--display); }
+  .verdict label { font-weight: 500; }
+  textarea { width: 100%; border: 1px solid var(--line); border-radius: 14px; background: var(--card); padding: 12px 14px; resize: vertical; }
+  #summary { font-size: 13px; min-height: 120px; color: var(--muted); background: var(--sunk); border-color: transparent; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+  .primary { padding: 10px 18px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .status { font-size: 13px; color: var(--muted); }
+  .notice { background: var(--bad); color: var(--bad-ink); border-radius: 14px; padding: 10px 14px; font-weight: 500; }
+
+  @media (max-width: 440px) {
+    h1 { font-size: 32px; }
+    .pack { padding: 16px 14px; }
+    .clip { gap: 10px; }
+    .rate button { min-width: 44px; padding: 8px 10px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<main class="page">
+  <header class="intro">
+    <div class="eyebrow">RAUTA</div>
+    <h1>Sound audition</h1>
+    <p>Nine styles of the same fifteen sounds. Play them, mark what you like and what you don't, and the choice goes into the app. Judge them on your iPhone's speaker if you can, with the ringer on.</p>
+  </header>
+
+  <div class="bar">
+    <div class="switch" role="group" aria-label="View">
+      <button type="button" id="view-style" data-view="style" aria-pressed="true">By style</button>
+      <button type="button" id="view-sound" data-view="sound" aria-pressed="false">By sound</button>
+    </div>
+    <div class="tally" id="tally" aria-live="polite"></div>
+  </div>
+
+  <div class="notice" id="notice" hidden></div>
+  <div id="view" class="stack"></div>
+
+  <section class="verdict">
+    <h2>Your verdict</h2>
+    <label for="note">Anything else, such as "Keys, but shorter" or "mix Harp with Dot's ticks"</label>
+    <textarea id="note" rows="2"></textarea>
+    <textarea id="summary" readonly aria-label="Your verdict as text"></textarea>
+    <div class="row">
+      <button type="button" class="primary" id="copy">Copy verdict</button>
+      <span class="status" id="status"></span>
+    </div>
+  </section>
+</main>
+
+<script>
+const M = /*MANIFEST*/null;
+const KEY = "rauta-sound-audition";
+const packs = M.packs, events = M.events;
+const packById = Object.fromEntries(packs.map(p => [p.id, p]));
+const eventById = Object.fromEntries(events.map(e => [e.id, e]));
+const groups = [...new Set(events.map(e => e.group))];
+
+// What is heard together in the app, so a style is judged in sequence too.
+const SCENES = [
+  { id: "rest", name: "Rest ends", every: 1, steps: ["tick-3", "tick-2", "tick-1", "rest-over"] },
+  { id: "start", name: "Workout starts", every: 1, steps: ["tick-3", "tick-2", "tick-1", "workout-start"] },
+  { id: "work", name: "Set, exercise, finish", gap: 0.45, steps: ["set-logged", "set-logged", "exercise-done", "workout-finish"] },
+  { id: "taps", name: "Taps", gap: 0.35, steps: ["menu-open", "favorite-on", "favorite-off", "plan-built", "warning"] },
+];
+
+let state = { packs: {}, clips: {}, note: "" };
+let view = "style", chosen = events[3].id;
+
+const ICON = '<svg class="go" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.2v11.6l9.5-5.8z"/></svg><svg class="stop" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="3.5" width="9" height="9" rx="1.5"/></svg>';
+
+function rateButtons(kind, key, label) {
+  return `<span class="rate" role="group" aria-label="Verdict on ${label}">
+    <button type="button" class="yes" data-rate="${kind}:${key}:like" aria-pressed="false">Like</button>
+    <button type="button" class="no" data-rate="${kind}:${key}:no" aria-pressed="false">No</button>
+  </span>`;
+}
+
+function clipRow(pack, event, title, sub) {
+  const key = pack.id + "/" + event.id;
+  const dots = pack.clips[event.id].shape.map(h => `<i style="--h:${h}"></i>`).join("");
+  return `<li class="clip" data-clip="${key}">
+    <button type="button" class="play" data-play="${key}" aria-label="Play ${pack.name}, ${event.name}">${ICON}</button>
+    <div class="what"><strong>${title}</strong><small>${sub}</small><span class="shape" aria-hidden="true">${dots}</span></div>
+    ${rateButtons("clips", key, pack.name + ", " + event.name)}
+  </li>`;
+}
+
+function renderStyles() {
+  return packs.map((p, i) => `<section class="pack" id="${p.id}">
+    <header>
+      <div class="who"><h2>${p.name}</h2><p>${p.blurb}</p></div>
+      ${rateButtons("packs", p.id, p.name + " as a whole")}
+    </header>
+    <div class="scenes">${SCENES.map(s => `<button type="button" class="scene" data-scene="${p.id}:${s.id}">${ICON}${s.name}</button>`).join("")}</div>
+    <details${i === 0 ? " open" : ""}>
+      <summary>All ${events.length} sounds</summary>
+      ${groups.map(g => `<div class="group">${g}</div><ul>${events.filter(e => e.group === g).map(e => clipRow(p, e, e.name, e.when)).join("")}</ul>`).join("")}
+    </details>
+  </section>`).join("");
+}
+
+function renderSounds() {
+  const e = eventById[chosen];
+  return `<div class="picker" role="group" aria-label="Sound">${events.map(x => `<button type="button" data-event="${x.id}" aria-pressed="${x.id === chosen}">${x.name}</button>`).join("")}</div>
+  <section class="pack">
+    <div class="about">
+      <div><h2>${e.name}</h2><p>${e.when}</p></div>
+      <button type="button" class="scene" data-row="${e.id}">${ICON}All nine in a row</button>
+    </div>
+    <ul class="list">${packs.map(p => clipRow(p, e, p.name, p.blurb)).join("")}</ul>
+  </section>`;
+}
+
+function render() {
+  stop();
+  document.getElementById("view").innerHTML = view === "style" ? renderStyles() : renderSounds();
+  document.querySelectorAll("[data-view]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === view)));
+  sync();
+}
+
+// ---- verdict
+
+function summary() {
+  const names = value => packs.filter(p => state.packs[p.id] === value).map(p => p.name);
+  const clips = value => events.map(e => {
+    const who = packs.filter(p => state.clips[p.id + "/" + e.id] === value).map(p => p.name);
+    return who.length ? `  ${e.name}: ${who.join(", ")}` : null;
+  }).filter(Boolean);
+  const lines = [];
+  lines.push("Styles liked: " + (names("like").join(", ") || "none yet"));
+  lines.push("Styles rejected: " + (names("no").join(", ") || "none yet"));
+  const liked = clips("like"), rejected = clips("no");
+  if (liked.length) lines.push("Sounds liked:", ...liked);
+  if (rejected.length) lines.push("Sounds rejected:", ...rejected);
+  if (state.note.trim()) lines.push("Note: " + state.note.trim());
+  return lines.join("\n");
+}
+
+function sync() {
+  document.querySelectorAll("[data-rate]").forEach(b => {
+    const [kind, key, value] = b.dataset.rate.split(":");
+    b.setAttribute("aria-pressed", String(state[kind][key] === value));
+  });
+  const all = [...Object.values(state.packs), ...Object.values(state.clips)];
+  const liked = all.filter(v => v === "like").length, no = all.filter(v => v === "no").length;
+  document.getElementById("tally").textContent = all.length ? `${liked} liked · ${no} rejected` : "Nothing marked yet";
+  document.getElementById("summary").value = summary();
+  const note = document.getElementById("note");
+  if (document.activeElement !== note) note.value = state.note;
+}
+
+// ---- saving: on this device always, and where Claude can read it when the page is opened signed in
+
+let db = null, writing = false, dirty = false, saveTimer = 0;
+const STATUS = {
+  ready: "Your marks are saved as you go.",
+  saving: "Saving…",
+  saved: "Saved. Tell Claude when you're done.",
+  local: "Saved on this device only. Copy the verdict and paste it to Claude.",
+};
+function setStatus(name) { document.getElementById("status").textContent = STATUS[name]; }
+
+function keepLocal() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+function save() {
+  keepLocal();
+  if (!db) { setStatus("local"); return; }
+  setStatus("saving");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flush, 600);
+}
+
+async function flush() {
+  if (writing) { dirty = true; return; }
+  writing = true;
+  try {
+    await db.doc("audition/verdict").set({ packs: state.packs, clips: state.clips, note: state.note, summary: summary(), updatedAt: new Date().toISOString() });
+    setStatus("saved");
+  } catch (e) {
+    setStatus("local");
+  }
+  writing = false;
+  if (dirty) { dirty = false; flush(); }
+}
+
+// ---- playing
+
+let ctx = null, token = 0, raf = 0, live = [], trigger = null;
+const buffers = {}, loading = {};
+
+function audio() {
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Lets the sounds through an iPhone's silent switch where the browser allows it.
+    try { navigator.audioSession.type = "playback"; } catch (e) {}
+  }
+  if (ctx.state === "suspended") ctx.resume();
+  return ctx;
+}
+
+function load(id) {
+  if (!loading[id]) {
+    loading[id] = fetch("packs/" + id + ".wav")
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.arrayBuffer(); })
+      .then(data => new Promise((done, fail) => audio().decodeAudioData(data, done, fail)))
+      .then(buffer => (buffers[id] = buffer))
+      .catch(err => { delete loading[id]; throw err; });
+  }
+  return loading[id];
+}
+
+function stop() {
+  token++;
+  cancelAnimationFrame(raf);
+  live.forEach(item => { try { item.source.stop(); } catch (e) {} });
+  live = [];
+  document.querySelectorAll(".is-playing").forEach(el => el.classList.remove("is-playing"));
+  document.querySelectorAll(".shape i.on").forEach(el => el.classList.remove("on"));
+  trigger = null;
+}
+
+// steps: [{pack, event, at}] with `at` in seconds from the start.
+async function run(steps, button) {
+  const again = trigger === button;
+  stop();
+  if (again) return;
+  const context = audio(), mine = token;
+  trigger = button;
+  button.classList.add("is-playing");
+  try {
+    await Promise.all([...new Set(steps.map(s => s.pack))].map(load));
+  } catch (e) {
+    if (mine === token) stop();
+    const notice = document.getElementById("notice");
+    notice.textContent = "The sounds didn't load. Reload the page and try again.";
+    notice.hidden = false;
+    return;
+  }
+  if (mine !== token) return;
+  const start = context.currentTime + 0.06;
+  live = steps.map(s => {
+    const clip = packById[s.pack].clips[s.event], key = s.pack + "/" + s.event;
+    const source = context.createBufferSource();
+    source.buffer = buffers[s.pack];
+    source.connect(context.destination);
+    source.start(start + s.at, clip.at, clip.len);
+    const row = document.querySelector(`[data-clip="${key}"]`);
+    return { source, from: start + s.at, to: start + s.at + clip.len, row, dots: row ? [...row.querySelectorAll(".shape i")] : [] };
+  });
+  const end = Math.max(...live.map(item => item.to));
+  const frame = () => {
+    if (mine !== token) return;
+    const now = context.currentTime;
+    const rows = new Map();
+    for (const item of live) {
+      if (!item.row) continue;
+      const progress = (now - item.from) / (item.to - item.from);
+      const on = progress >= 0 && progress < 1;
+      if (on || !rows.has(item.row)) rows.set(item.row, on ? { item, progress } : null);
+    }
+    for (const [row, playing] of rows) {
+      const dots = row.querySelectorAll(".shape i");
+      const upTo = playing ? Math.ceil(playing.progress * dots.length) : 0;
+      dots.forEach((dot, i) => dot.classList.toggle("on", i < upTo));
+      const own = row.querySelector(".play");
+      if (own !== trigger) own.classList.toggle("is-playing", Boolean(playing));
+    }
+    if (now < end + 0.05) raf = requestAnimationFrame(frame); else stop();
+  };
+  raf = requestAnimationFrame(frame);
+}
+
+function spaced(pack, scene) {
+  let at = 0;
+  return scene.steps.map(event => {
+    const step = { pack, event, at };
+    at += scene.every || packById[pack].clips[event].len + scene.gap;
+    return step;
+  });
+}
+
+// ---- events
+
+document.addEventListener("click", e => {
+  const el = e.target.closest("button");
+  if (!el) return;
+  if (el.dataset.play) {
+    const [pack, event] = el.dataset.play.split("/");
+    run([{ pack, event, at: 0 }], el);
+  } else if (el.dataset.scene) {
+    const [pack, id] = el.dataset.scene.split(":");
+    run(spaced(pack, SCENES.find(s => s.id === id)), el);
+  } else if (el.dataset.row) {
+    let at = 0;
+    run(packs.map(p => { const step = { pack: p.id, event: el.dataset.row, at }; at += p.clips[el.dataset.row].len + 0.4; return step; }), el);
+  } else if (el.dataset.rate) {
+    const [kind, key, value] = el.dataset.rate.split(":");
+    if (state[kind][key] === value) delete state[kind][key]; else state[kind][key] = value;
+    sync();
+    save();
+  } else if (el.dataset.view) {
+    view = el.dataset.view;
+    render();
+  } else if (el.dataset.event) {
+    chosen = el.dataset.event;
+    render();
+  } else if (el.id === "copy") {
+    const text = summary(), box = document.getElementById("summary");
+    const done = () => { el.textContent = "Copied"; setTimeout(() => (el.textContent = "Copy verdict"), 1600); };
+    const pick = () => { box.focus(); box.select(); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, pick); else pick();
+  }
+});
+
+document.getElementById("note").addEventListener("input", e => {
+  state.note = e.target.value;
+  document.getElementById("summary").value = summary();
+  save();
+});
+
+// ---- start
+
+function adopt(saved) {
+  state = { packs: { ...(saved.packs || {}) }, clips: { ...(saved.clips || {}) }, note: saved.note || "" };
+}
+
+try { const raw = localStorage.getItem(KEY); if (raw) adopt(JSON.parse(raw)); } catch (e) {}
+render();
+setStatus("ready");
+
+(async () => {
+  try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch (e) { db = null; }
+  if (!db) { setStatus("local"); return; }
+  try {
+    const snap = await db.doc("audition/verdict").get();
+    if (snap.exists) { adopt(snap.data()); keepLocal(); sync(); }
+    else if (Object.keys(state.packs).length || Object.keys(state.clips).length || state.note) flush();
+  } catch (e) {
+    setStatus("local");
+  }
+})();
+</script>

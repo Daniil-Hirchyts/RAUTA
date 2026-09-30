@@ -42,6 +42,9 @@ struct AppModal<Content: View>: View {
             }
         }
         .animation(Theme.Motion.smoothOut(isPresented ? 0.25 : 0.15), value: isPresented)
+        .onChange(of: isPresented) { _, presented in
+            WorkoutAudio.touch(presented ? .open : .close)
+        }
     }
 }
 
@@ -200,11 +203,13 @@ struct ConfirmModal: View {
                             clearConfirmed = true
                             return
                         }
-                        Haptics.trigger(
-                            kind == .finishWorkout || kind == .finishWorkoutPartial
-                                ? .success
-                                : .warning
-                        )
+                        // Agreeing to something destructive is not a refusal:
+                        // it is felt as one, and heard as what it does.
+                        if kind == .finishWorkout || kind == .finishWorkoutPartial {
+                            Haptics.trigger(.success)
+                        } else {
+                            Haptics.trigger(.warning, sound: .delete)
+                        }
                         onConfirm()
                     }
                 }

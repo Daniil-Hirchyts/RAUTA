@@ -313,6 +313,7 @@ final class AppSessionStore {
         direction = .forward
         let startsModal = pages.count <= 1 || page.opensAsModal
         pages = pages + [makeEntry(page, startsModal: startsModal, zoomSource: startsModal ? source : nil)]
+        WorkoutAudio.touch(.open)
     }
 
     /// Closes the modal at `index` in ``modals`` and every modal over it — what
@@ -324,6 +325,7 @@ final class AppSessionStore {
         else { return }
         direction = .back
         pages = Array(pages.prefix(position))
+        WorkoutAudio.touch(.close)
     }
 
     /// Takes the steps pushed inside the modal at `index` from its navigation
@@ -337,12 +339,14 @@ final class AppSessionStore {
         direction = steps.count < groups[index].count - 1 ? .back : .forward
         // Modals opened over this one close with it.
         pages = Array(pages.prefix(position + 1)) + steps
+        if direction == .back { WorkoutAudio.touch(.close) }
     }
 
     func pop() {
         guard pages.count > 1 else { return }
         direction = .back
         pages = Array(pages.dropLast())
+        WorkoutAudio.touch(.close)
     }
 
     func replace(_ page: AppPage) {

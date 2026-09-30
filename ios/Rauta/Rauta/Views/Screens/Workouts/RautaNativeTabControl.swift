@@ -48,6 +48,7 @@ struct RautaNativeTabControl: View {
             }
             ForEach(actions) { action in
                 Button {
+                    WorkoutAudio.touch(.tap)
                     pendingAction = action.action
                     isPresented = false
                 } label: {

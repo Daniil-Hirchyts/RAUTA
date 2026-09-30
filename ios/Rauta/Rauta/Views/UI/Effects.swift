@@ -140,8 +140,12 @@ struct LikeButton: View {
     var body: some View {
         let button = Button {
             if !liked && animated && !reduceMotion { burst() }
-            Haptics.trigger(.selection)
-            if animated { WorkoutAudio.play(liked ? .favoriteOff : .favoriteOn) }
+            // The sound brings its own taps; without one, the plain tick.
+            if animated {
+                WorkoutAudio.play(liked ? .favoriteOff : .favoriteOn)
+            } else {
+                Haptics.trigger(.selection)
+            }
             action()
         } label: {
             heartContent

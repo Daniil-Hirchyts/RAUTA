@@ -72,6 +72,12 @@ struct WarmupScreen: View {
             .opacity(shown ? 1 : 0)
             .offset(y: shown || reduceMotion ? 0 : 16)
             .animation(.spring(response: 0.5, dampingFraction: 0.84), value: finalSeconds)
+            .onChange(of: current?.index) { before, after in
+                // The next step: two notes, heard with the phone on the floor.
+                guard let before, let after, after > before else { return }
+                var rng = SystemRandomNumberGenerator()
+                WorkoutAudio.play(RautaPhrase.step(using: &rng), on: .workout, level: 0.4, felt: 1)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background { background }
@@ -168,7 +174,7 @@ struct WarmupScreen: View {
     private var controls: some View {
         HStack(spacing: 10) {
             AppButton(variant: .secondary, size: .cta, accessibilityLabel: "One more minute of warm-up") {
-                Haptics.trigger(.selection)
+                Haptics.trigger(.selection, sound: .up)
                 store.activeWorkout.extendWarmup(by: 60)
             } label: {
                 Label("1 min", systemImage: "plus")
@@ -207,8 +213,8 @@ struct WarmupScreen: View {
     private func finish(early: Bool) {
         guard !finishing else { return }
         finishing = true
+        // Run out, it has already been sounded by the clock that ended it.
         if early { WorkoutAudio.play(.warmupOver) }
-        Haptics.trigger(.success)
         store.activeWorkout.endWarmup()
         onDone()
     }

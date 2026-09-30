@@ -157,6 +157,12 @@ struct RautaLaunchIntro: View {
         try? await Task.sleep(for: .milliseconds(120))
         let start = Date()
         self.start = start
+        // The whole entrance as one phrase, so every note lands on its frame.
+        var rng = SystemRandomNumberGenerator()
+        WorkoutAudio.play(
+            RautaPhrase.launch(arrival: Timing.arrival, landing: Timing.end, using: &rng),
+            level: 0.22, felt: 0.8
+        )
         func at(_ time: TimeInterval) async {
             try? await Task.sleep(for: .seconds(max(0, time - Date().timeIntervalSince(start))))
         }

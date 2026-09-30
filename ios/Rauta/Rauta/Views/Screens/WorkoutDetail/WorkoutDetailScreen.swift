@@ -358,6 +358,8 @@ struct WorkoutDetailScreen: View {
     private func toggleComplete(_ id: String) {
         if store.activeWorkout.session?.completedIds.contains(id) == false {
             WorkoutAudio.play(.exerciseDone)
+        } else {
+            Haptics.trigger(.selection, sound: .off)
         }
         store.activeWorkout.toggleComplete(id)
     }
@@ -375,8 +377,8 @@ struct WorkoutDetailScreen: View {
         if let refusal = outcome.refusal {
             issue = refusal
         } else {
+            // The countdown's last sound already marked the start.
             tab = 0
-            Haptics.trigger(.success)
         }
     }
 
@@ -605,12 +607,10 @@ private struct WorkoutStartCountdown: View {
         .task(id: remaining) {
             if remaining <= 0 {
                 WorkoutAudio.play(.workoutStart)
-                Haptics.trigger(.heavy)
                 onComplete()
                 return
             }
             WorkoutAudio.tick(secondsLeft: remaining)
-            Haptics.trigger(.light)
             try? await Task.sleep(for: .seconds(1))
             guard !Task.isCancelled else { return }
             remaining -= 1

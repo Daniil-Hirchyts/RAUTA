@@ -122,6 +122,8 @@ struct AppButton<Label: View>: View {
             Haptics.trigger(.warning)
             return
         }
+        // Every button is heard; what it does may say something more.
+        WorkoutAudio.touch(.tap)
         action()
     }
 }

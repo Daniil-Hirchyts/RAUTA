@@ -36,6 +36,7 @@ struct LibraryScreen: View {
             zoomPrefix: Self.zoomPrefix,
             backLabel: "Library"
         )
+        .arrivesAsPage()
         .onChange(of: browse.search) { _, _ in resetPagination() }
         .onChange(of: selectedMuscles) { _, _ in resetPagination() }
         .onChange(of: selectedEquipment) { _, _ in resetPagination() }
@@ -118,6 +119,7 @@ struct LibraryScreen: View {
         .belowPageHeader()
         .padding(32)
         .offset(y: -30)
+        .pageArrival(0)
         .animation(Theme.Motion.smoothOut(0.28), value: browse.searchOpen)
     }
 

@@ -16,7 +16,7 @@ struct AppSwitch: View {
             get: { isOn },
             set: { value in
                 guard !isDisabled, value != isOn else { return }
-                Haptics.trigger(.selection)
+                Haptics.trigger(.selection, sound: value ? .on : .off)
                 withAnimation(Theme.Motion.smoothOut(0.2)) { isOn = value }
             }
         ))

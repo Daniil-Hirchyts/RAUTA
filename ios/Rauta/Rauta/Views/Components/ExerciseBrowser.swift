@@ -124,7 +124,7 @@ struct ExerciseFilterBar: View {
                     .transition(chipMelt)
 
                     ExerciseFilterChip(title: "Favorites", selected: state.favoritesOnly) {
-                        Haptics.trigger(.selection)
+                        Haptics.trigger(.selection, sound: state.favoritesOnly ? .off : .on)
                         state.favoritesOnly.toggle()
                     }
                     .transition(chipMelt)
@@ -328,10 +328,14 @@ struct ExerciseResultsGrid: View {
                         index: index,
                         selectMode: selectMode,
                         selected: selectedIds.contains(exercise.id),
+                        selectionCount: selectedIds.count,
                         zoomSourceID: "\(zoomPrefix)-exercise:\(exercise.id)",
                         onOpenDetail: onOpenDetail,
                         onToggleSelect: onToggleSelect
                     )
+                    // On a tab's page the cards arrive a row at a time; the
+                    // rows below the first screen come with the last of it.
+                    .pageArrival(min(index / 2, 4))
                     .onAppear {
                         guard exercise.id == visible.last?.id else { return }
                         loadMore()
@@ -596,11 +600,12 @@ struct ExerciseFilterPage: View {
     }
 
     private func toggleMuscle(_ muscle: MuscleId) {
-        Haptics.trigger(.selection)
         if let index = selectedMuscles.firstIndex(of: muscle) {
             selectedMuscles.remove(at: index)
+            Haptics.trigger(.selection, sound: .drop(selectedMuscles.count))
         } else {
             selectedMuscles.append(muscle)
+            Haptics.trigger(.selection, sound: .pick(selectedMuscles.count))
         }
     }
 

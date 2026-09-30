@@ -343,12 +343,14 @@ final class ActiveWorkoutStore {
         current.accumulatedMs = ActiveWorkout.elapsedMs(current)
         current.runningSince = nil
         mutate { session = current }
+        WorkoutAudio.touch(.off)
     }
 
     func resume() {
         guard var current = session, current.runningSince == nil else { return }
         current.runningSince = ActiveWorkout.nowMillis()
         mutate { session = current }
+        WorkoutAudio.touch(.on)
     }
 
     /// Starts a rest phase from the authoritative session clock. The same

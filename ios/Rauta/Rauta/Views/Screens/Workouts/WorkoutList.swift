@@ -181,7 +181,11 @@ struct WorkoutListContent: View {
                 .belowPageHeader()
                 .padding(32)
                 .offset(y: -30)
+                .pageArrival(0)
             } else {
+                // Where each workout stands on the page, so the rows arrive
+                // one after another down it.
+                let order = Dictionary(uniqueKeysWithValues: visibleWorkouts.enumerated().map { ($1.id, $0) })
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 10) {
                         ForEach(sections) { section in
@@ -190,6 +194,7 @@ struct WorkoutListContent: View {
                                 .foregroundStyle(Theme.foreground)
                                 .padding(.horizontal, 4)
                                 .padding(.top, 8)
+                                .pageArrival(Self.arrivalOrder(section.workouts.first.flatMap { order[$0.id] }))
 
                             ForEach(section.workouts) { workout in
                                 WorkoutRow(
@@ -198,6 +203,7 @@ struct WorkoutListContent: View {
                                     isRunning: activeWorkoutId == workout.id,
                                     onOpen: { onOpen(workout) }
                                 )
+                                .pageArrival(Self.arrivalOrder(order[workout.id]))
                             }
                         }
 
@@ -225,6 +231,12 @@ struct WorkoutListContent: View {
                 return
             }
         }
+    }
+
+    /// Rows past the first screenful arrive with the last one on it: nothing
+    /// below the fold is worth waiting for.
+    private static func arrivalOrder(_ index: Int?) -> Int {
+        min(index ?? 0, 6)
     }
 
     private func monthTitle(_ isoDate: String) -> String {

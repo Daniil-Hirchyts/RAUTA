@@ -43,9 +43,12 @@ struct RautaCalendar: View {
                     let iso = CalendarDate.toISO(date)
                     return iso >= CalendarDate.today ? iso : nil
                 })
+                var sound = RautaPhrase.Touch.tick
                 switch selection {
                 case .multiple(let dates):
                     guard picked != dates.wrappedValue else { return }
+                    // Each day added sounds a step higher than the last.
+                    sound = picked.count > dates.wrappedValue.count ? .pick(picked.count) : .drop(picked.count)
                     dates.wrappedValue = picked
                 case .single(let date):
                     // The day just tapped is the one not chosen before; an
@@ -55,7 +58,7 @@ struct RautaCalendar: View {
                         date.wrappedValue = next
                     }
                 }
-                Haptics.trigger(.selection)
+                Haptics.trigger(.selection, sound: sound)
                 onChange()
             }
         )

@@ -141,7 +141,6 @@ final class RestAlerts {
 
     private func tick(_ secondsLeft: Int) {
         WorkoutAudio.tick(secondsLeft: secondsLeft)
-        if UIApplication.shared.applicationState == .active { Haptics.trigger(.light) }
     }
 
     private func finish() {
@@ -153,7 +152,6 @@ final class RestAlerts {
         WorkoutAudio.play(finished == .warmup ? .warmupOver : .restOver)
         if application.applicationState == .active {
             center.removeDeliveredNotifications(withIdentifiers: [Self.notificationID])
-            Haptics.trigger(.heavy)
         } else if application.isProtectedDataAvailable {
             // A locked phone has nothing to read; one in someone's hand, in
             // another app, gets a word on what the sound was.

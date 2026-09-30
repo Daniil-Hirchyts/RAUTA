@@ -147,7 +147,7 @@ struct MonthlySummaryDashboard: View {
                         bars: snapshot.weeklyWorkoutCounts
                     )
                 }
-                .summaryArrival(2)
+                .pageArrival(2)
 
                 SummaryCardLink(page: .summaryActivity(month: month, metric: .time), zoomID: "summary-time") {
                     SummaryMetricCard(
@@ -161,13 +161,13 @@ struct MonthlySummaryDashboard: View {
                         bars: snapshot.weeklyDurationSeconds
                     )
                 }
-                .summaryArrival(3)
+                .pageArrival(3)
             }
 
             SummaryCardLink(page: .summaryMuscles(month: month), zoomID: "summary-muscles", cornerRadius: Theme.Radius.xl3) {
                 MuscleHeatmapCard(snapshot: snapshot)
             }
-            .summaryArrival(4)
+            .pageArrival(4)
         }
         // Square cards and fixed chart columns: text grows with Dynamic Type
         // up to the point where they can still hold it.
@@ -240,7 +240,7 @@ private struct WeeklyBars: View {
     let values: [Double]
     let accent: Color
 
-    @Environment(\.summaryArrived) private var arrived
+    @Environment(\.pageArrived) private var arrived
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var maximum: Double { Swift.max(values.max() ?? 0, 1) }
@@ -410,7 +410,7 @@ struct BodyHeatmapPair: View {
     let weights: [MuscleId: Double]
     var height: CGFloat = 238
 
-    @Environment(\.summaryArrived) private var arrived
+    @Environment(\.pageArrived) private var arrived
 
     var body: some View {
         HStack(spacing: 2) {

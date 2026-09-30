@@ -58,6 +58,7 @@ struct ProfileEquipmentScreen: View {
         AppMenuButton(label: "Equipment actions", compact: true) {
             if presetEditorOpen {
                 Button {
+                    WorkoutAudio.touch(.close)
                     presetEditorOpen = false
                 } label: {
                     Label("Close preset editor", systemImage: "xmark")
@@ -80,6 +81,7 @@ struct ProfileEquipmentScreen: View {
                 .disabled(loadEquipment.isEmpty)
 
                 Button {
+                    WorkoutAudio.touch(.open)
                     presetEditorOpen = true
                 } label: {
                     Label("Create equipment preset", systemImage: "plus")

@@ -263,7 +263,6 @@ struct PlanWeekScreen: View {
             case nil:
                 phase = .choosing
             case .created(_, let sessions, _):
-                Haptics.trigger(.success)
                 WorkoutAudio.play(.planBuilt)
                 phase = .built(sessions)
             case .blocked(let block):

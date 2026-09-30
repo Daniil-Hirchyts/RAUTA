@@ -228,6 +228,112 @@ struct WorkoutFlowTests {
         #expect(RautaSound.restOver.channel == .cue)
     }
 
+    /// Every sound has a rhythm for the hand, in order, and nothing follows a
+    /// swell: its fade would swallow whatever came after.
+    @Test func everySoundHasTapsInOrder() {
+        for sound in RautaSound.allCases {
+            let taps = sound.taps
+            #expect(!taps.isEmpty, "\(sound.rawValue) has no taps")
+            #expect(taps.map(\.at) == taps.map(\.at).sorted())
+            #expect(taps.dropLast().allSatisfy { $0.length == 0 })
+        }
+    }
+
+    @Test func aPatternIsNeverPlayedTheSameWayTwice() {
+        var rng = SeededGenerator(seed: 7)
+        let taps = RautaSound.workoutFinish.taps
+        let first = Haptics.varied(taps, using: &rng)
+        let second = Haptics.varied(taps, using: &rng)
+        #expect(first != second)
+        for played in [first, second] {
+            #expect(played.count == taps.count)
+            #expect(played.map(\.at) == played.map(\.at).sorted())
+            #expect(played.allSatisfy { (0.05...1).contains($0.intensity) && (0...1).contains($0.sharpness) })
+        }
+    }
+
+    // MARK: RAUTA's voice
+
+    @Test func aLineIsSaidInTheRhythmOfItsWords() {
+        // One note a word, two for a long one, and no more than eight.
+        #expect(RautaPhrase.Sentence("Nice. Rest 90 s.").beats.count == 4)
+        #expect(RautaPhrase.Sentence("How about this one?").beats.count == 4)
+        #expect(RautaPhrase.Sentence("Trying another combination…").beats.count == 5)
+        #expect(RautaPhrase.Sentence("one two three four five six seven eight nine ten").beats.count == 8)
+        #expect(RautaPhrase.Sentence("How about this one?").ending == .question)
+        #expect(RautaPhrase.Sentence("Backed up to iCloud!").ending == .exclamation)
+        #expect(RautaPhrase.Sentence("Done! And more.").ending == .stop)
+        #expect(RautaPhrase.Sentence("2.5 kg more today.").ending == .stop)
+        #expect(RautaPhrase.Sentence("2.5 kg more today.").beats.count == 4)
+        #expect(RautaPhrase.Sentence("…").beats.count == 2)
+    }
+
+    @Test func aQuestionRisesAndAStatementFalls() {
+        for seed in UInt64(1)...40 {
+            var rng = SeededGenerator(seed: seed)
+            let question = RautaPhrase.spoken("How about this one?", using: &rng)
+            let statement = RautaPhrase.spoken("Your week is ready.", using: &rng)
+            #expect(question[question.count - 1].frequency >= question[question.count - 2].frequency)
+            #expect(statement[statement.count - 1].frequency <= statement[statement.count - 2].frequency)
+        }
+    }
+
+    @Test func theSameLineIsNotSaidTheSameWayTwice() {
+        var rng = SeededGenerator(seed: 3)
+        let said = (0..<6).map { _ in RautaPhrase.spoken("Legs are on for today, 45 minutes.", using: &rng) }
+        #expect(Set(said.map { $0.map(\.frequency) }).count > 1)
+        for notes in said {
+            #expect(notes.map(\.at) == notes.map(\.at).sorted())
+            #expect(notes.allSatisfy { RautaPhrase.voice.contains($0.frequency) })
+            #expect(SoundSynth.length(notes) < 1.6)
+        }
+    }
+
+    /// Picking climbs a note at a time and dropping comes back down it; and
+    /// of the touches one tap sets off, the one that says most is heard.
+    @Test func touchesClimbWithTheSelectionAndRankByWhatTheySay() {
+        var rng = SeededGenerator(seed: 5)
+        let picked = (1...5).map { RautaPhrase.touch(.pick($0), using: &rng).notes[0].frequency }
+        #expect(picked == picked.sorted() && Set(picked).count == 5)
+        #expect(RautaPhrase.touch(.drop(2), using: &rng).notes[0].frequency == picked[2])
+        #expect(RautaPhrase.touch(.pick(40), using: &rng).notes.allSatisfy { RautaPhrase.voice.contains($0.frequency) })
+
+        let touches: [RautaPhrase.Touch] = [
+            .tick, .tap, .press, .thud, .on, .off, .pick(1), .drop(0), .up, .down, .open, .close, .send, .delete, .success,
+        ]
+        for touch in touches {
+            let (notes, level) = RautaPhrase.touch(touch, using: &rng)
+            #expect(!notes.isEmpty && level <= 0.2, "\(touch) is louder than a touch should be")
+            #expect(SoundSynth.length(notes) < 0.9)
+        }
+        #expect(RautaPhrase.Touch.tap.rank > RautaPhrase.Touch.tick.rank)
+        #expect(RautaPhrase.Touch.open.rank > RautaPhrase.Touch.pick(1).rank)
+        #expect(RautaPhrase.Touch.success.rank > RautaPhrase.Touch.open.rank)
+        #expect(HapticInput.selection.touch == .tick)
+    }
+
+    @Test func generatedNotesStayInsideFullScale() {
+        var rng = SeededGenerator(seed: 11)
+        var degree = 2
+        let phrases = [
+            RautaPhrase.launch(arrival: 1.4, landing: 4, using: &rng),
+            RautaPhrase.arrival(using: &rng),
+            RautaPhrase.step(using: &rng),
+            RautaPhrase.progress(9, using: &rng),
+            RautaPhrase.thought(after: &degree, using: &rng),
+            RautaPhrase.spoken("All backed up to iCloud!", tone: .bright, using: &rng),
+        ]
+        for notes in phrases {
+            let samples = SoundSynth.samples(notes, level: 0.4)
+            #expect(!samples.isEmpty)
+            #expect(samples.allSatisfy { $0.isFinite && abs($0) <= 1 })
+            // It starts and ends on silence: nothing clicks.
+            #expect(abs(samples[0]) < 0.001 && abs(samples[samples.count - 1]) < 0.001)
+            #expect(!HapticTap.following(notes, weight: 0.5).isEmpty)
+        }
+        #expect((0..<RautaPhrase.pondering.count).contains(degree))
+    }
+
     // MARK: Isolation
 
     /// Runs `body` against empty stores in a throwaway storage location, with
@@ -260,5 +366,21 @@ struct WorkoutFlowTests {
         WorkoutsStore.shared.replaceAll([])
         SettingsStore.shared.update { $0.warmupSeconds = 0 }
         try await body()
+    }
+}
+
+/// Randomness that comes out the same every run, for what is drawn afresh in
+/// the app.
+private struct SeededGenerator: RandomNumberGenerator {
+    private var state: UInt64
+
+    init(seed: UInt64) { state = seed }
+
+    mutating func next() -> UInt64 {
+        state &+= 0x9E37_79B9_7F4A_7C15
+        var z = state
+        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+        return z ^ (z >> 31)
     }
 }

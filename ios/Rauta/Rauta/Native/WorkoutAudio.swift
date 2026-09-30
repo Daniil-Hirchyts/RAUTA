@@ -11,12 +11,13 @@ import UIKit
 /// podcast rather than talking over it. A moment after the last cue the session
 /// lets go and the music comes back up.
 /// The app's sounds: one family, made for Rauta by `scripts/sounds/generate.py`
-/// and bundled as `rauta-<name>.caf`.
+/// and bundled as `rauta-<name>.caf`. Soft sine tones for the cues and the
+/// taps, a marimba where something is completed. What is made on the spot —
+/// RAUTA's voice, a thought, a page arriving — is a ``RautaPhrase``.
 enum RautaSound: String, CaseIterable {
     case tick3 = "rauta-tick-3"
     case tick2 = "rauta-tick-2"
     case tick1 = "rauta-tick-1"
-    case go = "rauta-go"
     case restOver = "rauta-rest-over"
     case warmupOver = "rauta-warmup-over"
     case restStart = "rauta-rest-start"
@@ -42,13 +43,13 @@ enum RautaSound: String, CaseIterable {
 
     var channel: Channel {
         switch self {
-        case .tick3, .tick2, .tick1, .go, .restOver, .warmupOver: return .cue
+        case .tick3, .tick2, .tick1, .restOver, .warmupOver: return .cue
         case .restStart, .setLogged, .exerciseDone, .workoutStart, .workoutFinish: return .workout
         case .menuOpen, .planBuilt, .favoriteOn, .favoriteOff, .warning: return .interface
         }
     }
 
-    /// The tick for a countdown's last seconds, rising to the end.
+    /// The tick for each of a countdown's last seconds.
     static func tick(secondsLeft: Int) -> RautaSound {
         switch secondsLeft {
         case ...1: return .tick1
@@ -75,6 +76,13 @@ enum WorkoutAudio {
     /// tap never waits behind a countdown.
     private static let player = AVAudioPlayerNode()
     private static let interfacePlayer = AVAudioPlayerNode()
+    /// Touches take turns on a few nodes of their own, so a quick run of them
+    /// overlaps instead of queueing up.
+    private static let touchPlayers = (0..<3).map { _ in AVAudioPlayerNode() }
+    private static var nextTouchPlayer = 0
+    /// What this tap has set off so far; only the most telling is sounded.
+    private static var pendingTouch: RautaPhrase.Touch?
+    private static var lastTouchAt = Date.distantPast
     private static let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1)
     private static var wired = false
     private static var activeStyle: Style?
@@ -83,6 +91,11 @@ enum WorkoutAudio {
     /// Buffers still playing; the session lets go once none are.
     private static var playing = 0
     private static var buffers: [RautaSound: AVAudioPCMBuffer] = [:]
+    /// When whatever is sounding will be over. RAUTA does not talk over it.
+    private static var soundingUntil = Date.distantPast
+    /// When the last sound with something to say began. A touch made in the
+    /// same moment is left out: the sound is the answer to it.
+    private static var soundBegan = Date.distantPast
 
     /// The resting session. Set before anything can make a sound.
     static func configure() {
@@ -93,8 +106,7 @@ enum WorkoutAudio {
         voiceHolds += 1
         guard voiceHolds == 1 else { return }
         releaseTask?.cancel()
-        player.stop()
-        interfacePlayer.stop()
+        stopPlayers()
         engine.stop()
         activeStyle = nil
         playing = 0
@@ -118,34 +130,86 @@ enum WorkoutAudio {
 
     // MARK: Sounds
 
-    /// Plays one of the app's sounds, if its switch in Settings is on.
+    /// One of the app's moments: its rhythm in the hand, and its sound if
+    /// that switch in Settings is on.
     static func play(_ sound: RautaSound) {
-        let settings = SettingsStore.shared
-        switch sound.channel {
-        case .cue, .workout: guard settings.workoutSoundsEnabled else { return }
-        case .interface: guard settings.soundChimesEnabled else { return }
-        }
-        guard let buffer = buffer(for: sound) else { return }
-        play(buffer, style: sound.channel == .interface ? .chime : .cue, on: sound.channel == .interface ? interfacePlayer : player)
+        Haptics.play(sound.taps)
+        guard allows(sound.channel), let buffer = buffer(for: sound) else { return }
+        play(buffer, on: sound.channel)
     }
 
-    /// One of the last seconds of a countdown, rising to the end.
+    /// Something made on the spot, felt as it is heard. `level` is how loud
+    /// its loudest note is and `felt` how much of it reaches the hand. A
+    /// phrase that does not `interrupt` waits its turn: it is dropped while
+    /// something else is sounding, and kept out of a hand that is busy.
+    static func play(
+        _ notes: [SoundNote],
+        on channel: RautaSound.Channel = .interface,
+        level: Float = 0.2,
+        felt: Float = 0.5,
+        interrupts: Bool = true
+    ) {
+        let now = Date()
+        guard !notes.isEmpty, interrupts || now >= soundingUntil else { return }
+        if interrupts || now >= Haptics.busyUntil {
+            Haptics.play(HapticTap.following(notes, weight: felt))
+        }
+        guard allows(channel), let format,
+              let buffer = SoundSynth.buffer(notes, level: level, format: format)
+        else { return }
+        play(buffer, on: channel)
+    }
+
+    /// RAUTA saying a line: a few notes in the rhythm of its words, never the
+    /// same twice, and never over another sound.
+    static func voice(_ text: String, tone: RautaPhrase.Tone = .plain) {
+        // VoiceOver reads the line out; notes over it would only get in the way.
+        guard !UIAccessibility.isVoiceOverRunning else { return }
+        var rng = SystemRandomNumberGenerator()
+        play(RautaPhrase.spoken(text, tone: tone, using: &rng), interrupts: false)
+    }
+
+    /// The sound of touching something. A tap that sets off several — a
+    /// button that ticks, then opens a page — is heard once, as whichever says
+    /// most; and not at all under a sound that started with it.
+    static func touch(_ touch: RautaPhrase.Touch) {
+        if let pendingTouch {
+            if touch.rank > pendingTouch.rank { self.pendingTouch = touch }
+            return
+        }
+        pendingTouch = touch
+        // Sounded once everything this tap does has been done.
+        Task { @MainActor in flushTouch() }
+    }
+
+    private static func flushTouch() {
+        guard let touch = pendingTouch else { return }
+        pendingTouch = nil
+        let now = Date()
+        // A dial spun fast ticks like a dial, not like a buzzer.
+        guard allows(.interface), now.timeIntervalSince(soundBegan) > 0.12,
+              now.timeIntervalSince(lastTouchAt) > 0.03,
+              !UIAccessibility.isVoiceOverRunning, let format
+        else { return }
+        var rng = SystemRandomNumberGenerator()
+        let (notes, level) = RautaPhrase.touch(touch, using: &rng)
+        guard let buffer = SoundSynth.buffer(notes, level: level, format: format) else { return }
+        lastTouchAt = now
+        nextTouchPlayer = (nextTouchPlayer + 1) % touchPlayers.count
+        play(buffer, style: .chime, on: touchPlayers[nextTouchPlayer], options: .interrupts)
+    }
+
+    /// One of the last seconds of a countdown.
     static func tick(secondsLeft: Int = 1) {
         play(.tick(secondsLeft: secondsLeft))
     }
 
-    /// Time to go: the countdown is over.
-    static func go() {
-        play(.go)
+    private static func allows(_ channel: RautaSound.Channel) -> Bool {
+        switch channel {
+        case .cue, .workout: return SettingsStore.shared.workoutSoundsEnabled
+        case .interface: return SettingsStore.shared.soundChimesEnabled
+        }
     }
-
-    #if DEBUG
-    /// Every sound, whatever the switches say: for listening to the set.
-    static func audition(_ sound: RautaSound) {
-        guard let buffer = buffer(for: sound) else { return }
-        play(buffer, style: .cue, on: player)
-    }
-    #endif
 
     /// The bundled file, read once into memory. A file whose format does not
     /// match the player's would stop the engine, so it is refused and the
@@ -169,7 +233,19 @@ enum WorkoutAudio {
 
     // MARK: Playback
 
-    private static func play(_ buffer: AVAudioPCMBuffer, style: Style, on node: AVAudioPlayerNode) {
+    private static func play(_ buffer: AVAudioPCMBuffer, on channel: RautaSound.Channel) {
+        let seconds = Double(buffer.frameLength) / buffer.format.sampleRate
+        soundBegan = Date()
+        soundingUntil = max(soundingUntil, soundBegan.addingTimeInterval(seconds + 0.25))
+        play(buffer, style: channel == .interface ? .chime : .cue, on: channel == .interface ? interfacePlayer : player)
+    }
+
+    private static func play(
+        _ buffer: AVAudioPCMBuffer,
+        style: Style,
+        on node: AVAudioPlayerNode,
+        options: AVAudioPlayerNodeBufferOptions = []
+    ) {
         guard voiceHolds == 0, let format else { return }
         releaseTask?.cancel()
 
@@ -199,7 +275,7 @@ enum WorkoutAudio {
 
         do {
             if !wired {
-                for node in [player, interfacePlayer] {
+                for node in [player, interfacePlayer] + touchPlayers {
                     if !engine.attachedNodes.contains(node) { engine.attach(node) }
                     try engine.connectNode(node, to: engine.mainMixerNode, format: format)
                 }
@@ -214,7 +290,7 @@ enum WorkoutAudio {
             return
         }
         playing += 1
-        node.scheduleBuffer(buffer, at: nil, options: []) {
+        node.scheduleBuffer(buffer, at: nil, options: options) {
             Task { @MainActor in
                 playing = max(0, playing - 1)
                 if playing == 0 { scheduleRelease() }
@@ -232,10 +308,13 @@ enum WorkoutAudio {
 
     /// Lets go of the session a moment after the last sound, so a countdown's
     /// ticks a second apart hold the music down once instead of pumping it.
+    /// Chimes hold nothing down, so their session stays a while longer: the
+    /// next touch is heard at once instead of waiting for the engine to start.
     private static func scheduleRelease() {
         releaseTask?.cancel()
+        let linger: Double = activeStyle == .cue ? 1.3 : 8
         releaseTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(1.3))
+            try? await Task.sleep(for: .seconds(linger))
             guard !Task.isCancelled else { return }
             release()
         }
@@ -244,8 +323,7 @@ enum WorkoutAudio {
     private static func release() {
         guard voiceHolds == 0 else { return }
         releaseTask = nil
-        player.stop()
-        interfacePlayer.stop()
+        stopPlayers()
         playing = 0
         engine.stop()
         let session = AVAudioSession.sharedInstance()
@@ -254,6 +332,10 @@ enum WorkoutAudio {
         try? session.setActive(false, options: [.notifyOthersOnDeactivation])
         configure()
         activeStyle = nil
+    }
+
+    private static func stopPlayers() {
+        for node in [player, interfacePlayer] + touchPlayers { node.stop() }
     }
 
     private static func makeTone(

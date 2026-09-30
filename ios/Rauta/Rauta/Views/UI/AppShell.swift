@@ -238,7 +238,10 @@ struct AppShellHeader<Left: View, Right: View, Above: View, Below: View>: View {
                 ZStack {
                     Group {
                         if let onTitleTap {
-                            Button(action: onTitleTap) { titleLabel }
+                            Button {
+                                WorkoutAudio.touch(.tap)
+                                onTitleTap()
+                            } label: { titleLabel }
                                 .buttonStyle(.plain)
                         } else {
                             titleLabel
