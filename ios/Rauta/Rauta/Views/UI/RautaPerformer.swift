@@ -23,11 +23,19 @@ final class RautaPerformer: ObservableObject {
 
     // Where it is, and whether anyone can see it.
     private var frame: CGRect = .zero
+    /// Its laid-out width. A character being scaled down in flight keeps its
+    /// placement — and its pace — rather than turning into a badge mid-move.
+    private var layoutWidth: CGFloat = 0
     private var appeared = false
     private var onStage = true
     private var sceneActive = true
     private var reducedMotion = false
-    private var placement: RautaPlacement { RautaPlacement(width: frame.width) }
+    /// On stage but not yet in the scene: running, unseen, about to take over
+    /// from another character. It answers nobody and claims nothing.
+    private var quiet = false
+    /// A frame rate held for a piece of choreography; nil paces itself.
+    private var pinnedFramesPerSecond: Int?
+    private var placement: RautaPlacement { RautaPlacement(width: layoutWidth > 0 ? layoutWidth : frame.width) }
     private var performing: Bool { appeared && onStage && sceneActive }
 
     // How it feels.
@@ -47,6 +55,7 @@ final class RautaPerformer: ObservableObject {
     private var previousIdle: RautaIdleBeat?
     private var previousGazeDirection: RautaGazeDirection?
     private var tapTimes: [Date] = []
+    private var spinTimes: [Date] = []
     private var acknowledgementIndex = 0
     /// Triggers waiting for a mood crossfade to settle, fired on the frame.
     private var pendingTriggers: [(reaction: RautaReaction, at: Date)] = []
@@ -89,11 +98,12 @@ final class RautaPerformer: ObservableObject {
 
     // MARK: Lifecycle
 
-    func appear(mood: RautaMood, reducedMotion: Bool, onStage: Bool) {
+    func appear(mood: RautaMood, reducedMotion: Bool, onStage: Bool, quiet: Bool = false) {
         appeared = true
         baseMood = mood
         self.reducedMotion = reducedMotion
         self.onStage = onStage
+        self.quiet = quiet
         director.start()
         context = director.context.value
         subscribe()
@@ -120,9 +130,32 @@ final class RautaPerformer: ObservableObject {
         performing ? beginPerforming() : stopPerforming()
     }
 
-    func setMood(_ mood: RautaMood) {
+    /// A new mood. `blinks` false blends it in without the blink a change of
+    /// feeling usually brings — for choreography, where it would read as a cut.
+    func setMood(_ mood: RautaMood, blinks: Bool = true) {
         baseMood = mood
-        applyMood()
+        applyMood(blinks: blinks)
+    }
+
+    /// Takes the character in or out of quiet: running unseen, ready to take
+    /// over, and answering nothing until it does.
+    func setQuiet(_ value: Bool) {
+        guard value != quiet else { return }
+        quiet = value
+        if !quiet, performing { director.enter(id, frame: frame) }
+    }
+
+    /// Holds the renderer at `framesPerSecond`, or lets it pace itself again.
+    func pin(framesPerSecond: Int?) {
+        guard framesPerSecond != pinnedFramesPerSecond else { return }
+        pinnedFramesPerSecond = framesPerSecond
+        self.framesPerSecond = 0
+        refreshPlayback()
+    }
+
+    /// The eyes go to a point on screen, and come back after a moment.
+    func look(at point: CGPoint) {
+        look(toward: point, hold: 0.9)
     }
 
     func setReducedMotion(_ value: Bool) {
@@ -131,11 +164,12 @@ final class RautaPerformer: ObservableObject {
         refreshPlayback()
     }
 
-    func place(_ frame: CGRect) {
-        let resized = RautaPlacement(width: frame.width) != placement
+    func place(_ frame: CGRect, layoutWidth: CGFloat) {
+        let resized = RautaPlacement(width: layoutWidth) != placement
         self.frame = frame
+        self.layoutWidth = layoutWidth
         guard performing else { return }
-        director.enter(id, frame: frame)
+        if !quiet { director.enter(id, frame: frame) }
         if resized {
             framesPerSecond = 0
             refreshPlayback()
@@ -168,14 +202,15 @@ final class RautaPerformer: ObservableObject {
     }
 
     private func beginPerforming() {
-        director.enter(id, frame: frame)
+        if !quiet { director.enter(id, frame: frame) }
         applied = nil
         applyMood()
         enliven(for: 1.2)
         startIdle()
         // Something happened while no character was on screen — a set saved on
-        // a page without one. The first to come back answers it.
-        if let beat = director.claimUnanswered() { play(beat.reaction, source: .explicit) }
+        // a page without one. The first to come back answers it; a quiet one,
+        // waiting to take over, leaves it alone.
+        if !quiet, let beat = director.claimUnanswered() { play(beat.reaction, source: .explicit) }
     }
 
     private func stopPerforming() {
@@ -200,7 +235,7 @@ final class RautaPerformer: ObservableObject {
         return context.mood(for: baseMood, now: now)
     }
 
-    private func applyMood() {
+    private func applyMood(blinks: Bool = true) {
         guard performing else { return }
         let mood = effectiveMood
         let intensity = mood.intensity * (reducedMotion ? 0.55 : 1)
@@ -212,7 +247,7 @@ final class RautaPerformer: ObservableObject {
         moodChangedAt = Date()
         guard shifted else { return }
         // A shift of feeling is a shift of attention, and people blink on those.
-        fire(.blink)
+        if blinks { fire(.blink) }
         enliven(for: 0.9)
     }
 
@@ -266,7 +301,7 @@ final class RautaPerformer: ObservableObject {
     }
 
     private func hear(_ beat: RautaDirector.Beat) {
-        guard performing else { return }
+        guard performing, !quiet else { return }
         if director.leader == id {
             play(beat.reaction, source: .explicit)
         } else if let lead = director.frame(of: director.leader) {
@@ -308,7 +343,7 @@ final class RautaPerformer: ObservableObject {
     /// One idle thought. Returns whether it happened.
     @discardableResult
     private func idle() -> Bool {
-        guard performing, !dragging, !pressing else { return false }
+        guard performing, !quiet, !dragging, !pressing else { return false }
         let now = Self.nowMs
         guard now >= activity.ambientDueAt, !activity.isHeld(at: now) else { return false }
         let beat = RautaIdle.beat(
@@ -354,7 +389,7 @@ final class RautaPerformer: ObservableObject {
     // MARK: Attention
 
     private func notice(_ touch: RautaDirector.Touch) {
-        guard performing, !dragging, frame.width > 0 else { return }
+        guard performing, !quiet, !dragging, frame.width > 0 else { return }
         // A touch on the character itself is handled as touch, not as something
         // to look at.
         if frame.insetBy(dx: -6, dy: -6).contains(touch.point) { return }
@@ -589,7 +624,9 @@ final class RautaPerformer: ObservableObject {
             facing = 0
             facingVelocity = 0
             pushFacing()
-            play(velocity.width > 0 ? .spinRight : .spinLeft, source: .interaction)
+            let now = Date()
+            spinTimes = spinTimes.filter { now.timeIntervalSince($0) < RautaTouch.spinWindow } + [now]
+            play(RautaTouch.spin(spinTimes.count, rightward: velocity.width > 0), source: .interaction)
         } else {
             springing = true
             facingVelocity = 0
@@ -677,6 +714,17 @@ final class RautaPerformer: ObservableObject {
         }
 
         let lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+        // Choreography holds its pace: a change of rate mid-move reads as a
+        // stumble.
+        if let pinned = pinnedFramesPerSecond {
+            let target = lowPower ? min(pinned, 30) : pinned
+            rig.play()
+            if target != framesPerSecond, rig.riveView != nil {
+                framesPerSecond = target
+                rig.setPreferredFramesPerSecond(preferredFramesPerSecond: target)
+            }
+            return
+        }
         let lively = Date() < livelyUntil || dragging || pressing
         let target: Int
         if lively {

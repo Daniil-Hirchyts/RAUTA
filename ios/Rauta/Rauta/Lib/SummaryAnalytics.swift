@@ -190,23 +190,37 @@ enum SummaryAnalytics {
         var perWeek: Double
         /// What the plan aims for a week, when there is a plan.
         var target: ClosedRange<Double>?
+        /// Worked out from the exercises checked off rather than from logged
+        /// sets — a month trained without logging.
+        var estimated = false
 
         var id: MuscleId { muscle }
     }
 
+    /// The muscles a month worked, most first. Logged sets count when there
+    /// are any; a month of workouts finished without logging sets is estimated
+    /// from the exercises checked off — the Summary card and the page behind it
+    /// both read this, so they always agree.
     @MainActor
-    static func muscles(_ key: String, history: TrainingHistory, now: Date = Date()) -> [MuscleLoad] {
+    static func muscles(
+        _ key: String,
+        history: TrainingHistory,
+        workouts: [Workout] = WorkoutsStore.shared.workouts,
+        now: Date = Date()
+    ) -> [MuscleLoad] {
         let interval = monthInterval(key)
         let end = min(now, interval.end)
         let weeks = max(1, end.timeIntervalSince(interval.start) / (7 * 86_400))
-        let volume = Volume.historyVolume(
+        let precise = Volume.historyVolume(
             history,
             TrainingWorkflow.trainingIndex(),
             DEFAULT_POLICY,
             from: interval.start.timeIntervalSince1970 * 1_000,
             to: end.timeIntervalSince1970 * 1_000,
             inclusiveStart: true
-        )
+        ).mapValues(\.effective)
+        let estimated = precise.values.reduce(0, +) <= 0
+        let volume = estimated ? exerciseVolume(workouts, in: interval) : precise
         var targets: [MuscleId: ClosedRange<Double>] = [:]
         if let record = TrainingPlan.activeProgramRecord(),
            let week = ProgramRecords.toEngineProgram(record.snapshot).weeks.first {
@@ -215,9 +229,39 @@ enum SummaryAnalytics {
             }
         }
         return volume
-            .filter { $0.value.effective > 0 }
-            .map { MuscleLoad(muscle: $0.key, sets: $0.value.effective, perWeek: $0.value.effective / weeks, target: targets[$0.key]) }
+            .filter { $0.value > 0 }
+            .map {
+                MuscleLoad(
+                    muscle: $0.key, sets: $0.value, perWeek: $0.value / weeks,
+                    target: targets[$0.key], estimated: estimated
+                )
+            }
             .sorted { $0.sets == $1.sets ? $0.muscle.label < $1.muscle.label : $0.sets > $1.sets }
+    }
+
+    /// Each finished workout's exercises, a set's worth each, weighted by how
+    /// much each muscle does in them.
+    private static func exerciseVolume(_ workouts: [Workout], in interval: DateInterval) -> [MuscleId: Double] {
+        var volume: [MuscleId: Double] = [:]
+        for workout in workouts {
+            guard let completion = workout.completion,
+                  let millis = ISOTime.parse(completion.completedAt),
+                  interval.contains(Date(epochMillis: millis))
+            else { continue }
+            let exerciseIds = completion.completedExerciseIds.isEmpty
+                ? workout.exerciseIds
+                : completion.completedExerciseIds
+            for exerciseId in exerciseIds {
+                guard let exercise = ExerciseCatalogue.byId[exerciseId] else { continue }
+                for (index, muscle) in exercise.muscles.enumerated() {
+                    let involvement = exercise.muscleWeights.indices.contains(index)
+                        ? exercise.muscleWeights[index]
+                        : 1
+                    volume[muscle, default: 0] += involvement
+                }
+            }
+        }
+        return volume
     }
 
     // MARK: Records
@@ -249,7 +293,7 @@ enum SummaryAnalytics {
                     guard set.resistance.type == .externalLoad, let kg = set.resistance.kg, kg > 0 else { continue }
                     let basis = set.resistance.basis
                     let key = exercise.exerciseId + "|" + (basis?.rawValue ?? "")
-                    let estimate = kg * (1 + min(set.reps, 12) / 30)
+                    let estimate = estimatedMax(kg: kg, reps: set.reps)
                     var record = best[key] ?? ExerciseRecord(
                         exerciseId: exercise.exerciseId, heaviestKg: 0, heaviestReps: 0,
                         basis: basis, estimatedMaxKg: 0, sets: 0, lastDone: .distantPast
@@ -266,6 +310,51 @@ enum SummaryAnalytics {
             }
         }
         return best.values.sorted { $0.estimatedMaxKg > $1.estimatedMaxKg }
+    }
+
+    /// Epley's one-rep max for a set, counting at most twelve reps: past that
+    /// the estimate says more about endurance than strength.
+    static func estimatedMax(kg: Double, reps: Double) -> Double {
+        kg * (1 + min(reps, 12) / 30)
+    }
+
+    /// Whether the newest set of a workout being trained beats the best its
+    /// exercise has seen, held the same way — the history's and this
+    /// workout's earlier sets alike. An exercise trained for the first time
+    /// has no best to beat yet, so its first sets are not one.
+    static func isPersonalBest(_ draft: PersistedActiveWorkoutDraft?, history: [PersistedCompletedSession]) -> Bool {
+        struct Logged {
+            var exerciseId: String
+            var setId: String
+            var basis: LoadBasis?
+            var estimate: Double
+            var at: String
+        }
+        let logged: [Logged] = (draft?.exercises ?? []).flatMap { exercise in
+            exercise.sets.compactMap { set -> Logged? in
+                guard set.setType == .working || set.setType == .backoff,
+                      let observation = set.observation, observation.completed,
+                      let reps = observation.reps, reps > 0,
+                      let resistance = observation.resistance, resistance.type == .externalLoad,
+                      let kg = resistance.kg, kg > 0
+                else { return nil }
+                return Logged(
+                    exerciseId: exercise.exerciseId, setId: set.id, basis: resistance.basis,
+                    estimate: estimatedMax(kg: kg, reps: reps), at: observation.timestamp ?? ""
+                )
+            }
+        }
+        guard let latest = logged.max(by: { $0.at < $1.at }),
+              let before = records(history).first(where: {
+                  $0.exerciseId == latest.exerciseId && $0.basis == latest.basis
+              })
+        else { return false }
+        let earlier = logged
+            .filter { $0.setId != latest.setId && $0.exerciseId == latest.exerciseId && $0.basis == latest.basis }
+            .map(\.estimate)
+        let best = ([before.estimatedMaxKg] + earlier).max() ?? before.estimatedMaxKg
+        // A rounding hair is not a best.
+        return latest.estimate > best + 0.25
     }
 
     // MARK: Formatting

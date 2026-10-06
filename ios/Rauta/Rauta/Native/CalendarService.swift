@@ -121,7 +121,7 @@ final class CalendarService {
         guard hasAccess else { links.removeAll(); persist(); return }
         for link in links.values {
             if let event = store.event(withIdentifier: link.eventId) {
-                try? store.remove(event, span: .thisEvent)
+                Storage.attempt("Removing a calendar event") { try store.remove(event, span: .thisEvent) }
             }
         }
         links.removeAll()
@@ -136,7 +136,9 @@ final class CalendarService {
                 continue
             }
             guard let workout = WorkoutsStore.shared.workout(id) else {
-                if (try? store.remove(event, span: .thisEvent)) != nil { links[id] = nil }
+                if Storage.attempt("Removing a calendar event", { try store.remove(event, span: .thisEvent) }) != nil {
+                    links[id] = nil
+                }
                 continue
             }
             guard workout.date != link.workoutDate,
@@ -149,7 +151,7 @@ final class CalendarService {
             else { continue }
             event.startDate = newStart
             event.endDate = newEnd
-            if (try? store.save(event, span: .thisEvent)) != nil {
+            if Storage.attempt("Moving a calendar event", { try store.save(event, span: .thisEvent) }) != nil {
                 links[id] = Link(eventId: event.eventIdentifier ?? link.eventId, workoutDate: workout.date)
             }
         }

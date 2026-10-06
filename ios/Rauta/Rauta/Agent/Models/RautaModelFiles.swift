@@ -87,7 +87,6 @@ nonisolated enum RautaModelFiles {
     }
 
     /// A `LanguageModel` for `LanguageModelSession`, downloading on first load.
-    @available(iOS 27.0, *)
     static func languageModel(
         _ entry: RautaModelEntry,
         capabilities: [LanguageModelCapabilities.Capability] = [.toolCalling, .guidedGeneration]

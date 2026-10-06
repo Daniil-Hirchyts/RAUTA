@@ -44,6 +44,28 @@ final class AppStore {
         // One workout, put back together before anything can read it.
         activeWorkout.reconcileRestored()
 
+        // Everything below reaches outside the app. Under the unit tests none of
+        // it may follow what the tests do to the stores — see AppEnvironment.
+        if !AppEnvironment.isRunningTests {
+            startServices()
+        }
+
+        applyKeepAwake()
+        settings.changed
+            .sink { [weak self] in self?.applyKeepAwake() }
+            .store(in: &cancellables)
+        activeWorkout.changed
+            .sink { [weak self] in self?.applyKeepAwake() }
+            .store(in: &cancellables)
+        NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)
+            .sink { _ in AgentModelStore.shared.evict() }
+            .store(in: &cancellables)
+    }
+
+    /// The services that follow the stores out of the app: the Lock Screen,
+    /// rest alerts, reminders, the calendar, Spotlight, Health, the watch and
+    /// iCloud.
+    private func startServices() {
         LiveActivitySync.start()
         WorkoutBackgroundSession.shared.start()
         RestAlerts.shared.start()
@@ -56,19 +78,8 @@ final class AppStore {
         HealthService.shared.startAutoSync()
         WatchConnectivityService.shared.start()
         iCloud.start()
-
-        applyKeepAwake()
-        settings.changed
-            .sink { [weak self] in self?.applyKeepAwake() }
-            .store(in: &cancellables)
-        activeWorkout.changed
-            .sink { [weak self] in self?.applyKeepAwake() }
-            .store(in: &cancellables)
         workouts.changed
             .sink { [spotlightIndexing] in spotlightIndexing.request() }
-            .store(in: &cancellables)
-        NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)
-            .sink { _ in AgentModelStore.shared.evict() }
             .store(in: &cancellables)
     }
 
@@ -87,16 +98,5 @@ final class AppStore {
         trainingProfile.persist()
         trainingRecords.persist()
         activeWorkout.persist()
-    }
-}
-
-private struct AppStoreKey: EnvironmentKey {
-    @MainActor static var defaultValue: AppStore { AppStore.shared }
-}
-
-extension EnvironmentValues {
-    var appStore: AppStore {
-        get { self[AppStoreKey.self] }
-        set { self[AppStoreKey.self] = newValue }
     }
 }

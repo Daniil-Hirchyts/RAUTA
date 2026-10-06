@@ -89,6 +89,21 @@ nonisolated enum ISOTime {
 
     static func now() -> String { string(from: Date()) }
 
+    /// The same moment as `iso`, moved so that it reads as the wall-clock time
+    /// in `timeZone`. Plans keep calendar days as UTC midnights, so "now" has
+    /// to be compared with them as the person's own time of day: compared as
+    /// UTC, an evening west of Greenwich is already tomorrow.
+    static func wallClock(_ iso: String, in timeZone: TimeZone = .autoupdatingCurrent) -> Double? {
+        guard let millis = parse(iso) else { return nil }
+        return millis + Double(timeZone.secondsFromGMT(for: Date(epochMillis: millis))) * 1000
+    }
+
+    /// The calendar day, "YYYY-MM-DD", that `iso` falls on in `timeZone`.
+    static func localDay(_ iso: String, in timeZone: TimeZone = .autoupdatingCurrent) -> String {
+        guard let wall = wallClock(iso, in: timeZone) else { return String(iso.prefix(10)) }
+        return String(string(fromMillis: wall).prefix(10))
+    }
+
     static func addDays(_ iso: String, _ days: Double) -> String {
         guard let millis = parse(iso) else { return iso }
         return string(fromMillis: millis + days * DAY_MS)
@@ -116,6 +131,9 @@ nonisolated enum ISOTime {
             return formatter
         }
 
+        /// "YYYY-MM-DD" as the engine's UTC midnight. The engine files a
+        /// calendar day as that instant; ``CalendarDate`` is the same string
+        /// read as a local day, and ``ISOTime/localDay(_:in:)`` bridges the two.
         private static func calendarDayFormatter() -> DateFormatter {
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd"
@@ -146,6 +164,10 @@ nonisolated indirect enum JSONValue: Hashable, Sendable, Codable {
     var arrayValue: [JSONValue]? { if case .array(let v) = self { return v }; return nil }
     var stringValue: String? { if case .string(let v) = self { return v }; return nil }
     var numberValue: Double? { if case .number(let v) = self { return v }; return nil }
+    /// The number as an `Int`, if it is a whole number that fits. Stored and
+    /// imported JSON comes from files anyone could have written, and `Int(_:)`
+    /// on a Double such as 1e20 traps rather than failing.
+    var intValue: Int? { numberValue.flatMap { Int(exactly: $0) } }
     var boolValue: Bool? { if case .bool(let v) = self { return v }; return nil }
     var isNull: Bool { if case .null = self { return true }; return false }
 

@@ -55,7 +55,7 @@ struct SettingsScreen: View {
                             if agentModel.installed {
                                 settingsAction(title: "Remove downloaded model", icon: "trash",
                                                destructive: true, showsDivider: false) {
-                                    try? agentModel.delete()
+                                    removeModel()
                                 }
                             }
                             #endif
@@ -503,6 +503,18 @@ struct SettingsScreen: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// The model is about 2 GB; a removal that failed must say so rather than
+    /// leave it on the phone unseen.
+    private func removeModel() {
+        do {
+            try agentModel.delete()
+            Haptics.trigger(.success)
+        } catch {
+            RautaSpeech.shared.say("I couldn't remove the model. Try again in a moment.", reaction: .frustrated)
+            Haptics.trigger(.warning)
+        }
+    }
+
     private func connectHealth(_ enabled: Bool) {
         guard !connectingHealth else { return }
         guard enabled else {
@@ -535,13 +547,24 @@ struct SettingsScreen: View {
                     )
                 }
                 Haptics.trigger(.success)
+            case .denied:
+                store.settings.update {
+                    $0.appleHealthEnabled = false
+                    $0.healthStatus = .idle
+                    $0.healthBodyWeightKg = nil
+                }
+                RautaSpeech.shared.say(
+                    "Apple Health didn't allow saving workouts. Turn it on in Settings › Health › Data Access.",
+                    reaction: .frustrated
+                )
+                Haptics.trigger(.warning)
             case .unavailable:
                 store.settings.update {
                     $0.appleHealthEnabled = false
                     $0.healthStatus = .unavailable
                     $0.healthBodyWeightKg = nil
                 }
-                RautaSpeech.shared.say("Apple Health only works in the iPhone app.", reaction: .frustrated)
+                RautaSpeech.shared.say("Apple Health isn't available on this device right now.", reaction: .frustrated)
                 Haptics.trigger(.warning)
             }
         }

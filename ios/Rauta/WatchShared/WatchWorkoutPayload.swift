@@ -19,6 +19,36 @@ nonisolated struct RautaWatchWorkoutSnapshot: Codable, Equatable, Sendable {
     var accumulatedSeconds: Double
     var runningSinceMilliseconds: Double?
     var isPaused: Bool
+
+    // Version 2. Optional, so a snapshot from an older phone still decodes.
+
+    /// Where the workout is up to.
+    var phase: RautaWatchPhase? = nil
+    /// Epoch ms the opening warm-up ends, while it runs.
+    var warmupUntilMilliseconds: Double? = nil
+    /// Epoch ms the rest ends, while it runs.
+    var restUntilMilliseconds: Double? = nil
+    /// The current exercise's place in the workout, from 1.
+    var exerciseNumber: Int? = nil
+    var exerciseCount: Int? = nil
+    var nextExerciseName: String? = nil
+    /// Every set of the current exercise, so the watch can move on to the
+    /// next one by itself when a set is logged out of the phone's reach.
+    var sets: [RautaWatchSetSlot]? = nil
+}
+
+nonisolated enum RautaWatchPhase: String, Codable, Sendable {
+    case warmup, set, rest, done
+}
+
+/// One set of the current exercise, as the watch shows it.
+nonisolated struct RautaWatchSetSlot: Codable, Equatable, Sendable, Identifiable {
+    var id: String
+    var targetLoadKg: Double?
+    var targetReps: Int?
+    var done: Bool
+    var loggedLoadKg: Double? = nil
+    var loggedReps: Int? = nil
 }
 
 nonisolated struct RautaWatchSnapshotEnvelope: Codable, Equatable, Sendable {
@@ -27,6 +57,37 @@ nonisolated struct RautaWatchSnapshotEnvelope: Codable, Equatable, Sendable {
     /// so the watch wears it before a session starts. Optional so an envelope
     /// from an older phone build still decodes.
     var accent: RautaWatchAccent? = nil
+    /// Which envelope this is: higher is newer. Messages, the application
+    /// context and replies can arrive out of order; an older one is ignored.
+    var revision: Int64? = nil
+    /// The workout that ended last and how, carried until the next one starts,
+    /// so the watch saves a finished workout and discards a cancelled one.
+    var ended: RautaWatchEndedWorkout? = nil
+    /// The newest watch actions the phone has applied, so the watch can stop
+    /// counting them as waiting.
+    var appliedActionIds: [String]? = nil
+}
+
+nonisolated struct RautaWatchEndedWorkout: Codable, Equatable, Sendable {
+    nonisolated enum Outcome: String, Codable, Sendable {
+        case finished, cancelled
+    }
+
+    var workoutId: String
+    var outcome: Outcome
+}
+
+/// Something the watch asks of the workout other than logging a set.
+nonisolated struct RautaWatchControlAction: Codable, Equatable, Sendable {
+    nonisolated enum Kind: String, Codable, Sendable {
+        case pause, resume, endRest, extendRest, endWarmup
+    }
+
+    var id: String
+    var workoutId: String
+    var kind: Kind
+    /// For `extendRest`: how much longer.
+    var seconds: Double? = nil
 }
 
 /// The iPhone app's accent, as the watch draws it: `0xRRGGBB` values.
@@ -38,9 +99,9 @@ nonisolated struct RautaWatchAccent: Codable, Equatable, Sendable {
     var whiteLabel: Bool
 
     static let ember = RautaWatchAccent(
-        primary: 0xFF5700,
-        gradientStart: 0xFF6700,
-        gradientEnd: 0xFF3F00,
+        primary: RautaBrand.primary,
+        gradientStart: RautaBrand.gradientStart,
+        gradientEnd: RautaBrand.gradientEnd,
         whiteLabel: false
     )
 }
@@ -54,6 +115,9 @@ nonisolated struct RautaWatchSetAction: Codable, Equatable, Sendable {
     var reps: Int
     var restSeconds: Double
     var completedAtMilliseconds: Double?
+    /// 2 from a watch that moves on to the next set by itself. A version 1
+    /// watch could send the same set twice, out of reach of the phone.
+    var version: Int? = nil
 }
 
 /// What became of a set the watch sent: sent by the phone once its stores have
@@ -80,6 +144,7 @@ nonisolated enum RautaWatchMessageKey {
     static let received = "rauta.watch.received.v1"
     static let actionResult = "rauta.watch.action-result.v1"
     static let healthClaim = "rauta.watch.health-claim.v1"
+    static let control = "rauta.watch.control.v1"
 }
 
 /// Who writes a workout to Apple Health. Exactly one device does.

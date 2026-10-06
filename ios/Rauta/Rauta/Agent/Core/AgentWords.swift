@@ -17,6 +17,8 @@ nonisolated struct AgentWorkoutRef: Sendable, Equatable, Hashable {
 nonisolated enum AgentWords {
     // MARK: Days
 
+    /// Day arithmetic on "YYYY-MM-DD" strings, on the engine's UTC-midnight
+    /// days (Monday first), so the result never depends on the phone's zone.
     private static let calendar: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!

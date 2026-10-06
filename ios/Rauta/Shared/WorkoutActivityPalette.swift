@@ -16,16 +16,16 @@ nonisolated extension WorkoutActivityColor {
     }
 }
 
-/// The app's dark palette, resolved out of the OKLCH tokens in `index.css` so
-/// the Lock Screen card and the Dynamic Island are recognisably the same app.
+/// The app's dark palette as the Lock Screen card and the Dynamic Island draw
+/// it, so they read as the same app.
 nonisolated enum WorkoutActivityPalette {
     /// `#0e0e0f` — the shell behind every screen.
     static let background = WorkoutActivityColor(red: 0.055, green: 0.055, blue: 0.059)
-    /// `--primary`, `oklch(0.715 0.245 42.5)`, `#FF6200`.
-    static let accent = WorkoutActivityColor(red: 1.000, green: 0.384, blue: 0.000)
-    /// `--foreground`, `oklch(0.96 0 0)`.
+    /// The brand orange, for a card from a build that did not carry its accent.
+    static let accent = WorkoutActivityColor(hex: Int(RautaBrand.primary))
+    /// Text.
     static let text = WorkoutActivityColor(red: 0.949, green: 0.949, blue: 0.949)
-    /// `--muted-foreground`, `oklch(0.65 0 0)`.
+    /// Secondary text.
     static let mutedText = WorkoutActivityColor(red: 0.561, green: 0.561, blue: 0.561)
 
     /// The accent chosen in the app's Settings, carried in the activity's

@@ -1,54 +1,51 @@
 import SwiftUI
 
-/// Behind the all-time figures: the same four at the top, then the best each
-/// exercise has seen — its heaviest set, and the one-rep max that suggests.
+/// Behind the all-time figures: the best each exercise has seen — its heaviest
+/// set, and the one-rep max that suggests.
+///
+/// The card that opens the page already shows the four totals large, so the
+/// bests come first and the totals follow as one row. All time has nothing to
+/// step through, so the page has no band at its foot.
 struct SummaryRecordsScreen: View {
     private let store = AppStore.shared
 
     var body: some View {
+        let bests = SummaryAnalytics.records(store.trainingRecords.data.sessions)
         let totals = ProfileRecordsSection.Records(
             workouts: store.workouts.workouts,
             history: store.trainingRecords.trainingHistory()
         )
-        let bests = SummaryAnalytics.records(store.trainingRecords.data.sessions)
-        RautaScreen(
-            title: "Records",
-            backLabel: "Back to summary",
-            onBack: store.navigation.pop
-        ) {
-            ScrollView {
-                VStack(spacing: 16) {
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                        ProfileRecordCard(systemImage: "figure.strengthtraining.traditional", value: "\(totals.workouts)", label: "Workouts", accent: Theme.primary)
-                        ProfileRecordCard(systemImage: "timer", value: SummaryAnalytics.duration(totals.trainingSeconds), label: "Training time", accent: Theme.gold)
-                        ProfileRecordCard(systemImage: "flame.fill", value: "\(totals.bestStreak)", label: "Best streak", accent: Theme.lime)
-                        ProfileRecordCard(systemImage: "checkmark.circle", value: "\(totals.exercisesLogged)", label: "Exercises logged", accent: Theme.ember)
-                    }
-
-                    SummarySectionLabel(text: "Personal bests")
-                        .padding(.top, 4)
-                    if bests.isEmpty {
-                        Text("Log a set with a weight and its best shows up here.")
-                            .font(Theme.sans(14, weight: .medium))
-                            .foregroundStyle(Theme.mutedForeground)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 4)
-                    } else {
-                        VStack(spacing: 0) {
-                            ForEach(Array(bests.enumerated()), id: \.element.id) { index, record in
-                                if index > 0 {
-                                    Rectangle().fill(Theme.border.opacity(0.6)).frame(height: 1).padding(.leading, 72)
-                                }
-                                row(record)
-                            }
+        SummaryDetailPage(title: "Records", period: "All time") {
+            if bests.isEmpty {
+                EmptyStatePlaceholder(
+                    symbol: "trophy",
+                    title: "No personal bests yet",
+                    message: "Log a set with a weight, and the best each exercise has seen shows up here."
+                )
+                .padding(.vertical, 24)
+            } else {
+                SummarySectionLabel(text: "Personal bests")
+                VStack(spacing: 0) {
+                    ForEach(Array(bests.enumerated()), id: \.element.id) { index, record in
+                        if index > 0 {
+                            Rectangle().fill(Theme.border.opacity(0.6)).frame(height: 1).padding(.leading, 72)
                         }
-                        .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.primary, strength: 0.5) }
+                        row(record)
                     }
                 }
-                .padding(.horizontal, Theme.Metrics.contentInset)
-                .padding(.bottom, 32)
+                .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.primary, strength: 0.5) }
             }
-            .pageScroll()
+
+            SummarySectionLabel(text: "Totals")
+                .padding(.top, 8)
+            HStack(spacing: 12) {
+                SummaryStat(value: "\(totals.workouts)", label: "Workouts", accent: Theme.primary)
+                SummaryStat(value: SummaryAnalytics.duration(totals.trainingSeconds), label: "Time", accent: Theme.gold)
+                SummaryStat(value: "\(totals.bestStreak)", label: "Best streak", accent: Theme.lime)
+                SummaryStat(value: "\(totals.exercisesLogged)", label: "Exercises", accent: Theme.ember)
+            }
+            .padding(16)
+            .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.primary, strength: 0.35) }
         }
     }
 
@@ -57,6 +54,7 @@ struct SummaryRecordsScreen: View {
         let each = record.basis == .perImplement ? " each" : ""
         return Button {
             Haptics.trigger(.selection)
+            // Inside this page's stack, so Back comes back here.
             store.navigation.push(.exerciseDetail(exerciseId: record.exerciseId))
         } label: {
             HStack(spacing: 12) {
@@ -69,7 +67,7 @@ struct SummaryRecordsScreen: View {
                         .font(Theme.sans(15, weight: .semibold))
                         .foregroundStyle(Theme.foreground)
                         .lineLimit(2)
-                    Text("\(Resistance.formatKg(record.heaviestKg)) kg\(each) × \(Num.trimmed(record.heaviestReps)) · \(Wording.countLabel(record.sets, "set"))")
+                    Text("Best \(Resistance.formatKg(record.heaviestKg)) kg\(each) × \(Num.trimmed(record.heaviestReps)) · \(Wording.countLabel(record.sets, "set"))")
                         .font(Theme.sans(12, weight: .medium))
                         .foregroundStyle(Theme.mutedForeground)
                 }
@@ -83,12 +81,17 @@ struct SummaryRecordsScreen: View {
                         .kerning(0.9)
                         .foregroundStyle(Theme.mutedForeground)
                 }
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(Theme.mutedForeground.opacity(0.6))
+                    .accessibilityHidden(true)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
         .accessibilityHint("Opens the exercise")
     }
 }

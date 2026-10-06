@@ -71,7 +71,7 @@ struct PersistenceTests {
         let again = try #require(Storage.readEnvelopeFile("training", migratingKey: "legacy-training"))
         #expect(again.state == state)
 
-        Storage.writeEnvelopeFile("training", state: .object([:]), version: 4)
+        try Storage.writeEnvelopeFile("training", state: .object([:]), version: 4)
         #expect(Storage.readEnvelopeFile("training", migratingKey: "legacy-training")?.version == 4)
     }
 

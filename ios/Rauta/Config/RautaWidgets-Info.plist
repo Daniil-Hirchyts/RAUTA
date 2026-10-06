@@ -8,14 +8,14 @@
 	<string>Rauta</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
 	<string>XPC!</string>
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
@@ -25,5 +25,89 @@
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.widgetkit-extension</string>
 	</dict>
+	<key>UIAppFonts</key>
+	<array>
+		<string>RautaMask.ttf</string>
+		<string>RautaFocused0.ttf</string>
+		<string>RautaFocused1.ttf</string>
+		<string>RautaFocused2.ttf</string>
+		<string>RautaFocused3.ttf</string>
+		<string>RautaFocused4.ttf</string>
+		<string>RautaFocused5.ttf</string>
+		<string>RautaFocused6.ttf</string>
+		<string>RautaFocused7.ttf</string>
+		<string>RautaFocused8.ttf</string>
+		<string>RautaFocused9.ttf</string>
+		<string>RautaFocused10.ttf</string>
+		<string>RautaFocused11.ttf</string>
+		<string>RautaFocused12.ttf</string>
+		<string>RautaFocused13.ttf</string>
+		<string>RautaFocused14.ttf</string>
+		<string>RautaFocused15.ttf</string>
+		<string>RautaDetermined0.ttf</string>
+		<string>RautaDetermined1.ttf</string>
+		<string>RautaDetermined2.ttf</string>
+		<string>RautaDetermined3.ttf</string>
+		<string>RautaDetermined4.ttf</string>
+		<string>RautaDetermined5.ttf</string>
+		<string>RautaDetermined6.ttf</string>
+		<string>RautaDetermined7.ttf</string>
+		<string>RautaDetermined8.ttf</string>
+		<string>RautaDetermined9.ttf</string>
+		<string>RautaDetermined10.ttf</string>
+		<string>RautaDetermined11.ttf</string>
+		<string>RautaDetermined12.ttf</string>
+		<string>RautaDetermined13.ttf</string>
+		<string>RautaDetermined14.ttf</string>
+		<string>RautaDetermined15.ttf</string>
+		<string>RautaRecovering0.ttf</string>
+		<string>RautaRecovering1.ttf</string>
+		<string>RautaRecovering2.ttf</string>
+		<string>RautaRecovering3.ttf</string>
+		<string>RautaRecovering4.ttf</string>
+		<string>RautaRecovering5.ttf</string>
+		<string>RautaRecovering6.ttf</string>
+		<string>RautaRecovering7.ttf</string>
+		<string>RautaRecovering8.ttf</string>
+		<string>RautaRecovering9.ttf</string>
+		<string>RautaRecovering10.ttf</string>
+		<string>RautaRecovering11.ttf</string>
+		<string>RautaRecovering12.ttf</string>
+		<string>RautaRecovering13.ttf</string>
+		<string>RautaRecovering14.ttf</string>
+		<string>RautaRecovering15.ttf</string>
+		<string>RautaCalm0.ttf</string>
+		<string>RautaCalm1.ttf</string>
+		<string>RautaCalm2.ttf</string>
+		<string>RautaCalm3.ttf</string>
+		<string>RautaCalm4.ttf</string>
+		<string>RautaCalm5.ttf</string>
+		<string>RautaCalm6.ttf</string>
+		<string>RautaCalm7.ttf</string>
+		<string>RautaCalm8.ttf</string>
+		<string>RautaCalm9.ttf</string>
+		<string>RautaCalm10.ttf</string>
+		<string>RautaCalm11.ttf</string>
+		<string>RautaCalm12.ttf</string>
+		<string>RautaCalm13.ttf</string>
+		<string>RautaCalm14.ttf</string>
+		<string>RautaCalm15.ttf</string>
+		<string>RautaProud0.ttf</string>
+		<string>RautaProud1.ttf</string>
+		<string>RautaProud2.ttf</string>
+		<string>RautaProud3.ttf</string>
+		<string>RautaProud4.ttf</string>
+		<string>RautaProud5.ttf</string>
+		<string>RautaProud6.ttf</string>
+		<string>RautaProud7.ttf</string>
+		<string>RautaProud8.ttf</string>
+		<string>RautaProud9.ttf</string>
+		<string>RautaProud10.ttf</string>
+		<string>RautaProud11.ttf</string>
+		<string>RautaProud12.ttf</string>
+		<string>RautaProud13.ttf</string>
+		<string>RautaProud14.ttf</string>
+		<string>RautaProud15.ttf</string>
+	</array>
 </dict>
 </plist>

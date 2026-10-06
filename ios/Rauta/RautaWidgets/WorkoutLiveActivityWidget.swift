@@ -11,18 +11,20 @@ struct WorkoutLiveActivityWidget: Widget {
         ActivityConfiguration(for: WorkoutActivityAttributes.self) { context in
             LockScreenCard(
                 workoutDate: context.attributes.workoutDate,
-                state: context.state
+                state: context.state,
+                isStale: context.isStale
             )
                 .activityBackgroundTint(Color(WorkoutActivityPalette.background))
                 .activitySystemActionForegroundColor(Color(context.state.accent))
         } dynamicIsland: { context in
             DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) {
+                    RautaActivitySprite(state: context.state, resting: resting(context), size: 54)
+                        .padding(.leading, 2)
+                }
                 DynamicIslandExpandedRegion(.center) {
                     VStack(alignment: .leading, spacing: 1) {
                         HStack(spacing: 6) {
-                            RautaActivityMark(isPaused: context.state.isPaused, accent: context.state.accent)
-                                .frame(width: 22, height: 22)
-
                             Text(context.attributes.workoutDate)
                                 .font(.system(size: 12, weight: .bold))
                                 .lineLimit(1)
@@ -58,19 +60,22 @@ struct WorkoutLiveActivityWidget: Widget {
                     .padding(.top, 1)
                 }
             } compactLeading: {
-                RautaActivityMark(isPaused: context.state.isPaused, accent: context.state.accent)
-                    .frame(width: 18, height: 18)
+                RautaActivitySprite(state: context.state, resting: resting(context), size: 24)
             } compactTrailing: {
                 WorkoutTimerText(state: context.state)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Color(WorkoutActivityPalette.text))
                     .frame(maxWidth: 56, alignment: .trailing)
             } minimal: {
-                RautaActivityMark(isPaused: context.state.isPaused, accent: context.state.accent)
-                    .frame(width: 18, height: 18)
+                RautaActivitySprite(state: context.state, resting: resting(context), size: 22)
             }
             .keylineTint(Color(context.state.accent))
         }
+    }
+
+    /// A rest that ran out is over, whether or not the app has said so.
+    private func resting(_ context: ActivityViewContext<WorkoutActivityAttributes>) -> Bool {
+        !context.isStale && context.state.isResting(at: Date())
     }
 }
 
@@ -97,14 +102,18 @@ private struct StatusLabel: View {
     }
 }
 
-/// A text-first Lock Screen card. The timer is sized for an arm's-length glance;
-/// the current exercise remains beneath it, while artwork stays in the app where
-/// it has room to be useful.
+/// The Lock Screen card: RAUTA at work beside the clock, sized for an
+/// arm's-length glance, with the current exercise beneath. During a rest the
+/// clock counts the rest down and RAUTA breathes.
 private struct LockScreenCard: View {
     var workoutDate: String
     var state: WorkoutActivityAttributes.ContentState
+    var isStale: Bool
 
     var body: some View {
+        // A rest that ran out is over, whether or not the app has said so:
+        // the card goes stale at the end of the rest and is drawn again.
+        let resting = !isStale && state.isResting(at: Date())
         VStack(spacing: 4) {
             HStack(spacing: 7) {
                 Image(systemName: "calendar.fill")
@@ -112,17 +121,36 @@ private struct LockScreenCard: View {
                 Text(workoutDate)
                     .lineLimit(1)
                 Spacer(minLength: 8)
-                StatusLabel(state: state)
+                if resting {
+                    Text("REST")
+                        .font(.system(size: 11, weight: .bold))
+                        .tracking(1.2)
+                } else {
+                    StatusLabel(state: state)
+                }
             }
             .font(.system(size: 12, weight: .bold))
             .foregroundStyle(Color(state.accent))
 
-            WorkoutTimerText(state: state)
-                .font(.system(size: 70, weight: .black, design: .rounded))
-                .tracking(-2.2)
+            HStack(alignment: .center, spacing: 12) {
+                RautaActivitySprite(state: state, resting: resting, size: 72)
+
+                Group {
+                    if resting, let restUntil = state.restUntil {
+                        Text(timerInterval: Date()...max(Date(), restUntil), countsDown: true)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.55)
+                    } else {
+                        WorkoutTimerText(state: state)
+                    }
+                }
+                .font(.system(size: 64, weight: .black, design: .rounded))
+                .tracking(-2)
                 .foregroundStyle(Color(WorkoutActivityPalette.text))
                 .frame(maxWidth: .infinity, minHeight: 84, maxHeight: 84, alignment: .leading)
                 .layoutPriority(1)
+            }
 
             HStack(spacing: 6) {
                 WorkoutGlyph(isPaused: state.isPaused)

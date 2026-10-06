@@ -342,10 +342,10 @@ struct AgentSeamsTests {
     // MARK: Isolation
 
     /// Runs against empty stores kept in a temporary place, then puts the
-    /// simulator's own data back. Refuses while a workout is running there,
-    /// because clearing the workout list would end it.
+    /// simulator's own data back. A workout running there is set aside for the
+    /// test — clearing the workout list would otherwise end it — and put back
+    /// running after.
     private func withIsolatedStores(_ body: () async throws -> Void) async throws {
-        try #require(ActiveWorkoutStore.shared.session == nil, "Finish the simulator's workout first")
         let suite = "rauta-agent-tests-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         let directory = FileManager.default.temporaryDirectory
@@ -353,15 +353,21 @@ struct AgentSeamsTests {
         let previousDefaults = Storage.defaults
         let records = TrainingRecordsStore.shared.data
         let workouts = WorkoutsStore.shared.workouts
+        let running = ActiveWorkoutStore.shared.session
         Storage.defaults = defaults
         Storage.directoryOverride = directory
+        if running != nil { ActiveWorkoutStore.shared.setSession(nil, outcome: nil) }
         defer {
+            if ActiveWorkoutStore.shared.session != nil {
+                ActiveWorkoutStore.shared.setSession(nil, outcome: .cancelled)
+            }
             TrainingRecordsStore.shared.replaceAll(records)
             WorkoutsStore.shared.replaceAll(workouts)
             Storage.defaults = previousDefaults
             Storage.directoryOverride = nil
             defaults.removePersistentDomain(forName: suite)
             try? FileManager.default.removeItem(at: directory)
+            if let running { ActiveWorkoutStore.shared.setSession(running, outcome: nil) }
         }
         TrainingRecordsStore.shared.replaceAll(.empty())
         WorkoutsStore.shared.replaceAll([])

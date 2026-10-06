@@ -66,6 +66,21 @@ Debug builds also take these, each applied once the launch intro has played:
 On the simulator the agent thinks with Apple's on-device model when the Mac
 has Apple Intelligence. On an iPhone it uses the downloaded MLX model.
 
+### Screenshot arguments
+
+Debug builds also take these, for screenshots and for checking pages that need
+history or a running workout:
+
+| Argument | Effect |
+|---|---|
+| `--demo-history` | Adds ten weeks of logged push, pull and legs workouts to what is there, once; a later launch finds them and adds nothing. Use it on a test simulator, never on one holding real training. |
+| `--demo-workout` | Starts a demo workout once the launch intro has played, for the Lock Screen, the Dynamic Island and the watch. |
+| `--summary activity\|time\|streak\|muscles\|records` | Opens that page behind a Summary card. Add `--summary-month 2026-09` to open it on another month. |
+
+```bash
+scripts/ios-run.sh sim --name "Rauta Tests" --arg --demo-history --arg --summary --arg activity
+```
+
 ### Licences in Settings
 
 Settings → Policies & credits lists every Swift package and bundled font with
@@ -75,6 +90,25 @@ is generated; after adding or updating a package or a font, build once and run:
 ```bash
 scripts/generate-open-source-notices.py
 ```
+
+### RAUTA on the watch and the Lock Screen
+
+RAUTA is a Rive rig (`ios/Rauta/Media/rauta.riv`, built in the separate
+`kettlebell-bot` project). RiveRuntime has no watchOS build and WidgetKit cannot
+draw its Metal view, so the watch and the Live Activity play frames of the real
+rig instead: a sprite sheet per mood for the watch, and timer fonts for the
+Lock Screen, where stacked `Text(date, style: .timer)` views in fonts whose
+digits are frames play the loop with no updates from the app. After changing
+the rig, regenerate both:
+
+```bash
+python3 scripts/rauta-frames/build.py
+```
+
+It needs Pillow, fontTools and the `rive-mcp` renderer on the `PATH`, and writes
+`RautaWatch/RautaFrames/`, `RautaWidgets/RautaFonts/`,
+`RautaWidgets/RautaSpriteFonts.swift` and the fonts list in
+`Config/RautaWidgets-Info.plist`. The script's header explains the timing.
 
 ## TestFlight
 

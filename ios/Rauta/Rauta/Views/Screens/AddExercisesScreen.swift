@@ -86,6 +86,8 @@ struct AddExercisesScreen: View {
         .onChange(of: store.filters.selectedMuscles) { _, _ in resetPagination() }
         .onChange(of: store.filters.selectedEquipment) { _, _ in resetPagination() }
         .onChange(of: browse.favoritesOnly) { _, _ in resetPagination() }
+        // Leaving while RAUTA builds stops the build, and nothing is saved.
+        .onDisappear { proposal?.cancel() }
     }
 
     private var header: some View {
@@ -241,11 +243,15 @@ struct AddExercisesScreen: View {
                 Haptics.trigger(.medium)
                 store.navigation.selectedIds = []
                 store.navigation.openWorkout(workoutId)
-                try? await Task.sleep(for: .seconds(0.7))
-                RautaSpeech.shared.say(
-                    "Here's today's. Want another take? Tap me.",
-                    reaction: .wink
-                )
+                // Opening the workout closes this page, which cancels this
+                // task; the line that follows it there is a task of its own.
+                Task {
+                    try? await Task.sleep(for: .seconds(0.7))
+                    RautaSpeech.shared.say(
+                        "Here's today's. Want another take? Tap me.",
+                        reaction: .wink
+                    )
+                }
             } catch is CancellationError {
                 RautaSpeech.shared.hush()
             } catch {

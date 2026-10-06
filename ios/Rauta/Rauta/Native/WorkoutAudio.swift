@@ -1,20 +1,11 @@
 import AVFoundation
 import UIKit
 
-/// Every sound the app makes, played the way a navigation app speaks: over the
-/// person's music, never instead of it.
-///
-/// At rest the audio session is ambient and mixable, so nothing the app does —
-/// a chime, the animation runtime, anything — can stop what is playing. A
-/// workout cue switches to playback for its length: it is heard in silent mode
-/// and on a locked screen, lowers other audio while it sounds, and pauses a
-/// podcast rather than talking over it. A moment after the last cue the session
-/// lets go and the music comes back up.
 /// The app's sounds: one family, made for Rauta by `scripts/sounds/generate.py`
 /// and bundled as `rauta-<name>.caf`. Soft sine tones for the cues and the
 /// taps, a marimba where something is completed. What is made on the spot —
 /// RAUTA's voice, a thought, a page arriving — is a ``RautaPhrase``.
-enum RautaSound: String, CaseIterable {
+nonisolated enum RautaSound: String, CaseIterable, Sendable {
     case tick3 = "rauta-tick-3"
     case tick2 = "rauta-tick-2"
     case tick1 = "rauta-tick-1"
@@ -32,7 +23,7 @@ enum RautaSound: String, CaseIterable {
     case warning = "rauta-warning"
 
     /// Which switch in Settings it answers to, and how it is played.
-    enum Channel {
+    nonisolated enum Channel: Sendable {
         /// Countdowns and rest: heard with the phone in a pocket, over music.
         case cue
         /// The rest of a workout's moments: a set logged, a workout done.
@@ -62,80 +53,87 @@ enum RautaSound: String, CaseIterable {
     var notificationFile: String { rawValue + ".caf" }
 }
 
+/// Every sound the app makes, played the way a navigation app speaks: over the
+/// person's music, never instead of it.
+///
+/// - At rest the session is ambient, so nothing the app does can stop what is
+///   playing.
+/// - The workout's own moments — a set logged, a rest starting — play on top of
+///   the music, heard in silent mode and on a locked phone, and leave its
+///   volume alone.
+/// - Only the countdown and the end of a rest or warm-up dip the music, once
+///   for the whole countdown, and let it straight back up after.
+///
+/// Who is heard when two sounds want the same moment is ``SoundArbiter``'s to
+/// decide; ``AudioOutput`` owns the session, the engine and the players, off
+/// the main thread.
 @MainActor
 enum WorkoutAudio {
-    enum Style: Equatable {
-        /// An interface chime: quiet, mixed in, silenced by the ring switch.
-        case chime
-        /// Something the person has to hear mid-workout, phone in pocket.
-        case cue
-    }
+    /// Commands for the audio owner, in order. Built on first use, with the
+    /// owner reading them for the life of the app.
+    nonisolated private static let commands: AsyncStream<AudioCommand>.Continuation = {
+        let (stream, continuation) = AsyncStream.makeStream(of: AudioCommand.self)
+        let output = AudioOutput()
+        Task { await output.run(stream) }
+        return continuation
+    }()
 
-    private static let engine = AVAudioEngine()
-    /// Cues and workout moments on one node, the app's taps on another, so a
-    /// tap never waits behind a countdown.
-    private static let player = AVAudioPlayerNode()
-    private static let interfacePlayer = AVAudioPlayerNode()
-    /// Touches take turns on a few nodes of their own, so a quick run of them
-    /// overlaps instead of queueing up.
-    private static let touchPlayers = (0..<3).map { _ in AVAudioPlayerNode() }
-    private static var nextTouchPlayer = 0
+    private static var arbiter = SoundArbiter()
     /// What this tap has set off so far; only the most telling is sounded.
     private static var pendingTouch: RautaPhrase.Touch?
     private static var lastTouchAt = Date.distantPast
-    private static let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1)
-    private static var wired = false
-    private static var activeStyle: Style?
-    private static var releaseTask: Task<Void, Never>?
-    private static var voiceHolds = 0
-    /// Buffers still playing; the session lets go once none are.
-    private static var playing = 0
-    private static var buffers: [RautaSound: AVAudioPCMBuffer] = [:]
-    /// When whatever is sounding will be over. RAUTA does not talk over it.
-    private static var soundingUntil = Date.distantPast
+    private static var nextTouchPlayer = 0
+    private static var nextPhrasePlayer = 0
     /// When the last sound with something to say began. A touch made in the
     /// same moment is left out: the sound is the answer to it.
     private static var soundBegan = Date.distantPast
+    private static var durations: [RautaSound: TimeInterval] = [:]
+    private static var observing = false
 
     /// The resting session. Set before anything can make a sound.
     static func configure() {
-        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+        guard !AppEnvironment.isRunningTests else { return }
+        observeSystem()
+        send(.configure)
     }
 
-    static func beginVoice() throws {
-        voiceHolds += 1
-        guard voiceHolds == 1 else { return }
-        releaseTask?.cancel()
-        stopPlayers()
-        engine.stop()
-        activeStyle = nil
-        playing = 0
-        let session = AVAudioSession.sharedInstance()
-        do {
-            try session.setCategory(.playAndRecord, mode: .default,
-                                    options: [.mixWithOthers, .defaultToSpeaker])
-            try session.setActive(true)
-        } catch {
-            voiceHolds = 0
-            configure()
-            throw error
+    /// Dictation takes the session for as long as it listens. Returns once the
+    /// session is ready to record.
+    static func beginVoice() async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            commands.yield(.beginVoice(continuation))
         }
     }
 
     static func endVoice() {
-        voiceHolds = max(0, voiceHolds - 1)
-        guard voiceHolds == 0 else { return }
-        release()
+        commands.yield(.endVoice)
     }
 
     // MARK: Sounds
 
     /// One of the app's moments: its rhythm in the hand, and its sound if
-    /// that switch in Settings is on.
+    /// that switch in Settings is on. A moment that loses its turn to a
+    /// louder one is neither heard nor felt — except a refusal, which is
+    /// always felt.
     static func play(_ sound: RautaSound) {
+        let now = Date()
+        let request = SoundArbiter.Request(priority: sound.priority, rank: sound.momentRank, duration: duration(of: sound))
+        guard case .play(let silencing) = arbiter.decide(request, at: now) else {
+            if sound == .warning { Haptics.play(sound.taps) }
+            return
+        }
         Haptics.play(sound.taps)
-        guard allows(sound.channel), let buffer = buffer(for: sound) else { return }
-        play(buffer, on: sound.channel)
+        guard allows(sound.channel) else { return }
+        soundBegan = now
+        send(.play(AudioPlay(
+            source: .bundled(sound),
+            style: sound.sessionStyle,
+            player: AudioOutput.Player.player(for: sound.priority),
+            // Cues and moments never queue: each one replaces whatever is
+            // still sounding on its player, so none of them is heard late.
+            interrupting: sound.priority >= .moment,
+            silencing: silencing
+        )))
     }
 
     /// Something made on the spot, felt as it is heard. `level` is how loud
@@ -149,15 +147,40 @@ enum WorkoutAudio {
         felt: Float = 0.5,
         interrupts: Bool = true
     ) {
+        guard !notes.isEmpty else { return }
         let now = Date()
-        guard !notes.isEmpty, interrupts || now >= soundingUntil else { return }
+        let priority: SoundPriority
+        let style: AudioSessionStyle
+        switch channel {
+        case .cue: (priority, style) = (.cue, .ducking)
+        case .workout: (priority, style) = (.moment, .mixed)
+        case .interface: (priority, style) = (.phrase, .ambient)
+        }
+        let request = SoundArbiter.Request(
+            priority: priority, duration: SoundSynth.length(notes), waitsForSilence: !interrupts
+        )
+        guard case .play(let silencing) = arbiter.decide(request, at: now) else { return }
         if interrupts || now >= Haptics.busyUntil {
             Haptics.play(HapticTap.following(notes, weight: felt))
         }
-        guard allows(channel), let format,
-              let buffer = SoundSynth.buffer(notes, level: level, format: format)
-        else { return }
-        play(buffer, on: channel)
+        guard allows(channel) else { return }
+        soundBegan = now
+        let player: Int
+        if priority == .phrase {
+            // Phrases take turns on two players, so the tail of one rings on
+            // under the next instead of being cut or queued.
+            nextPhrasePlayer = (nextPhrasePlayer + 1) % AudioOutput.Player.phrases.count
+            player = AudioOutput.Player.phrases.lowerBound + nextPhrasePlayer
+        } else {
+            player = AudioOutput.Player.player(for: priority)
+        }
+        send(.play(AudioPlay(
+            source: .notes(notes, level: level),
+            style: style,
+            player: player,
+            interrupting: priority >= .moment,
+            silencing: silencing
+        )))
     }
 
     /// RAUTA saying a line: a few notes in the rhythm of its words, never the
@@ -189,19 +212,53 @@ enum WorkoutAudio {
         // A dial spun fast ticks like a dial, not like a buzzer.
         guard allows(.interface), now.timeIntervalSince(soundBegan) > 0.12,
               now.timeIntervalSince(lastTouchAt) > 0.03,
-              !UIAccessibility.isVoiceOverRunning, let format
+              !UIAccessibility.isVoiceOverRunning
         else { return }
         var rng = SystemRandomNumberGenerator()
         let (notes, level) = RautaPhrase.touch(touch, using: &rng)
-        guard let buffer = SoundSynth.buffer(notes, level: level, format: format) else { return }
+        let request = SoundArbiter.Request(priority: .touch, duration: SoundSynth.length(notes))
+        guard case .play = arbiter.decide(request, at: now) else { return }
         lastTouchAt = now
-        nextTouchPlayer = (nextTouchPlayer + 1) % touchPlayers.count
-        play(buffer, style: .chime, on: touchPlayers[nextTouchPlayer], options: .interrupts)
+        nextTouchPlayer = (nextTouchPlayer + 1) % AudioOutput.Player.touches.count
+        send(.play(AudioPlay(
+            source: .notes(notes, level: level),
+            style: .ambient,
+            player: AudioOutput.Player.touches.lowerBound + nextTouchPlayer,
+            interrupting: true,
+            silencing: nil
+        )))
     }
 
     /// One of the last seconds of a countdown.
     static func tick(secondsLeft: Int = 1) {
         play(.tick(secondsLeft: secondsLeft))
+    }
+
+    // MARK: Countdowns
+
+    /// The last seconds of a rest or warm-up, from the first tick to just
+    /// after `end` sounds at `deadline`. The music goes down once for all of
+    /// it rather than dipping with every tick, and nothing but the countdown
+    /// and the workout's own moments is heard over it.
+    static func holdCountdown(endingAt deadline: Date, with end: RautaSound) {
+        let until = deadline.addingTimeInterval(duration(of: end) + AudioSessionStyle.ducking.linger)
+        arbiter.beginCountdown(until: until)
+        guard allows(end.channel) else { return }
+        send(.holdCountdown(until: until))
+    }
+
+    /// The countdown was called off — the rest skipped, ended or replaced.
+    static func endCountdown() {
+        arbiter.endCountdown()
+        send(.endCountdown)
+    }
+
+    // MARK: Plumbing
+
+    private static func send(_ command: AudioCommand) {
+        // Under the unit tests the decisions are made but nothing sounds.
+        guard !AppEnvironment.isRunningTests else { return }
+        commands.yield(command)
     }
 
     private static func allows(_ channel: RautaSound.Channel) -> Bool {
@@ -211,163 +268,48 @@ enum WorkoutAudio {
         }
     }
 
-    /// The bundled file, read once into memory. A file whose format does not
-    /// match the player's would stop the engine, so it is refused and the
-    /// sound falls back to a plain tone rather than to nothing.
-    private static func buffer(for sound: RautaSound) -> AVAudioPCMBuffer? {
-        if let cached = buffers[sound] { return cached }
-        guard let format else { return nil }
+    /// How long a bundled sound lasts, read from its file's header once.
+    static func duration(of sound: RautaSound) -> TimeInterval {
+        if let known = durations[sound] { return known }
+        var seconds = 0.4
         if let url = Bundle.main.url(forResource: sound.rawValue, withExtension: "caf"),
            let file = try? AVAudioFile(forReading: url),
-           file.processingFormat.sampleRate == format.sampleRate,
-           file.processingFormat.channelCount == format.channelCount,
-           let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length)),
-           (try? file.read(into: buffer)) != nil {
-            buffers[sound] = buffer
-            return buffer
+           file.fileFormat.sampleRate > 0 {
+            seconds = Double(file.length) / file.fileFormat.sampleRate
         }
-        let fallback = makeTone([sound.channel == .interface ? 740 : 880], note: 0.12, gap: 0, peak: 0.3, format: format)
-        buffers[sound] = fallback
-        return fallback
+        durations[sound] = seconds
+        return seconds
     }
 
-    // MARK: Playback
-
-    private static func play(_ buffer: AVAudioPCMBuffer, on channel: RautaSound.Channel) {
-        let seconds = Double(buffer.frameLength) / buffer.format.sampleRate
-        soundBegan = Date()
-        soundingUntil = max(soundingUntil, soundBegan.addingTimeInterval(seconds + 0.25))
-        play(buffer, style: channel == .interface ? .chime : .cue, on: channel == .interface ? interfacePlayer : player)
+    /// The system's own news about audio, handed to the owner in order: a call
+    /// or another app taking the session, the media services restarting, the
+    /// engine stopping for a new route, and the app leaving the screen.
+    private static func observeSystem() {
+        guard !observing else { return }
+        observing = true
+        addObservers()
     }
 
-    private static func play(
-        _ buffer: AVAudioPCMBuffer,
-        style: Style,
-        on node: AVAudioPlayerNode,
-        options: AVAudioPlayerNodeBufferOptions = []
-    ) {
-        guard voiceHolds == 0, let format else { return }
-        releaseTask?.cancel()
-
-        let session = AVAudioSession.sharedInstance()
-        // A cue outranks a chime: once the session is set for cues it stays so
-        // until it is released.
-        let wanted: Style = activeStyle == .cue ? .cue : style
-        if wanted != activeStyle {
-            engine.stop()
-            do {
-                switch wanted {
-                case .chime:
-                    try session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
-                case .cue:
-                    try session.setCategory(
-                        .playback,
-                        mode: .voicePrompt,
-                        options: [.duckOthers, .interruptSpokenAudioAndMixWithOthers]
-                    )
-                }
-                try session.setActive(true)
-            } catch {
-                return
-            }
-            activeStyle = wanted
-        }
-
-        do {
-            if !wired {
-                for node in [player, interfacePlayer] + touchPlayers {
-                    if !engine.attachedNodes.contains(node) { engine.attach(node) }
-                    try engine.connectNode(node, to: engine.mainMixerNode, format: format)
-                }
-                wired = true
-            }
-            if !engine.isRunning {
-                engine.prepare()
-                try engine.start()
-            }
-        } catch {
-            release()
-            return
-        }
-        playing += 1
-        node.scheduleBuffer(buffer, at: nil, options: options) {
-            Task { @MainActor in
-                playing = max(0, playing - 1)
-                if playing == 0 { scheduleRelease() }
+    /// `nonisolated`: these arrive on whatever thread posted them, and each
+    /// only forwards a value.
+    nonisolated private static func addObservers() {
+        let center = NotificationCenter.default
+        // A call, an alarm or another app took the session: it is no longer
+        // ours. The app letting it go itself is posted too, and ignored.
+        center.addObserver(forName: AVAudioSession.didBecomeInactiveNotification, object: nil, queue: nil) { note in
+            let context = note.userInfo?[AVAudioSession.deactivationContextKey] as? AVAudioSession.DeactivationContext
+            if context?.source == .system {
+                commands.yield(.interrupted)
             }
         }
-        guard !node.isPlaying else { return }
-        do {
-            try node.playAudio()
-        } catch {
-            // No playback means no completion callback to release the
-            // session, so let go now rather than leave other audio ducked.
-            release()
+        center.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: nil) { _ in
+            commands.yield(.mediaReset)
         }
-    }
-
-    /// Lets go of the session a moment after the last sound, so a countdown's
-    /// ticks a second apart hold the music down once instead of pumping it.
-    /// Chimes hold nothing down, so their session stays a while longer: the
-    /// next touch is heard at once instead of waiting for the engine to start.
-    private static func scheduleRelease() {
-        releaseTask?.cancel()
-        let linger: Double = activeStyle == .cue ? 1.3 : 8
-        releaseTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(linger))
-            guard !Task.isCancelled else { return }
-            release()
+        center.addObserver(forName: .AVAudioEngineConfigurationChange, object: nil, queue: nil) { _ in
+            commands.yield(.engineChanged)
         }
-    }
-
-    private static func release() {
-        guard voiceHolds == 0 else { return }
-        releaseTask = nil
-        stopPlayers()
-        playing = 0
-        engine.stop()
-        let session = AVAudioSession.sharedInstance()
-        // Deactivating is what brings ducked music back up and resumes a paused
-        // podcast.
-        try? session.setActive(false, options: [.notifyOthersOnDeactivation])
-        configure()
-        activeStyle = nil
-    }
-
-    private static func stopPlayers() {
-        for node in [player, interfacePlayer] + touchPlayers { node.stop() }
-    }
-
-    private static func makeTone(
-        _ frequencies: [Double],
-        note: Double,
-        gap: Double,
-        peak: Float,
-        format: AVAudioFormat
-    ) -> AVAudioPCMBuffer? {
-        let sampleRate = format.sampleRate
-        let total = note * Double(frequencies.count) + gap * Double(max(0, frequencies.count - 1))
-        let frameCount = AVAudioFrameCount(sampleRate * max(total, note))
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount),
-              let channel = buffer.floatChannelData?[0]
-        else { return nil }
-        buffer.frameLength = frameCount
-        for frame in 0..<Int(frameCount) { channel[frame] = 0 }
-
-        for (index, frequency) in frequencies.enumerated() {
-            let start = Int(sampleRate * Double(index) * (note + gap))
-            let length = Int(sampleRate * note)
-            for offset in 0..<length {
-                let frame = start + offset
-                guard frame < Int(frameCount) else { break }
-                let time = Double(offset) / sampleRate
-                // A short swell and decay, so a note reads as a chime rather
-                // than a click.
-                let attack = min(1.0, time / 0.012)
-                let decay = exp(-time / (note * 0.45))
-                channel[frame] += Float(sin(2 * .pi * frequency * time)) * Float(attack * decay) * peak
-            }
+        center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: nil) { _ in
+            commands.yield(.backgrounded)
         }
-        return buffer
     }
 }

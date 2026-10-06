@@ -15,7 +15,6 @@ nonisolated struct ProgramValidationResult {
 }
 
 nonisolated enum ProgramValidation {
-    // swiftlint:disable:next cyclomatic_complexity
     static func validate(
         _ program: TrainingProgram,
         _ request: ProgramGenerationRequest,

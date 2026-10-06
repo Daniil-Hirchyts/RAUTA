@@ -303,7 +303,8 @@ enum TrainingPlan {
     ) async -> PlanPreviewOutcome? {
         let now = now ?? ISOTime.now()
         let basis = PlanBasis.current(now: now, readiness: readiness)
-        let today = String(now.prefix(10))
+        // The person's own today: the dates they picked are local days.
+        let today = ISOTime.localDay(now)
         var seen = Set<String>()
         let dates = rawDates
             .filter { date in

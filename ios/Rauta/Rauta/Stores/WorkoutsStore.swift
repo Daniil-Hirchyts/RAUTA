@@ -72,6 +72,9 @@ final class WorkoutsStore {
     static let version = 2
 
     private(set) var workouts: [Workout] = []
+    /// Moves on with every change to `workouts`, so what is derived from them
+    /// can tell they changed without comparing them.
+    private(set) var revision = 0
 
     /// Fired after every mutation, so the iCloud mirror and the session
     /// reconciler can follow the store rather than every call site.
@@ -88,6 +91,7 @@ final class WorkoutsStore {
     private func load() {
         guard let envelope = Storage.readEnvelope(Self.storageKey) else { return }
         workouts = Self.sanitize(envelope.state).workouts
+        revision += 1
     }
 
     func persist() {
@@ -101,6 +105,7 @@ final class WorkoutsStore {
 
     private func mutate(_ body: () -> Void) {
         body()
+        revision += 1
         persist()
         changed.send()
     }
@@ -291,6 +296,7 @@ final class WorkoutsStore {
 
     func replaceAll(_ next: [Workout], persisting: Bool = true) {
         workouts = next
+        revision += 1
         if persisting { persist() }
         changed.send()
     }

@@ -13,7 +13,7 @@ enum WorkoutActivityBridge {
     /// ActivityKit's `Activity` is not `Sendable`, so a change names the
     /// cards it is for, and the cards are looked up where it is applied.
     enum Change: Sendable {
-        case update(ids: [String], state: WorkoutActivityAttributes.ContentState, at: Date)
+        case update(ids: [String], state: WorkoutActivityAttributes.ContentState, stale: Date?, at: Date)
         case end(
             ids: [String],
             state: WorkoutActivityAttributes.ContentState?,
@@ -38,10 +38,10 @@ enum WorkoutActivityBridge {
     @concurrent
     private static func apply(_ change: Change) async {
         switch change {
-        case let .update(ids, state, date):
+        case let .update(ids, state, stale, date):
             for activity in Activity<WorkoutActivityAttributes>.activities where ids.contains(activity.id) {
                 await activity.update(
-                    ActivityContent(state: state, staleDate: nil),
+                    ActivityContent(state: state, staleDate: stale),
                     alertConfiguration: nil,
                     timestamp: date
                 )
@@ -85,8 +85,18 @@ enum WorkoutActivityBridge {
                 : nil,
             elapsed: content.elapsedMs / 1000,
             isPaused: content.isPaused,
-            accentHex: content.accentHex
+            accentHex: content.accentHex,
+            phase: content.phase,
+            restUntil: content.restUntilEpochMs.map { Date(epochMillis: $0) },
+            animationEpoch: Date(epochMillis: content.animationEpochMs)
         )
+    }
+
+    /// A card showing a rest goes stale when the rest ends, so the system
+    /// draws it again then — back to the workout clock — with no update from
+    /// an app that may be asleep.
+    private static func staleDate(_ content: LiveActivityContent) -> Date? {
+        content.restUntilEpochMs.map { Date(epochMillis: $0) }
     }
 
     /// Begins following this workout. A card started by a previous launch is
@@ -108,13 +118,13 @@ enum WorkoutActivityBridge {
 
         _ = try? Activity.request(
             attributes: attributes,
-            content: ActivityContent(state: state, staleDate: nil),
+            content: ActivityContent(state: state, staleDate: staleDate(content)),
             pushType: nil
         )
     }
 
     static func update(_ content: LiveActivityContent) {
-        enqueue(.update(ids: activities.map(\.id), state: state(content), at: Date()))
+        enqueue(.update(ids: activities.map(\.id), state: state(content), stale: staleDate(content), at: Date()))
     }
 
     /// A finished workout is worth a last glance; a discarded one is not, and

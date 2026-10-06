@@ -143,31 +143,41 @@ struct PoliciesScreen: View {
         .accessibilityHint("Shows the licence")
     }
 
+    /// A row that opens a page in the browser. An address that does not parse
+    /// leaves the row as plain text rather than taking the screen down.
+    @ViewBuilder
     private func linkRow(title: String, detail: String, icon name: String, url: String, showsDivider: Bool) -> some View {
-        Link(destination: URL(string: url)!) {
-            VStack(spacing: 0) {
-                HStack(spacing: 12) {
-                    icon(name)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(title)
-                            .font(Theme.sans(15, weight: .semibold))
-                            .foregroundStyle(Theme.foreground)
-                        Text(detail)
-                            .font(Theme.sans(13, weight: .medium))
-                            .foregroundStyle(Theme.mutedForeground)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 12, weight: .bold))
+        let label = linkLabel(title: title, detail: detail, icon: name, showsDivider: showsDivider)
+        if let destination = URL(string: url) {
+            Link(destination: destination) { label }
+                .buttonStyle(.plain)
+        } else {
+            label
+        }
+    }
+
+    private func linkLabel(title: String, detail: String, icon name: String, showsDivider: Bool) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                icon(name)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(Theme.sans(15, weight: .semibold))
+                        .foregroundStyle(Theme.foreground)
+                    Text(detail)
+                        .font(Theme.sans(13, weight: .medium))
                         .foregroundStyle(Theme.mutedForeground)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                divider(showsDivider)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(Theme.mutedForeground)
             }
-            .contentShape(Rectangle())
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            divider(showsDivider)
         }
-        .buttonStyle(.plain)
+        .contentShape(Rectangle())
     }
 }
 

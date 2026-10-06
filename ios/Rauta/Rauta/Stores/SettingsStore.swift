@@ -154,4 +154,17 @@ final class SettingsStore {
     var keepAwake: Bool { preferences.keepAwake }
     var appearance: AppAppearance { preferences.appearance }
     var accent: AppAccent { AppAccent(storage: preferences.accent) }
+
+    /// Each change of accent, and nothing else: not the accent in use when it
+    /// is subscribed to, and not a save that left the accent as it was. What
+    /// follows the accent out of the app — the Lock Screen card, the watch,
+    /// the theme — listens here.
+    var accentChanges: AnyPublisher<AppAccent, Never> {
+        changed
+            .map { [unowned self] in accent }
+            .prepend(accent)
+            .removeDuplicates()
+            .dropFirst()
+            .eraseToAnyPublisher()
+    }
 }

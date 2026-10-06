@@ -51,7 +51,7 @@ enum AccentPreset: String, CaseIterable, Identifiable, Sendable {
 
     fileprivate var dark: UInt32 {
         switch self {
-        case .ember: return 0xFF5700
+        case .ember: return RautaBrand.primary
         case .amber: return 0xFFB020
         case .volt: return 0xC6F432
         case .emerald: return 0x22D39A
@@ -110,7 +110,12 @@ extension AppAccent {
     var signature: AccentSignature {
         switch self {
         case .preset(.ember):
-            return AccentSignature(primary: 0xFF5700, gradientStart: 0xFF6700, gradientEnd: 0xFF3F00, whiteLabel: false)
+            return AccentSignature(
+                primary: RautaBrand.primary,
+                gradientStart: RautaBrand.gradientStart,
+                gradientEnd: RautaBrand.gradientEnd,
+                whiteLabel: false
+            )
         case .preset(let preset):
             let dark = HSB(hex: preset.dark)
             return AccentSignature(
@@ -206,12 +211,12 @@ struct ThemePalette {
         foreground: Color(light: 0x1C1512, dark: 0xF6F0E5),
         card: Color(light: 0xFFFFFF, dark: 0x261E1A),
         popover: Color(light: 0xFFFFFF, dark: 0x211915),
-        primary: Color(light: 0xF25200, dark: 0xFF5700),
+        primary: Color(light: 0xF25200, dark: RautaBrand.primary),
         primarySoft: Color(light: 0xF46A1E, dark: 0xFF7E38),
         primarySofter: Color(light: 0xE0662A, dark: 0xFF9B68),
-        primaryForeground: Color(hex: 0x060606),
-        primaryGradientStart: Color(hex: 0xFF6700),
-        primaryGradientEnd: Color(hex: 0xFF3F00),
+        primaryForeground: Color(hex: RautaBrand.onPrimary),
+        primaryGradientStart: Color(hex: RautaBrand.gradientStart),
+        primaryGradientEnd: Color(hex: RautaBrand.gradientEnd),
         secondary: Color(light: 0xEFE8E0, dark: 0x302620),
         secondaryForeground: Color(light: 0x3B2F28, dark: 0xE9DFD2),
         muted: Color(light: 0xEDE6DE, dark: 0x2B231E),
@@ -265,7 +270,7 @@ struct ThemePalette {
             primary: pair(light.color, dark.color),
             primarySoft: pair(accent(0.8, 0.877, 1.008, from: light), accent(0.6, 0.780, 1, from: dark)),
             primarySofter: pair(accent(-0.7, 0.812, 0.925, from: light), accent(-0.2, 0.592, 1, from: dark)),
-            primaryForeground: whiteLabel ? .white : Color(hex: 0x060606),
+            primaryForeground: whiteLabel ? .white : Color(hex: RautaBrand.onPrimary),
             primaryGradientStart: Color(uiColor: dark.shifted(3.8).color),
             primaryGradientEnd: Color(uiColor: dark.shifted(-5.6).color),
             secondary: pair(neutral(11.5, 0.063, 0.937), neutral(2.0, 0.333, 0.188)),
@@ -322,7 +327,7 @@ struct HSB: Hashable, Sendable {
     var brightness: Double
 
     /// The brand orange's hue, which every hue shift is measured from.
-    static let brandHue = HSB(hex: 0xFF5700).hue
+    static let brandHue = HSB(hex: RautaBrand.primary).hue
 
     init(hue: Double, saturation: Double, brightness: Double) {
         self.hue = hue

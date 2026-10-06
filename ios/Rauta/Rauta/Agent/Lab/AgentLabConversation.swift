@@ -64,7 +64,6 @@ nonisolated enum LabConversation {
     ]
 
     /// The whole conversation in one FoundationModels session.
-    @available(iOS 27.0, *)
     static func runFoundationModels(
         _ model: MLXLanguageModel,
         tools: [any FoundationModels.Tool],
@@ -93,7 +92,6 @@ nonisolated enum LabConversation {
     }
 
     /// The same conversation in one MLX `ChatSession`.
-    @available(iOS 27.0, *)
     static func runNative(
         _ model: MLXLanguageModel,
         entry: RautaModelEntry,

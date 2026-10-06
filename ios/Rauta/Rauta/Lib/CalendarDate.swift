@@ -2,13 +2,24 @@ import Foundation
 
 /// Local calendar dates as "YYYY-MM-DD", with no time-of-day or timezone
 /// shifting — the shape every workout is filed under.
+///
+/// The string is always a Gregorian date, whatever calendar the phone shows:
+/// read with a Buddhist or Japanese calendar, "2026-10-05" would land in
+/// another era. The time zone follows the phone's as it changes, so crossing
+/// one while the app runs moves "today" with it.
 enum CalendarDate {
-    private static let calendar = Calendar.current
+    private static let calendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .autoupdatingCurrent
+        return calendar
+    }()
 
     private static let isoFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.calendar = calendar
         formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .autoupdatingCurrent
+        formatter.dateFormat = "yyyy-MM-dd"
         return formatter
     }()
 

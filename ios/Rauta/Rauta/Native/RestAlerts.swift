@@ -40,6 +40,8 @@ final class RestAlerts {
     private let deadlineKey = "rauta-rest-timer-deadline"
     private let kindKey = "rauta-rest-timer-kind"
     private var countdownTask: Task<Void, Never>?
+    /// Whether the music has been taken down for this countdown.
+    private var countdownHeld = false
     private var cancellables = Set<AnyCancellable>()
 
     /// How long before the end the scheduled notification is taken back. Short,
@@ -48,10 +50,10 @@ final class RestAlerts {
     private static let withdrawLead: TimeInterval = 0.15
 
     private init() {
-        let stored = UserDefaults.standard.double(forKey: deadlineKey)
+        let stored = Storage.defaults.double(forKey: deadlineKey)
         if stored > Date().timeIntervalSince1970 {
             deadline = Date(timeIntervalSince1970: stored)
-            kind = UserDefaults.standard.string(forKey: kindKey).flatMap(Kind.init(rawValue:)) ?? .rest
+            kind = Storage.defaults.string(forKey: kindKey).flatMap(Kind.init(rawValue:)) ?? .rest
         }
     }
 
@@ -67,14 +69,19 @@ final class RestAlerts {
         deadline = fireDate
         self.kind = kind
         self.exerciseName = exerciseName
-        UserDefaults.standard.set(fireDate.timeIntervalSince1970, forKey: deadlineKey)
-        UserDefaults.standard.set(kind.rawValue, forKey: kindKey)
+        Storage.defaults.set(fireDate.timeIntervalSince1970, forKey: deadlineKey)
+        Storage.defaults.set(kind.rawValue, forKey: kindKey)
+        // Under the unit tests the deadline is kept, but nothing is scheduled
+        // with the system and nothing sounds.
+        guard !AppEnvironment.isRunningTests else { return }
         requestPermissionIfNeeded()
         arm()
     }
 
     func cancel() {
-        center.removePendingNotificationRequests(withIdentifiers: [Self.notificationID])
+        if !AppEnvironment.isRunningTests {
+            center.removePendingNotificationRequests(withIdentifiers: [Self.notificationID])
+        }
         clear()
     }
 
@@ -83,8 +90,9 @@ final class RestAlerts {
         exerciseName = nil
         countdownTask?.cancel()
         countdownTask = nil
-        UserDefaults.standard.removeObject(forKey: deadlineKey)
-        UserDefaults.standard.removeObject(forKey: kindKey)
+        releaseCountdown()
+        Storage.defaults.removeObject(forKey: deadlineKey)
+        Storage.defaults.removeObject(forKey: kindKey)
     }
 
     private func becameActive() {
@@ -101,6 +109,8 @@ final class RestAlerts {
 
     private func arm() {
         countdownTask?.cancel()
+        // A rest moved or replaced mid-countdown starts its countdown afresh.
+        releaseCountdown()
         center.removePendingNotificationRequests(withIdentifiers: [Self.notificationID])
         guard let deadline else { return }
         if deadline.timeIntervalSinceNow > 0.5 {
@@ -139,17 +149,37 @@ final class RestAlerts {
         }
     }
 
+    /// One of the last seconds. The first one takes the music down for the
+    /// whole countdown, through the sound at the end.
     private func tick(_ secondsLeft: Int) {
+        if let deadline {
+            countdownHeld = true
+            WorkoutAudio.holdCountdown(endingAt: deadline, with: endSound(kind))
+        }
         WorkoutAudio.tick(secondsLeft: secondsLeft)
+    }
+
+    private func endSound(_ kind: Kind) -> RautaSound {
+        kind == .warmup ? .warmupOver : .restOver
+    }
+
+    /// The countdown is over or called off: the music comes back up once what
+    /// is sounding has finished.
+    private func releaseCountdown() {
+        guard countdownHeld else { return }
+        countdownHeld = false
+        WorkoutAudio.endCountdown()
     }
 
     private func finish() {
         let name = exerciseName
         let finished = kind
+        // Sounded before the countdown lets go, so the music stays down
+        // through it and comes back up once, after.
+        WorkoutAudio.play(endSound(finished))
         clear()
 
         let application = UIApplication.shared
-        WorkoutAudio.play(finished == .warmup ? .warmupOver : .restOver)
         if application.applicationState == .active {
             center.removeDeliveredNotifications(withIdentifiers: [Self.notificationID])
         } else if application.isProtectedDataAvailable {

@@ -1,11 +1,12 @@
-import ImageIO
 import SwiftUI
 
 struct WatchWorkoutView: View {
-    @EnvironmentObject private var session: WatchSessionModel
-    @EnvironmentObject private var workout: WatchWorkoutManager
+    @Environment(WatchSessionModel.self) private var session
+    @Environment(WatchWorkoutManager.self) private var workout
     /// Always On: seconds are not shown while the wrist is down.
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
+    /// A moment of RAUTA being pleased, after a set counts.
+    @State private var celebrating = false
 
     var body: some View {
         Group {
@@ -21,26 +22,65 @@ struct WatchWorkoutView: View {
         // A logged set is felt as well as seen.
         .sensoryFeedback(.success, trigger: session.confirmedSets)
         .sensoryFeedback(.error, trigger: session.failedSets)
+        .task(id: session.confirmedSets) {
+            guard session.confirmedSets > 0 else { return }
+            celebrating = true
+            try? await Task.sleep(for: .seconds(2.5))
+            celebrating = false
+        }
+    }
+
+    /// What RAUTA is doing: at work through a set, breathing through a rest,
+    /// pleased for a moment when a set counts, proud at the end.
+    private func mood(_ snapshot: RautaWatchWorkoutSnapshot) -> RautaSprite.Loop {
+        if snapshot.exerciseEntryId == nil && snapshot.exerciseId == nil { return .proud }
+        if celebrating { return .happy }
+        if session.restUntil != nil { return .recovering }
+        return .determined
     }
 
     private func activeWorkout(_ snapshot: RautaWatchWorkoutSnapshot) -> some View {
         TabView {
-            overviewPage(snapshot)
+            nowPage(snapshot)
 
             if snapshot.exerciseEntryId != nil {
                 setPage(snapshot)
-            } else {
-                finishedPage
             }
         }
         .tabViewStyle(.verticalPage)
     }
 
-    private func overviewPage(_ snapshot: RautaWatchWorkoutSnapshot) -> some View {
-        VStack(spacing: 10) {
+    // MARK: Now
+
+    /// Where the workout is up to: the warm-up, the rest, or the set — and
+    /// the one control that matters for it.
+    private func nowPage(_ snapshot: RautaWatchWorkoutSnapshot) -> some View {
+        VStack(spacing: 8) {
             header(snapshot)
-            timePanel(snapshot)
-            metrics(snapshot)
+
+            if snapshot.exerciseEntryId == nil && snapshot.exerciseId == nil {
+                finished
+            } else if let warmupUntil = session.warmupUntil, warmupUntil > Date() {
+                countdown(
+                    title: "WARM-UP",
+                    until: warmupUntil,
+                    total: nil,
+                    actions: [("Skip", "forward.end.fill", { session.control(.endWarmup) })]
+                )
+            } else if let restUntil = session.restUntil {
+                countdown(
+                    title: "REST",
+                    until: restUntil,
+                    total: snapshot.restSeconds,
+                    actions: [
+                        ("+30 s", "plus", { session.control(.extendRest, seconds: 30) }),
+                        ("Skip", "forward.end.fill", { session.control(.endRest) }),
+                    ]
+                )
+            } else {
+                timePanel(snapshot)
+                setLine(snapshot)
+            }
 
             if let issue = session.connectionIssue ?? workout.issue {
                 Text(issue)
@@ -49,30 +89,31 @@ struct WatchWorkoutView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
             }
-
-            Image(systemName: "chevron.down")
-                .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(.secondary.opacity(0.65))
-                .accessibilityLabel("Set controls on next page")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 4)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                pauseButton(snapshot)
+            }
+        }
     }
 
     private func header(_ snapshot: RautaWatchWorkoutSnapshot) -> some View {
         HStack(spacing: 8) {
-            AnimatedRauta()
-                .frame(width: 38, height: 42)
+            RautaSprite(loop: mood(snapshot))
+                .frame(width: 38, height: 38)
+                .background(RautaGlow())
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(snapshot.workoutName.uppercased())
+            VStack(alignment: .leading, spacing: 1) {
+                Text(progressCaption(snapshot))
                     .font(.system(size: 9, weight: .bold, design: .rounded))
                     .tracking(0.5)
                     .foregroundStyle(WatchPalette.primary)
                     .lineLimit(1)
 
                 Text(snapshot.exerciseName)
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .lineLimit(2)
                     .minimumScaleFactor(0.72)
@@ -82,11 +123,19 @@ struct WatchWorkoutView: View {
         }
     }
 
+    /// "EXERCISE 2 OF 5" when the phone says so; the workout's name otherwise.
+    private func progressCaption(_ snapshot: RautaWatchWorkoutSnapshot) -> String {
+        if let number = snapshot.exerciseNumber, let count = snapshot.exerciseCount, count > 0 {
+            return "EXERCISE \(number) OF \(count)"
+        }
+        return snapshot.workoutName.uppercased()
+    }
+
     private func timePanel(_ snapshot: RautaWatchWorkoutSnapshot) -> some View {
         TimelineView(.periodic(from: .now, by: isLuminanceReduced ? 60 : 1)) { context in
             HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Text(duration(session.elapsedSeconds(at: context.date), showsSeconds: !isLuminanceReduced))
-                    .font(.system(size: 38, weight: .black, design: .rounded))
+                    .font(.system(size: 36, weight: .black, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.white)
                     .lineLimit(1)
@@ -104,29 +153,95 @@ struct WatchWorkoutView: View {
         }
     }
 
-    /// Heart, energy and where the exercise is up to. No distance: this is a
-    /// strength session, and a walking figure next to metres read as a run.
-    private func metrics(_ snapshot: RautaWatchWorkoutSnapshot) -> some View {
-        HStack(spacing: 8) {
-            MetricValue(
-                icon: "heart.fill",
-                value: workout.heartRate.map { String(Int($0.rounded())) } ?? "--",
-                unit: "BPM"
-            )
-            MetricValue(
-                icon: "flame.fill",
-                value: String(Int(workout.activeKilocalories.rounded())),
-                unit: "KCAL"
-            )
-            MetricValue(
-                icon: "dumbbell.fill",
-                value: snapshot.setCount > 0
-                    ? "\(Swift.min(snapshot.setIndex, snapshot.setCount))/\(snapshot.setCount)"
-                    : "--",
-                unit: "SETS"
-            )
+    /// The set coming up: which, and what the plan asks of it.
+    private func setLine(_ snapshot: RautaWatchWorkoutSnapshot) -> some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 6) {
+                Text(snapshot.setCount > 0
+                     ? "SET \(Swift.min(snapshot.setIndex, snapshot.setCount)) OF \(snapshot.setCount)"
+                     : "NEXT SET")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                Text("\(loadText(snapshot.loadKg)) × \(snapshot.reps)")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.white)
+            }
+            if let sets = snapshot.sets, !sets.isEmpty, sets.count <= 10 {
+                HStack(spacing: 4) {
+                    ForEach(Array(sets.enumerated()), id: \.offset) { index, set in
+                        Capsule()
+                            .fill(set.done ? WatchPalette.primary : WatchPalette.primary.opacity(0.22))
+                            .frame(width: index == snapshot.setIndex - 1 ? 14 : 7, height: 4)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityHidden(true)
+            }
         }
     }
+
+    /// A countdown — the warm-up or a rest — with a ring that drains and the
+    /// controls that change it.
+    private func countdown(
+        title: String,
+        until: Date,
+        total: Double?,
+        actions: [(label: String, symbol: String, action: () -> Void)]
+    ) -> some View {
+        VStack(spacing: 8) {
+            TimelineView(.animation(minimumInterval: isLuminanceReduced ? 1 : 1.0 / 20, paused: false)) { context in
+                let remaining = Swift.max(0, until.timeIntervalSince(context.date))
+                let fraction = total.map { $0 > 0 ? remaining / $0 : 0 } ?? 1
+                ZStack {
+                    Circle()
+                        .stroke(.white.opacity(0.12), lineWidth: 5)
+                    Circle()
+                        .trim(from: 0, to: Swift.min(1, Swift.max(0, fraction)))
+                        .stroke(WatchPalette.primary, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                    VStack(spacing: 0) {
+                        Text(title)
+                            .font(.system(size: 8, weight: .bold, design: .rounded))
+                            .tracking(1)
+                            .foregroundStyle(.secondary)
+                        Text(clock(remaining))
+                            .font(.system(size: 24, weight: .black, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(.white)
+                    }
+                }
+                .frame(width: 74, height: 74)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(title.capitalized), \(Int(remaining.rounded())) seconds left")
+            }
+
+            HStack(spacing: 8) {
+                ForEach(actions, id: \.label) { item in
+                    Button(action: item.action) {
+                        Label(item.label, systemImage: item.symbol)
+                            .labelStyle(.titleOnly)
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .frame(maxWidth: .infinity, minHeight: 34)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(WatchPalette.primary)
+                }
+            }
+        }
+    }
+
+    private func pauseButton(_ snapshot: RautaWatchWorkoutSnapshot) -> some View {
+        Button {
+            session.control(snapshot.isPaused ? .resume : .pause)
+        } label: {
+            Image(systemName: snapshot.isPaused ? "play.fill" : "pause.fill")
+        }
+        .accessibilityLabel(snapshot.isPaused ? "Resume workout" : "Pause workout")
+    }
+
+    // MARK: Log
 
     private func setPage(_ snapshot: RautaWatchWorkoutSnapshot) -> some View {
         VStack(spacing: 10) {
@@ -149,11 +264,11 @@ struct WatchWorkoutView: View {
             SetAdjuster(
                 title: "Load",
                 systemImage: "scalemass.fill",
-                value: loadText,
+                value: loadText(session.loadKg),
                 decrementDisabled: session.loadKg <= 0,
-                decrement: { session.loadKg = Swift.max(0, session.loadKg - 0.5) },
-                increment: { session.loadKg = Swift.min(500, session.loadKg + 0.5) },
-                crown: $session.loadKg,
+                decrement: { session.setLoad(session.loadKg - 0.5) },
+                increment: { session.setLoad(session.loadKg + 0.5) },
+                crown: Binding(get: { session.loadKg }, set: { session.setLoad($0) }),
                 crownRange: 0...500,
                 crownStep: 0.5
             )
@@ -163,11 +278,11 @@ struct WatchWorkoutView: View {
                 systemImage: "repeat",
                 value: String(session.reps),
                 decrementDisabled: session.reps <= 1,
-                decrement: { session.reps = Swift.max(1, session.reps - 1) },
-                increment: { session.reps = Swift.min(100, session.reps + 1) },
+                decrement: { session.setReps(session.reps - 1) },
+                increment: { session.setReps(session.reps + 1) },
                 crown: Binding(
                     get: { Double(session.reps) },
-                    set: { session.reps = Int($0.rounded()) }
+                    set: { session.setReps(Int($0.rounded())) }
                 ),
                 crownRange: 1...100,
                 crownStep: 1
@@ -177,16 +292,9 @@ struct WatchWorkoutView: View {
                 session.markSetDone()
             } label: {
                 HStack(spacing: 8) {
-                    if session.isSaving {
-                        ProgressView()
-                            .controlSize(.small)
-                            .tint(WatchPalette.onPrimary)
-                    } else {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 16, weight: .bold))
-                    }
-
-                    Text(session.isSaving ? "Saving…" : "Mark set done")
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 16, weight: .bold))
+                    Text("Set done")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .lineLimit(1)
                 }
@@ -204,25 +312,18 @@ struct WatchWorkoutView: View {
             .buttonStyle(.plain)
             .disabled(session.isSaving)
             .opacity(session.isSaving ? 0.72 : 1)
-
-            if let issue = session.connectionIssue {
-                Text(issue)
-                    .font(.system(size: 9, weight: .medium, design: .rounded))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 4)
     }
 
-    private var finishedPage: some View {
-        VStack(spacing: 10) {
+    private var finished: some View {
+        VStack(spacing: 6) {
             Image(systemName: "iphone.and.arrow.forward")
-                .font(.system(size: 28, weight: .semibold))
+                .font(.system(size: 24, weight: .semibold))
                 .foregroundStyle(WatchPalette.primary)
 
-            Text("Workout complete")
+            Text("All exercises done")
                 .font(.headline.weight(.bold))
 
             Text("Finish and review it on iPhone.")
@@ -230,13 +331,14 @@ struct WatchWorkoutView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
-        .padding(.horizontal, 18)
+        .frame(maxWidth: .infinity)
     }
 
     private var waitingView: some View {
         VStack(spacing: 8) {
-            AnimatedRauta()
-                .frame(width: 58, height: 66)
+            RautaSprite(loop: .calm)
+                .frame(width: 66, height: 66)
+                .background(RautaGlow())
 
             Text("RAUTA")
                 .font(.system(size: 9, weight: .bold, design: .rounded))
@@ -249,7 +351,7 @@ struct WatchWorkoutView: View {
                 .lineLimit(2)
                 .minimumScaleFactor(0.85)
 
-            Text("Start a workout on iPhone. Rauta will bring the current exercise and set here.")
+            Text("Start a workout on iPhone and it opens here.")
                 .font(.system(size: 11, weight: .medium, design: .rounded))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -260,51 +362,27 @@ struct WatchWorkoutView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var loadText: String {
-        let rounded = session.loadKg.rounded()
-        if abs(session.loadKg - rounded) < 0.001 {
+    // MARK: Words
+
+    private func loadText(_ kg: Double) -> String {
+        let rounded = kg.rounded()
+        if abs(kg - rounded) < 0.001 {
             return "\(Int(rounded)) kg"
         }
-        return String(format: "%.1f kg", session.loadKg)
+        return String(format: "%.1f kg", kg)
+    }
+
+    private func clock(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds.rounded(.up))
+        return total >= 60 ? String(format: "%d:%02d", total / 60, total % 60) : "\(total)"
     }
 
     private func duration(_ seconds: TimeInterval, showsSeconds: Bool) -> String {
         let total = Swift.max(0, Int(seconds.rounded(.down)))
+        guard !showsSeconds else { return ElapsedClock.format(seconds: total) }
         let hours = total / 3600
         let minutes = (total % 3600) / 60
-        let secs = total % 60
-        guard showsSeconds else {
-            return hours > 0 ? String(format: "%d:%02d", hours, minutes) : "\(minutes) min"
-        }
-        if hours > 0 { return String(format: "%d:%02d:%02d", hours, minutes, secs) }
-        return String(format: "%02d:%02d", minutes, secs)
-    }
-
-}
-
-private struct MetricValue: View {
-    var icon: String
-    var value: String
-    var unit: String
-
-    var body: some View {
-        VStack(spacing: 2) {
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(WatchPalette.primary)
-
-            Text(value)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.65)
-
-            Text(unit)
-                .font(.system(size: 7, weight: .bold, design: .rounded))
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, minHeight: 50)
+        return hours > 0 ? String(format: "%d:%02d", hours, minutes) : "\(minutes) min"
     }
 }
 
@@ -383,45 +461,14 @@ private struct SetAdjuster: View {
     }
 }
 
-private struct AnimatedRauta: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// Always On: the wrist is down, and a looping float only costs power.
-    @Environment(\.isLuminanceReduced) private var isLuminanceReduced
-    @State private var floating = false
-
-    private var still: Bool { reduceMotion || isLuminanceReduced }
-
-    private static let artwork: CGImage? = {
-        guard let url = Bundle.main.url(forResource: "RautaWatch", withExtension: "png"),
-              let source = CGImageSourceCreateWithURL(url as CFURL, nil)
-        else { return nil }
-        return CGImageSourceCreateImageAtIndex(source, 0, nil)
-    }()
-
+/// A soft light of the accent behind RAUTA, so a near-black character reads
+/// on the watch's black.
+private struct RautaGlow: View {
     var body: some View {
-        Group {
-            if let artwork = Self.artwork {
-                Image(decorative: artwork, scale: 1, orientation: .up)
-                    .resizable()
-                    .scaledToFit()
-            }
-        }
-        .offset(y: still ? 0 : (floating ? -2 : 2))
-        .rotationEffect(.degrees(still ? 0 : (floating ? 1.5 : -1.5)))
-        .scaleEffect(still ? 1 : (floating ? 1.02 : 0.98))
-        // Keyed on `still`, so the loop starts only while it may run and a
-        // change of setting replaces it rather than stacking a second one.
-        .animation(
-            still ? nil : .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
-            value: floating
-        )
-        .task(id: still) {
-            floating = false
-            guard !still else { return }
-            await Task.yield()
-            floating = true
-        }
-        .accessibilityHidden(true)
+        Circle()
+            .fill(WatchPalette.primary.opacity(0.18))
+            .blur(radius: 10)
+            .accessibilityHidden(true)
     }
 }
 
@@ -431,19 +478,9 @@ private struct AnimatedRauta: View {
 enum WatchPalette {
     private static var accent: RautaWatchAccent { WatchAccentStore.shared.accent }
 
-    static var primary: Color { Color(watchHex: accent.primary) }
-    static var primaryGradientStart: Color { Color(watchHex: accent.gradientStart) }
-    static var primaryGradientEnd: Color { Color(watchHex: accent.gradientEnd) }
+    static var primary: Color { Color(hex: accent.primary) }
+    static var primaryGradientStart: Color { Color(hex: accent.gradientStart) }
+    static var primaryGradientEnd: Color { Color(hex: accent.gradientEnd) }
     /// A label on the accent: white or near-black, whichever reads.
-    static var onPrimary: Color { accent.whiteLabel ? .white : Color(watchHex: 0x060606) }
-}
-
-private extension Color {
-    init(watchHex hex: UInt32) {
-        self.init(
-            red: Double((hex >> 16) & 0xFF) / 255,
-            green: Double((hex >> 8) & 0xFF) / 255,
-            blue: Double(hex & 0xFF) / 255
-        )
-    }
+    static var onPrimary: Color { accent.whiteLabel ? .white : Color(hex: RautaBrand.onPrimary) }
 }

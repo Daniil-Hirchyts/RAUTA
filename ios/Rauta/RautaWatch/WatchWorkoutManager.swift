@@ -1,41 +1,52 @@
-import Combine
 import Foundation
 import HealthKit
+import Observation
 
 /// The watch's HealthKit workout, following the workout running on the phone.
 ///
 /// The lifecycle lives here rather than in a view, so a workout starts and ends
 /// with the phone's even while the watch app is in the background — which an
-/// active workout session keeps it running in. HealthKit drives the ending:
-/// ``end(_:)`` asks the session to end, and only once the session reports
-/// `.ended` is collection closed and the workout saved, in that order.
+/// active workout session, with the workout-processing background mode, keeps
+/// it running in. HealthKit drives the ending: ``end(_:)`` asks the session to
+/// end, and only once the session reports `.ended` is collection closed and the
+/// workout saved — or, for a workout the phone discarded, dropped.
+///
+/// The phone can open this app into a workout (`startWatchApp`); the session
+/// then starts at once, before the phone has said which workout it is, and
+/// takes the workout's identity from the first envelope.
 ///
 /// This watch saves what it records; see ``RautaHealthWorkout`` for how the
 /// phone stays out of the way.
 @MainActor
-final class WatchWorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HKLiveWorkoutBuilderDelegate {
+@Observable
+final class WatchWorkoutManager: NSObject, HKWorkoutSessionDelegate, HKLiveWorkoutBuilderDelegate {
     static let shared = WatchWorkoutManager()
 
-    @Published private(set) var heartRate: Double?
-    @Published private(set) var activeKilocalories: Double = 0
-    @Published private(set) var isTracking = false
-    @Published private(set) var issue: String?
+    private(set) var heartRate: Double?
+    private(set) var activeKilocalories: Double = 0
+    private(set) var isTracking = false
+    private(set) var issue: String?
 
-    private let healthStore = HKHealthStore()
-    private var workoutSession: HKWorkoutSession?
-    private var builder: HKLiveWorkoutBuilder?
-    /// The phone workout the session records. Kept on disk, so a session
+    @ObservationIgnored private let healthStore = HKHealthStore()
+    @ObservationIgnored private var workoutSession: HKWorkoutSession?
+    @ObservationIgnored private var builder: HKLiveWorkoutBuilder?
+    /// The phone workout the session records; nil for a session opened by the
+    /// phone that has not been told which one yet. Kept on disk, so a session
     /// recovered after a relaunch still knows which workout it is.
-    private var workoutId: String? {
+    @ObservationIgnored private var workoutId: String? {
         didSet { UserDefaults.standard.set(workoutId, forKey: Self.workoutIdKey) }
     }
     /// The workout the phone is running now, which the session catches up with.
-    private var wantedWorkoutId: String?
-    private var isStarting = false
-    private var isFinishing = false
-    private var cancellables = Set<AnyCancellable>()
+    @ObservationIgnored private var wantedWorkoutId: String?
+    /// How the phone's last workout ended.
+    @ObservationIgnored private var lastEnded: RautaWatchEndedWorkout?
+    @ObservationIgnored private var isStarting = false
+    @ObservationIgnored private var isFinishing = false
+    @ObservationIgnored private var unboundTimeout: Task<Void, Never>?
 
     private static let workoutIdKey = "rauta-watch-recording-workout"
+    /// How long a session opened by the phone waits to be told its workout.
+    private static let unboundGrace: Duration = .seconds(90)
 
     private override init() {
         super.init()
@@ -44,12 +55,9 @@ final class WatchWorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDel
 
     /// A workout on the phone is a workout recorded here.
     func follow(_ link: WatchSessionModel) {
-        cancellables.removeAll()
-        link.$snapshot
-            .map { $0?.workoutId }
-            .removeDuplicates()
-            .sink { [weak self] workoutId in self?.follow(workoutId: workoutId) }
-            .store(in: &cancellables)
+        link.onWorkoutChange = { [weak self] workoutId in self?.follow(workoutId: workoutId) }
+        link.onEnded = { [weak self] ended in self?.lastEnded = ended }
+        link.onPausedChange = { [weak self] paused in self?.followPause(paused) }
     }
 
     private func follow(workoutId wanted: String?) {
@@ -62,10 +70,23 @@ final class WatchWorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDel
     private func reconcile() {
         guard !isStarting, !isFinishing else { return }
         if let session = workoutSession {
+            guard let workoutId else {
+                // Opened by the phone: the first workout it names is this one.
+                if let wanted = wantedWorkoutId { bind(wanted) }
+                return
+            }
             if workoutId != wantedWorkoutId { end(session) }
             return
         }
         if let wanted = wantedWorkoutId { begin(wanted) }
+    }
+
+    /// The phone opened the app into a workout: WatchKit expects the session
+    /// to start now, so it does, and learns which workout from the next
+    /// envelope.
+    func startForPhone() {
+        guard workoutSession == nil, !isStarting else { return }
+        begin(wantedWorkoutId)
     }
 
     /// Picks up a session the system kept running through a relaunch.
@@ -79,12 +100,12 @@ final class WatchWorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDel
             }
             guard let session = try? await healthStore.recoverActiveWorkoutSession() else { return }
             adopt(session)
-            isTracking = session.state == .running
+            isTracking = session.state == .running || session.state == .paused
             if let workoutId { WatchSessionModel.shared.claimHealthWorkout(workoutId) }
         }
     }
 
-    private func begin(_ id: String) {
+    private func begin(_ id: String?) {
         guard HKHealthStore.isHealthDataAvailable() else { return }
         isStarting = true
         Task {
@@ -109,7 +130,7 @@ final class WatchWorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDel
         }
     }
 
-    private func start(_ id: String) async throws {
+    private func start(_ id: String?) async throws {
         let configuration = HKWorkoutConfiguration()
         configuration.activityType = .traditionalStrengthTraining
         configuration.locationType = .indoor
@@ -121,15 +142,43 @@ final class WatchWorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDel
 
         let start = Date()
         session.startActivity(with: start)
-        let builder = session.associatedWorkoutBuilder()
-        try await builder.beginCollection(at: start)
-        // Stamped from the start, so this workout is recognisable in Health
-        // however the session ends.
-        try await builder.addMetadata([
+        try await builder?.beginCollection(at: start)
+        isTracking = true
+        if let id {
+            try await stamp(id)
+        } else {
+            waitToBeBound()
+        }
+    }
+
+    /// The session takes the phone's workout as its own.
+    private func bind(_ id: String) {
+        unboundTimeout?.cancel()
+        unboundTimeout = nil
+        workoutId = id
+        Task {
+            do { try await stamp(id) } catch { issue = "Workout could not be linked" }
+        }
+    }
+
+    /// Stamped on the workout, so it is recognisable in Health however the
+    /// session ends, and claimed, so the phone leaves the saving to the watch.
+    private func stamp(_ id: String) async throws {
+        try await builder?.addMetadata([
             HKMetadataKeyExternalUUID: RautaHealthWorkout.externalID(forWorkout: id),
         ])
-        isTracking = true
         WatchSessionModel.shared.claimHealthWorkout(id)
+    }
+
+    /// A session opened by the phone that is never told its workout — the
+    /// phone's start was refused, say — does not run on unseen.
+    private func waitToBeBound() {
+        unboundTimeout?.cancel()
+        unboundTimeout = Task { [weak self] in
+            try? await Task.sleep(for: Self.unboundGrace)
+            guard !Task.isCancelled, let self, self.workoutId == nil, let session = self.workoutSession else { return }
+            self.end(session)
+        }
     }
 
     private func adopt(_ session: HKWorkoutSession) {
@@ -142,6 +191,17 @@ final class WatchWorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDel
         builder.delegate = self
         workoutSession = session
         self.builder = builder
+    }
+
+    /// The watch's recording pauses and resumes with the phone's workout, so
+    /// Health's duration and energy match the time actually trained.
+    private func followPause(_ paused: Bool) {
+        guard let session = workoutSession else { return }
+        switch (paused, session.state) {
+        case (true, .running): session.pause()
+        case (false, .paused): session.resume()
+        default: break
+        }
     }
 
     /// Asks the session to end; ``finish(_:at:)`` completes it when HealthKit
@@ -163,6 +223,9 @@ final class WatchWorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDel
         else { return }
         isFinishing = true
         let id = workoutId
+        // A workout the phone discarded is not kept; one it finished, or one
+        // it said nothing about, is.
+        let discarded = id != nil && lastEnded?.workoutId == id && lastEnded?.outcome == .cancelled
         Task {
             defer {
                 reset()
@@ -171,8 +234,11 @@ final class WatchWorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDel
             }
             do {
                 try await builder.endCollection(at: endDate)
-                var alreadySaved = false
-                if let id { alreadySaved = await hasSavedWorkout(workoutId: id) }
+                guard let id, !discarded else {
+                    builder.discardWorkout()
+                    return
+                }
+                let alreadySaved = await hasSavedWorkout(workoutId: id)
                 if RautaHealthWorkout.watchShouldSave(alreadyInHealth: alreadySaved) {
                     _ = try await builder.finishWorkout()
                 } else {
@@ -185,6 +251,8 @@ final class WatchWorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDel
     }
 
     private func reset() {
+        unboundTimeout?.cancel()
+        unboundTimeout = nil
         workoutSession = nil
         builder = nil
         workoutId = nil
@@ -247,7 +315,7 @@ final class WatchWorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDel
         Task { @MainActor [weak self] in
             guard let self else { return }
             switch toState {
-            case .running:
+            case .running, .paused:
                 self.isTracking = true
             case .ended:
                 // Ended by the phone's workout, by the person from the system

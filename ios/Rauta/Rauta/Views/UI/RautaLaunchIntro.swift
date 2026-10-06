@@ -19,6 +19,9 @@ struct RautaLaunchIntro: View {
     /// The mood the tab bar's RAUTA is in, so the one that lands there wears
     /// the same face and the handover is seamless.
     var mood: RautaMood = .calm
+    /// A moment before landing: the tab bar's RAUTA gets ready, unseen, so it
+    /// is already moving when it takes over.
+    var onHandover: () -> Void = {}
     let onLanded: () -> Void
 
     @State private var start: Date?
@@ -26,6 +29,8 @@ struct RautaLaunchIntro: View {
     @State private var feeling: RautaMood?
     @State private var reaction: RautaReaction?
     @State private var reactionKey = ""
+    /// Where its eyes are, while they follow its name rising.
+    @State private var lookAt: CGPoint?
     @Environment(\.colorScheme) private var colorScheme
 
     private static let heroSize: CGFloat = 176
@@ -52,7 +57,7 @@ struct RautaLaunchIntro: View {
         let seatPoint = seat == .zero ? landing : CGPoint(x: seat.midX, y: seat.midY)
         let point = CGPoint(
             x: landing.x + (seatPoint.x - landing.x) * flying,
-            y: landing.y + (seatPoint.y - landing.y) * flying
+            y: landing.y + (seatPoint.y - landing.y) * flying + Timing.lift(t)
         )
         let heroScale = Timing.arrive(t)
         let seatScale = seat == .zero ? 1 : seat.width / Self.heroSize
@@ -68,13 +73,16 @@ struct RautaLaunchIntro: View {
             }
             .opacity(fadeOut)
 
-            // Feelings are kept off the turn: a clip cutting into it reads as a
-            // jump. See `perform()` for when they come.
+            // One character, one pace: held at 60 fps from the first frame to
+            // the seat, with every change of feeling blended rather than cut.
             RautaCharacter(
                 mood: feeling ?? mood,
                 reactionKey: reactionKey,
                 reaction: reaction,
-                yaw: flying > 0 ? nil : Timing.turn(t)
+                yaw: flying > 0 ? nil : Timing.turn(t),
+                framesPerSecond: 60,
+                moodBlinks: false,
+                lookAt: lookAt
             )
             .frame(width: Self.heroSize, height: Self.heroSize)
             .scaleEffect(max(0.01, scale))
@@ -167,17 +175,29 @@ struct RautaLaunchIntro: View {
             try? await Task.sleep(for: .seconds(max(0, time - Date().timeIntervalSince(start))))
         }
 
-        // It arrives in the tab bar's mood and turns to face you. Only once it
-        // is facing you does it warm up — the shift comes with a blink — and
-        // nod hello as its name rises.
-        await at(Timing.arrival + 0.5)
+        // Every beat overlaps the one before, so it reads as one performance
+        // rather than a list: it warms up while still turning to face you,
+        // nods as the turn settles, its eyes follow its name rising, and it
+        // leaves for its seat straight out of the nod.
+        await at(Timing.arrival + 0.2)
         feeling = .happy
-        await at(Timing.arrival + 0.7)
+        await at(Timing.arrival + 0.45)
         react(.acknowledge)
+        let size = UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.screen.bounds.size }
+            .first ?? .zero
+        for letter in 0..<5 {
+            await at(Timing.arrival + 0.32 + 0.07 * Double(letter))
+            lookAt = Timing.letterCenter(letter, in: size)
+        }
+        await at(Timing.arrival + 0.95)
+        lookAt = Timing.subtitleCenter(in: size)
         // It settles back into the tab bar's mood on the way down, so the one
         // waiting there wears the same face when it takes over.
-        await at(Timing.flyStart + 0.1)
+        await at(Timing.flyStart + 0.3)
         feeling = nil
+        await at(Timing.end - 0.3)
+        onHandover()
         await at(Timing.end)
         onLanded()
     }
@@ -188,9 +208,29 @@ private enum Timing {
     static let gatherStart: TimeInterval = 0.35
     /// The ring collapses and RAUTA appears.
     static let arrival: TimeInterval = 1.4
-    static let flyStart: TimeInterval = 3.4
+    /// Straight out of the nod, once the line under the name has been read.
+    static let flyStart: TimeInterval = arrival + 1.75
     static let flyDuration: TimeInterval = 0.6
     static var end: TimeInterval { flyStart + flyDuration }
+
+    /// The name sits this far under where RAUTA lands, as `name(at:)` sets it.
+    private static let nameDrop: CGFloat = 176 * 0.62 + 18
+
+    /// Where a letter of the name is, near enough for the eyes to find it.
+    static func letterCenter(_ index: Int, in size: CGSize) -> CGPoint {
+        CGPoint(x: size.width / 2 + CGFloat(index - 2) * 42, y: size.height * 0.40 + nameDrop)
+    }
+
+    static func subtitleCenter(in size: CGSize) -> CGPoint {
+        CGPoint(x: size.width / 2, y: size.height * 0.40 + nameDrop + 40)
+    }
+
+    /// A small rise as it gathers itself to leave — so the flight grows out of
+    /// the moment before it instead of starting cold.
+    static func lift(_ t: TimeInterval) -> CGFloat {
+        let x = clamp((t - flyStart + 0.25) / 0.5)
+        return CGFloat(-12 * sin(.pi * x))
+    }
 
     private static func clamp(_ x: Double) -> Double { max(0, min(1, x)) }
     private static func smooth(_ x: Double) -> Double { let x = clamp(x); return x * x * (3 - 2 * x) }

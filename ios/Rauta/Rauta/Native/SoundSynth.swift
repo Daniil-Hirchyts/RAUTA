@@ -2,7 +2,7 @@ import AVFoundation
 
 /// One note of something made on the spot, in the voice of the bundled cues: a
 /// soft sine with a trace of harmonics.
-struct SoundNote: Equatable {
+nonisolated struct SoundNote: Equatable, Sendable {
     /// Seconds from the start of the phrase.
     var at: Double
     var frequency: Double
@@ -16,7 +16,7 @@ struct SoundNote: Equatable {
 
 /// Turns notes into sound. The same recipe as the "Pure" set in
 /// `scripts/sounds/packs.py`, so what is made here sits beside the files.
-enum SoundSynth {
+nonisolated enum SoundSynth {
     private static let attack = 0.005
     private static let slide = 0.018
 

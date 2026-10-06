@@ -79,13 +79,22 @@ enum AppBackup {
         return url
     }
 
-    static func importBackup(_ json: String) throws {
+    /// Replaces the app's data with a backup's.
+    ///
+    /// `keepingRunningWorkout` is for a copy arriving from iCloud — another
+    /// device's edit — while a workout runs here. That workout is this device's
+    /// alone: its session, its record in the workout list and its draft (which
+    /// the cloud copy never carries) stay exactly as they are, so a change made
+    /// on an iPad cannot end a workout in progress on the iPhone. Everything
+    /// else follows the cloud copy straight away. A file the person chose to
+    /// restore replaces everything, as it says it will.
+    static func importBackup(_ json: String, keepingRunningWorkout: Bool = false) throws {
         guard let parsed = JSONCoding.parse(json), let backup = parsed.objectValue else {
             throw TrainingPersistenceError("This is not a supported RAUTA backup.")
         }
         let app = backup["app"]?.stringValue
         guard app == "RAUTA" || app == "Gym Lib",
-              Int(backup["version"]?.numberValue ?? -1) == version
+              Storage.version(backup["version"]) == version
         else {
             throw TrainingPersistenceError("This is not a supported RAUTA backup.")
         }
@@ -110,7 +119,10 @@ enum AppBackup {
         let settings = SettingsStore.sanitize(data["settings"])
         let workouts = WorkoutsStore.sanitize(data["workouts"])
 
-        ActiveWorkoutStore.shared.setSession(nil, outcome: .cancelled)
+        let running = keepingRunningWorkout ? ActiveWorkoutStore.shared.session : nil
+        if running == nil {
+            ActiveWorkoutStore.shared.setSession(nil, outcome: .cancelled)
+        }
         FavoritesStore.shared.replaceAll(favorites)
 
         // A backup written before a field existed says nothing about it, which
@@ -126,7 +138,7 @@ enum AppBackup {
         }
         FiltersStore.shared.apply(mergedFilters)
         SettingsStore.shared.replaceAll(settings)
-        WorkoutsStore.shared.replaceAll(workouts.workouts)
+        WorkoutsStore.shared.replaceAll(Self.keeping(running, in: workouts.workouts))
 
         if data["trainingProfile"] != nil {
             TrainingProfileStore.shared.replaceAll(
@@ -136,14 +148,35 @@ enum AppBackup {
         if let training { TrainingRecordsStore.shared.replaceAll(training) }
 
         // A restored draft, or an intent caught mid-transition, has to be settled
-        // before the app treats it as a running session.
-        ActiveWorkoutStore.shared.reconcileRestored()
+        // before the app treats it as a running session. A workout kept running
+        // was never restored, so there is nothing to settle.
+        if running == nil {
+            ActiveWorkoutStore.shared.reconcileRestored()
+        }
+    }
+
+    /// The imported workout list, with the running workout's record as this
+    /// device has it: in the imported one's place, or added if the other device
+    /// no longer lists it.
+    static func keeping(_ running: ActiveWorkoutSession?, in imported: [Workout]) -> [Workout] {
+        guard let running, let local = WorkoutsStore.shared.workout(running.workoutId) else { return imported }
+        guard let index = imported.firstIndex(where: { $0.id == local.id }) else { return imported + [local] }
+        var kept = imported
+        kept[index] = local
+        return kept
     }
 
     static func clearAllData() {
         RautaAgent.shared.startOver()
-        WorkoutReminders.shared.removeAll()
-        CalendarService.shared.removeAllLinkedEvents()
+        // The system's notifications and calendar are the person's own; a test
+        // clearing its data must not reach them.
+        if !AppEnvironment.isRunningTests {
+            WorkoutReminders.shared.removeAll()
+            CalendarService.shared.removeAllLinkedEvents()
+        }
+        RestAlerts.shared.cancel()
+        WatchConnectivityService.shared.forgetProcessedActions()
+        HealthService.shared.forgetWatchClaims()
         ActiveWorkoutStore.shared.setSession(nil, outcome: .cancelled)
         FavoritesStore.shared.replaceAll([])
         FiltersStore.shared.clearAll()

@@ -274,12 +274,32 @@ final class AppSessionStore {
     /// answer it asks for is in Settings anyway.
     private static func initialPages() -> [AppPage] {
 #if DEBUG
+        // History for an empty simulator to show, for screenshots — seeded
+        // before the first page is chosen, so it counts as data already there.
+        DemoHistory.seedIfRequested()
         if ProcessInfo.processInfo.arguments.contains("--onboarding") {
             return [.onboarding]
         }
         // Straight to Settings → Policies & credits, onboarded or not.
         if ProcessInfo.processInfo.arguments.contains("--policies") {
             return [.workouts, .settings, .policies]
+        }
+        // Straight to a page behind a Summary card, for screenshots:
+        // `--summary activity|time|streak|muscles|records`, optionally
+        // `--summary-month 2026-09` for a month other than this one.
+        let arguments = ProcessInfo.processInfo.arguments
+        if let index = arguments.firstIndex(of: "--summary"), arguments.indices.contains(index + 1) {
+            let month = arguments.firstIndex(of: "--summary-month")
+                .flatMap { arguments.indices.contains($0 + 1) ? arguments[$0 + 1] : nil }
+                ?? SummaryAnalytics.monthKey()
+            switch arguments[index + 1] {
+            case "activity": return [.workouts, .summaryActivity(month: month, metric: .workouts)]
+            case "time": return [.workouts, .summaryActivity(month: month, metric: .time)]
+            case "streak": return [.workouts, .summaryStreak]
+            case "muscles": return [.workouts, .summaryMuscles(month: month)]
+            case "records": return [.workouts, .summaryRecords]
+            default: break
+            }
         }
 #endif
         let onboarding = TrainingProfileStore.shared.onboarding

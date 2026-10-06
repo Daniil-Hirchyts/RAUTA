@@ -16,6 +16,9 @@ struct WorkoutAgenda: View {
 
     let rows: [AgentSessionRow]
     var onOpen: ((String) -> Void)?
+    /// Which rows can be opened: a workout since deleted lists, but leads
+    /// nowhere, so it gets no chevron.
+    var canOpen: (String) -> Bool = { _ in true }
     /// The workout being worked on, marked as the current one.
     var highlightedId: String? = nil
     var accessory: Accessory = .chevron
@@ -75,7 +78,7 @@ struct WorkoutAgenda: View {
     }
 
     @ViewBuilder private func workout(_ row: AgentSessionRow) -> some View {
-        if let onOpen {
+        if let onOpen, canOpen(row.id) {
             Button {
                 WorkoutAudio.touch(.tap)
                 onOpen(row.id)
@@ -166,7 +169,7 @@ struct WorkoutAgenda: View {
     private func detail(_ row: AgentSessionRow) -> String {
         var parts: [String] = []
         if row.minutes > 0 { parts.append("\(row.minutes) min") }
-        if let sets = row.sets, sets > 0 { parts.append("\(sets) sets") }
+        if let sets = row.sets, sets > 0 { parts.append(Wording.countLabel(sets, "set")) }
         if parts.isEmpty { parts.append(Wording.countLabel(row.exerciseIds.count, "exercise")) }
         return parts.joined(separator: " · ")
     }

@@ -37,7 +37,9 @@ enum TrainingWorkflow {
     ) -> RemainingSlots {
         let data = data ?? TrainingRecordsStore.shared.data
         let workouts = workouts ?? WorkoutsStore.shared.workouts
-        let nowMillis = ISOTime.parse(now) ?? 0
+        // Sessions are filed at UTC midnight of their local day, so they are
+        // weighed against the person's wall-clock time, not UTC.
+        let nowMillis = ISOTime.wallClock(now) ?? 0
 
         func remaining(_ week: TrainingWeek) -> [PlannedSession] {
             week.sessions.filter { session in
@@ -99,9 +101,11 @@ enum TrainingWorkflow {
     }
 
     /// The Monday a new plan starts on: the next one, including today when the
-    /// plan is generated before its slots.
-    private static func nextMonday(after now: String) -> String {
-        guard let nowMillis = ISOTime.parse(now) else { return now }
+    /// plan is generated before its slots. Worked out on the person's own
+    /// calendar: on a Sunday evening west of Greenwich, tomorrow is still the
+    /// next Monday, though UTC has already reached it.
+    static func nextMonday(after now: String, in timeZone: TimeZone = .autoupdatingCurrent) -> String {
+        guard let nowMillis = ISOTime.wallClock(now, in: timeZone) else { return now }
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         let date = Date(epochMillis: nowMillis)

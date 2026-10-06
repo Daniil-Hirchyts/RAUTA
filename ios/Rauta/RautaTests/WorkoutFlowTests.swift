@@ -50,6 +50,41 @@ struct WorkoutFlowTests {
         }
     }
 
+    // MARK: iCloud mid-workout
+
+    /// Another device's edit arriving through iCloud must not end the workout
+    /// running here: the session and the workout's own record stay, while the
+    /// rest of the library follows the cloud copy.
+    @Test func aCloudCopyArrivingMidWorkoutLeavesTheWorkoutRunning() async throws {
+        try await withIsolatedStores {
+            let bench = try #require(ExerciseResolver.resolve("barbell bench press").first?.exercise.id)
+            let id = try await EngineWorkout.createWorkout(date: CalendarDate.today, exerciseIds: [bench])
+            let running = try #require(WorkoutsStore.shared.workout(id))
+            // The other device's library: the running workout is not in it, and
+            // it has a workout of its own.
+            let elsewhere = WorkoutsStore.shared.createWorkout(
+                name: "From the iPad", date: CalendarDate.shift(CalendarDate.today, by: 2), exerciseIds: []
+            )
+            WorkoutsStore.shared.replaceAll(WorkoutsStore.shared.workouts.filter { $0.id != id })
+            let cloudCopy = AppBackup.createBackup()
+            WorkoutsStore.shared.replaceAll([running])
+
+            #expect(ActiveWorkoutStore.shared.start(running).refusal == nil)
+            let draft = TrainingRecordsStore.shared.data.activeWorkout
+
+            try AppBackup.importBackup(cloudCopy, keepingRunningWorkout: true)
+
+            #expect(ActiveWorkoutStore.shared.session?.workoutId == id)
+            #expect(WorkoutsStore.shared.workout(id) != nil)
+            #expect(WorkoutsStore.shared.workout(elsewhere) != nil)
+            #expect(TrainingRecordsStore.shared.data.activeWorkout == draft)
+
+            // A file the person chose to restore replaces everything.
+            try AppBackup.importBackup(cloudCopy)
+            #expect(ActiveWorkoutStore.shared.session == nil)
+        }
+    }
+
     // MARK: Filing and reusing
 
     /// Only workouts more can still go into: not finished, not overdue, and
@@ -216,6 +251,70 @@ struct WorkoutFlowTests {
         #expect(records.first { $0.basis == .perImplement }?.heaviestKg == 30)
     }
 
+    /// Summary asks for the training history on every render, so it is kept
+    /// between asks; a workout finished in between still has to show up in it.
+    @Test func theKeptHistoryFollowsAFinishedWorkout() async throws {
+        try await withIsolatedStores {
+            let records = TrainingRecordsStore.shared
+            #expect(records.trainingHistory().sessions.isEmpty)
+            let id = WorkoutsStore.shared.createWorkout(name: "Legs", date: CalendarDate.today, exerciseIds: [])
+            #expect(records.trainingHistory().sessions.isEmpty)
+
+            let now = ISOTime.now()
+            WorkoutsStore.shared.completeWorkout(id, WorkoutCompletion(
+                startedAt: now, completedAt: now, durationMs: 1_800_000,
+                completedExerciseIds: [], activeCalories: 0, healthSyncStatus: .notRequested
+            ))
+            #expect(records.trainingHistory().sessions.map(\.id) == [id])
+
+            WorkoutsStore.shared.deleteWorkout(id)
+            #expect(records.trainingHistory().sessions.isEmpty)
+        }
+    }
+
+    /// A personal best beats what the exercise has seen, held the same way;
+    /// a first time at an exercise has nothing to beat.
+    @Test func aPersonalBestBeatsTheHistory() {
+        func completed(_ kg: Double, _ reps: Double) -> CompletedSet {
+            CompletedSet(id: UUID().uuidString, plannedSetId: nil, reps: reps,
+                         resistance: ResistanceValue(type: .externalLoad, kg: kg, basis: .total),
+                         rir: 2, rpe: nil, completed: true, setType: .working, side: .both, timestamp: nil)
+        }
+        let history = [PersistedCompletedSession(
+            id: "s1", sourceWorkoutId: "w1", plannedProgramId: nil, plannedSessionId: nil,
+            startedAt: "2026-09-01T18:00:00.000Z", completedAt: "2026-09-01T19:00:00.000Z",
+            durationSeconds: 3_600, status: .completed,
+            exercises: [PersistedCompletedExercise(id: "e1", exerciseId: "bench", plannedExerciseId: nil,
+                                                   exerciseNameSnapshot: nil, sets: [completed(80, 5)])]
+        )]
+        func draft(_ sets: [(String, Double, Double, SetType)]) -> PersistedActiveWorkoutDraft {
+            PersistedActiveWorkoutDraft(
+                id: "d1", sourceWorkoutId: "w2", plannedProgramId: nil, plannedSessionId: nil,
+                startedAt: "2026-10-01T18:00:00.000Z",
+                exercises: [PersistedActiveExerciseDraft(
+                    id: "x1", exerciseId: sets.first?.0 ?? "bench", plannedExerciseId: nil, exerciseNameSnapshot: nil,
+                    sets: sets.enumerated().map { index, set in
+                        PersistedActiveSetDraft(
+                            id: "set\(index)", plannedSetId: nil, setType: set.3, side: .both, target: nil,
+                            observation: PersistedSetObservation(
+                                reps: set.2, resistance: ResistanceValue(type: .externalLoad, kg: set.1, basis: .total),
+                                rir: 2, completed: true, timestamp: "2026-10-01T18:0\(index):00.000Z"
+                            )
+                        )
+                    }
+                )]
+            )
+        }
+        #expect(SummaryAnalytics.isPersonalBest(draft([("bench", 82.5, 5, .working)]), history: history))
+        #expect(!SummaryAnalytics.isPersonalBest(draft([("bench", 80, 5, .working)]), history: history))
+        // A warm-up set never counts, however heavy.
+        #expect(!SummaryAnalytics.isPersonalBest(draft([("bench", 120, 1, .warmup)]), history: history))
+        // A best set earlier today raises the bar for the next.
+        #expect(!SummaryAnalytics.isPersonalBest(draft([("bench", 85, 5, .working), ("bench", 82.5, 5, .working)]), history: history))
+        // Nothing to beat the first time.
+        #expect(!SummaryAnalytics.isPersonalBest(draft([("squat", 100, 5, .working)]), history: history))
+    }
+
     // MARK: Sounds
 
     @Test func everySoundIsBundled() {
@@ -339,7 +438,6 @@ struct WorkoutFlowTests {
     /// Runs `body` against empty stores in a throwaway storage location, with
     /// no warm-up, and puts everything back afterwards.
     private func withIsolatedStores(_ body: () async throws -> Void) async throws {
-        try #require(ActiveWorkoutStore.shared.session == nil, "Finish the simulator's workout first")
         let suite = "rauta-flow-tests-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         let directory = FileManager.default.temporaryDirectory
@@ -348,8 +446,12 @@ struct WorkoutFlowTests {
         let records = TrainingRecordsStore.shared.data
         let workouts = WorkoutsStore.shared.workouts
         let settings = SettingsStore.shared.preferences
+        // A workout running on the simulator is set aside for the test and
+        // put back running after, rather than ended by it.
+        let running = ActiveWorkoutStore.shared.session
         Storage.defaults = defaults
         Storage.directoryOverride = directory
+        if running != nil { ActiveWorkoutStore.shared.setSession(nil, outcome: nil) }
         defer {
             if ActiveWorkoutStore.shared.session != nil {
                 ActiveWorkoutStore.shared.setSession(nil, outcome: .cancelled)
@@ -361,6 +463,7 @@ struct WorkoutFlowTests {
             Storage.directoryOverride = nil
             defaults.removePersistentDomain(forName: suite)
             try? FileManager.default.removeItem(at: directory)
+            if let running { ActiveWorkoutStore.shared.setSession(running, outcome: nil) }
         }
         TrainingRecordsStore.shared.replaceAll(.empty())
         WorkoutsStore.shared.replaceAll([])

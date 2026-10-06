@@ -260,6 +260,9 @@ enum EngineWorkout {
             now: now
         )
         let program = try await buildProgramInBackground(input, prepare(input))
+        // Whoever asked has gone — the page closed, the turn was stopped — so
+        // the build is dropped rather than saved behind their back.
+        try Task.checkCancellation()
         if let expectedBasis, PlanBasis.current() != expectedBasis {
             throw TrainingPersistenceError("Training changed while the workout was being built. Ask for a fresh preview.")
         }
@@ -278,6 +281,7 @@ enum EngineWorkout {
         let basis = PlanBasis.current()
         let input = Input(date: workout.date, focusMuscles: focus, avoidExerciseIds: workout.exerciseIds)
         let program = try await buildProgramInBackground(input, prepare(input))
+        try Task.checkCancellation()
         guard let current = WorkoutsStore.shared.workout(workoutId), canRegenerate(current),
               PlanBasis.current() == basis
         else { throw TrainingPersistenceError("Training changed while the workout was being rebuilt.") }

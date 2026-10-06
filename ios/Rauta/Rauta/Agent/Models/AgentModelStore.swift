@@ -42,7 +42,6 @@ final class AgentModelStore {
         #endif
     }
 
-    @available(iOS 27.0, *)
     func model() -> MLXLanguageModel? {
         guard RautaModelFiles.isInstalled(RautaModelCatalog.qwen35_2b) else { return nil }
         if let loaded { return loaded }

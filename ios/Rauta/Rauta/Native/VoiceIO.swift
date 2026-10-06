@@ -16,7 +16,13 @@ final class VoiceIO {
     @ObservationIgnored private var recorder: AVAudioRecorder?
     @ObservationIgnored private var recordingURL: URL?
     @ObservationIgnored private var operationID = UUID()
-    @ObservationIgnored private let speaker = AVSpeechSynthesizer()
+    @ObservationIgnored private let speaker: AVSpeechSynthesizer = {
+        let speaker = AVSpeechSynthesizer()
+        // Speech runs in a session of its own, so the sounds' session letting
+        // go can never cut a sentence off.
+        speaker.usesApplicationAudioSession = false
+        return speaker
+    }()
 
     private init() {}
 
@@ -40,7 +46,12 @@ final class VoiceIO {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("rauta-dictation-\(UUID().uuidString).caf")
         do {
-            try WorkoutAudio.beginVoice()
+            try await WorkoutAudio.beginVoice()
+            // Cancelled while the session was being set up.
+            guard operationID == id else {
+                WorkoutAudio.endVoice()
+                return
+            }
             let next = try AVAudioRecorder(url: url, settings: [
                 AVFormatIDKey: Int(kAudioFormatLinearPCM),
                 AVSampleRateKey: 16_000,

@@ -15,6 +15,10 @@ final class TrainingRecordsStore {
     private(set) var data: PersistedTrainingState = .empty()
     private(set) var persistenceIssues: [TrainingPersistenceIssue] = []
     let changed = PassthroughSubject<Void, Never>()
+    /// Moves on with every change to `data`, so what is derived from it can
+    /// tell it changed without comparing it.
+    private(set) var revision = 0
+    private let history = Memo<HistoryKey, TrainingHistory>()
 
     private init() { load() }
 
@@ -27,30 +31,43 @@ final class TrainingRecordsStore {
         let payload = envelope.state["data"] ?? envelope.state
         let recovered = PersistenceValidation.recover(payload)
         data = recovered.state
+        revision += 1
         persistenceIssues = recovered.issues
     }
 
     func persist() {
-        Storage.writeEnvelopeFile(
+        Storage.attempt("Writing the training records") { try write(data) }
+    }
+
+    private func write(_ state: PersistedTrainingState) throws {
+        try Storage.writeEnvelopeFile(
             TRAINING_STORAGE_FILE,
-            state: .object(["data": data.jsonTree]),
+            state: .object(["data": state.jsonTree]),
             version: TRAINING_PERSISTENCE_SCHEMA_VERSION
         )
     }
 
     /// Every write goes through the validator first: memory is only replaced by
-    /// a state the schema accepts, and a failed write leaves the draft alone.
+    /// a state the schema accepts and the disk now holds, and a failed write
+    /// leaves the draft alone. The workout journal builds on this — a commit
+    /// that returns is on disk.
     private func commit(_ next: PersistedTrainingState) throws {
         let normalized = PersistenceValidation.normalize(next)
         let issues = PersistenceValidation.validate(normalized)
         if !issues.isEmpty { throw TrainingPersistenceValidationError(issues: issues) }
+        do {
+            try write(normalized)
+        } catch {
+            throw TrainingPersistenceError("Your training couldn't be saved on this iPhone. Free up some space and try again.")
+        }
         data = normalized
-        persist()
+        revision += 1
         changed.send()
     }
 
     func replaceAll(_ next: PersistedTrainingState) {
         data = next
+        revision += 1
         persistenceIssues = []
         persist()
         changed.send()
@@ -519,22 +536,37 @@ final class TrainingRecordsStore {
 
     // MARK: History
 
+    private struct HistoryKey: Equatable {
+        var records: Int
+        var workouts: Int
+    }
+
+    /// Every session trained, logged or only checked off, as the engine reads
+    /// them. Building it converts every logged session, so the answer is kept
+    /// until this store or the workouts change: Summary asks for it on every
+    /// render. Reading the two revisions is also what makes a view that asks
+    /// redraw when either changes.
     func trainingHistory(
         legacyWorkouts: [LegacyWorkoutObservation]? = nil
     ) -> TrainingHistory {
-        let legacy = legacyWorkouts ?? WorkoutsStore.shared.workouts.map { workout in
-            LegacyWorkoutObservation(
-                id: workout.id,
-                completion: workout.completion.map { completion in
-                    LegacyWorkouts.LegacyCompletion(
-                        startedAt: completion.startedAt,
-                        completedAt: completion.completedAt,
-                        durationMs: completion.durationMs,
-                        completedExerciseIds: completion.completedExerciseIds
-                    )
-                }
-            )
+        if let legacyWorkouts {
+            return PersistedHistory.toTrainingHistory(data, legacyWorkouts: legacyWorkouts)
         }
-        return PersistedHistory.toTrainingHistory(data, legacyWorkouts: legacy)
+        let workouts = WorkoutsStore.shared
+        return history(HistoryKey(records: revision, workouts: workouts.revision)) {
+            PersistedHistory.toTrainingHistory(data, legacyWorkouts: workouts.workouts.map { workout in
+                LegacyWorkoutObservation(
+                    id: workout.id,
+                    completion: workout.completion.map { completion in
+                        LegacyWorkouts.LegacyCompletion(
+                            startedAt: completion.startedAt,
+                            completedAt: completion.completedAt,
+                            durationMs: completion.durationMs,
+                            completedExerciseIds: completion.completedExerciseIds
+                        )
+                    }
+                )
+            })
+        }
     }
 }

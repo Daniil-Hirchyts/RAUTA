@@ -20,6 +20,9 @@ struct WorkoutsScreen: View {
     @State private var afterChat: (() -> Void)?
     @State private var rautaCompact = false
     @State private var exercisePlayerOpen = false
+    /// The warm-up put away while it runs; the bar above the tabs brings it
+    /// back.
+    @State private var warmupHidden = false
     /// Navigation asked for from inside the exercise player, run once the
     /// player has finished closing — nothing can be presented while it is up.
     @State private var afterExercisePlayer: (() -> Void)?
@@ -30,6 +33,9 @@ struct WorkoutsScreen: View {
     @State private var celebration: WorkoutReceipt?
     /// RAUTA's arrival, once per launch. Reduce Motion skips it.
     @State private var introPlaying = !WorkoutsScreen.introPlayed
+    /// The last moment of the intro: the tab bar's RAUTA is running, unseen,
+    /// ready to take over from the one landing in its seat.
+    @State private var introHandover = false
     /// Where the tab bar's RAUTA sits, for the arrival to land on.
     @State private var rautaSeat: CGRect = .zero
     private static var introPlayed = false
@@ -146,13 +152,30 @@ struct WorkoutsScreen: View {
         // Every workout opens with its warm-up, however it was started: from
         // the page, from RAUTA, from Siri or a reminder.
         .overlay {
-            if let session = activeWorkout.session, session.warmupUntil != nil, celebration == nil {
-                WarmupScreen(session: session, onDone: exercisePlayerOpener)
+            if let session = activeWorkout.session, session.warmupUntil != nil, !warmupHidden, celebration == nil {
+                WarmupScreen(
+                    session: session,
+                    onDone: exercisePlayerOpener,
+                    onHide: { withAnimation(.easeInOut(duration: 0.3)) { warmupHidden = true } }
+                )
                     .ignoresSafeArea()
                     .transition(.opacity)
             }
         }
         .animation(.easeInOut(duration: 0.3), value: activeWorkout.session?.warmupUntil != nil)
+        // Put away, the warm-up still ends on time: its end is sounded as
+        // ever, and the player is left closed — the person chose to be
+        // elsewhere.
+        .task(id: hiddenWarmupDeadline) {
+            guard let deadline = hiddenWarmupDeadline else { return }
+            let wait = Date(epochMillis: deadline).timeIntervalSinceNow + 0.9
+            if wait > 0 { try? await Task.sleep(for: .seconds(wait)) }
+            guard !Task.isCancelled, hiddenWarmupDeadline == deadline else { return }
+            activeWorkout.endWarmup()
+        }
+        .onChange(of: activeWorkout.session?.warmupUntil == nil) { _, over in
+            if over { warmupHidden = false }
+        }
         .overlay {
             if let celebration {
                 WorkoutCelebration(receipt: celebration, onContinue: closeCelebration)
@@ -164,9 +187,9 @@ struct WorkoutsScreen: View {
                 RautaLaunchIntro(
                     seat: rautaSeat,
                     mood: activeWorkout.session == nil ? .calm : .focused,
+                    onHandover: { introHandover = true },
                     onLanded: landIntro
                 )
-                    .transition(.opacity)
             }
         }
         .alert(
@@ -283,6 +306,17 @@ struct WorkoutsScreen: View {
                 chatPresented = true
                 RautaAgent.shared.send(debugArguments[promptIndex + 1])
             }
+            if debugArguments.contains("--demo-workout"), activeWorkout.session == nil {
+                // A workout running, for the Lock Screen, the Island and the
+                // watch to show: three exercises, today, started.
+                try? await Task.sleep(for: .seconds(4.6))
+                let ids = ["barbell bench press", "barbell squat", "pull up"]
+                    .compactMap { ExerciseResolver.resolve($0).first?.exercise.id }
+                if let id = try? await EngineWorkout.createWorkout(date: CalendarDate.today, name: "Demo", exerciseIds: ids),
+                   let workout = WorkoutsStore.shared.workout(id) {
+                    _ = activeWorkout.start(workout)
+                }
+            }
             #endif
             // Restore any missing lightweight projection from its authoritative
             // plan. Only days still ahead: a past day with no record is one the
@@ -390,12 +424,15 @@ struct WorkoutsScreen: View {
                     .opacity(introPlaying && !reduceMotion ? 0 : 1)
                     // Covered by the player, the chat or the celebration, it
                     // neither performs nor speaks: the RAUTA in front does.
+                    // Just before the arriving one lands it comes on stage,
+                    // quietly, so it is already moving when it takes over.
                     .environment(
                         \.rautaOnStage,
                         onStage && !exercisePlayerOpen && !chatPresented && celebration == nil
-                            && activeWorkout.session?.warmupUntil == nil
-                            && !(introPlaying && !reduceMotion)
+                            && (activeWorkout.session?.warmupUntil == nil || warmupHidden)
+                            && (!(introPlaying && !reduceMotion) || introHandover)
                     )
+                    .environment(\.rautaQuiet, introPlaying && !reduceMotion)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
         }
@@ -460,9 +497,11 @@ struct WorkoutsScreen: View {
         ))
     }
 
-    private func greet() {
+    /// The opening line. `reaction` is the beat RAUTA says it with; the
+    /// launch passes none, having just nodded hello on its way in.
+    private func greet(reaction: RautaReaction? = .acknowledge) {
         guard !chatPresented else { return }
-        RautaSpeech.shared.say(greeting)
+        RautaSpeech.shared.say(greeting, reaction: reaction)
     }
 
     /// What RAUTA can point to: anything on today, which it can always start —
@@ -505,7 +544,13 @@ struct WorkoutsScreen: View {
     @ViewBuilder
     private var nativeExerciseAccessory: some View {
         if let session = activeWorkout.session {
-            if let exercise = ActiveWorkout.currentExercise(session) {
+            if session.warmupUntil != nil {
+                NativeWarmupAccessory(
+                    session: session,
+                    onOpen: { withAnimation(.easeInOut(duration: 0.3)) { warmupHidden = false } },
+                    onCompactChange: updateRautaCompactState
+                )
+            } else if let exercise = ActiveWorkout.currentExercise(session) {
                 NativeExerciseBottomAccessory(
                     exercise: exercise,
                     isPresented: $exercisePlayerOpen,
@@ -523,8 +568,15 @@ struct WorkoutsScreen: View {
 
     private var shouldShowNativeExerciseAccessory: Bool {
         guard let session = activeWorkout.session else { return false }
-        return ActiveWorkout.currentExercise(session) != nil
+        return session.warmupUntil != nil
+            || ActiveWorkout.currentExercise(session) != nil
             || ActiveWorkout.progress(session).isComplete
+    }
+
+    /// The deadline of a warm-up running while put away, for the task that
+    /// ends it on time.
+    private var hiddenWarmupDeadline: Double? {
+        warmupHidden ? activeWorkout.session?.warmupUntil : nil
     }
 
     @ViewBuilder
@@ -812,12 +864,19 @@ struct WorkoutsScreen: View {
         }
     }
 
-    /// RAUTA is in its seat: the tab bar's one takes over and says hello.
+    /// RAUTA is in its seat: the tab bar's one takes over in the same frame —
+    /// no crossfade, which showed two characters at once — and the greeting
+    /// rises as it settles.
     private func landIntro() {
-        withAnimation(.easeOut(duration: 0.15)) { introPlaying = false }
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            introPlaying = false
+            introHandover = false
+        }
         Task {
-            try? await Task.sleep(for: .seconds(0.25))
-            greet()
+            try? await Task.sleep(for: .seconds(0.12))
+            greet(reaction: nil)
         }
     }
 

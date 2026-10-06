@@ -9,10 +9,14 @@ import SwiftUI
 /// phone loses nothing; the end is sounded by ``RestAlerts`` like a rest's.
 /// When it runs out, or on "Start training", the player opens on the first
 /// exercise.
+///
+/// It can be put away — the chevron, or a swipe down — and keeps running
+/// while it is: the bar above the tabs counts it down and brings it back.
 struct WarmupScreen: View {
     private let store = AppStore.shared
     let session: ActiveWorkoutSession
     let onDone: () -> Void
+    let onHide: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// It covers the whole screen, bars included, so it keeps clear of the
@@ -20,6 +24,8 @@ struct WarmupScreen: View {
     @Environment(\.appSafeAreaInsets) private var safeAreaInsets
     @State private var shown = false
     @State private var finishing = false
+    /// How far a swipe down has pulled the page.
+    @State private var pull: CGFloat = 0
 
     private var until: Date {
         Date(epochMillis: session.warmupUntil ?? session.startedAt)
@@ -46,6 +52,10 @@ struct WarmupScreen: View {
             VStack(spacing: 0) {
                 header(remaining: remaining, progress: min(1, elapsed / total))
                     .padding(.top, 12)
+                    .frame(maxWidth: .infinity)
+                    .overlay(alignment: .topLeading) {
+                        AppHeaderButton(systemImage: "chevron.down", label: "Hide warm-up", action: hide)
+                    }
 
                 Spacer(minLength: 12)
 
@@ -81,7 +91,11 @@ struct WarmupScreen: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background { background }
+        // The whole page follows a pull, the way a sheet does, and shows
+        // the app beneath it.
+        .offset(y: pull)
         .contentShape(Rectangle())
+        .simultaneousGesture(swipeToHide)
         .task(id: session.warmupUntil) { await runOut() }
         .onAppear {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.86).delay(0.05)) { shown = true }
@@ -107,10 +121,11 @@ struct WarmupScreen: View {
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Theme.foreground.opacity(0.1))
+                    // Only the length animates: a page being pulled must not
+                    // leave the bar trailing behind it.
                     Capsule()
                         .fill(Theme.primary)
-                        .frame(width: proxy.size.width * progress)
-                        .animation(.linear(duration: 0.5), value: progress)
+                        .animation(.linear(duration: 0.5)) { $0.frame(width: proxy.size.width * progress) }
                 }
             }
             .frame(width: 180, height: 4)
@@ -185,6 +200,32 @@ struct WarmupScreen: View {
                 finish(early: true)
             }
         }
+    }
+
+    /// Pulled down, the page follows the finger with a little resistance;
+    /// let go far enough and it is put away, otherwise it springs back.
+    private var swipeToHide: some Gesture {
+        DragGesture(minimumDistance: 16)
+            .onChanged { value in
+                guard value.translation.height > 0,
+                      value.translation.height > abs(value.translation.width)
+                else { return }
+                pull = value.translation.height * 0.55
+            }
+            .onEnded { value in
+                let flung = value.predictedEndTranslation.height > 260
+                if value.translation.height > 140 || (flung && value.translation.height > 40) {
+                    hide()
+                } else {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { pull = 0 }
+                }
+            }
+    }
+
+    private func hide() {
+        Haptics.trigger(.selection)
+        WorkoutAudio.touch(.close)
+        onHide()
     }
 
     private var background: some View {

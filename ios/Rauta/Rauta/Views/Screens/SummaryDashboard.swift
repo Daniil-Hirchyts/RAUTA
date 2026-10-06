@@ -18,110 +18,28 @@ struct MonthlySummarySnapshot {
         now: Date = Date(),
         calendar: Calendar = .current
     ) {
-        let interval = calendar.dateInterval(of: .month, for: now)
-            ?? DateInterval(start: now, duration: 1)
-        let monthWorkouts = workouts.filter { workout in
-            guard let completedAt = workout.completion?.completedAt,
-                  let millis = ISOTime.parse(completedAt)
-            else { return false }
-            return interval.contains(Date(epochMillis: millis))
-        }
-        let monthSessions = history.sessions.filter { session in
-            guard let millis = ISOTime.parse(session.completedAt) else { return false }
-            return interval.contains(Date(epochMillis: millis))
-        }
-
-        monthTitle = CalendarDate.string(from: now, template: "MMMM")
-
-        workoutCount = Swift.max(monthWorkouts.count, monthSessions.count)
-        let workoutDuration = monthWorkouts.compactMap(\.completion).reduce(0) {
-            $0 + $1.durationMs / 1_000
-        }
-        let sessionDuration = monthSessions.reduce(0) { $0 + ($1.durationSeconds ?? 0) }
-        totalDurationSeconds = monthWorkouts.isEmpty ? sessionDuration : workoutDuration
-        averageDurationSeconds = workoutCount > 0
-            ? totalDurationSeconds / Double(workoutCount)
-            : 0
-
-        var workoutBins = Array(repeating: 0.0, count: 5)
-        var durationBins = Array(repeating: 0.0, count: 5)
-        for workout in monthWorkouts {
-            guard let completion = workout.completion,
-                  let millis = ISOTime.parse(completion.completedAt)
-            else { continue }
-            let date = Date(epochMillis: millis)
-            let bin = Self.weekBin(for: date, calendar: calendar)
-            workoutBins[bin] += 1
-            durationBins[bin] += completion.durationMs / 1_000
-        }
-        if monthWorkouts.isEmpty {
-            for session in monthSessions {
-                guard let millis = ISOTime.parse(session.completedAt) else { continue }
-                let date = Date(epochMillis: millis)
-                let bin = Self.weekBin(for: date, calendar: calendar)
-                workoutBins[bin] += 1
-                durationBins[bin] += session.durationSeconds ?? 0
-            }
-        }
-        weeklyWorkoutCounts = workoutBins
-        weeklyDurationSeconds = durationBins
-
-        let monthHistory = TrainingHistory(
-            sessions: monthSessions,
-            coverage: history.coverage,
-            coverageStart: history.coverageStart
+        let key = SummaryAnalytics.monthKey(now, calendar: calendar)
+        // The same sessions, counted the same way, as the page behind the card.
+        let activity = SummaryAnalytics.activity(
+            key,
+            sessions: SummaryAnalytics.sessions(workouts: workouts),
+            calendar: calendar
         )
-        let preciseVolume = Volume.historyVolume(
-            monthHistory,
-            TrainingWorkflow.trainingIndex(),
-            DEFAULT_POLICY,
-            from: interval.start.timeIntervalSince1970 * 1_000,
-            to: now.timeIntervalSince1970 * 1_000,
-            inclusiveStart: true
-        ).mapValues(\.effective)
-        let preciseTotal = preciseVolume.values.reduce(0, +)
-        let volume = preciseTotal > 0
-            ? preciseVolume
-            : Self.exerciseFallbackVolume(monthWorkouts)
-        let maximum = volume.values.max() ?? 0
+        monthTitle = CalendarDate.string(from: now, template: "MMMM")
+        workoutCount = activity.count
+        totalDurationSeconds = activity.totalSeconds
+        averageDurationSeconds = activity.averageSeconds
+        weeklyWorkoutCounts = activity.weeklyCounts
+        weeklyDurationSeconds = activity.weeklySeconds
 
-        let ordered = volume
-            .filter { $0.value > 0 }
-            .sorted {
-                $0.value == $1.value
-                    ? $0.key.label < $1.key.label
-                    : $0.value > $1.value
-            }
-        trainedMuscles = ordered.map(\.key)
-        leadingMuscles = Array(ordered.prefix(4)).map { ($0.key, $0.value) }
-        muscleWeights = Dictionary(uniqueKeysWithValues: ordered.map { entry in
-            let normalized = maximum > 0 ? entry.value / maximum : 0
-            return (entry.key, 0.20 + 0.80 * sqrt(normalized))
+        let loads = SummaryAnalytics.muscles(key, history: history, workouts: workouts, now: now)
+        let maximum = loads.map(\.sets).max() ?? 0
+        trainedMuscles = loads.map(\.muscle)
+        leadingMuscles = Array(loads.prefix(4)).map { ($0.muscle, $0.sets) }
+        muscleWeights = Dictionary(uniqueKeysWithValues: loads.map { load in
+            let normalized = maximum > 0 ? load.sets / maximum : 0
+            return (load.muscle, 0.20 + 0.80 * sqrt(normalized))
         })
-    }
-
-    private static func weekBin(for date: Date, calendar: Calendar) -> Int {
-        SummaryAnalytics.weekBin(for: date, calendar: calendar)
-    }
-
-    private static func exerciseFallbackVolume(_ workouts: [Workout]) -> [MuscleId: Double] {
-        var volume: [MuscleId: Double] = [:]
-        for workout in workouts {
-            guard let completion = workout.completion else { continue }
-            let exerciseIds = completion.completedExerciseIds.isEmpty
-                ? workout.exerciseIds
-                : completion.completedExerciseIds
-            for exerciseId in exerciseIds {
-                guard let exercise = ExerciseCatalogue.byId[exerciseId] else { continue }
-                for (index, muscle) in exercise.muscles.enumerated() {
-                    let involvement = exercise.muscleWeights.indices.contains(index)
-                        ? exercise.muscleWeights[index]
-                        : 1
-                    volume[muscle, default: 0] += involvement
-                }
-            }
-        }
-        return volume
     }
 }
 
@@ -182,10 +100,6 @@ private struct SummaryMetricCard: View {
     let value: String
     let detail: String
     let bars: [Double]
-
-    private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -294,10 +208,6 @@ private struct Breathing: ViewModifier {
 private struct MuscleHeatmapCard: View {
     let snapshot: MonthlySummarySnapshot
 
-    private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: Theme.Radius.xl3, style: .continuous)
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
@@ -337,7 +247,7 @@ private struct MuscleHeatmapCard: View {
 
                     Spacer(minLength: 0)
 
-                    intensityKey
+                    MuscleIntensityKey()
                 }
                 .frame(width: 116)
                 .frame(minHeight: 224, alignment: .topLeading)
@@ -378,7 +288,14 @@ private struct MuscleHeatmapCard: View {
         }
     }
 
-    private var intensityKey: some View {
+    private static func setValue(_ value: Double) -> String {
+        value.rounded() == value ? "\(Int(value))" : String(format: "%.1f", value)
+    }
+}
+
+/// How the heat on a muscle map reads, from little work to a lot.
+struct MuscleIntensityKey: View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 4) {
                 ForEach(1...5, id: \.self) { level in
@@ -393,15 +310,12 @@ private struct MuscleHeatmapCard: View {
                 Spacer()
                 Text("HIGH")
             }
-            .font(Theme.sans(7, weight: .black))
+            .font(Theme.sans(8, weight: .black))
             .kerning(0.65)
             .foregroundStyle(Theme.mutedForeground)
         }
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("Muscle intensity from low to high")
-    }
-
-    private static func setValue(_ value: Double) -> String {
-        value.rounded() == value ? "\(Int(value))" : String(format: "%.1f", value)
     }
 }
 
@@ -426,8 +340,8 @@ struct BodyHeatmapPair: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
             muscles.isEmpty
-                ? "No muscles trained this month"
-                : "Muscles trained this month: " + muscles.map(\.label).joined(separator: ", ")
+                ? "No muscles trained"
+                : "Muscles trained: " + muscles.map(\.label).joined(separator: ", ")
         )
     }
 

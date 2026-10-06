@@ -35,6 +35,8 @@ struct WorkoutDetailScreen: View {
     @State private var issue: String?
     @State private var showingDate = false
     @State private var countingDown = false
+    /// RAUTA building this workout again, stopped if the page goes.
+    @State private var regenerating: Task<Void, Never>?
     @State private var sharePayload: WorkoutSharePayload?
 
     private var workout: Workout? { store.workouts.workout(workoutId) }
@@ -145,6 +147,7 @@ struct WorkoutDetailScreen: View {
             WorkoutActivityShareView(text: payload.text)
         }
         .onAppear(perform: publishCompanionActions)
+        .onDisappear { regenerating?.cancel() }
         .task(id: workoutId) { await explainReplacedPlan() }
         .onChange(of: companionActionSignature) { _, _ in
             publishCompanionActions()
@@ -401,12 +404,17 @@ struct WorkoutDetailScreen: View {
 
     /// RAUTA builds the workout again around the same muscles, in place.
     private func regenerate() {
+        guard regenerating == nil else { return }
         RautaSpeech.shared.working("Trying another combination…")
-        Task {
+        regenerating = Task {
+            defer { regenerating = nil }
             do {
                 try await EngineWorkout.regenerate(workoutId)
                 Haptics.trigger(.medium)
                 RautaSpeech.shared.say("How about this one?", reaction: .wink)
+            } catch is CancellationError {
+                // Left mid-way: the workout stays as it was.
+                RautaSpeech.shared.hush()
             } catch {
                 RautaSpeech.shared.hush()
                 capture(error)

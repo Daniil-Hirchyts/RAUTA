@@ -21,36 +21,61 @@ struct WorkoutGlyph: View {
     }
 }
 
-/// The RAUTA mark used by the Dynamic Island. The full Rive runtime belongs in
-/// the app; WidgetKit gets a lightweight rendered pose so the Island stays
-/// fast and deterministic while still carrying the same character identity.
-struct RautaActivityMark: View {
-    var isPaused: Bool
-    var accent: WorkoutActivityColor
+/// RAUTA on the card and in the Island, moving, in one loop per phase of the
+/// workout: focused through the warm-up, determined through a set, breathing
+/// through a rest, calm while paused, proud at the end. A change of phase
+/// crossfades from one loop to the next. A soft light of the accent sits
+/// behind it, so a near-black character reads on the dark card; in the
+/// Island's smallest places a paused workout also wears a pause badge.
+struct RautaActivitySprite: View {
+    var state: WorkoutActivityAttributes.ContentState
+    var resting: Bool
+    var size: CGFloat
+    /// Whether it moves. The Island's compact and minimal places hold the
+    /// phase's pose instead: there is no room in them for a loop to read.
+    var animated = true
+
+    private var loop: String {
+        if resting { return "recovering" }
+        switch state.phase {
+        case .done: return "proud"
+        case .rest: return "recovering"
+        case .paused: return "calm"
+        case .warmup: return "focused"
+        case .set, nil: return state.isPaused ? "calm" : "determined"
+        }
+    }
 
     var body: some View {
-        Image("RautaIsland")
-            .resizable()
-            .renderingMode(.original)
-            .scaledToFit()
-            .opacity(isPaused ? 0.68 : 1)
-            .shadow(
-                color: Color(accent).opacity(isPaused ? 0.08 : 0.18),
-                radius: 3
+        ZStack {
+            RautaTimerSprite(
+                loop: loop,
+                epoch: state.animationEpoch ?? Date(timeIntervalSince1970: 0),
+                size: size,
+                still: !animated
             )
-            .overlay(alignment: .bottomTrailing) {
-                if isPaused {
-                    ZStack {
-                        Circle()
-                            .fill(Color(accent))
-                        Image(systemName: "pause.fill")
-                            .font(.system(size: 4.5, weight: .black))
-                            .foregroundStyle(Color(WorkoutActivityPalette.background))
-                    }
-                    .frame(width: 8, height: 8)
+            .id(loop)
+            .transition(.opacity)
+        }
+        .animation(.easeInOut(duration: 0.45), value: loop)
+        .background {
+            Circle()
+                .fill(Color(state.accent).opacity(0.16))
+                .blur(radius: size * 0.18)
+        }
+        .opacity(state.isPaused ? 0.7 : 1)
+        .overlay(alignment: .bottomTrailing) {
+            if state.isPaused, size < 40 {
+                ZStack {
+                    Circle().fill(Color(state.accent))
+                    Image(systemName: "pause.fill")
+                        .font(.system(size: size * 0.2, weight: .black))
+                        .foregroundStyle(Color(WorkoutActivityPalette.background))
                 }
+                .frame(width: size * 0.42, height: size * 0.42)
             }
-            .accessibilityHidden(true)
+        }
+        .accessibilityHidden(true)
     }
 }
 

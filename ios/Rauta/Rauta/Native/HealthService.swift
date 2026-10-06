@@ -5,6 +5,9 @@ import UIKit
 
 enum AppleHealthConnectionResult {
     case connected(bodyWeightKg: Double?)
+    /// The person said no to saving workouts, or has not said yes yet.
+    case denied
+    /// No Health on this device, or the request itself failed.
     case unavailable
 }
 
@@ -27,13 +30,19 @@ final class HealthService {
     private(set) var watchClaims: [String]
 
     private init() {
-        watchClaims = UserDefaults.standard.stringArray(forKey: watchClaimsKey) ?? []
+        watchClaims = Storage.defaults.stringArray(forKey: watchClaimsKey) ?? []
     }
 
     /// The watch is recording `workoutId` and will save it.
     func recordWatchClaim(workoutId: String) {
         watchClaims = RecentIDs.recording(workoutId, in: watchClaims, limit: 32)
-        UserDefaults.standard.set(watchClaims, forKey: watchClaimsKey)
+        Storage.defaults.set(watchClaims, forKey: watchClaimsKey)
+    }
+
+    /// Clearing all data forgets which workouts the watch said it would save.
+    func forgetWatchClaims() {
+        watchClaims = []
+        Storage.defaults.removeObject(forKey: watchClaimsKey)
     }
 
     var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
@@ -180,7 +189,7 @@ final class HealthService {
             return .unavailable
         }
         guard store.authorizationStatus(for: HKObjectType.workoutType()) == .sharingAuthorized else {
-            return .unavailable
+            return .denied
         }
         // A denied or empty read does not prevent workout writes. HealthKit does
         // not distinguish those two cases, so calories use the safe fallback.

@@ -26,6 +26,11 @@ struct LiveActivityContent: Equatable {
     var isPaused: Bool
     /// The accent chosen in Settings, `0xRRGGBB`.
     var accentHex: Int
+    var phase: WorkoutActivityPhase
+    /// Epoch ms the rest ends, while one runs.
+    var restUntilEpochMs: Double?
+    /// Epoch ms RAUTA's frames count from: a minute before the workout began.
+    var animationEpochMs: Double
 }
 
 @MainActor
@@ -35,6 +40,14 @@ enum LiveActivitySync {
         let exercise = ActiveWorkout.currentExercise(session)
         let progress = ActiveWorkout.progress(session)
         let isPaused = session.runningSince == nil
+        let now = ActiveWorkout.nowMillis()
+        let resting = session.restUntil.map { $0 > now } ?? false
+        let phase: WorkoutActivityPhase = {
+            if isPaused { return .paused }
+            if progress.isComplete || session.currentExerciseId == nil { return .done }
+            if let warmupUntil = session.warmupUntil, warmupUntil > now { return .warmup }
+            return resting ? .rest : .set
+        }()
 
         return LiveActivityContent(
             workoutId: session.workoutId,
@@ -46,7 +59,10 @@ enum LiveActivitySync {
             timerStartEpochMs: isPaused ? 0 : (session.runningSince ?? 0) - session.accumulatedMs,
             elapsedMs: isPaused ? session.accumulatedMs : 0,
             isPaused: isPaused,
-            accentHex: Int(SettingsStore.shared.accent.signature.primary)
+            accentHex: Int(SettingsStore.shared.accent.signature.primary),
+            phase: phase,
+            restUntilEpochMs: resting ? session.restUntil : nil,
+            animationEpochMs: session.startedAt - 60_000
         )
     }
 
@@ -57,6 +73,8 @@ enum LiveActivitySync {
         frame.timerStartEpochMs = 0
         frame.elapsedMs = ActiveWorkout.elapsedMs(session)
         frame.isPaused = true
+        frame.phase = .done
+        frame.restUntilEpochMs = nil
         return frame
     }
 
@@ -113,13 +131,7 @@ enum LiveActivitySync {
 
         // A card already on the Lock Screen takes a new accent straight away;
         // the changed colour makes the frame differ, so this is one update.
-        accentCancellable = SettingsStore.shared.changed
-            .map { SettingsStore.shared.accent }
-            // Seeded with the accent in use, so only a real change gets through
-            // — including the very first one.
-            .prepend(SettingsStore.shared.accent)
-            .removeDuplicates()
-            .dropFirst()
+        accentCancellable = SettingsStore.shared.accentChanges
             .sink { _ in
                 if let current = store.session { render(current) }
             }

@@ -19,9 +19,15 @@ enum Storage {
         do {
             return try body()
         } catch {
-            log.error("\(step, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+            report(step, error)
             return nil
         }
+    }
+
+    /// Leaves a trace of a step that failed and was carried on past.
+    nonisolated static func report(_ step: String, _ error: any Error) {
+        let message = (error as? TrainingPersistenceError)?.message ?? error.localizedDescription
+        log.error("\(step, privacy: .public) failed: \(message, privacy: .public)")
     }
 
     static func readEnvelope(_ key: String) -> (state: JSONValue, version: Int)? {
@@ -29,8 +35,7 @@ enum Storage {
               let parsed = JSONCoding.parse(text),
               let object = parsed.objectValue
         else { return nil }
-        let version = Int(object["version"]?.numberValue ?? -1)
-        return (state: object["state"] ?? .null, version: version)
+        return (state: object["state"] ?? .null, version: version(object["version"]))
     }
 
     static func writeEnvelope(_ key: String, state: JSONValue, version: Int) {
@@ -43,6 +48,13 @@ enum Storage {
 
     static func remove(_ key: String) {
         defaults.removeObject(forKey: key)
+    }
+
+    /// A stored envelope's version. The number comes from a file anyone could
+    /// have written, so one that is not a whole number in range reads as no
+    /// version at all rather than trapping on the conversion.
+    nonisolated static func version(_ value: JSONValue?) -> Int {
+        value?.intValue ?? -1
     }
 
     // MARK: Files
@@ -65,18 +77,22 @@ enum Storage {
         return migrated
     }
 
-    /// Written atomically before returning: callers rely on a commit being on
-    /// disk before they take their next step.
-    static func writeEnvelopeFile(_ name: String, state: JSONValue, version: Int) {
+    /// Written atomically before returning, and throws when it is not: callers
+    /// rely on a commit being on disk before they take their next step, so a
+    /// write that failed must not look like one that landed.
+    static func writeEnvelopeFile(_ name: String, state: JSONValue, version: Int) throws {
         let envelope = JSONValue.object([
             "state": state,
             "version": .number(Double(version)),
         ])
-        attempt("Writing \(name)") { try write(Data(envelope.canonical.utf8), to: fileURL(name)) }
+        try write(Data(envelope.canonical.utf8), to: fileURL(name))
     }
 
+    /// Removes a stored file. One that was never written is already gone.
     static func removeFile(_ name: String) {
-        try? FileManager.default.removeItem(at: fileURL(name))
+        let url = fileURL(name)
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        attempt("Removing \(name)") { try FileManager.default.removeItem(at: url) }
     }
 
     /// Application Support, where app-created data belongs; overridable so
@@ -100,8 +116,7 @@ enum Storage {
 
     private static func envelope(from text: String) -> (state: JSONValue, version: Int)? {
         guard let parsed = JSONCoding.parse(text), let object = parsed.objectValue else { return nil }
-        let version = Int(object["version"]?.numberValue ?? -1)
-        return (state: object["state"] ?? .null, version: version)
+        return (state: object["state"] ?? .null, version: version(object["version"]))
     }
 
     static func readString(_ key: String) -> String? { defaults.string(forKey: key) }

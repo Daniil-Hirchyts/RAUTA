@@ -2,8 +2,11 @@ import Charts
 import SwiftUI
 
 /// Behind the Workouts and Training time cards: a month of training, week by
-/// week, and every session in it. The two cards open the same page on their
-/// own measure; the switch at the top moves between them.
+/// week, and every session in it.
+///
+/// The month and the measure are switched from the band at the foot of the
+/// page, so they stay in reach and in view however far down the sessions the
+/// page is scrolled; the month the page covers sits under its title.
 struct SummaryActivityScreen: View {
     private let store = AppStore.shared
     @State private var month: String
@@ -20,69 +23,74 @@ struct SummaryActivityScreen: View {
     var body: some View {
         let sessions = SummaryAnalytics.sessions()
         let activity = SummaryAnalytics.activity(month, sessions: sessions)
-        RautaScreen(
+        let earliest = SummaryAnalytics.firstMonth(sessions)
+        SummaryDetailPage(
             title: metric == .workouts ? "Workouts" : "Training time",
-            backLabel: "Back to summary",
-            onBack: store.navigation.pop
+            period: SummaryAnalytics.monthTitle(month)
         ) {
-            ScrollView {
-                VStack(spacing: 16) {
-                    MonthPager(month: $month, earliest: SummaryAnalytics.firstMonth(sessions))
+            overview(activity)
 
-                    GlassSegmentedPicker(
-                        title: "Measure",
-                        options: SummaryMetric.allCases,
-                        selection: $metric,
-                        label: \.label
-                    )
-
-                    hero(activity)
-                    chart(activity)
-
-                    if activity.sessions.isEmpty {
-                        Text("Nothing trained in \(SummaryAnalytics.monthTitle(month)).")
-                            .font(Theme.sans(14, weight: .medium))
-                            .foregroundStyle(Theme.mutedForeground)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 24)
-                    } else {
-                        SummarySectionLabel(text: "Sessions")
-                            .padding(.top, 4)
-                        WorkoutAgenda(
-                            rows: activity.sessions.map(row),
-                            onOpen: { id in
-                                guard store.workouts.workout(id) != nil else { return }
-                                Haptics.trigger(.selection)
-                                store.navigation.openWorkout(id)
-                            }
-                        )
-                        .background { GradientCard(radius: Theme.Radius.xl2, accent: accent, strength: 0.5) }
-                    }
-                }
-                .padding(.horizontal, Theme.Metrics.contentInset)
-                .padding(.bottom, 32)
-                .animation(Theme.Motion.settle, value: month)
-                .animation(Theme.Motion.settle, value: metric)
+            if activity.sessions.isEmpty {
+                EmptyStatePlaceholder(
+                    symbol: "calendar",
+                    title: "Nothing trained in \(SummaryAnalytics.monthTitle(month))",
+                    message: month == SummaryAnalytics.monthKey()
+                        ? "Workouts you finish this month show up here."
+                        : "Step to another month at the bottom of the page."
+                )
+                .padding(.vertical, 24)
+            } else {
+                SummarySectionLabel(text: "Sessions")
+                    .padding(.top, 8)
+                WorkoutAgenda(
+                    rows: activity.sessions.map(row),
+                    onOpen: { id in
+                        Haptics.trigger(.selection)
+                        // Inside this page's stack, so Back comes back here.
+                        store.navigation.push(.plannedWorkout(workoutId: id))
+                    },
+                    canOpen: { store.workouts.workout($0) != nil }
+                )
+                .background { GradientCard(radius: Theme.Radius.xl2, accent: accent, strength: 0.5) }
             }
-            .pageScroll()
+        } controls: {
+            SummaryPeriodBar(month: $month, earliest: earliest) {
+                GlassSegmentedPicker(
+                    title: "Measure",
+                    options: SummaryMetric.allCases,
+                    selection: $metric,
+                    label: { $0 == .workouts ? "Workouts" : "Time" },
+                    tint: accent
+                )
+            }
         }
+        .animation(Theme.Motion.settle, value: month)
+        .animation(Theme.Motion.settle, value: metric)
+        .onChange(of: month) { _, _ in selectedWeek = nil }
     }
 
     // MARK: Pieces
 
-    private func hero(_ activity: SummaryAnalytics.MonthActivity) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(metric == .workouts ? "\(activity.count)" : SummaryAnalytics.duration(activity.totalSeconds))
-                    .font(Theme.readout(52))
+    /// The month in one card: the figure, what it is made of, and how it fell
+    /// week by week. A week touched on the chart takes over the figure.
+    private func overview(_ activity: SummaryAnalytics.MonthActivity) -> some View {
+        let bars = weekBars(activity)
+        let selected = bars.first { $0.label == selectedWeek }
+        return VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(selected.map { format($0.value) } ?? headline(activity))
+                    .font(Theme.readout(44))
                     .foregroundStyle(accent)
                     .contentTransition(.numericText())
-                Text(metric == .workouts
-                     ? (activity.count == 1 ? "session in \(SummaryAnalytics.monthTitle(month))" : "sessions in \(SummaryAnalytics.monthTitle(month))")
-                     : "trained in \(SummaryAnalytics.monthTitle(month))")
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                Text(selected.map { "in the week of \($0.label)" } ?? caption(activity))
                     .font(Theme.sans(13, weight: .medium))
                     .foregroundStyle(Theme.mutedForeground)
             }
+
+            chart(bars)
+
             HStack(spacing: 12) {
                 SummaryStat(value: SummaryAnalytics.duration(activity.averageSeconds), label: "Average")
                 SummaryStat(value: activity.longest.map { SummaryAnalytics.duration($0.durationSeconds) } ?? "—", label: "Longest")
@@ -94,70 +102,78 @@ struct SummaryActivityScreen: View {
         .background { GradientCard(radius: Theme.Radius.xl2, accent: accent) }
     }
 
+    private func headline(_ activity: SummaryAnalytics.MonthActivity) -> String {
+        metric == .workouts ? "\(activity.count)" : SummaryAnalytics.duration(activity.totalSeconds)
+    }
+
+    private func caption(_ activity: SummaryAnalytics.MonthActivity) -> String {
+        let when = month == SummaryAnalytics.monthKey() ? "this month" : "in \(SummaryAnalytics.monthTitle(month))"
+        switch metric {
+        case .workouts: return (activity.count == 1 ? "session " : "sessions ") + when
+        case .time: return "trained " + when
+        }
+    }
+
     private struct WeekBar: Identifiable {
         var id: String { label }
         var label: String
         var value: Double
     }
 
-    private func chart(_ activity: SummaryAnalytics.MonthActivity) -> some View {
+    private func weekBars(_ activity: SummaryAnalytics.MonthActivity) -> [WeekBar] {
         let values = metric == .workouts ? activity.weeklyCounts : activity.weeklySeconds.map { $0 / 60 }
-        let bars = zip(activity.weekRanges, values)
+        return zip(activity.weekRanges, values)
             .filter { !$0.0.isEmpty }
             .map { WeekBar(label: $0.0, value: $0.1) }
-        let selected = bars.first { $0.label == selectedWeek }
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("BY WEEK")
-                    .font(Theme.sans(10, weight: .black))
-                    .kerning(1.3)
-                    .foregroundStyle(Theme.mutedForeground)
-                Spacer()
-                if let selected {
-                    Text("\(selected.label): \(format(selected.value))")
-                        .font(Theme.sans(12, weight: .semibold))
-                        .foregroundStyle(Theme.foreground)
-                        .transition(.opacity)
-                }
-            }
-            Chart(bars) { bar in
-                BarMark(
-                    x: .value("Days", bar.label),
-                    y: .value(metric == .workouts ? "Sessions" : "Minutes", bar.value),
-                    width: .ratio(0.42)
-                )
-                .foregroundStyle(accent.opacity(selectedWeek == nil || selectedWeek == bar.label ? 1 : 0.35))
-                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 4, topTrailingRadius: 4))
-            }
-            .chartXSelection(value: $selectedWeek)
-            .chartYAxis {
-                AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
-                    AxisGridLine().foregroundStyle(Theme.foreground.opacity(0.08))
-                    AxisValueLabel {
-                        if let number = value.as(Double.self) {
-                            Text(metric == .workouts ? "\(Int(number))" : "\(Int(number))m")
-                                .font(Theme.sans(10, weight: .medium))
-                                .foregroundStyle(Theme.mutedForeground)
-                        }
-                    }
-                }
-            }
-            .chartXAxis {
-                AxisMarks { value in
-                    AxisValueLabel {
-                        if let label = value.as(String.self) {
-                            Text(label)
-                                .font(Theme.sans(10, weight: .semibold))
-                                .foregroundStyle(Theme.mutedForeground)
-                        }
-                    }
-                }
-            }
-            .frame(height: 170)
-            .accessibilityLabel("Weekly \(metric == .workouts ? "sessions" : "training time")")
+    }
+
+    private func chart(_ bars: [WeekBar]) -> some View {
+        // Minutes read as hours once a week passes two hours.
+        let hours = metric == .time && (bars.map(\.value).max() ?? 0) > 120
+        return Chart(bars) { bar in
+            BarMark(
+                x: .value("Week", bar.label),
+                y: .value(metric == .workouts ? "Sessions" : "Minutes", hours ? bar.value / 60 : bar.value),
+                width: .ratio(0.46)
+            )
+            .foregroundStyle(accent.opacity(selectedWeek == nil || selectedWeek == bar.label ? 1 : 0.35))
+            .clipShape(UnevenRoundedRectangle(topLeadingRadius: 4, topTrailingRadius: 4))
         }
-        .padding(16)
-        .background { GradientCard(radius: Theme.Radius.xl2, accent: accent, strength: 0.5) }
+        .chartXSelection(value: $selectedWeek)
+        .chartYAxis {
+            AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
+                AxisGridLine().foregroundStyle(Theme.foreground.opacity(0.08))
+                AxisValueLabel {
+                    if let number = value.as(Double.self) {
+                        Text(axisLabel(number, hours: hours))
+                            .font(Theme.sans(10, weight: .medium))
+                            .foregroundStyle(Theme.mutedForeground)
+                    }
+                }
+            }
+        }
+        .chartXAxis {
+            AxisMarks { value in
+                AxisValueLabel {
+                    if let label = value.as(String.self) {
+                        Text(label)
+                            .font(Theme.sans(10, weight: .semibold))
+                            .foregroundStyle(Theme.mutedForeground)
+                    }
+                }
+            }
+        }
+        .frame(height: 150)
+        .accessibilityLabel("Weekly \(metric == .workouts ? "sessions" : "training time")")
+    }
+
+    private func axisLabel(_ number: Double, hours: Bool) -> String {
+        switch metric {
+        case .workouts:
+            return number == number.rounded() ? "\(Int(number))" : ""
+        case .time:
+            return hours ? "\(Num.trimmed(number))h" : "\(Int(number))m"
+        }
     }
 
     private func format(_ value: Double) -> String {

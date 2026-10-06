@@ -57,7 +57,7 @@ struct PlanBasis: Equatable {
         let data = TrainingRecordsStore.shared.data
         let filters = FiltersStore.shared
         return PlanBasis(
-            day: String(now.prefix(10)),
+            day: ISOTime.localDay(now),
             activeProgramId: data.activeProgramId,
             programIds: data.programs.map(\.id),
             sessionCount: data.sessions.count,

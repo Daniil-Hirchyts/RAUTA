@@ -25,6 +25,8 @@ struct WorkoutDestinationScreen: View {
     @State private var choosingDate = false
     @State private var working = false
     @State private var issue: String?
+    /// The workout being made, stopped if the page goes before it is saved.
+    @State private var creating: Task<Void, Never>?
 
     private var source: Workout? {
         guard case .reuse(let id) = mode else { return nil }
@@ -138,6 +140,7 @@ struct WorkoutDestinationScreen: View {
             )
             .zIndex(9)
         }
+        .onDisappear { creating?.cancel() }
     }
 
     /// What is being filed: the workout being reused, or the exercises picked.
@@ -199,8 +202,11 @@ struct WorkoutDestinationScreen: View {
         guard !working, !exerciseIds.isEmpty else { return }
         working = true
         issue = nil
-        Task {
-            defer { working = false }
+        creating = Task {
+            defer {
+                working = false
+                creating = nil
+            }
             do {
                 let id: String
                 if let source {
@@ -217,6 +223,8 @@ struct WorkoutDestinationScreen: View {
                         : "It's on \(CalendarDate.format(date, "EEEEdMMMM")).",
                     reaction: .wink
                 )
+            } catch is CancellationError {
+                // Left before it was ready: nothing was saved.
             } catch { capture(error) }
         }
     }

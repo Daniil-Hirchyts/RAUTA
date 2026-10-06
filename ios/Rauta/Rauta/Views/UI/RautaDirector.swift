@@ -178,7 +178,7 @@ final class RautaDirector {
     /// A saved set starts the rest, so RAUTA says how long it is: the person
     /// hears the timer from the one keeping it.
     private static func spoken(_ line: String, for cue: RautaCue) -> String {
-        guard !line.isEmpty, cue == .setSaved || cue == .hardSetSaved,
+        guard !line.isEmpty, cue == .setSaved || cue == .hardSetSaved || cue == .personalBest,
               let restUntil = ActiveWorkoutStore.shared.session?.restUntil
         else { return line }
         let seconds = Int(((restUntil - Date().timeIntervalSince1970 * 1000) / 1000).rounded())
@@ -378,7 +378,11 @@ final class RautaDirector {
 
         let sets = Self.loggedSetCount(records.activeWorkout)
         if records.activeWorkout?.id == draftId, sets > loggedSets {
-            cue(Self.lastSetWasHard(records.activeWorkout) ? .hardSetSaved : .setSaved)
+            if SummaryAnalytics.isPersonalBest(records.activeWorkout, history: records.sessions) {
+                cue(.personalBest)
+            } else {
+                cue(Self.lastSetWasHard(records.activeWorkout) ? .hardSetSaved : .setSaved)
+            }
         }
         draftId = records.activeWorkout?.id
         loggedSets = sets

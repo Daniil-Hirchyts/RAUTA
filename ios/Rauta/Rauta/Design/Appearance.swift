@@ -51,9 +51,7 @@ enum AppearanceController {
             .store(in: &cancellables)
         // The accent needs no cross-fade: every view drawing with it redraws in
         // place, which is its own transition.
-        SettingsStore.shared.changed
-            .map { SettingsStore.shared.accent }
-            .removeDuplicates()
+        SettingsStore.shared.accentChanges
             .sink { accent in
                 ThemeStore.shared.apply(accent)
                 applyTint()

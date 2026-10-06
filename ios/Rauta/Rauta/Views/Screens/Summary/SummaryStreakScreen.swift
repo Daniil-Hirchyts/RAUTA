@@ -1,7 +1,11 @@
 import SwiftUI
 
 /// Behind the streak card: every trained day of a month on a calendar, runs of
-/// days joined into one mark, with the current and best streak above.
+/// days joined into one mark.
+///
+/// The calendar comes first — it is what the month steps through — with how
+/// the month went inside its card. The streak itself, which the card already
+/// shows large, is a slim row underneath rather than a second hero.
 struct SummaryStreakScreen: View {
     private let store = AppStore.shared
     @State private var month = SummaryAnalytics.monthKey()
@@ -13,60 +17,41 @@ struct SummaryStreakScreen: View {
         let streak = StreakBuilder.build(workouts)
         let days = SummaryAnalytics.trainedDays(workouts)
         let earliest = days.min().map { String($0.prefix(7)) } ?? SummaryAnalytics.monthKey()
-        RautaScreen(
-            title: "Streak",
-            backLabel: "Back to summary",
-            onBack: store.navigation.pop
-        ) {
-            ScrollView {
-                VStack(spacing: 16) {
-                    hero(streak)
-                    MonthPager(month: $month, earliest: earliest)
-                    MonthCalendarGrid(month: month, trained: days)
-                        .padding(14)
-                        .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.lime, strength: 0.5) }
+        SummaryDetailPage(title: "Streak", period: SummaryAnalytics.monthTitle(month)) {
+            if days.isEmpty {
+                EmptyStatePlaceholder(
+                    symbol: "flame",
+                    title: "No streak yet",
+                    message: "Finish a workout and your first day lights up here."
+                )
+                .padding(.vertical, 24)
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
                     Text(summaryLine(days))
-                        .font(Theme.sans(13, weight: .medium))
+                        .font(Theme.sans(13, weight: .semibold))
                         .foregroundStyle(Theme.mutedForeground)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 4)
+                    MonthCalendarGrid(month: month, trained: days)
                 }
-                .padding(.horizontal, Theme.Metrics.contentInset)
-                .padding(.bottom, 32)
-            }
-            .pageScroll()
-        }
-    }
+                .padding(16)
+                .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.lime, strength: 0.5) }
+                .monthSwipe($month, earliest: earliest)
+                .id(month)
+                .transition(.opacity)
 
-    private func hero(_ streak: Streak) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .bottom, spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("CURRENT STREAK")
-                        .font(Theme.sans(10, weight: .black))
-                        .kerning(1.4)
-                        .foregroundStyle(Theme.lime)
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text("\(streak.currentStreak)")
-                            .font(Theme.readout(56))
-                            .foregroundStyle(Theme.foreground)
-                        Text(streak.currentStreak == 1 ? "day" : "days")
-                            .font(Theme.sans(17, weight: .bold))
-                            .foregroundStyle(Theme.foreground.opacity(0.78))
-                    }
+                HStack(spacing: 12) {
+                    SummaryStat(value: "\(streak.currentStreak)", label: "Current streak", accent: Theme.lime)
+                    SummaryStat(value: "\(streak.longestStreak)", label: "Best streak", accent: Theme.gold)
+                    SummaryStat(value: "\(streak.weekWorkouts)", label: "This week")
                 }
-                Spacer(minLength: 0)
-                Flame(lit: streak.currentStreak > 0, alive: true)
-                    .frame(width: 52, height: 66)
+                .padding(16)
+                .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.lime, strength: 0.35) }
             }
-            HStack(spacing: 12) {
-                SummaryStat(value: "\(streak.longestStreak)", label: "Best streak", accent: Theme.gold)
-                SummaryStat(value: "\(streak.weekWorkouts)", label: "This week", accent: Theme.lime)
+        } controls: {
+            if !days.isEmpty {
+                SummaryPeriodBar(month: $month, earliest: earliest)
             }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.primary) }
+        .animation(Theme.Motion.settle, value: month)
     }
 
     private func summaryLine(_ days: Set<String>) -> String {
@@ -78,27 +63,31 @@ struct SummaryStreakScreen: View {
         let total = isCurrent
             ? Calendar.current.component(.day, from: Date())
             : Calendar.current.range(of: .day, in: .month, for: interval.start)?.count ?? 30
-        return "Trained on \(trained) of \(total) days in \(SummaryAnalytics.monthTitle(month))."
+        return "Trained on \(trained) of \(total) days"
     }
 }
 
-/// A month as a Monday-first calendar, trained days lit. Consecutive trained
-/// days in a week are drawn as one joined mark, so a run reads as a run.
+/// A month as a calendar, weeks starting on the phone's own first day, trained
+/// days lit. Consecutive trained days in a week are drawn as one joined mark,
+/// so a run reads as a run.
 struct MonthCalendarGrid: View {
     let month: String
     let trained: Set<String>
 
-    private var calendar: Calendar {
-        var calendar = Calendar.current
-        calendar.firstWeekday = 2
-        return calendar
+    private var calendar: Calendar { Calendar.current }
+
+    /// The weekday letters, in the order the calendar's weeks run.
+    private var weekdaySymbols: [String] {
+        let symbols = calendar.veryShortStandaloneWeekdaySymbols
+        let first = calendar.firstWeekday - 1
+        return Array(symbols[first...] + symbols[..<first])
     }
 
     /// The month's days, padded to whole weeks with nil.
     private var weeks: [[String?]] {
         let interval = SummaryAnalytics.monthInterval(month, calendar: calendar)
         let weekday = calendar.component(.weekday, from: interval.start)
-        let lead = (weekday + 5) % 7
+        let lead = (weekday - calendar.firstWeekday + 7) % 7
         var cells: [String?] = Array(repeating: nil, count: lead)
         var day = interval.start
         while day < interval.end {
@@ -112,8 +101,8 @@ struct MonthCalendarGrid: View {
     var body: some View {
         VStack(spacing: 8) {
             HStack(spacing: 0) {
-                ForEach(["M", "T", "W", "T", "F", "S", "S"].indices, id: \.self) { index in
-                    Text(["M", "T", "W", "T", "F", "S", "S"][index])
+                ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
+                    Text(symbol)
                         .font(Theme.sans(10, weight: .black))
                         .foregroundStyle(Theme.mutedForeground)
                         .frame(maxWidth: .infinity)

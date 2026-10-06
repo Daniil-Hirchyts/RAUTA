@@ -125,12 +125,32 @@ final class WorkoutReminders {
         case Self.moveAction:
             guard let workout = WorkoutsStore.shared.workout(workoutId) else { return }
             let tomorrow = CalendarDate.shift(max(workout.date, CalendarDate.today), by: 1)
-            try? TrainingEdits.rescheduleWorkout(workoutId, date: tomorrow)
+            do {
+                try TrainingEdits.rescheduleWorkout(workoutId, date: tomorrow)
+            } catch {
+                await report("Couldn't move \(workout.name) to tomorrow", error)
+            }
         case Self.snoozeAction:
             guard let workout = WorkoutsStore.shared.workout(workoutId) else { return }
-            _ = try? await schedule(workout, fireDate: Date().addingTimeInterval(30 * 60))
+            do {
+                try await schedule(workout, fireDate: Date().addingTimeInterval(30 * 60))
+            } catch {
+                await report("Couldn't snooze \(workout.name)", error)
+            }
         default: break
         }
+    }
+
+    /// A reminder's action failed while the app was out of sight: the person
+    /// pressed a button on a notification, so the answer comes back the same
+    /// way rather than vanishing.
+    private func report(_ title: String, _ error: Error) async {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = (error as? LocalizedError)?.errorDescription
+            ?? (error as? TrainingPersistenceError)?.message
+            ?? "Open Rauta to try again."
+        try? await center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
     }
 
     private func reconcile() async {

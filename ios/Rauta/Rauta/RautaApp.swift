@@ -13,11 +13,9 @@ struct RautaApp: App {
                 AgentLabScreen()
             } else {
                 RootView()
-                    .environment(\.appStore, AppStore.shared)
             }
 #else
             RootView()
-                .environment(\.appStore, AppStore.shared)
 #endif
         }
     }

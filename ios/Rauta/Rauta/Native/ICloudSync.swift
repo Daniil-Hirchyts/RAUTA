@@ -126,7 +126,7 @@ final class ICloudSync {
     private func restoreCloudData(_ record: ICloudBackupRecord) throws {
         applyingCloudBackup = true
         defer { applyingCloudBackup = false }
-        try AppBackup.importBackup(record.data)
+        try AppBackup.importBackup(record.data, keepingRunningWorkout: true)
         writeMeta(SyncMeta(localChangedAt: record.updatedAt, cloudUpdatedAt: record.updatedAt))
         status = .synced
         lastSyncedAt = record.updatedAt
@@ -189,11 +189,14 @@ final class ICloudSync {
             return
         }
 
+        // The store posts its change on a queue of its own; reading it is
+        // main-actor work, so the notification is moved there first.
         NotificationCenter.default
             .publisher(for: ICloudBackupStore.externalChange)
+            .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 guard let record = ICloudBackupStore.read() else { return }
-                Task { @MainActor in self?.acceptExternalChange(record) }
+                self?.acceptExternalChange(record)
             }
             .store(in: &cancellables)
 

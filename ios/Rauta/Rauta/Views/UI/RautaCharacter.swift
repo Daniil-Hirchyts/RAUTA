@@ -14,9 +14,18 @@ struct RautaCharacter: View {
     /// A horizontal turn to hold, in degrees, for a character being steered —
     /// flying in on the launch, say. Nil lets it face you as usual.
     var yaw: Double?
+    /// A frame rate to hold, for a character in a piece of choreography that
+    /// must not change pace mid-move. Nil lets it pace itself.
+    var framesPerSecond: Int?
+    /// Whether a change of `mood` comes with the blink a change of feeling
+    /// usually brings. Choreography blending one into the next turns it off.
+    var moodBlinks = true
+    /// A point on screen, in global coordinates, for the eyes to go to.
+    var lookAt: CGPoint?
     @Environment(\.accessibilityReduceMotion) private var reducedMotion
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.rautaOnStage) private var onStage
+    @Environment(\.rautaQuiet) private var quiet
     @StateObject private var performer = RautaPerformer()
     private let speech = RautaSpeech.shared
     @State private var leash = CGSize.zero
@@ -27,18 +36,24 @@ struct RautaCharacter: View {
     var body: some View {
         performer.rig.view()
             .offset(leash)
-            .onGeometryChange(for: CGRect.self) { proxy in
-                proxy.frame(in: .global)
-            } action: { frame in
-                performer.place(frame)
+            // The laid-out size picks the placement, the frame on screen is
+            // where it is: a character scaled down in flight is still a hero.
+            .onGeometryChange(for: PlacedFrame.self) { proxy in
+                PlacedFrame(global: proxy.frame(in: .global), width: proxy.size.width)
+            } action: { placed in
+                performer.place(placed.global, layoutWidth: placed.width)
             }
             .onAppear {
-                performer.appear(mood: mood, reducedMotion: reducedMotion, onStage: onStage)
+                performer.appear(mood: mood, reducedMotion: reducedMotion, onStage: onStage, quiet: quiet)
+                if let framesPerSecond { performer.pin(framesPerSecond: framesPerSecond) }
                 if let reaction { performer.explicit(reaction) }
                 if let yaw { performer.hold(yaw: yaw) }
             }
             .onDisappear { performer.disappear() }
-            .onChange(of: mood) { _, next in performer.setMood(next) }
+            .onChange(of: mood) { _, next in performer.setMood(next, blinks: moodBlinks) }
+            .onChange(of: lookAt) { _, point in if let point { performer.look(at: point) } }
+            .onChange(of: quiet) { _, next in performer.setQuiet(next) }
+            .onChange(of: framesPerSecond) { _, next in performer.pin(framesPerSecond: next) }
             // What RAUTA says, the character that answers for it also shows:
             // the look a line asks for, and a beat as it starts.
             .onChange(of: speech.line) { _, line in performer.hear(line) }
@@ -76,6 +91,11 @@ struct RautaCharacter: View {
     }
 }
 
+nonisolated private struct PlacedFrame: Equatable, Sendable {
+    var global: CGRect
+    var width: CGFloat
+}
+
 private struct RautaOnStageKey: EnvironmentKey {
     static let defaultValue = true
 }
@@ -88,6 +108,11 @@ extension EnvironmentValues {
         get { self[RautaOnStageKey.self] }
         set { self[RautaOnStageKey.self] = newValue }
     }
+
+    /// True for a character running unseen, about to take over from another —
+    /// the tab bar's, as the launch's lands in its seat. It answers nothing
+    /// and claims nothing until it is in the scene.
+    @Entry var rautaQuiet = false
 }
 
 /// The artwork, parsed once for every character in the app rather than once per

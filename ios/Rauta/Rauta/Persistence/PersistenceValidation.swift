@@ -197,7 +197,7 @@ nonisolated enum PersistenceValidation {
                 && isValidIsoTimestamp(snapshot["generatedAt"])
                 && (snapshot["goal"]?.stringValue.map(goals.contains) ?? false)
                 && integer(snapshot["durationWeeks"], 1, 52)
-                && (snapshot["weeks"]?.arrayValue?.count == Int(snapshot["durationWeeks"]?.numberValue ?? -1))
+                && (snapshot["weeks"]?.arrayValue?.count == snapshot["durationWeeks"]?.intValue)
 
             if let diagnostics = snapshot["diagnostics"]?.objectValue {
                 let splitsValid = diagnostics["splits"]?.arrayValue?.allSatisfy { split in
@@ -985,7 +985,7 @@ nonisolated enum PersistenceValidation {
             )])
         }
 
-        let schemaVersion = Int(object["schemaVersion"]?.numberValue ?? -1)
+        let schemaVersion = object["schemaVersion"]?.intValue ?? -1
         var migratedTree: JSONValue
         if schemaVersion == TRAINING_PERSISTENCE_SCHEMA_VERSION {
             migratedTree = value

@@ -60,11 +60,14 @@ struct WorkCostTests {
 
     @Test func summaryDerivationCost() {
         let clock = ContinuousClock()
-        var history = TrainingRecordsStore.shared.trainingHistory()
-        let derive = clock.measure { history = TrainingRecordsStore.shared.trainingHistory() }
+        let store = TrainingRecordsStore.shared
+        var history = store.trainingHistory()
+        // Handing it the workouts skips the kept answer: this is the build itself.
+        let derive = clock.measure { history = store.trainingHistory(legacyWorkouts: []) }
+        let kept = clock.measure { history = store.trainingHistory() }
         let workouts = WorkoutsStore.shared.workouts
         let snapshot = clock.measure { _ = MonthlySummarySnapshot(workouts: workouts, history: history) }
-        print("MEASURE training history derivation: \(derive), month snapshot: \(snapshot), sessions \(history.sessions.count)")
+        print("MEASURE training history derivation: \(derive), kept: \(kept), month snapshot: \(snapshot), sessions \(history.sessions.count)")
     }
 
     @Test func setLogRecommendationCost() {
@@ -88,7 +91,7 @@ struct WorkCostTests {
             try? FileManager.default.removeItem(at: directory)
         }
         let file = clock.measure {
-            Storage.writeEnvelopeFile("cost", state: .object(["data": state]), version: 1)
+            try? Storage.writeEnvelopeFile("cost", state: .object(["data": state]), version: 1)
         }
         print("MEASURE history: \(text.utf8.count) bytes, encode \(encode), encode+file write \(file)")
     }

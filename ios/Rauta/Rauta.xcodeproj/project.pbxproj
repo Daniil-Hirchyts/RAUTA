@@ -107,6 +107,11 @@
 			path = WatchShared;
 			sourceTree = "<group>";
 		};
+		A100000000000000000000A6 /* Common */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Common;
+			sourceTree = "<group>";
+		};
 		C300000000000000000000A1 /* RautaTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = RautaTests;
@@ -161,6 +166,7 @@
 				A100000000000000000000A3 /* Shared */,
 				A100000000000000000000A4 /* RautaWatch */,
 				A100000000000000000000A5 /* WatchShared */,
+				A100000000000000000000A6 /* Common */,
 				C300000000000000000000A1 /* RautaTests */,
 				A100000000000000000000D7 /* Media */,
 				A10000000000000000000004 /* Config */,
@@ -214,6 +220,7 @@
 				A100000000000000000000A1 /* Rauta */,
 				A100000000000000000000A3 /* Shared */,
 				A100000000000000000000A5 /* WatchShared */,
+				A100000000000000000000A6 /* Common */,
 			);
 			name = Rauta;
 			packageProductDependencies = (
@@ -244,6 +251,7 @@
 			fileSystemSynchronizedGroups = (
 				A100000000000000000000A2 /* RautaWidgets */,
 				A100000000000000000000A3 /* Shared */,
+				A100000000000000000000A6 /* Common */,
 			);
 			name = RautaWidgetsExtension;
 			productName = RautaWidgetsExtension;
@@ -265,6 +273,7 @@
 			fileSystemSynchronizedGroups = (
 				A100000000000000000000A4 /* RautaWatch */,
 				A100000000000000000000A5 /* WatchShared */,
+				A100000000000000000000A6 /* Common */,
 			);
 			name = RautaWatch;
 			packageProductDependencies = (
@@ -619,6 +628,7 @@
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Rauta reads workout metrics such as heart rate, energy, and distance while you train.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Rauta saves your Apple Watch workout to Health.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKBackgroundModes = "workout-processing";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.hirchyts.gymlib;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -631,7 +641,6 @@
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "watchos watchsimulator";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 4;
 				WATCHOS_DEPLOYMENT_TARGET = 26.2;
 			};
@@ -651,6 +660,7 @@
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Rauta reads workout metrics such as heart rate, energy, and distance while you train.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Rauta saves your Apple Watch workout to Health.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKBackgroundModes = "workout-processing";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.hirchyts.gymlib;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -663,7 +673,6 @@
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "watchos watchsimulator";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 4;
 				WATCHOS_DEPLOYMENT_TARGET = 26.2;
 			};
