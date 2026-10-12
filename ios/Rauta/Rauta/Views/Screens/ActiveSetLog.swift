@@ -89,30 +89,35 @@ struct ActiveSetLog: View {
     }
 
     private var header: some View {
-        HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
             if let headerTarget {
-                Text([headerTarget.label, targetSummary(headerTarget.target)]
-                    .compactMap { $0 }
-                    .joined(separator: " · "))
-                    .font(Theme.sans(11, weight: .bold))
-                    .foregroundStyle(Theme.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .contentTransition(.opacity)
-                    .animation(.easeInOut(duration: 0.2), value: selectedSet?.id)
+                HStack(spacing: 6) {
+                    Text([headerTarget.label, targetSummary(headerTarget.target)]
+                        .compactMap { $0 }
+                        .joined(separator: " · "))
+                        .font(Theme.sans(12, weight: .bold))
+                        .foregroundStyle(Theme.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .contentTransition(.opacity)
+                        .animation(.easeInOut(duration: 0.2), value: selectedSet?.id)
+                    if isCalibrating(headerTarget.target) {
+                        TermInfoButton(term: .calibration, tint: Theme.primary)
+                    }
+                }
             }
+            // The engine's reason in full: recorded, suggested and unknown
+            // kept apart, never cut off.
             if let progressionNote {
                 Text(progressionText(progressionNote))
-                    .font(Theme.sans(11))
-                    .foregroundStyle(Theme.mutedForeground)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                Spacer(minLength: 0)
+                    .font(Theme.sans(12, weight: .medium))
+                    .foregroundStyle(Theme.secondaryForeground)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .padding(.horizontal, 10)
+        .padding(.top, 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 
     private func setRows(_ draft: PersistedActiveExerciseDraft) -> some View {
@@ -121,7 +126,8 @@ struct ActiveSetLog: View {
                 Text("").frame(width: 22, alignment: .leading)
                 Text("Load").frame(maxWidth: .infinity, alignment: .leading)
                 Text("Reps").frame(width: 44, alignment: .trailing)
-                Text("RIR").frame(width: 44, alignment: .trailing)
+                Text("Left").frame(width: 44, alignment: .trailing)
+                    .accessibilityLabel("Reps left")
             }
             .font(Theme.sans(9, weight: .bold))
             .kerning(1.08)
@@ -164,7 +170,9 @@ struct ActiveSetLog: View {
                             )
                         }
                         .buttonStyle(.plain)
+                        .accessibilityElement(children: .ignore)
                         .accessibilityLabel(set.setType == .warmup ? "Warm-up set" : "Set \(setNumber(set, in: draft))")
+                        .accessibilityValue(rowDescription(set))
                         .accessibilityAddTraits(selectedSet?.id == set.id ? .isSelected : [])
                     }
                 }
@@ -190,11 +198,15 @@ struct ActiveSetLog: View {
                 AppStepper(
                     label: "Reps",
                     display: Num.trimmed(reps),
+                    unit: "reps",
                     canDecrement: reps > 1
                 ) { direction in
                     reps = min(100, max(1, reps + Double(direction)))
                 }
 
+                if selectedSet?.setType != .warmup {
+                    RepsLeftPicker(value: $rir, target: selectedSet?.target?.rir ?? target?.rir)
+                }
             }
 
             HStack(spacing: 8) {
@@ -362,6 +374,28 @@ struct ActiveSetLog: View {
         return Resistance.format(target.resistance)
     }
 
+    /// A set with no load the engine could name: the person finds it.
+    private func isCalibrating(_ target: PersistedSetTarget) -> Bool {
+        Resistance.isMeasuredInKg(target.resistance.type) && target.resistance.kg == nil
+    }
+
+    /// What a set row says to VoiceOver: what was done, or what is asked.
+    private func rowDescription(_ set: PersistedActiveSetDraft) -> String {
+        if let observation = set.observation, observation.completed {
+            var parts: [String] = []
+            if let resistance = observation.resistance { parts.append(Resistance.format(resistance)) }
+            if let reps = observation.reps { parts.append("\(Num.trimmed(reps)) reps") }
+            parts.append(observation.rir.map { "\(Num.trimmed($0)) reps left" } ?? "reps left not recorded")
+            return "Done. " + parts.joined(separator: ", ")
+        }
+        var parts = ["Planned"]
+        let load = plannedLoad(set)
+        if load != "—" { parts.append(load) }
+        parts.append("\(plannedReps(set)) reps")
+        if let rir = set.target?.rir { parts.append("stop with \(Num.trimmed(rir)) left") }
+        return parts.joined(separator: ", ")
+    }
+
     private func plannedReps(_ set: PersistedActiveSetDraft) -> String {
         set.target?.reps.label ?? "—"
     }
@@ -376,7 +410,7 @@ struct ActiveSetLog: View {
         let load = Resistance.isMeasuredInKg(target.resistance.type) && target.resistance.kg != nil
             ? " · \(Resistance.format(target.resistance))"
             : ""
-        return "\(reps) reps · RIR \(Num.trimmed(target.rir))\(load)"
+        return "\(reps) reps · stop with \(Num.trimmed(target.rir)) left\(load)"
     }
 
     private func loadCurrent() {
@@ -408,7 +442,10 @@ struct ActiveSetLog: View {
             ? (targetLoad ?? defaults.kg ?? 0)
             : nil
         reps = set?.target?.reps.max ?? defaults.reps
-        rir = set?.target?.rir ?? defaults.rir
+        // Effort is what the person says it was, never the target filled in
+        // for them: an unanswered set stays unknown, and progression treats
+        // it as unknown.
+        rir = nil
         side = set?.side ?? defaults.side
     }
 
@@ -538,7 +575,7 @@ struct ActiveSetLog: View {
                 ?? engineLoad
                 ?? (Resistance.isMeasuredInKg(defaultMode) ? 0 : nil),
             reps: previous?.reps ?? engine?.targetReps.max ?? planned?.reps.max ?? 10,
-            rir: previous?.rir ?? planned?.rir,
+            rir: nil,
             side: .both
         )
     }
@@ -590,10 +627,12 @@ struct ActiveSetLog: View {
         return nil
     }
 
+    /// A suggestion is labelled as one: the load is what RAUTA suggests for
+    /// today, worked out from what was recorded last time.
     private func progressionText(_ note: ProgressionNote) -> String {
         guard let kg = note.kg else { return note.text }
         let each = note.basis == .perImplement ? " each" : ""
-        return "\(Resistance.formatKg(kg)) kg\(each) · \(note.text)"
+        return "Suggested today: \(Resistance.formatKg(kg)) kg\(each). \(note.text)"
     }
 
     private func closeEditor() {

@@ -15,6 +15,16 @@ nonisolated enum AgentIntent: Equatable, Sendable {
     case workoutDetails
     case buildWorkout
     case newPlan(days: Int?, minutes: Int?)
+    /// The week after the plan, carried on from it.
+    case nextWeek
+    /// The week looked back on.
+    case weeklyReview
+    /// A planned session that didn't happen.
+    case missedSession
+    /// Less time than usual for the rest of the week.
+    case shortOnTime(minutes: Int?)
+    /// Equipment that isn't there this week — not a change to what is owned.
+    case equipmentUnavailable
     case adjustWeek
     case reschedule(workout: String, day: String)
     case swap(exercise: String, replacement: String?)
@@ -81,6 +91,34 @@ nonisolated enum AgentIntent: Equatable, Sendable {
         }
         if says("free time", "free slot", "when can i train", "when am i free", "time to train", "fit a workout") {
             return .freeSlots
+        }
+
+        // The three coaching features, in the words people use for them.
+        if says("weekly review", "review my week", "review of my week", "how did my week go", "how was my week",
+                "how's my week", "hows my week", "my week so far", "how am i doing this week", "week in review") {
+            return .weeklyReview
+        }
+        let moving: Set<String> = ["move", "reschedule", "shift", "postpone", "push", "bump"]
+        if says("next week", "extend my plan", "continue my plan", "plan ahead", "the week after"),
+           has(["plan", "build", "make", "prepare", "set", "sort", "what", "extend", "continue", "ahead", "create", "my"]),
+           !has(moving) {
+            return .nextWeek
+        }
+        if has(["missed", "skipped", "skip", "miss"]),
+           session || has(["gym", "training", "yesterday", "today"]) || namesDay {
+            return .missedSession
+        }
+        let temporary = says("this week", "today", "right now", "at the moment", "for now")
+        if says("only have", "short on time", "less time", "not much time", "in a hurry", "pressed for time",
+                "quick session", "shorter session", "shorter workouts", "shorter sessions"),
+           !says("usually", "usual") || temporary {
+            return .shortOnTime(minutes: AgentWords.minutes(in: lower))
+        }
+        let unavailable = says("isn't available", "is not available", "not available", "is taken", "is busy",
+                               "no access", "gym is closed", "can't use", "cannot use", "is broken", "won't have")
+        if unavailable || (has(["without", "no"]) && temporary),
+           AgentWords.mentionsEquipment(lower) || TrainingFixtureWords.mentions(lower) {
+            return .equipmentUnavailable
         }
 
         // The week as a whole.
@@ -310,7 +348,7 @@ extension AgentToolHost {
         case .thanks:
             say("Anytime. Tell me when you need another change.")
         case .help:
-            say("I work on your training here on your iPhone: I can show what's coming up, move or delete a workout, swap or add exercises, build a new workout or plan, adjust your week, set reminders and Calendar events, and run rest timers during a workout.")
+            say("I work on your training here on your iPhone: I can plan your next week, adjust this one when you miss a session, have less time or lose some equipment, review how your week went, show what's coming up, move or swap workouts and exercises, set reminders and Calendar events, and run rest timers during a workout.")
         case .schedule:
             schedule()
         case .workoutDetails:
@@ -321,6 +359,16 @@ extension AgentToolHost {
             await proposePlan(daysPerWeek: days, sessionMinutes: minutes)
         case .adjustWeek:
             await proposeAdjustedWeek()
+        case .nextWeek:
+            await proposeNextWeek()
+        case .weeklyReview:
+            weeklyReview()
+        case .missedSession:
+            proposeMissedMove()
+        case .shortOnTime(let minutes):
+            await proposeShorter(minutes: minutes)
+        case .equipmentUnavailable:
+            await proposeWithoutEquipment()
         case .reschedule(let workout, let day):
             reschedule(workoutPhrase: workout, dayPhrase: day)
         case .swap(let exercise, let replacement):
@@ -368,5 +416,27 @@ extension AgentToolHost {
         case .profile(let minutes):
             updateProfile(goalPhrase: input.localizedCaseInsensitiveContains("goal") ? input : nil, minutes: minutes)
         }
+    }
+}
+
+
+/// The fixtures people name when they say what they have or lack.
+nonisolated enum TrainingFixtureWords {
+    static let phrases: [String: String] = [
+        "pull-up bar": "pull-up bar", "pull up bar": "pull-up bar", "pullup bar": "pull-up bar", "chin-up bar": "pull-up bar",
+        "bench": "bench", "dip bars": "dip station", "dip station": "dip station", "squat rack": "rack", "rack": "rack",
+        "low bar": "low bar", "trx": "suspension trainer", "suspension trainer": "suspension trainer",
+    ]
+
+    static func mentions(_ text: String) -> Bool { !named(in: text).isEmpty }
+
+    /// The fixtures named in `text`, as the profile stores them.
+    static func named(in text: String) -> [String] {
+        let lower = text.lowercased()
+        var found: [String] = []
+        for (phrase, fixture) in phrases where lower.contains(phrase) && !found.contains(fixture) {
+            found.append(fixture)
+        }
+        return found
     }
 }

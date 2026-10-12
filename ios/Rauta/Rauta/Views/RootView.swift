@@ -140,6 +140,14 @@ struct AppPageView: View {
             ExerciseAlternativesScreen(exerciseId: exerciseId, workoutId: workoutId)
         case .policies:
             PoliciesScreen()
+        case .backup:
+            BackupScreen()
+        case .coachNextWeek:
+            NextWeekScreen()
+        case .coachAdjust:
+            AdjustWeekScreen()
+        case .coachReview:
+            WeeklyReviewScreen()
         case .summaryStreak:
             SummaryStreakScreen()
         case .summaryActivity(let month, let metric):

@@ -13,7 +13,7 @@ enum PlanTalk {
                 ? "Pick the next days. I'll pick up from what you've logged."
                 : "Pick the days you can train, and I'll build the week around them."
         }
-        return "\(days(selected)). I'll fit about \(minutes) min into each."
+        return "\(days(selected)). About \(minutes) min each, warm-up and rest included."
     }
 
     static func working(selected: [String]) -> String {

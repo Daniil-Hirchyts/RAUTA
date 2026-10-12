@@ -210,8 +210,9 @@ struct ProfileTopPanel {
             return p.priorityMuscles.isEmpty
                 ? "Tap the muscles you want to grow first. Skip it and I’ll keep things balanced."
                 : "\(Wording.countLabel(p.priorityMuscles.count, "muscle")) in focus. They’ll get more of the work."
-        case .duration: return "\(Num.trimmed(p.preferredSessionDurationMinutes)) minutes. I’ll plan around the time you have."
-        case .gym: return "Pick the equipment you actually have."
+        case .duration: return "\(Num.trimmed(p.preferredSessionDurationMinutes)) minutes, warm-up and rest included. I’ll keep sessions near that and never pad them."
+        case .days: return "\(Wording.countLabel(p.effectiveTrainingDays.count, "day")) a week. I’ll put sessions on these days."
+        case .gym: return "Pick the equipment you actually have — and anything to hang from or lie on."
         case .health: return "Your limits matter. You can always build your own workout."
         case .ready: return "That’s enough context. I can make the rest practical from here."
         }
@@ -225,6 +226,7 @@ struct ProfileTopPanel {
         case .goal: return .happy
         case .priorities: return profile.priorityMuscles.isEmpty ? .curious : .focused
         case .duration, .health: return .calm
+        case .days: return .focused
         case .gym: return .curious
         case .ready: return .proud
         }
@@ -237,6 +239,7 @@ struct ProfileTopPanel {
         case .goal: return .spinRight
         case .priorities: return .blinkDouble
         case .duration: return .turnaround
+        case .days: return .acknowledge
         case .gym: return .wink
         case .health: return .relieved
         case .ready: return .celebrate

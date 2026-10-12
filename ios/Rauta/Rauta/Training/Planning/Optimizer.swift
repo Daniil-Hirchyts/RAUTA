@@ -182,7 +182,12 @@ nonisolated enum Optimizer {
     static func optimize(_ input: OptimizationInput) -> OptimizationResult {
         let valid = Set(
             input.index.byId.values
-                .filter { ExerciseData.exclusionReasons($0, input.request.preferences, input.policy).isEmpty }
+                .filter {
+                    ExerciseData.exclusionReasons(
+                        $0, input.request.preferences, input.policy,
+                        experience: input.request.profile.trainingExperience
+                    ).isEmpty
+                }
                 .map(\.exercise.id)
         )
         let candidates = generateSplitCandidates(input)

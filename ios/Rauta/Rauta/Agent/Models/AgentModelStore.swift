@@ -33,13 +33,54 @@ final class AgentModelStore {
     }
 
     var status: String {
-        if downloading { return progress < 1 ? "Downloading \(Int(progress * 100))%" : "Getting ready…" }
+        if downloading {
+            guard progress < 1 else { return "Getting ready…" }
+            return "Downloading \(Int(progress * 100))% · \(Self.gigabytes(downloadedBytes)) of \(Self.gigabytes(entry.downloadBytes))"
+        }
         if let error { return error }
         #if targetEnvironment(simulator)
-        return installed ? "Ready" : "Apple's local model is unavailable in this simulator"
+        return installed ? "Ready" : "Apple's on-device model isn't available on this Mac"
         #else
-        return installed ? "Ready" : "Download RAUTA's brain"
+        return installed ? "Ready · works offline" : "Not set up"
         #endif
+    }
+
+    /// The model RAUTA downloads.
+    var entry: RautaModelEntry { RautaModelCatalog.qwen35_2b }
+
+    var downloadedBytes: Int64 { Int64(Double(entry.downloadBytes) * min(1, max(0, progress))) }
+
+    /// "1.75 GB".
+    static func gigabytes(_ bytes: Int64) -> String {
+        let value = Double(bytes) / 1_000_000_000
+        return value.formatted(.number.precision(.fractionLength(2))) + " GB"
+    }
+
+    /// Memory the model was tested to run in: an iPhone 14 Pro Max, 6 GB.
+    static let testedMemoryBytes: UInt64 = 6_000_000_000
+
+    /// Whether this device has the memory the model was tested with. A little
+    /// under counts: iPhones report slightly less than their nominal memory.
+    var meetsMemoryRequirement: Bool {
+        ProcessInfo.processInfo.physicalMemory >= UInt64(Double(Self.testedMemoryBytes) * 0.9)
+    }
+
+    /// A failure in words a person can act on.
+    static func describe(_ error: Error) -> String? {
+        if error is CancellationError { return nil }
+        if let url = error as? URLError {
+            switch url.code {
+            case .cancelled: return nil
+            case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed:
+                return "The download stopped: no internet connection. Connect and try again."
+            case .timedOut, .cannotConnectToHost, .cannotFindHost:
+                return "The download server didn't answer. Try again in a moment."
+            default:
+                return "The download didn't finish. Try again."
+            }
+        }
+        if let local = error as? LocalizedError, let text = local.errorDescription { return text }
+        return "The download didn't finish. Try again."
     }
 
     func model() -> MLXLanguageModel? {
@@ -63,7 +104,7 @@ final class AgentModelStore {
         let free = (try? FileManager.default.attributesOfFileSystem(
             forPath: RautaModelFiles.directory.path(percentEncoded: false))[.systemFreeSize] as? NSNumber)?.int64Value ?? 0
         guard free >= entry.downloadBytes + 500_000_000 else {
-            error = "Free at least 2.3 GB of storage before downloading."
+            error = "Free at least \(Self.gigabytes(entry.downloadBytes + 500_000_000)) of storage, then try again."
             return
         }
         error = nil
@@ -95,7 +136,7 @@ final class AgentModelStore {
                 }
                 downloading = false
             } catch {
-                self.error = error.localizedDescription
+                self.error = Self.describe(error)
                 downloading = false
             }
         }
@@ -121,7 +162,15 @@ final class AgentModelStore {
         }
     }
 
-    func cancelDownload() { task?.cancel(); task = nil; downloading = false }
+    /// Stops a download. Nothing is half-installed: the model counts as there
+    /// only once every file it needs is complete.
+    func cancelDownload() {
+        task?.cancel()
+        task = nil
+        downloading = false
+        progress = 0
+        error = nil
+    }
     /// Frees the weights. Dropping the reference is not enough: MLX keeps
     /// loaded models in a process-wide cache until they are evicted from it.
     func evict() {

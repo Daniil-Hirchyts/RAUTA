@@ -66,17 +66,28 @@ final class RautaAgent {
     func openWorkout(_ id: String) { host.bridge?.openWorkout(id) }
     func openExercise(_ id: String) { host.bridge?.openExercise(id) }
 
-    var isReady: Bool { AgentModelStore.shared.installed }
+    /// Whether the local model can answer free-form questions. Planning,
+    /// coaching and every request ``AgentIntent`` recognises work without it.
+    var isReady: Bool { Self.modelAvailable() }
+
+    /// Asked for the model's state; a test points it at a model that is not
+    /// there to check that nothing a person relies on waits for one.
+    static var modelAvailable: @MainActor () -> Bool = { AgentModelStore.shared.installed }
 
     func send(_ raw: String, spoken: Bool = false) {
         let input = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !input.isEmpty, generation == nil else { return }
-        guard isReady else {
-            append(.rauta("Download my brain first, then ask me about your training."))
+        append(.user(input))
+        // A request RAUTA understands on its own words runs whatever state the
+        // model is in — missing, downloading or failed. Only a question that
+        // needs the model waits for it, and says why.
+        let running = ActiveWorkoutStore.shared.session != nil
+        if !isReady, AgentIntent.parse(input, today: CalendarDate.today, running: running) == nil {
+            append(.rauta(Self.needsModel))
             append(.card(.download))
+            finish(.ready)
             return
         }
-        append(.user(input))
         settle?.cancel()
         activity = nil
         phase = .thinking
@@ -130,7 +141,7 @@ final class RautaAgent {
             // No tool ran. A malformed tool call, an empty answer, or words
             // about the model's own limits are never shown: the likeliest
             // reading of the request runs instead, still checked by the host.
-            if host.outcome == nil, !(failure is CancellationError), !(failure is AgentModelUnavailable),
+            if host.outcome == nil, !(failure is CancellationError),
                turn == turnNumber, !Task.isCancelled {
                 let usable = reply.flatMap(AgentReply.clean)
                 let needsAction = AgentToolRouter.requiresTool(input)
@@ -191,6 +202,12 @@ final class RautaAgent {
             self.phase = .idle
         }
     }
+
+    /// What RAUTA says when a question needs the on-device model it does not
+    /// have yet. It names what still works, so nobody is stuck on a download.
+    static let needsModel = "I can answer that once private conversations are set up on this iPhone. "
+        + "Planning your week, adjusting it, your weekly review and changes like "
+        + "\"move Friday's workout to Saturday\" already work without it."
 
     private static func firstSentence(_ text: String) -> String {
         guard let end = text.firstIndex(where: { ".!?".contains($0) }) else { return text }

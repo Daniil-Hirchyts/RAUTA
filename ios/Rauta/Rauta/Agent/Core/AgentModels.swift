@@ -159,6 +159,8 @@ enum AgentProposal {
     case discardWorkout(workoutId: String, basis: PlanBasis)
     case deleteWorkout(AgentWorkoutRef, basis: PlanBasis)
     case calendar(workout: AgentWorkoutRef, start: Date, end: Date)
+    /// One of the coaching features' proposals: next week, or an adjustment.
+    case coaching(CoachingProposal)
 }
 
 // MARK: - The screen RAUTA acts through

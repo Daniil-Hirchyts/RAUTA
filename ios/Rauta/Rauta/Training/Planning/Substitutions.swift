@@ -56,7 +56,10 @@ nonisolated enum Substitutions {
                     && candidate.metadata.setRoles.contains {
                         $0.role == .direct && sourceDirect.contains($0.muscleId)
                     }
-                    && ExerciseData.exclusionReasons(candidate, request.preferences, policy).isEmpty
+                    && ExerciseData.exclusionReasons(
+                        candidate, request.preferences, policy,
+                        experience: request.profile.trainingExperience
+                    ).isEmpty
             }
             .map { candidate -> Candidate in
                 let preference: Double = {

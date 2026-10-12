@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated let ENGINE_VERSION = "1.3.0"
+nonisolated let ENGINE_VERSION = "1.4.0"
 
 nonisolated struct GoalPolicy: Codable, Hashable, Sendable {
     var volume: VolumeRange

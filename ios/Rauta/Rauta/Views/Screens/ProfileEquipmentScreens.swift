@@ -5,7 +5,7 @@ struct ProfileEquipmentScreen: View {
     @State private var presetEditorOpen = false
 
     private var subtitle: String? {
-        let count = store.filters.gymEquipment.count
+        let count = store.filters.gymEquipment.count + store.filters.effectiveFixtures.count
         return count > 0 ? Wording.countLabel(count, "item") : nil
     }
 
@@ -22,10 +22,13 @@ struct ProfileEquipmentScreen: View {
         ) {
             ZStack(alignment: .bottom) {
                 ScrollView {
-                    EquipmentGrid(
-                        selected: store.filters.gymEquipment,
-                        onToggle: store.filters.toggleGymEquipment
-                    )
+                    VStack(alignment: .leading, spacing: 24) {
+                        EquipmentGrid(
+                            selected: store.filters.gymEquipment,
+                            onToggle: store.filters.toggleGymEquipment
+                        )
+                        FixturePicker()
+                    }
                     .padding(.horizontal, Theme.Metrics.contentInset)
                     .padding(.bottom, 112)
                 }

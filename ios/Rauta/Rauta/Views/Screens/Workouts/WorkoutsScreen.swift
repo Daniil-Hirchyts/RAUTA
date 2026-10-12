@@ -53,8 +53,6 @@ struct WorkoutsScreen: View {
     /// `mainTab` a beat behind: the selection moves first, and only once it
     /// has settled does RAUTA leave its circle and the bar resize — each on
     /// frames of its own instead of all on the same one.
-    /// The remaining week being re-planned, off the main actor.
-    @State private var adjustingPlan = false
 
     @State private var timelineMemo = Memo<TimelineInputs, WorkoutTimeline>()
 
@@ -441,7 +439,7 @@ struct WorkoutsScreen: View {
 
     private func rautaTabControl(bottomInset: CGFloat) -> some View {
         RautaNativeTabControl(
-            mood: chatPresented ? .listening : (adjustingPlan ? .working : (activeWorkout.session == nil ? .calm : .focused)),
+            mood: chatPresented ? .listening : (activeWorkout.session == nil ? .calm : .focused),
             activeTab: $mainTab,
             actionsForTab: companionActions(for:),
             workoutActive: activeWorkout.session != nil,
@@ -634,7 +632,17 @@ struct WorkoutsScreen: View {
     }
 
     private var summaryContent: some View {
-        SummaryWorkoutsContent(past: timeline.past)
+        SummaryWorkoutsContent(
+            past: timeline.past,
+            onStart: { workout in startFromRauta(workout) },
+            onResume: {
+                withAnimation(Theme.Motion.smoothOut(0.28)) {
+                    liveWorkoutPresented = true
+                    selectMainTab(.workout)
+                }
+            },
+            onOpenWorkout: openRequestedWorkout
+        )
     }
 
     private func companionActions(for tab: MainTab) -> [CompanionAction] {
@@ -665,34 +673,19 @@ struct WorkoutsScreen: View {
                 }
             })
         }
-        if let source = TrainingPlan.activeProgramRecord(), activeWorkout.session == nil {
-            let remaining = TrainingWorkflow.remainingTrainingSlots(source, ISOTime.now())
-            if !adjustingPlan,
-               !remaining.sessions.isEmpty && trainingRecords.data.sessions.contains(where: { $0.plannedProgramId == source.id }) {
-                actions.append(CompanionAction(title: "Adjust remaining week", systemImage: "arrow.triangle.2.circlepath", primary: true) {
-                    adjustingPlan = true
-                    RautaSpeech.shared.say("Reshaping the rest of your week…", holds: true)
-                    Task {
-                        defer { adjustingPlan = false }
-                        do {
-                            // Saving the plan is what RAUTA answers with its
-                            // result line; nothing more needs saying here.
-                            let preview = try await TrainingWorkflow.previewAdjustedWeek(source: source)
-                            try TrainingPlan.commit(preview)
-                            WorkoutAudio.play(.planBuilt)
-                        } catch {
-                            Haptics.trigger(.warning)
-                            let reason = (error as? TrainingPersistenceError)?.message ?? error.localizedDescription
-                            RautaSpeech.shared.say("I couldn't adjust your week. \(reason)")
-                        }
-                    }
-                })
-            } else if remaining.sessions.isEmpty {
-                actions.append(CompanionAction(title: "Extend training plan", systemImage: "calendar.badge.plus", primary: true) {
-                    navigation.push(.planWeek(sourceProgramId: source.id), from: RautaNativeTabControl.zoomSourceID)
-                })
-            }
+        if TrainingPlan.activeProgramRecord() != nil, activeWorkout.session == nil {
+            // Every change to the plan is shown before it is kept: RAUTA's
+            // menu opens the same reviewable pages Summary does.
+            actions.append(CompanionAction(title: "My next week", systemImage: "calendar.badge.plus", primary: actions.isEmpty) {
+                navigation.push(.coachNextWeek, from: RautaNativeTabControl.zoomSourceID)
+            })
+            actions.append(CompanionAction(title: "Help me adjust", systemImage: "arrow.triangle.2.circlepath") {
+                navigation.push(.coachAdjust, from: RautaNativeTabControl.zoomSourceID)
+            })
         }
+        actions.append(CompanionAction(title: "Weekly review", systemImage: "chart.line.uptrend.xyaxis") {
+            navigation.push(.coachReview, from: RautaNativeTabControl.zoomSourceID)
+        })
         actions.append(CompanionAction(title: trainingRecords.data.activeProgramId == nil ? "Create training plan" : "New training plan", systemImage: "calendar.badge.plus", primary: actions.isEmpty) {
             navigation.push(.planWeek(sourceProgramId: nil), from: RautaNativeTabControl.zoomSourceID)
         })

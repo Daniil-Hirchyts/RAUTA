@@ -282,10 +282,19 @@ final class AgentToolHost {
         guard let exercise else {
             finish(.reply("I couldn't match that exercise in the library or workout.")); return
         }
-        if adding && !exercise.equipment.isEmpty && exercise.equipment != "bodyweight"
-            && !FiltersStore.shared.gymEquipment.contains(exercise.equipment) {
-            finish(.reply("Add \(exercise.equipment) to your equipment before I put \(exercise.name) in the workout."))
-            return
+        if adding {
+            // The same requirement the planner checks: what is lifted, and
+            // what has to be there to lift it.
+            let missing = TrainingEngineAdapter.missingRequirements(
+                exercise.id,
+                equipment: FiltersStore.shared.gymEquipment,
+                fixtures: FiltersStore.shared.effectiveFixtures
+            )
+            if !missing.isEmpty {
+                let needs = Wording.list(missing.map { TrainingEngineAdapter.fixtureLabel($0).lowercased() })
+                finish(.reply("\(exercise.name.capitalized) needs \(needs). Add it to your equipment first, or pick another exercise."))
+                return
+            }
         }
         var next = target.exerciseIds
         if adding {
@@ -421,6 +430,96 @@ final class AgentToolHost {
         } catch { finish(.reply(error.localizedDescription)) }
     }
 
+    // MARK: Coaching
+
+    /// A coaching proposal as a card to review: every workout it touches,
+    /// what it would do, nothing saved yet.
+    private func offer(_ proposal: CoachingProposal, applyTitle: String) {
+        let id = UUID().uuidString
+        proposals[id] = .coaching(proposal)
+        let rows = proposal.changes.filter { $0.minutes > 0 }.map {
+            AgentSessionRow(id: $0.id, date: $0.date, title: $0.title, minutes: $0.minutes, exerciseIds: $0.exerciseIds)
+        }
+        let note = proposal.notes.first.map { " \($0)" } ?? ""
+        finish(.init(
+            say: "\(proposal.summary)\(note) Nothing is saved until you apply it.",
+            card: .proposal(.init(id: id, title: proposal.title, detail: proposal.summary, rows: rows,
+                                  applyTitle: applyTitle, destructive: false, state: .pending))
+        ))
+    }
+
+    func proposeNextWeek() async {
+        guard !cancelled else { return }
+        activity = "Building your next week…"
+        do {
+            let dates = CoachingPlanner.nextWeekDates(.nextWeek)
+            let proposal = try await CoachingPlanner.previewNextWeek(dates: dates)
+            guard !Task.isCancelled, !cancelled else { return }
+            offer(proposal, applyTitle: "Keep this week")
+        } catch is CancellationError {
+            return
+        } catch { finish(.reply((error as? TrainingPersistenceError)?.message ?? "I couldn't build next week.")) }
+    }
+
+    func weeklyReview() {
+        guard !cancelled else { return }
+        let review = WeeklyReview.current()
+        var lines = review.consistency
+        lines += review.changes.map { "\($0.name): \($0.text)" + ($0.estimate.map { " \($0)" } ?? "") }
+        lines += review.dataNotes
+        lines.append("Next: \(review.next.title)")
+        finish(.init(say: "\(review.headline). \(review.next.title).",
+                     card: .facts(title: "Your week · \(review.week.label)", lines: lines)))
+    }
+
+    func proposeMissedMove() {
+        guard !cancelled else { return }
+        guard ActiveWorkoutStore.shared.session == nil else {
+            finish(.reply("Finish your current workout first, then we'll sort out the missed one.")); return
+        }
+        guard let missed = WeekProgress.current().missed.last else {
+            finish(.reply("Nothing planned this week was missed. Ask me to adjust your week if something else changed.")); return
+        }
+        guard let date = CoachingPlanner.moveTargets(for: missed).first else {
+            finish(.reply("Every day left this week already has a workout. Open Help me adjust on Summary to fit \(missed.name)'s work into them instead.")); return
+        }
+        offer(CoachingPlanner.previewMove(missed, to: date), applyTitle: "Move it")
+    }
+
+    func proposeShorter(minutes: Int?) async {
+        guard !cancelled else { return }
+        let said = AgentWords.said(minutes, in: input)
+        guard let value = said, (15...90).contains(value) else {
+            finish(.reply("How many minutes do you have? Say something like \"I only have 30 minutes this week\".")); return
+        }
+        activity = "Fitting your week into \(value) minutes…"
+        do {
+            let proposal = try await CoachingPlanner.previewShorter(minutes: value)
+            guard !Task.isCancelled, !cancelled else { return }
+            offer(proposal, applyTitle: "Apply changes")
+        } catch is CancellationError {
+            return
+        } catch { finish(.reply((error as? TrainingPersistenceError)?.message ?? "I couldn't adjust your week.")) }
+    }
+
+    func proposeWithoutEquipment() async {
+        guard !cancelled else { return }
+        let filters = FiltersStore.shared
+        let equipment = filters.gymEquipment.filter { AgentWords.mentions($0, in: input) }
+        let fixtures = filters.effectiveFixtures.filter { TrainingFixtureWords.named(in: input).contains($0) }
+        guard !equipment.isEmpty || !fixtures.isEmpty else {
+            finish(.reply("Which of your equipment isn't available? Name it, like \"no bench this week\".")); return
+        }
+        activity = "Swapping what needs it…"
+        do {
+            let proposal = try await CoachingPlanner.previewWithout(equipment: equipment, fixtures: fixtures)
+            guard !Task.isCancelled, !cancelled else { return }
+            offer(proposal, applyTitle: "Apply swaps")
+        } catch is CancellationError {
+            return
+        } catch { finish(.reply((error as? TrainingPersistenceError)?.message ?? "I couldn't adjust your week.")) }
+    }
+
     func proposeWorkout(_ phrase: String) async {
         guard !cancelled else { return }
         guard ActiveWorkoutStore.shared.session == nil else {
@@ -553,6 +652,8 @@ final class AgentToolHost {
             equipmentIncrementKg: FiltersStore.shared.equipmentLoadIncrements[exercise.equipment])
         let observation = PersistedSetObservation(
             reps: Double(reps), resistance: Resistance.makeResistance(mode, load ?? 0, context),
+            // Only what was said: "with 2 left", "RIR 1". Otherwise unknown.
+            rir: Self.repsLeft(in: input),
             completed: true, timestamp: ISOTime.now())
         let existing = entry.sets.first { $0.observation?.completed != true }
         do {
@@ -574,6 +675,25 @@ final class AgentToolHost {
                          card: .change(title: "Set logged", detail: "\(exercise.name): \(reps) reps\(loadLine)", systemImage: "checkmark.circle"),
                          undo: undo))
         } catch { finish(.reply(error.localizedDescription)) }
+    }
+
+    /// Reps left as someone says it: "2 left", "2 reps left", "1 in reserve",
+    /// "RIR 3". Nil when they did not say.
+    static func repsLeft(in text: String) -> Double? {
+        let lower = text.lowercased()
+        let patterns = [
+            #"(\d+)\s*(?:reps?\s*)?(?:left|in reserve|in the tank)"#,
+            #"\brir\s*(?:of\s*)?(\d+)"#,
+        ]
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let match = regex.firstMatch(in: lower, range: NSRange(lower.startIndex..., in: lower)),
+                  let range = Range(match.range(at: 1), in: lower),
+                  let value = Double(lower[range]), (0...10).contains(value)
+            else { continue }
+            return value
+        }
+        return nil
     }
 
     func startRest(seconds proposed: Int?) {
@@ -895,6 +1015,19 @@ final class AgentToolHost {
                              undo: .records(since: before),
                              proposalApplied: true)
             } catch { return .reply(error.localizedDescription) }
+        case .coaching(let proposal):
+            do {
+                let undo = try CoachingPlanner.apply(proposal)
+                proposals[id] = nil
+                return .init(say: "Done — \(proposal.title.lowercased()).",
+                             card: .change(title: proposal.title, detail: proposal.summary, systemImage: "checkmark.circle"),
+                             undo: .records(before: undo.recordsBefore, after: undo.recordsAfter,
+                                            workoutsBefore: undo.workoutsBefore, workoutsAfter: undo.workoutsAfter),
+                             proposalApplied: true)
+            } catch {
+                proposals[id] = nil
+                return .reply((error as? TrainingPersistenceError)?.message ?? "That couldn't be applied.")
+            }
         case .calendar(let ref, let start, let end):
             guard ActiveWorkoutStore.shared.session == nil else {
                 return .reply("Finish your current workout before adding a calendar event.")

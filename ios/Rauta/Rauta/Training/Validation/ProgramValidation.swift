@@ -185,7 +185,10 @@ nonisolated enum ProgramValidation {
                         issues.append(PlanningIssue(.unknownExercise, path: path))
                         continue
                     }
-                    issues += ExerciseData.exclusionReasons(record, request.preferences, program.policy)
+                    issues += ExerciseData.exclusionReasons(
+                        record, request.preferences, program.policy,
+                        experience: request.profile.trainingExperience
+                    )
                     if !validScore(planned.rationale, path + ".rationale") { continue }
 
                     if exercises.contains(planned.exerciseId)

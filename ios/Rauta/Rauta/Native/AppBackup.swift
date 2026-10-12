@@ -3,16 +3,23 @@ import Foundation
 /// The portable snapshot of everything a person has told the app.
 ///
 /// The shape is exactly what the web build wrote, so a backup taken on either
-/// side restores on the other. Structured training records are local-only and
-/// travel with a manual export, not with the compact iCloud snapshot.
+/// side restores on the other. A complete backup — the files `BackupVault`
+/// keeps and a manual export — includes the structured training records and a
+/// manifest with a checksum. The compact copy in iCloud key-value storage
+/// leaves the training records out: they grow with every set and do not fit
+/// its size limit.
 @MainActor
 enum AppBackup {
-    static let version = 1
+    static let version = BackupArchive.envelopeVersion
 
-    static func createBackup(
-        createdAt: String = ISOTime.now(),
-        includeLocalTraining: Bool = false
-    ) -> String {
+    static var appVersion: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
+        return build.map { "\(version) (\($0))" } ?? version
+    }
+
+    /// Everything a backup carries, read from the stores now.
+    static func backupData(includeLocalTraining: Bool) -> [String: JSONValue] {
         let favorites = FavoritesStore.shared
         let filters = FiltersStore.shared
         let settings = SettingsStore.shared
@@ -29,20 +36,24 @@ enum AppBackup {
                 "onboarding": trainingProfile.onboarding.jsonTree,
             ]),
             "settings": settings.preferences.jsonTree,
-            "workouts": .object([
-                "workouts": .array(workouts.workouts.map { $0.jsonTree }),
-            ]),
+            "workouts": workouts.snapshotTree,
         ]
         if includeLocalTraining {
             data["training"] = TrainingRecordsStore.shared.data.jsonTree
         }
+        return data
+    }
 
-        return JSONValue.object([
-            "app": .string("RAUTA"),
-            "createdAt": .string(createdAt),
-            "version": .number(Double(version)),
-            "data": .object(data),
-        ]).canonical
+    static func createBackup(
+        createdAt: String = ISOTime.now(),
+        includeLocalTraining: Bool = false
+    ) -> String {
+        BackupArchive.envelope(
+            data: backupData(includeLocalTraining: includeLocalTraining),
+            createdAt: createdAt,
+            appVersion: appVersion,
+            complete: includeLocalTraining
+        ).canonical
     }
 
     /// Defaults do not need to win a first-run conflict over an existing cloud
@@ -69,42 +80,52 @@ enum AppBackup {
             || settings != SettingsPreferences.defaults
     }
 
+    /// A complete backup as a file for the share sheet, checked by reading it
+    /// back before it is handed over.
     static func exportFileURL() throws -> URL {
-        // Manual exports include local training; the existing iCloud snapshot
-        // stays unchanged.
         let data = createBackup(includeLocalTraining: true)
         let filename = "rauta-backup-\(CalendarDate.today).json"
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
         try data.write(to: url, atomically: true, encoding: .utf8)
+        do {
+            _ = try BackupArchive.inspect(String(contentsOf: url, encoding: .utf8))
+        } catch {
+            try? FileManager.default.removeItem(at: url)
+            throw TrainingPersistenceError("The backup file couldn't be written correctly. Try again.")
+        }
         return url
     }
 
     /// Replaces the app's data with a backup's.
     ///
+    /// The whole file is checked before anything is written — envelope,
+    /// version, checksum and training records — so a file this device cannot
+    /// make sense of leaves the app exactly as it was rather than half replaced.
+    ///
     /// `keepingRunningWorkout` is for a copy arriving from iCloud — another
     /// device's edit — while a workout runs here. That workout is this device's
-    /// alone: its session, its record in the workout list and its draft (which
-    /// the cloud copy never carries) stay exactly as they are, so a change made
-    /// on an iPad cannot end a workout in progress on the iPhone. Everything
-    /// else follows the cloud copy straight away. A file the person chose to
-    /// restore replaces everything, as it says it will.
-    static func importBackup(_ json: String, keepingRunningWorkout: Bool = false) throws {
-        guard let parsed = JSONCoding.parse(json), let backup = parsed.objectValue else {
-            throw TrainingPersistenceError("This is not a supported RAUTA backup.")
+    /// alone: its session, its record in the workout list and its draft stay
+    /// exactly as they are, so a change made on an iPad cannot end a workout in
+    /// progress on the iPhone. `mergingWorkouts` merges the workout list with
+    /// this device's instead of replacing it, so neither side's workouts are
+    /// lost to the other's older copy. A file the person chose to restore
+    /// replaces everything, as it says it will.
+    static func importBackup(
+        _ json: String,
+        keepingRunningWorkout: Bool = false,
+        mergingWorkouts: Bool = false
+    ) throws {
+        do {
+            _ = try BackupArchive.inspect(json)
+        } catch {
+            throw TrainingPersistenceError(error.message)
         }
-        let app = backup["app"]?.stringValue
-        guard app == "RAUTA" || app == "Gym Lib",
-              Storage.version(backup["version"]) == version
+        guard let backup = JSONCoding.parse(json)?.objectValue,
+              let data = backup["data"]?.objectValue
         else {
-            throw TrainingPersistenceError("This is not a supported RAUTA backup.")
-        }
-        guard let data = backup["data"]?.objectValue else {
             throw TrainingPersistenceError("The backup does not contain app data.")
         }
 
-        // Training records are read before anything is written: a file this
-        // device cannot make sense of leaves the app exactly as it was rather
-        // than half replaced.
         var training: PersistedTrainingState?
         if let raw = data["training"] {
             do {
@@ -136,16 +157,40 @@ enum AppBackup {
         if filterFields["equipmentLoadIncrements"] == nil {
             mergedFilters.equipmentLoadIncrements = FiltersStore.shared.equipmentLoadIncrements
         }
+        if filterFields["gymFixtures"] == nil {
+            mergedFilters.gymFixtures = FiltersStore.shared.gymFixtures
+        }
         FiltersStore.shared.apply(mergedFilters)
         SettingsStore.shared.replaceAll(settings)
-        WorkoutsStore.shared.replaceAll(Self.keeping(running, in: workouts.workouts))
+        if mergingWorkouts {
+            let local = WorkoutsStore.PersistedWorkouts(
+                workouts: WorkoutsStore.shared.workouts,
+                deletions: WorkoutsStore.shared.deletions
+            )
+            WorkoutsStore.shared.replaceAll(
+                WorkoutsStore.merge(local: local, remote: workouts, runningId: running?.workoutId)
+            )
+        } else {
+            var next = workouts
+            next.workouts = Self.keeping(running, in: workouts.workouts)
+            WorkoutsStore.shared.replaceAll(next)
+        }
 
         if data["trainingProfile"] != nil {
             TrainingProfileStore.shared.replaceAll(
                 TrainingProfileStore.sanitizeState(data["trainingProfile"])
             )
         }
-        if let training { TrainingRecordsStore.shared.replaceAll(training) }
+        if var training {
+            if running != nil {
+                // The draft being logged right now, and any transition it is
+                // part of, are this device's: never another copy's.
+                let local = TrainingRecordsStore.shared.data
+                training.activeWorkout = local.activeWorkout
+                training.transition = local.transition
+            }
+            TrainingRecordsStore.shared.replaceAll(training)
+        }
 
         // A restored draft, or an intent caught mid-transition, has to be settled
         // before the app treats it as a running session. A workout kept running
@@ -180,10 +225,12 @@ enum AppBackup {
         ActiveWorkoutStore.shared.setSession(nil, outcome: .cancelled)
         FavoritesStore.shared.replaceAll([])
         FiltersStore.shared.clearAll()
-        WorkoutsStore.shared.replaceAll([])
+        WorkoutsStore.shared.clearAll()
         TrainingRecordsStore.shared.replaceAll(.empty())
         SettingsStore.shared.resetSettings()
         TrainingProfileStore.shared.resetTrainingProfile()
         Storage.remove(AppSessionStore.storageKey)
+        // "Delete everything" includes the backups of it.
+        if !AppEnvironment.isRunningTests { BackupVault.shared.deleteAllBackups() }
     }
 }

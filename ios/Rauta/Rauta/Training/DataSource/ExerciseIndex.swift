@@ -220,10 +220,27 @@ nonisolated enum ExerciseData {
         return cycle
     }
 
+    /// Whether the exercise may be prescribed automatically to someone with
+    /// this much training experience. Complex movements are never a
+    /// beginner's, and a reviewed floor (`minimumExperience`) holds back
+    /// variations — full pull-ups, dips, one-arm work — most people of that
+    /// experience cannot yet perform for the prescribed reps.
+    static func suits(_ metadata: ExerciseMetadata, _ experience: Experience) -> Bool {
+        if experience == .beginner && metadata.skill == .complex { return false }
+        if let minimum = metadata.minimumExperience, experience.rank < minimum.rank { return false }
+        return true
+    }
+
+    /// Why an exercise cannot go into an automatic plan, if it cannot.
+    ///
+    /// `experience` is the person's training experience; nil skips the
+    /// experience rule, for checks that are only about equipment and support.
+    /// An exercise the person asked for by name is theirs to choose.
     static func exclusionReasons(
         _ item: IndexedExercise,
         _ preferences: PlanningPreferences,
-        _ policy: TrainingPolicy
+        _ policy: TrainingPolicy,
+        experience: Experience? = nil
     ) -> [PlanningIssue] {
         let context: [String: IssueContextValue] = ["exerciseId": .string(item.exercise.id)]
         var issues: [PlanningIssue] = []
@@ -260,6 +277,13 @@ nonisolated enum ExerciseData {
             || lowConfidenceRule
             || excludedPattern {
             issues.append(PlanningIssue(.unsupportedExercise, context: context))
+        }
+
+        if let experience, !explicitlyRequested, !suits(item.metadata, experience) {
+            var unsuited = context
+            unsuited["reason"] = .string("experience")
+            unsuited["experience"] = .string(experience.rawValue)
+            issues.append(PlanningIssue(.unsupportedExercise, context: unsuited))
         }
 
         return issues

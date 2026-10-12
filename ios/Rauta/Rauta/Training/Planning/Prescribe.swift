@@ -146,7 +146,10 @@ nonisolated enum Ranking {
         return input.index.byId.values
             .filter { candidate in
                 !selected.contains(candidate.exercise.id)
-                    && ExerciseData.exclusionReasons(candidate, request.preferences, input.policy).isEmpty
+                    && ExerciseData.exclusionReasons(
+                        candidate, request.preferences, input.policy,
+                        experience: request.profile.trainingExperience
+                    ).isEmpty
             }
             .map { Candidate(exerciseId: $0.exercise.id, score: score($0)) }
             .sorted { left, right in

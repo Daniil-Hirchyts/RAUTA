@@ -37,7 +37,15 @@ struct EquipmentPresets: View {
     private func apply(_ equipment: [String]) {
         Haptics.trigger(.selection)
         let next = sameSelection(selectedEquipment, equipment) ? [] : equipment
-        if let onChange { onChange(next) } else { store.filters.setEquipment(next) }
+        if let onChange {
+            onChange(next)
+            // A full gym has every fixture too; the profile says so with it.
+            if sameSelection(next, ExerciseCatalogue.equipmentOptions) {
+                store.filters.setGymFixtures(TrainingEngineAdapter.selectableFixtures)
+            }
+        } else {
+            store.filters.setEquipment(next)
+        }
     }
 
     var body: some View {

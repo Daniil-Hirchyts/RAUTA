@@ -23,6 +23,11 @@ final class FiltersStore {
     /// store so there is one equipment vocabulary, one preset list, and one
     /// place either selection is sanitised.
     private(set) var gymEquipment: [String] = []
+    /// The fixtures the person said they have — a pull-up bar, a bench —
+    /// separate from the equipment they lift with. Nil until they first
+    /// choose; until then the fixtures their equipment used to imply stand in
+    /// (see ``effectiveFixtures``).
+    private(set) var gymFixtures: [String]?
     private(set) var equipmentPresets: [EquipmentPreset] = []
     /// Physical load step offered by the user's actual equipment. The basis
     /// (total vs each) remains catalogue-defined; this only describes the rack,
@@ -36,11 +41,21 @@ final class FiltersStore {
     private init() { load() }
 
     static func validEquipment(_ value: String) -> Bool { equipmentSet.contains(value) }
+    static func validFixture(_ value: String) -> Bool {
+        TrainingEngineAdapter.selectableFixtures.contains(value)
+    }
+
+    /// The fixtures planning uses: the person's own choice, or, for a profile
+    /// saved before fixtures could be chosen, what its equipment implied then.
+    var effectiveFixtures: [String] {
+        gymFixtures ?? TrainingEngineAdapter.legacyFixtures(for: gymEquipment)
+    }
 
     struct PersistedFilters: Equatable {
         var selectedMuscles: [MuscleId]
         var selectedEquipment: [String]
         var gymEquipment: [String]
+        var gymFixtures: [String]? = nil
         var equipmentPresets: [EquipmentPreset]
         var equipmentLoadIncrements: [String: Double]
     }
@@ -72,6 +87,10 @@ final class FiltersStore {
             selectedMuscles: [],
             selectedEquipment: [],
             gymEquipment: Sanitize.uniqueStrings(value?["gymEquipment"], isValid: validEquipment),
+            // Absent means never chosen, which is not the same as none.
+            gymFixtures: value?["gymFixtures"]?.arrayValue == nil
+                ? nil
+                : Sanitize.uniqueStrings(value?["gymFixtures"], isValid: validFixture),
             equipmentPresets: presets,
             equipmentLoadIncrements: increments
         )
@@ -86,6 +105,7 @@ final class FiltersStore {
         selectedMuscles = state.selectedMuscles
         selectedEquipment = state.selectedEquipment
         gymEquipment = state.gymEquipment
+        gymFixtures = state.gymFixtures
         equipmentPresets = state.equipmentPresets
         equipmentLoadIncrements = state.equipmentLoadIncrements
         if persisting { persist() }
@@ -102,6 +122,7 @@ final class FiltersStore {
             selectedMuscles: selectedMuscles,
             selectedEquipment: selectedEquipment,
             gymEquipment: gymEquipment,
+            gymFixtures: gymFixtures,
             equipmentPresets: equipmentPresets,
             equipmentLoadIncrements: equipmentLoadIncrements
         )
@@ -114,6 +135,7 @@ final class FiltersStore {
             "selectedMuscles": .array([]),
             "selectedEquipment": .array([]),
             "gymEquipment": .array(gymEquipment.map(JSONValue.string)),
+            "gymFixtures": gymFixtures.map { .array($0.map(JSONValue.string)) } ?? .null,
             "equipmentPresets": .array(equipmentPresets.map { $0.jsonTree }),
             "equipmentLoadIncrements": .object(
                 equipmentLoadIncrements.mapValues { JSONValue.number($0) }
@@ -173,6 +195,23 @@ final class FiltersStore {
         }
     }
 
+    func toggleGymFixture(_ fixture: String) {
+        guard Self.validFixture(fixture) else { return }
+        let current = effectiveFixtures
+        mutatePersistent {
+            let next = Sanitize.toggle(current, fixture)
+            gymFixtures = TrainingEngineAdapter.selectableFixtures.filter(next.contains)
+        }
+    }
+
+    func setGymFixtures(_ fixtures: [String]) {
+        mutatePersistent {
+            gymFixtures = TrainingEngineAdapter.selectableFixtures.filter {
+                fixtures.contains($0)
+            }
+        }
+    }
+
     func setEquipmentLoadIncrement(_ equipment: String, _ incrementKg: Double) {
         guard Self.validEquipment(equipment), incrementKg.isFinite,
               incrementKg >= 0.25, incrementKg <= 50
@@ -228,6 +267,7 @@ final class FiltersStore {
             selectedMuscles: [],
             selectedEquipment: [],
             gymEquipment: [],
+            gymFixtures: nil,
             equipmentPresets: [],
             equipmentLoadIncrements: [:]
         ))

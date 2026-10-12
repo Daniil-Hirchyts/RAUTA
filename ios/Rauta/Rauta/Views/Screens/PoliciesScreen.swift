@@ -263,8 +263,10 @@ enum PolicyFacts {
     static let privacy: [Point] = [
         .init(icon: "iphone", title: "Stays on your iPhone",
               text: "RAUTA has no account and no servers. Your profile, plans, workouts and chats with RAUTA are stored on this iPhone and nowhere else of ours."),
-        .init(icon: "icloud", title: "iCloud backup",
-              text: "When iCloud is on, RAUTA keeps a backup of your training data in your own iCloud account, so it survives reinstalling. Only you can read it."),
+        .init(icon: "externaldrive.badge.checkmark", title: "Backups",
+              text: "RAUTA keeps complete backups — workouts, every logged set, plans, load settings, profile and preferences — as files on this iPhone. They are included in your iPhone's own iCloud or computer backup, and you can export one at any time. Nothing is sent to us."),
+        .init(icon: "icloud", title: "iCloud sync",
+              text: "When you're signed in to iCloud, your profile, preferences, favourites, equipment and workout list sync through your own iCloud account to your other devices. Set-by-set history and plans are not part of this sync; they are in the backups above. Only you can read either."),
         .init(icon: "heart", title: "Apple Health",
               text: "Only with your permission: RAUTA saves finished workouts and their energy, reads your body weight to estimate calories, and — if you allow it — reads sleep, resting heart rate, HRV, exercise time and active energy to plan around your readiness. Health data never leaves your iPhone."),
         .init(icon: "brain.head.profile", title: "Talking to RAUTA",

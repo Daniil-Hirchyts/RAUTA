@@ -279,7 +279,8 @@ enum TrainingPlan {
         case .ready(let preview):
             do {
                 let sessions = try commit(preview)
-                return .created(programId: preview.program.id, sessions: sessions, issues: preview.issues)
+                let programId = sessions.first?.programId ?? preview.program.id
+                return .created(programId: programId, sessions: sessions, issues: preview.issues)
             } catch {
                 return .blocked(PlanBlock(
                     reason: .input,
@@ -411,11 +412,29 @@ enum TrainingPlan {
         let store = TrainingRecordsStore.shared
         switch preview.kind {
         case .newPlan:
+            // A new plan takes over from its first day. The current plan's
+            // sessions before that are carried into it unchanged, the ones from
+            // then on are withdrawn, and nothing already trained is touched —
+            // so no old session lingers as a workout from a replaced plan.
+            if let active = activeProgramRecord(),
+               let start = preview.sessions.map(\.date).min() {
+                let pending = PlanRevision.pendingSessions(active)
+                if !pending.isEmpty {
+                    let replacing = Set(pending.filter { String($0.scheduledAt.prefix(10)) >= start }.map(\.id))
+                    return try PlanRevision.commit(source: active, replacement: preview.program, replacing: replacing)
+                }
+            }
             let source = preview.sourceProgramId.flatMap { id in
                 store.data.programs.first { $0.id == id }
             }
             try store.saveProgram(preview.program, manualSourceProgramId: source?.id)
         case .adjustWeek:
+            // The rest of the week, reshaped: it replaces only the week's
+            // remaining sessions, and every later week of the plan is carried.
+            if let source = preview.sourceProgramId.flatMap({ id in store.data.programs.first { $0.id == id } }) {
+                let replacing = Set(TrainingWorkflow.remainingTrainingSlots(source, ISOTime.now()).sessions.map(\.id))
+                return try PlanRevision.commit(source: source, replacement: preview.program, replacing: replacing)
+            }
             try store.saveProgram(preview.program)
         }
         projectPlannedWorkouts(preview.sessions)

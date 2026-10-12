@@ -65,7 +65,7 @@ struct MonthlySummaryDashboard: View {
                         bars: snapshot.weeklyWorkoutCounts
                     )
                 }
-                .pageArrival(2)
+                .pageArrival(4)
 
                 SummaryCardLink(page: .summaryActivity(month: month, metric: .time), zoomID: "summary-time") {
                     SummaryMetricCard(
@@ -79,13 +79,13 @@ struct MonthlySummaryDashboard: View {
                         bars: snapshot.weeklyDurationSeconds
                     )
                 }
-                .pageArrival(3)
+                .pageArrival(5)
             }
 
             SummaryCardLink(page: .summaryMuscles(month: month), zoomID: "summary-muscles", cornerRadius: Theme.Radius.xl3) {
                 MuscleHeatmapCard(snapshot: snapshot)
             }
-            .pageArrival(4)
+            .pageArrival(6)
         }
         // Square cards and fixed chart columns: text grows with Dynamic Type
         // up to the point where they can still hold it.

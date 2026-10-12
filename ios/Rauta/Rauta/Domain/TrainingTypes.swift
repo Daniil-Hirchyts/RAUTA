@@ -451,6 +451,10 @@ nonisolated struct ExerciseMetadata: Codable, Hashable, Sendable {
     var setRoles: [EffectiveSetRole]
     var classificationConfidence: Double
     var skill: Skill
+    /// The least training experience this may be prescribed to automatically.
+    /// Absent means no floor beyond the skill rule (complex movements are never
+    /// prescribed to a beginner).
+    var minimumExperience: Experience?
     var setupSeconds: Double
     var tags: [String]
     var automaticProgramming: AutomaticProgramming

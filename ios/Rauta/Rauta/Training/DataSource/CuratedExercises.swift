@@ -111,7 +111,13 @@ nonisolated enum CuratedExercises {
     /// way the TypeScript spread did.
     static func resolveMetadata(_ exercise: ExerciseSummary) -> ExerciseMetadata {
         let inferred = ExerciseClassifier.inferMetadata(exercise)
-        guard let review = review(exercise.id) else { return inferred }
+        guard let review = review(exercise.id) else {
+            guard ReviewedRequirements.decision(exercise.id) != nil,
+                  var merged = inferred.jsonTree.objectValue
+            else { return inferred }
+            ReviewedRequirements.apply(exercise, to: &merged)
+            return JSONCoding.value(.object(merged), as: ExerciseMetadata.self) ?? inferred
+        }
 
         let state = freshness(review, exercise)
         let staleSource = state.staleSource || state.sourceFingerprintMissing
@@ -150,6 +156,13 @@ nonisolated enum CuratedExercises {
             review.reviewedFields.sorted { compareIds($0, $1) < 0 }.map(JSONValue.string)
         )
         merged["ruleVersion"] = .string("\(RULE_VERSION)+curation-\(CURATION_VERSION)")
+
+        if ReviewedRequirements.decision(exercise.id) != nil {
+            ReviewedRequirements.apply(exercise, to: &merged)
+            merged["ruleVersion"] = .string(
+                "\(RULE_VERSION)+curation-\(CURATION_VERSION)+requirements-\(ReviewedRequirements.version)"
+            )
+        }
 
         return JSONCoding.value(.object(merged), as: ExerciseMetadata.self) ?? inferred
     }

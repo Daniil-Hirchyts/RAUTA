@@ -99,9 +99,14 @@ struct TrainingEngineTests {
     @Test func withoutEquipmentPlansWhatItCanAndSaysSo() {
         let result = Generate.generateTrainingProgram(Self.request(equipment: []))
         #expect(result.statusName == "partial")
+        // Re-recorded 2026-10-10: exercises whose instructions need a band, a
+        // bar or a suspension trainer no longer count as body-weight-only, so
+        // two muscles are also trained less often than targeted — and the
+        // plan says so rather than prescribing kit nobody has.
         #expect(result.issues.map(\.code.rawValue) == [
             "INCOMPLETE_HISTORY", "VOLUME_BELOW_TARGET", "VOLUME_BELOW_TARGET",
-            "VOLUME_BELOW_TARGET", "VOLUME_BELOW_TARGET", "INSUFFICIENT_HISTORY_FOR_LOAD",
+            "FREQUENCY_BELOW_TARGET", "VOLUME_BELOW_TARGET", "FREQUENCY_BELOW_TARGET",
+            "INSUFFICIENT_HISTORY_FOR_LOAD",
         ])
     }
 

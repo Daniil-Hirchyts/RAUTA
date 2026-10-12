@@ -72,9 +72,16 @@ final class WorkoutsStore {
     static let version = 2
 
     private(set) var workouts: [Workout] = []
+    /// Workouts deleted here, by id, with when. A copy arriving from another
+    /// device is merged rather than swallowed whole, and this is how the merge
+    /// tells a workout deleted here from one that device never had.
+    private(set) var deletions: [String: String] = [:]
     /// Moves on with every change to `workouts`, so what is derived from them
     /// can tell they changed without comparing them.
     private(set) var revision = 0
+
+    /// How long a deletion is remembered for merging.
+    static let deletionMemoryDays = 90
 
     /// Fired after every mutation, so the iCloud mirror and the session
     /// reconciler can follow the store rather than every call site.
@@ -90,17 +97,23 @@ final class WorkoutsStore {
 
     private func load() {
         guard let envelope = Storage.readEnvelope(Self.storageKey) else { return }
-        workouts = Self.sanitize(envelope.state).workouts
+        let state = Self.sanitize(envelope.state)
+        workouts = state.workouts
+        deletions = state.deletions
         revision += 1
     }
 
     func persist() {
         guard !suppressPersist else { return }
-        Storage.writeEnvelope(
-            Self.storageKey,
-            state: .object(["workouts": .array(workouts.map { $0.jsonTree })]),
-            version: Self.version
-        )
+        Storage.writeEnvelope(Self.storageKey, state: snapshotTree, version: Self.version)
+    }
+
+    /// The store as the backup and the workout file carry it.
+    var snapshotTree: JSONValue {
+        .object([
+            "workouts": .array(workouts.map { $0.jsonTree }),
+            "deleted": .object(deletions.mapValues(JSONValue.string)),
+        ])
     }
 
     private func mutate(_ body: () -> Void) {
@@ -110,7 +123,10 @@ final class WorkoutsStore {
         changed.send()
     }
 
-    struct PersistedWorkouts { var workouts: [Workout] }
+    struct PersistedWorkouts {
+        var workouts: [Workout]
+        var deletions: [String: String] = [:]
+    }
 
     static func sanitize(_ value: JSONValue?) -> PersistedWorkouts {
         let raw = value?["workouts"]?.arrayValue ?? []
@@ -142,7 +158,12 @@ final class WorkoutsStore {
                 rautaFocus: rautaFocus.isEmpty ? nil : rautaFocus
             ))
         }
-        return PersistedWorkouts(workouts: result)
+        var deletions: [String: String] = [:]
+        for (id, at) in value?["deleted"]?.objectValue ?? [:] {
+            guard !id.isEmpty, let at = at.stringValue, ISOTime.valid(at) else { continue }
+            deletions[id] = at
+        }
+        return PersistedWorkouts(workouts: result, deletions: deletions)
     }
 
     private static func isCalendarDate(_ value: String) -> Bool {
@@ -271,7 +292,59 @@ final class WorkoutsStore {
     }
 
     func deleteWorkout(_ id: String) {
-        mutate { workouts.removeAll { $0.id == id } }
+        mutate {
+            workouts.removeAll { $0.id == id }
+            deletions[id] = ISOTime.now()
+            deletions = Self.pruned(deletions)
+        }
+    }
+
+    /// Remembers that a workout removed by a wholesale replacement — a plan
+    /// revision withdrawing its session — was deleted, for merging.
+    func rememberDeletion(_ id: String) {
+        guard workout(id) == nil else { return }
+        mutate {
+            deletions[id] = ISOTime.now()
+            deletions = Self.pruned(deletions)
+        }
+    }
+
+    private static func pruned(_ deletions: [String: String], now: String = ISOTime.now()) -> [String: String] {
+        let cutoff = ISOTime.addDays(now, -Double(deletionMemoryDays))
+        return deletions.filter { $0.value >= cutoff }
+    }
+
+    /// Two copies of the workout list made one, losing nothing either side
+    /// still has: a workout on both sides keeps its most recent edit; one on
+    /// a single side stays, unless the other side deleted it after that edit.
+    /// A running workout is always this device's own version.
+    static func merge(
+        local: PersistedWorkouts,
+        remote: PersistedWorkouts,
+        runningId: String? = nil
+    ) -> PersistedWorkouts {
+        var deletions = local.deletions
+        for (id, at) in remote.deletions where at > (deletions[id] ?? "") { deletions[id] = at }
+
+        let localById = Dictionary(local.workouts.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let remoteById = Dictionary(remote.workouts.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var merged: [Workout] = []
+        var seen = Set<String>()
+        for workout in local.workouts + remote.workouts where seen.insert(workout.id).inserted {
+            let mine = localById[workout.id]
+            let theirs = remoteById[workout.id]
+            if workout.id == runningId, let mine { merged.append(mine); continue }
+            let chosen: Workout
+            switch (mine, theirs) {
+            case let (mine?, theirs?): chosen = theirs.updatedAt > mine.updatedAt ? theirs : mine
+            case let (mine?, nil): chosen = mine
+            case let (nil, theirs?): chosen = theirs
+            case (nil, nil): continue
+            }
+            if let deletedAt = deletions[chosen.id], deletedAt >= chosen.updatedAt { continue }
+            merged.append(chosen)
+        }
+        return PersistedWorkouts(workouts: merged, deletions: pruned(deletions))
     }
 
     func completeWorkout(_ id: String, _ completion: WorkoutCompletion) {
@@ -299,6 +372,22 @@ final class WorkoutsStore {
         revision += 1
         if persisting { persist() }
         changed.send()
+    }
+
+    /// Deletes every workout, remembering each deletion, so a copy of the old
+    /// list on another device is cleared too rather than merged back.
+    func clearAll() {
+        let now = ISOTime.now()
+        var next = deletions
+        for workout in workouts { next[workout.id] = now }
+        deletions = Self.pruned(next)
+        replaceAll([])
+    }
+
+    /// Replaces the list and the deletions it was merged with.
+    func replaceAll(_ next: PersistedWorkouts) {
+        deletions = next.deletions
+        replaceAll(next.workouts)
     }
 
     func isPast(_ workout: Workout, today: Date = Date()) -> Bool {

@@ -150,9 +150,10 @@ struct ConfirmModal: View {
                 + "Export a backup first if you might want any of this later."
         }
         let workouts = Wording.countLabel(store.workouts.workouts.count, "workout")
+        let sessions = Wording.countLabel(store.trainingRecords.data.sessions.count, "logged session")
         let favorites = Wording.countLabel(store.favorites.favoriteIds.count, "favorite")
         let presets = Wording.countLabel(store.filters.equipmentPresets.count, "equipment preset")
-        return "\(workouts), \(favorites) and \(presets) are deleted, "
+        return "\(workouts), \(sessions), your plans, \(favorites), \(presets) and every backup on this iPhone are deleted, "
             + "and your settings go back to their defaults."
     }
 

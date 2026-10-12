@@ -5,10 +5,7 @@ struct SettingsScreen: View {
     private let store = AppStore.shared
     private let agentModel = AgentModelStore.shared
     @State private var clearing = false
-    @State private var importing = false
     @State private var connectingHealth = false
-    /// A backup the person asked for, which RAUTA reports on when it lands.
-    @State private var backupRequested = false
 
     var body: some View {
         ZStack {
@@ -31,29 +28,19 @@ struct SettingsScreen: View {
                             }
                         }
 
-                        section("RAUTA's brain") {
-                            settingsRow(
-                                title: RautaModelCatalog.qwen35_2b.name,
-                                detail: agentModel.status,
-                                icon: "brain.head.profile",
-                                showsDivider: agentModel.installed
-                            ) {
-                                if agentModel.downloading {
-                                    ProgressView(value: agentModel.progress)
-                                        .frame(width: 64)
-                                } else if !agentModel.installed {
-                                    #if !targetEnvironment(simulator)
-                                    Button("Download") { agentModel.download() }
-                                        .font(Theme.sans(13, weight: .semibold))
-                                    #endif
-                                } else {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundStyle(Theme.success)
+                        section("Private conversations") {
+                            AgentDownloadCard(plain: true)
+                                .padding(16)
+                                .overlay(alignment: .bottom) {
+                                    if agentModel.installed {
+                                        Rectangle().fill(Theme.border).frame(height: 1)
+                                    }
                                 }
-                            }
                             #if !targetEnvironment(simulator)
                             if agentModel.installed {
-                                settingsAction(title: "Remove downloaded model", icon: "trash",
+                                settingsAction(title: "Remove downloaded model",
+                                               detail: "Frees \(AgentModelStore.gigabytes(agentModel.entry.downloadBytes)); conversations stay",
+                                               icon: "trash",
                                                destructive: true, showsDivider: false) {
                                     removeModel()
                                 }
@@ -164,43 +151,14 @@ struct SettingsScreen: View {
                         }
 
                         section("Data & Storage") {
-                            settingsRow(title: "iCloud backup", detail: iCloudDescription, icon: "icloud", showsDivider: true) {
-                                switch store.iCloud.status {
-                                case .checking, .syncing, .unavailable:
-                                    EmptyView()
-                                case .synced, .error:
-                                    Button(action: syncICloud) {
-                                        Image(systemName: "arrow.clockwise")
-                                            .font(.system(size: 17, weight: .semibold))
-                                            .foregroundStyle(Theme.primary)
-                                    }
-                                    .buttonStyle(.glassControl(.clear, .circle(diameter: 40)))
-                                    .accessibilityLabel("Sync iCloud backup now")
-                                }
+                            settingsAction(
+                                title: "Backup & restore",
+                                detail: backupDescription,
+                                icon: backupIcon,
+                                showsDivider: true
+                            ) {
+                                store.navigation.push(.backup)
                             }
-
-                            // The backup is written when the share sheet asks for
-                            // it, not every time Settings opens.
-                            ShareLink(item: BackupExport(), preview: SharePreview("RAUTA backup")) {
-                                settingsActionLabel(
-                                    title: "Export data",
-                                    detail: "Save one backup file",
-                                    icon: "arrow.down.to.line",
-                                    showsDivider: true
-                                )
-                            }
-                            .buttonStyle(.plain)
-
-                            Button { importing = true } label: {
-                                settingsActionLabel(
-                                    title: "Import data",
-                                    detail: "Restore a RAUTA backup",
-                                    icon: "doc.badge.arrow.up",
-                                    showsDivider: true
-                                )
-                            }
-                            .buttonStyle(.plain)
-
                             settingsAction(title: "Clear all data", icon: "trash", destructive: true, showsDivider: false) {
                                 clearing = true
                             }
@@ -224,13 +182,9 @@ struct SettingsScreen: View {
                     .padding(.bottom, 24)
                 }
                 .pageScroll()
-                .onChange(of: store.iCloud.status) { _, status in reportBackup(status) }
             }
 
             ConfirmModal(kind: clearing ? .clearData : nil, onCancel: { clearing = false }, onConfirm: clearData)
-        }
-        .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
-            importBackup(result)
         }
     }
 
@@ -252,7 +206,7 @@ struct SettingsScreen: View {
     }
 
     private var equipmentSummary: String {
-        let count = store.filters.gymEquipment.count
+        let count = store.filters.gymEquipment.count + store.filters.effectiveFixtures.count
         return count > 0 ? Wording.countLabel(count, "item") : "Not set"
     }
 
@@ -269,23 +223,20 @@ struct SettingsScreen: View {
         return "Connected · workouts sync"
     }
 
-    private var iCloudDescription: String {
-        switch store.iCloud.status {
-        case .checking:
-            return "Checking iCloud…"
-        case .syncing:
-            return "Saving backup…"
-        case .unavailable:
-            return "Sign in to iCloud"
-        case .error:
-            return store.iCloud.error ?? "Backup failed"
-        case .synced:
-            guard let value = store.iCloud.lastSyncedAt, let millis = ISOTime.parse(value) else {
-                return "Backed up automatically"
-            }
-            let saved = Date(epochMillis: millis)
-            return "Saved · \(saved.formatted(date: .omitted, time: .shortened))"
-        }
+    /// The backup state in one line: the last complete backup, or why there
+    /// is none.
+    private var backupDescription: String {
+        let vault = BackupVault.shared
+        if vault.interruptedRestore != nil { return "A restore was interrupted — open to finish it" }
+        if vault.lastFailure != nil { return "The last backup didn't save — open to retry" }
+        guard let when = RelativeMoment.text(vault.lastSuccessAt) else { return "Complete backups, export and restore" }
+        return "Last backup \(when)"
+    }
+
+    private var backupIcon: String {
+        let vault = BackupVault.shared
+        return vault.lastFailure != nil || vault.interruptedRestore != nil
+            ? "exclamationmark.icloud" : "externaldrive.badge.checkmark"
     }
 
     private var appVersion: String {
@@ -570,50 +521,6 @@ struct SettingsScreen: View {
         }
     }
 
-    private func syncICloud() {
-        Haptics.trigger(.light)
-        guard store.iCloud.syncNow() else { return }
-        backupRequested = true
-        RautaSpeech.shared.working("Backing everything up to iCloud…")
-    }
-
-    /// How the backup the person asked for went, once it has.
-    private func reportBackup(_ status: ICloudSync.Status) {
-        guard backupRequested else { return }
-        switch status {
-        case .synced:
-            backupRequested = false
-            Haptics.trigger(.success)
-            RautaSpeech.shared.say("All backed up to iCloud.", reaction: .celebrate)
-        case .error, .unavailable:
-            backupRequested = false
-            RautaSpeech.shared.say(
-                "The backup didn't go through. \(store.iCloud.error ?? "Check that you're signed in to iCloud.")",
-                reaction: .frustrated
-            )
-        case .checking, .syncing:
-            break
-        }
-    }
-
-    private func importBackup(_ result: Result<URL, Error>) {
-        do {
-            let url = try result.get()
-            let scoped = url.startAccessingSecurityScopedResource()
-            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-            try AppBackup.importBackup(String(contentsOf: url, encoding: .utf8))
-            RautaSpeech.shared.say("Backup restored. Your workouts, favorites and presets are back.", reaction: .celebrate)
-            Haptics.trigger(.success)
-        } catch {
-            RautaSpeech.shared.say(
-                (error as? TrainingPersistenceError)?.message
-                    ?? "That file isn't a RAUTA backup. Pick the .json file this app exported.",
-                reaction: .frustrated
-            )
-            Haptics.trigger(.warning)
-        }
-    }
-
     private func clearData() {
         AppBackup.clearAllData()
         _ = store.iCloud.syncNow()
@@ -674,14 +581,5 @@ private struct CustomAccentWell: View {
                     .allowsHitTesting(false)
             )
             .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-}
-
-/// A backup that exists only once something asks for its file.
-private struct BackupExport: Transferable {
-    static var transferRepresentation: some TransferRepresentation {
-        FileRepresentation(exportedContentType: .json) { _ in
-            SentTransferredFile(try await AppBackup.exportFileURL())
-        }
     }
 }

@@ -21,4 +21,11 @@ enum Wording {
     static func countLabel(_ count: Int, _ noun: String) -> String {
         "\(count) \(noun)\(count == 1 ? "" : "s")"
     }
+
+    /// "a", "a and b", "a, b and c".
+    static func list(_ items: [String], conjunction: String = "and") -> String {
+        guard let last = items.last else { return "" }
+        guard items.count > 1 else { return last }
+        return items.dropLast().joined(separator: ", ") + " \(conjunction) " + last
+    }
 }

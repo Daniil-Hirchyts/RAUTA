@@ -243,7 +243,10 @@ nonisolated enum Adapt {
             for old in prior.exercises {
                 var replacement = input.index.byId[old.exerciseId]
                 let blocked = replacement.map {
-                    !ExerciseData.exclusionReasons($0, authoritativeRequest.preferences, input.policy).isEmpty
+                    !ExerciseData.exclusionReasons(
+                        $0, authoritativeRequest.preferences, input.policy,
+                        experience: authoritativeRequest.profile.trainingExperience
+                    ).isEmpty
                 } ?? true
 
                 if blocked {
@@ -253,7 +256,8 @@ nonisolated enum Adapt {
                         .filter { candidate in
                             !chosenIds.contains(candidate.exercise.id)
                                 && ExerciseData.exclusionReasons(
-                                    candidate, authoritativeRequest.preferences, input.policy
+                                    candidate, authoritativeRequest.preferences, input.policy,
+                                    experience: authoritativeRequest.profile.trainingExperience
                                 ).isEmpty
                                 && candidate.metadata.setRoles.contains {
                                     $0.role == .direct && old.targetMuscles.contains($0.muscleId)
@@ -309,12 +313,86 @@ nonisolated enum Adapt {
             }
         }
 
+        // Work from sessions of this week that have passed without being
+        // trained moves into what is left of the week — only where a muscle
+        // is still short of its weekly target, only exercises the person can
+        // perform, and only while every session stays inside its time limit
+        // and exercise count. What does not fit is reported as dropped below.
+        if mode == .remainingWeek {
+            let performed = Set(request.history.sessions.compactMap(\.plannedSessionId))
+            let missedSessions = source.sessions.filter { session in
+                (ISOTime.parse(session.scheduledAt) ?? .infinity) < nowMillis
+                    && !performed.contains(session.id)
+            }
+            for missed in missedSessions {
+                for old in missed.exercises {
+                    guard let item = input.index.byId[old.exerciseId],
+                          ExerciseData.exclusionReasons(
+                              item, authoritativeRequest.preferences, input.policy,
+                              experience: authoritativeRequest.profile.trainingExperience
+                          ).isEmpty
+                    else { continue }
+                    let current = Scoring.weekVolume(week, input)
+                    let short = item.metadata.setRoles.contains { role in
+                        guard role.role == .direct else { return false }
+                        let preferred = targets.first { $0.muscleId == role.muscleId }?.preferred ?? 0
+                        return (current[role.muscleId] ?? 0) < preferred
+                    }
+                    guard short else { continue }
+
+                    // The session with the most room that trains these
+                    // muscles and does not already hold the exercise.
+                    let candidates = week.sessions.indices
+                        .filter { index in
+                            !week.sessions[index].exercises.contains { $0.exerciseId == item.exercise.id }
+                                && week.sessions[index].exercises.count < input.policy.maxExercisesPerSession
+                                && item.metadata.setRoles.contains { role in
+                                    role.role == .direct && week.sessions[index].focus.contains(role.muscleId)
+                                }
+                        }
+                        .sorted { left, right in
+                            let a = SessionTiming.estimateSession(week.sessions[left].exercises, input.index, input.policy).totalSeconds
+                            let b = SessionTiming.estimateSession(week.sessions[right].exercises, input.index, input.policy).totalSeconds
+                            return a != b ? a < b : left < right
+                        }
+                    for index in candidates {
+                        var trial = week
+                        var placed = false
+                        for count in stride(from: Swift.min(old.workingSets.count, 2), through: 1, by: -1) {
+                            var prescription = Prescribe.exercise(
+                                item,
+                                count: count,
+                                sessionId: trial.sessions[index].id,
+                                rationale: Scoring.scoreExercise(item, trial.sessions[index], trial, input),
+                                input: input
+                            )
+                            prescription.order = trial.sessions[index].exercises.count
+                            var attempt = week
+                            attempt.sessions[index].exercises.append(prescription)
+                            if Optimizer.hardConstructionChecks(attempt, input) {
+                                trial = attempt
+                                placed = true
+                                break
+                            }
+                        }
+                        if placed {
+                            week = trial
+                            break
+                        }
+                    }
+                }
+            }
+        }
+
         // Reschedule explicit strength-lift occurrences that were missed earlier
         // in the week when a future slot remains. One lift occurrence is never
         // stacked twice into the same session.
         for (exerciseId, desired) in remainingSpecificTargets {
             guard let item = input.index.byId[exerciseId],
-                  ExerciseData.exclusionReasons(item, authoritativeRequest.preferences, input.policy).isEmpty
+                  ExerciseData.exclusionReasons(
+                      item, authoritativeRequest.preferences, input.policy,
+                      experience: authoritativeRequest.profile.trainingExperience
+                  ).isEmpty
             else { continue }
 
             let template = source.sessions

@@ -78,6 +78,7 @@ final class AppStore {
         HealthService.shared.startAutoSync()
         WatchConnectivityService.shared.start()
         iCloud.start()
+        BackupVault.shared.start()
         workouts.changed
             .sink { [spotlightIndexing] in spotlightIndexing.request() }
             .store(in: &cancellables)

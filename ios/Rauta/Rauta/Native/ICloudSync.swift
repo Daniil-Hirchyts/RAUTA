@@ -3,10 +3,12 @@ import Foundation
 import Observation
 import UIKit
 
-/// Keeps the compact JSON backup in iCloud's key-value store. KVS is the right
-/// fit for this app's structured preferences and workout history: it survives
-/// uninstall, follows the user's iCloud account, and remains available offline
-/// from the system cache.
+/// Keeps the compact JSON copy in iCloud's key-value store: preferences,
+/// profile, favorites, equipment and the workout list. KVS survives uninstall,
+/// follows the user's iCloud account and is available offline from the system
+/// cache, but its whole allowance is 1 MB — so the structured training records,
+/// which grow with every set, are not in it. Complete backups are files kept
+/// by ``BackupVault``.
 struct ICloudBackupRecord {
     var data: String
     var updatedAt: String
@@ -30,7 +32,9 @@ enum ICloudBackupStore {
 
     static func write(_ record: ICloudBackupRecord) throws {
         guard record.data.lengthOfBytes(using: .utf8) <= maximumBackupBytes else {
-            throw TrainingPersistenceError("The RAUTA backup is too large for iCloud sync.")
+            throw TrainingPersistenceError(
+                "Your workout list has outgrown iCloud's quick sync. Complete backups on this iPhone still include everything."
+            )
         }
         store.set(record.data, forKey: dataKey)
         store.set(record.updatedAt, forKey: updatedAtKey)
@@ -52,6 +56,9 @@ final class ICloudSync {
     private(set) var status: Status = .checking
     private(set) var lastSyncedAt: String?
     private(set) var error: String?
+    /// A copy from another device that arrived during a workout. It is applied
+    /// once the workout ends, so nothing changes under a set being logged.
+    private(set) var heldForWorkout: ICloudBackupRecord?
 
     private static let metaKey = "gym-lib-icloud-sync"
     private static let uploadDelay: TimeInterval = 0.9
@@ -106,6 +113,7 @@ final class ICloudSync {
 
         status = .syncing
         error = nil
+        mergeNewerCloudWorkouts()
         let updatedAt = nextTimestamp()
         do {
             try ICloudBackupStore.write(ICloudBackupRecord(
@@ -123,10 +131,40 @@ final class ICloudSync {
         }
     }
 
-    private func restoreCloudData(_ record: ICloudBackupRecord) throws {
+    /// Another device uploaded since this one last synced: its workouts are
+    /// merged in before this upload replaces its copy, so an upload can never
+    /// drop a workout that exists only over there.
+    private func mergeNewerCloudWorkouts() {
+        guard let remote = ICloudBackupStore.read(),
+              remote.updatedAt != readMeta().cloudUpdatedAt,
+              let data = JSONCoding.parse(remote.data)?["data"]
+        else { return }
+        let theirs = WorkoutsStore.sanitize(data["workouts"])
+        let mine = WorkoutsStore.PersistedWorkouts(
+            workouts: WorkoutsStore.shared.workouts,
+            deletions: WorkoutsStore.shared.deletions
+        )
+        let merged = WorkoutsStore.merge(
+            local: mine, remote: theirs, runningId: ActiveWorkoutStore.shared.session?.workoutId
+        )
+        guard merged.workouts != mine.workouts || merged.deletions != mine.deletions else { return }
         applyingCloudBackup = true
         defer { applyingCloudBackup = false }
-        try AppBackup.importBackup(record.data, keepingRunningWorkout: true)
+        WorkoutsStore.shared.replaceAll(merged)
+    }
+
+    private func restoreCloudData(_ record: ICloudBackupRecord) throws {
+        if ActiveWorkoutStore.shared.session != nil {
+            heldForWorkout = record
+            return
+        }
+        heldForWorkout = nil
+        applyingCloudBackup = true
+        defer { applyingCloudBackup = false }
+        // Merged, not swallowed: a workout this device added or finished since
+        // the other device's copy was made stays, and one deleted on either
+        // side stays deleted.
+        try AppBackup.importBackup(record.data, keepingRunningWorkout: true, mergingWorkouts: true)
         writeMeta(SyncMeta(localChangedAt: record.updatedAt, cloudUpdatedAt: record.updatedAt))
         status = .synced
         lastSyncedAt = record.updatedAt
@@ -220,6 +258,16 @@ final class ICloudSync {
         }
 
         subscribeToLocalData()
+
+        // A copy held back during a workout lands once the workout is over.
+        ActiveWorkoutStore.shared.changed
+            .receive(on: RunLoop.main)
+            .sink { [weak self] in
+                guard let self, let held = self.heldForWorkout,
+                      ActiveWorkoutStore.shared.session == nil else { return }
+                do { try self.restoreCloudData(held) } catch { self.report(error) }
+            }
+            .store(in: &cancellables)
 
         NotificationCenter.default
             .publisher(for: UIApplication.didEnterBackgroundNotification)

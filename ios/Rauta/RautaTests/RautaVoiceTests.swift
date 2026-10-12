@@ -25,7 +25,7 @@ struct RautaVoiceTests {
     @Test func askingChangesWithWhatIsPicked() {
         #expect(PlanTalk.asking(selected: [], minutes: 45, continuing: false).hasPrefix("Pick the days"))
         #expect(PlanTalk.asking(selected: ["2026-09-28"], minutes: 45, continuing: false)
-            == "Mon. I'll fit about 45 min into each.")
+            == "Mon. About 45 min each, warm-up and rest included.")
     }
 
     // MARK: Celebrating

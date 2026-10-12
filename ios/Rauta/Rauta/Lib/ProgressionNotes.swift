@@ -39,50 +39,51 @@ enum ProgressionNotes {
         switch action {
         case .increaseLoad:
             if reason == .coarseLoadGrid {
-                return note("Smallest step here is\(step.map { " \($0)" } ?? ""). Take it.")
+                return note("Last time every set reached the top of the range; the smallest step this equipment offers is\(step.map { " \($0)" } ?? " the next one"). Take it.")
             }
-            return note("You hit the top of the range last time.\(step.map { " +\($0)." } ?? "")")
+            return note("Last time every set reached the top of the range with reps to spare\(step.map { ", so add \($0)" } ?? ", so add a step").")
 
         case .decreaseLoad:
             return note(
-                "Two sessions short of the range.\(step.map { " −\($0)." } ?? "") Rebuild from here."
+                "The last two sessions fell short of the range\(step.map { ", so take off \($0)" } ?? ", so take off a step") and build back up."
             )
 
         case .reduceAssistance:
-            return note("Top of the range last time.\(step.map { " \($0) less assist." } ?? "")")
+            return note("Last time every set reached the top of the range\(step.map { ", so use \($0) less assistance" } ?? ", so use less assistance").")
 
         case .increaseAssistance:
-            return note("Short of the range twice.\(step.map { " \($0) more assist." } ?? "")")
+            return note("The last two sessions fell short of the range\(step.map { ", so use \($0) more assistance" } ?? ", so use more assistance").")
 
         case .increaseReps:
             if reason == .coarseLoadGrid {
                 return note(
-                    "Next load up is a big jump. Add reps first — up to \(Num.trimmed(targetReps.max))."
+                    "The next load up is a big jump, so add reps first — up to \(Num.trimmed(targetReps.max)) at this load."
                 )
             }
-            return note("Top of the range last time. Go for \(Num.trimmed(targetReps.max)) reps.")
+            return note("Last time every set reached the top of the range. Aim for \(Num.trimmed(targetReps.max)) reps this time.")
 
         case .coarseGridProgression:
             return note(
-                "This station jumps too far in one step. Hold the load and work to "
-                    + "\(Num.trimmed(targetReps.max)) reps."
+                "This equipment jumps too far in one step. Keep the load and work up to "
+                    + "\(Num.trimmed(targetReps.max)) reps first."
             )
 
         case .hold:
             switch reason {
-            case .incompleteSets: return note("Last session came up short. Same load again.")
-            case .missingEffort: return note("No RIR logged last time, so nothing to progress from.")
-            case .incrementTooLarge: return note("A step down here is too big. Hold this load.")
-            case .gridUnavailable: return note("I do not know this station's steps yet. Hold this load.")
-            case .withinRange: return note("Keep this load until you reach the top of the range.")
+            case .incompleteSets: return note("Not every set was finished last time, so keep the same load.")
+            case .missingEffort:
+                return note("Reps left wasn't recorded last time, so RAUTA can't tell how hard it was and keeps the same load. Record reps left to progress.")
+            case .incrementTooLarge: return note("A step down here is too big, so keep this load.")
+            case .gridUnavailable: return note("RAUTA doesn't know this equipment's weight steps yet, so it keeps this load. Set them in Equipment › Load steps.")
+            case .withinRange: return note("Keep this load until every set reaches the top of the range.")
             default: return nil
             }
 
         case .calibrate:
             switch reason {
-            case .contextChanged: return note("Different station today — recalibrating.")
-            case .staleHistory: return note("It has been a while. Find the load again, easy first set.")
-            case .gridUnavailable: return note("Set this station's load step and I can progress it.")
+            case .contextChanged: return note("Different equipment from last time, so this is a calibration: find a load that fits the target.")
+            case .staleHistory: return note("It's been over four weeks, so this is a calibration: start easy and find the load again.")
+            case .gridUnavailable: return note("Set this equipment's load step and RAUTA can progress it.")
             // No history is not a remark. The card already opens on the plan's
             // reps with the load at zero, which says the same thing.
             default: return nil

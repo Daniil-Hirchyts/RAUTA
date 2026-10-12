@@ -2,15 +2,25 @@ import SwiftUI
 
 struct OnboardingScreen: View {
     var body: some View {
+        // The essentials first — what you want, where you start, what you
+        // have, how long and when — then your age, which decides whether RAUTA
+        // may plan for you at all. Muscle priorities and the rest wait in
+        // Settings until they matter.
         ProfileStepFlow(
-            steps: [.welcome, .about, .experience, .goal, .priorities, .duration, .gym, .ready],
+            steps: [.welcome, .goal, .experience, .gym, .duration, .days, .about, .ready],
             onboarding: true
         ) {
             Haptics.trigger(.success)
             var rng = SystemRandomNumberGenerator()
             WorkoutAudio.play(RautaPhrase.arrival(using: &rng), level: 0.24, felt: 0)
-            AppStore.shared.trainingProfile.completeOnboarding()
-            AppStore.shared.navigation.reset([.workouts])
+            let store = AppStore.shared
+            if store.trainingProfile.profile.trainingDays == nil {
+                store.trainingProfile.updateProfile(.init(trainingDays: TrainingProfile.defaultTrainingDays))
+            }
+            store.trainingProfile.completeOnboarding()
+            // Straight on to a first week, starting today: the first workout is
+            // the point of setting up. Closing it lands on Summary.
+            store.navigation.reset([.workouts, .planWeek(sourceProgramId: nil)])
         }
     }
 }
@@ -19,7 +29,7 @@ enum ProfileStep: String {
     case welcome = "Meet RAUTA"
     case about = "About you", experience = "Experience", goal = "Goal"
     case priorities = "Priority muscles"
-    case duration = "Session length", gym = "Your gym", health = "Health"
+    case duration = "Session length", days = "Training days", gym = "Your equipment", health = "Health"
     case ready = "Ready to train"
 }
 
@@ -39,7 +49,7 @@ struct ProfileStepFlow: View {
     private var isEnteringName: Bool { step == .about && nameEntryFocused }
     private var actionTitle: String {
         if step == .welcome { return "Set up RAUTA" }
-        if index == steps.count - 1 { return onboarding ? "Start training" : "Done" }
+        if index == steps.count - 1 { return onboarding ? "Build my first week" : "Done" }
         return "Continue"
     }
 
@@ -63,7 +73,25 @@ struct ProfileStepFlow: View {
                                     if step == .about {
                                         ProfileNameControl { nameEntryFocused = $0 }
                                             .padding(.horizontal, 12)
+                                        if !nameEntryFocused {
+                                            Text("Your name is optional. Your age matters: RAUTA plans for adults 18 and over.")
+                                                .font(Theme.sans(13, weight: .medium))
+                                                .foregroundStyle(Theme.mutedForeground)
+                                                .multilineTextAlignment(.center)
+                                                .fixedSize(horizontal: false, vertical: true)
+                                                .padding(.horizontal, 24)
+                                                .padding(.top, 10)
+                                        }
                                         Spacer(minLength: 20)
+                                    }
+                                    if step == .duration {
+                                        Text("A target, with warm-up and rest included. RAUTA never plans more than 10 minutes over it — and when a session's work is done sooner, it stays shorter rather than being padded.")
+                                            .font(Theme.sans(14, weight: .medium))
+                                            .foregroundStyle(Theme.secondaryForeground)
+                                            .multilineTextAlignment(.center)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                            .padding(.horizontal, 24)
+                                        Spacer(minLength: 16)
                                     }
                                     if step == .duration || !nameEntryFocused {
                                         ProfileDial(duration: step == .duration)
@@ -166,7 +194,12 @@ struct ProfileStepFlow: View {
         case .welcome: OnboardingIntroView()
         case .experience: ProfileExperienceControl()
         case .goal: ProfileGoalControl().padding(.horizontal, -12)
-        case .gym: EquipmentGrid(selected: store.filters.gymEquipment, onToggle: store.filters.toggleGymEquipment)
+        case .gym:
+            VStack(alignment: .leading, spacing: 20) {
+                EquipmentGrid(selected: store.filters.gymEquipment, onToggle: store.filters.toggleGymEquipment)
+                FixturePicker()
+            }
+        case .days: TrainingDaysControl()
         case .health: ProfileHealthControl()
         case .ready: OnboardingReadyView()
         default: EmptyView()
@@ -245,8 +278,8 @@ private struct OnboardingReadyView: View {
     private let store = AppStore.shared
 
     private var equipmentSummary: String {
-        let count = store.filters.gymEquipment.count
-        return count == 0 ? "No equipment selected" : "\(count) equipment types"
+        let count = store.filters.gymEquipment.filter { $0 != "body weight" }.count + store.filters.effectiveFixtures.count
+        return count == 0 ? "Body weight only" : Wording.countLabel(count, "item")
     }
 
     var body: some View {
@@ -269,7 +302,7 @@ private struct OnboardingReadyView: View {
                     .foregroundStyle(Theme.foreground)
                     .multilineTextAlignment(.center)
 
-                Text("You can change any answer in Settings.")
+                Text("Next, RAUTA builds your first week — starting today if you like. Muscle priorities, health and the rest are in Settings whenever you want them.")
                     .font(Theme.sans(14, weight: .medium))
                     .foregroundStyle(Theme.mutedForeground)
                     .multilineTextAlignment(.center)
@@ -298,6 +331,12 @@ private struct OnboardingReadyView: View {
                     systemImage: "dumbbell",
                     label: "Equipment",
                     value: equipmentSummary
+                )
+                Divider().overlay(Theme.border)
+                OnboardingSummaryRow(
+                    systemImage: "calendar",
+                    label: "Days",
+                    value: profile.effectiveTrainingDays.map { WeekdayPicker.fullName($0).prefix(3) }.joined(separator: ", ")
                 )
             }
             .background(
@@ -339,3 +378,30 @@ private struct OnboardingSummaryRow: View {
     }
 }
 
+
+/// Which days of the week the person trains, for plans to land on.
+struct TrainingDaysControl: View {
+    private let store = AppStore.shared
+
+    var body: some View {
+        let days = Binding<Set<Int>>(
+            get: { Set(store.trainingProfile.profile.effectiveTrainingDays) },
+            set: { next in
+                guard !next.isEmpty else { return }
+                store.trainingProfile.updateProfile(.init(trainingDays: next.sorted()))
+            }
+        )
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Which days can you usually train?")
+                .font(Theme.sans(22, weight: .heavy))
+                .foregroundStyle(Theme.foreground)
+                .fixedSize(horizontal: false, vertical: true)
+            WeekdayPicker(days: days)
+            Text("RAUTA puts sessions on these days and treats the others as rest. Two or three days is plenty to start; you can move any workout later.")
+                .font(Theme.sans(14, weight: .medium))
+                .foregroundStyle(Theme.secondaryForeground)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.top, 24)
+    }
+}

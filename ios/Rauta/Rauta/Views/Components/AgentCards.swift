@@ -402,64 +402,104 @@ struct AgentPermissionCard: View {
     }
 }
 
-/// RAUTA without its model: what it needs, how big it is, and the download.
+/// Setting up private conversations: what they add, what already works
+/// without them, how big the download is, and where it stands. The model's
+/// technical name is there for whoever wants it, last and small.
 struct AgentDownloadCard: View {
     private let model = AgentModelStore.shared
+    /// Inside Settings the card sits on a grouped surface of its own.
+    var plain = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 12) {
-                AgentIcon(systemImage: "brain.head.profile")
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("RAUTA's brain")
+            HStack(alignment: .top, spacing: 12) {
+                AgentIcon(systemImage: "bubble.left.and.text.bubble.right")
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Private conversations")
                         .font(Theme.sans(17, weight: .bold))
                         .foregroundStyle(Theme.foreground)
-                    Text("Runs on your iPhone. Your training never leaves it.")
+                    Text("Ask RAUTA anything in your own words. It thinks on this iPhone, works offline once downloaded, and your training never leaves the device.")
                         .font(Theme.sans(13, weight: .medium))
                         .foregroundStyle(Theme.mutedForeground)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
-            if model.downloading {
+            Label {
+                Text("Planning, adjusting your week, your weekly review and common requests already work without it.")
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.success)
+            }
+            .font(Theme.sans(13, weight: .medium))
+            .foregroundStyle(Theme.secondaryForeground)
+
+            #if targetEnvironment(simulator)
+            Text(model.installed
+                 ? "The simulator is using Apple's on-device model. The download itself only runs on an iPhone."
+                 : "The simulator uses Apple's on-device model when this Mac has Apple Intelligence. The download only runs on an iPhone.")
+                .font(Theme.sans(13, weight: .medium))
+                .foregroundStyle(Theme.mutedForeground)
+                .fixedSize(horizontal: false, vertical: true)
+            #else
+            if model.installed {
+                Label("Ready on this iPhone · works offline", systemImage: "checkmark.seal.fill")
+                    .font(Theme.sans(14, weight: .semibold))
+                    .foregroundStyle(Theme.foreground)
+            } else if model.downloading {
                 VStack(alignment: .leading, spacing: 8) {
-                    GeometryReader { proxy in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(Theme.muted.opacity(0.5))
-                            Capsule()
-                                .fill(Theme.primaryGradient)
-                                .frame(width: max(10, proxy.size.width * model.progress))
-                        }
-                    }
-                    .frame(height: 8)
-                    .animation(.easeOut(duration: 0.3), value: model.progress)
+                    ProgressView(value: model.progress)
+                        .tint(Theme.primary)
+                        .accessibilityLabel("Download progress")
+                        .accessibilityValue("\(Int(model.progress * 100)) percent")
                     HStack {
                         Text(model.status)
-                        Spacer()
-                        Button("Cancel") { model.cancelDownload() }
+                            .monospacedDigit()
+                        Spacer(minLength: 8)
+                        Button("Cancel download") { model.cancelDownload() }
                             .foregroundStyle(Theme.primary)
                     }
                     .font(Theme.sans(13, weight: .semibold))
                     .foregroundStyle(Theme.mutedForeground)
+                    Text("Keep RAUTA open until it finishes. If you leave, start again from here.")
+                        .font(Theme.sans(12, weight: .medium))
+                        .foregroundStyle(Theme.mutedForeground)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             } else {
-                #if targetEnvironment(simulator)
-                Text("The simulator thinks with Apple's on-device model when it is available.")
-                    .font(Theme.sans(13, weight: .medium))
-                    .foregroundStyle(Theme.mutedForeground)
-                #else
                 if let error = model.error {
-                    Text(error)
-                        .font(Theme.sans(13, weight: .medium))
-                        .foregroundStyle(Theme.destructive)
+                    Label {
+                        Text(error).fixedSize(horizontal: false, vertical: true)
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                    }
+                    .font(Theme.sans(13, weight: .semibold))
+                    .foregroundStyle(Theme.destructive)
                 }
-                AppButton("Download · 1.75 GB", expands: true) { model.download() }
-                Text("Wi-Fi recommended. Needs about 2.3 GB free.")
+                if !model.meetsMemoryRequirement {
+                    Text("This iPhone has less memory than the model was tested with (6 GB, iPhone 14 Pro Max). It may not run here; everything else in RAUTA works the same.")
+                        .font(Theme.sans(12, weight: .medium))
+                        .foregroundStyle(Theme.mutedForeground)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                AppButton(
+                    model.error == nil ? "Set up · \(AgentModelStore.gigabytes(model.entry.downloadBytes))" : "Try again",
+                    expands: true
+                ) { model.download() }
+                Text("One-time download. Wi-Fi recommended; needs about \(AgentModelStore.gigabytes(model.entry.downloadBytes + 500_000_000)) free.")
                     .font(Theme.sans(12, weight: .medium))
                     .foregroundStyle(Theme.mutedForeground)
-                #endif
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            #endif
+
+            Text("Model: \(model.entry.name), 4-bit · \(model.entry.license)")
+                .font(Theme.sans(11, weight: .medium))
+                .foregroundStyle(Theme.mutedForeground.opacity(0.8))
         }
-        .padding(16)
-        .background { GradientCard(radius: Theme.Radius.xl, accent: Theme.primary, strength: 0.9) }
+        .padding(plain ? 0 : 16)
+        .background {
+            if !plain { GradientCard(radius: Theme.Radius.xl, accent: Theme.primary, strength: 0.9) }
+        }
     }
 }

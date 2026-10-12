@@ -30,6 +30,12 @@ struct TrainingProfile: Codable, Hashable, Sendable {
     var health: TrainingHealth
     /// Only muscles that differ from the engine's normal weighting.
     var priorityMuscles: [MusclePriority]
+    /// The weekdays the person usually trains, Monday = 1 … Sunday = 7. Nil
+    /// until they say; plans then default to Monday, Wednesday and Friday.
+    var trainingDays: [Int]? = nil
+
+    static let defaultTrainingDays = [1, 3, 5]
+    var effectiveTrainingDays: [Int] { trainingDays ?? Self.defaultTrainingDays }
 
     static func createDefault() -> TrainingProfile {
         TrainingProfile(
@@ -102,8 +108,16 @@ final class TrainingProfileStore {
                     ?? defaults.preferredSessionDurationMinutes
             ),
             health: sanitizeHealth(object["health"]),
-            priorityMuscles: priorityMuscles
+            priorityMuscles: priorityMuscles,
+            trainingDays: sanitizeTrainingDays(object["trainingDays"])
         )
+    }
+
+    /// Weekdays 1…7, each once, in week order; nil when absent or empty.
+    static func sanitizeTrainingDays(_ value: JSONValue?) -> [Int]? {
+        guard let items = value?.arrayValue else { return nil }
+        let days = Set(items.compactMap(\.intValue).filter { (1...7).contains($0) })
+        return days.isEmpty ? nil : days.sorted()
     }
 
     private static func sanitizeHealth(_ value: JSONValue?) -> TrainingHealth {
@@ -183,6 +197,7 @@ final class TrainingProfileStore {
         var goal: TrainingGoal?
         var preferredSessionDurationMinutes: Double?
         var health: TrainingHealth?
+        var trainingDays: [Int]?
 
         init(
             name: String? = nil,
@@ -190,7 +205,8 @@ final class TrainingProfileStore {
             trainingExperience: Experience? = nil,
             goal: TrainingGoal? = nil,
             preferredSessionDurationMinutes: Double? = nil,
-            health: TrainingHealth? = nil
+            health: TrainingHealth? = nil,
+            trainingDays: [Int]? = nil
         ) {
             self.name = name
             self.age = age
@@ -198,6 +214,7 @@ final class TrainingProfileStore {
             self.goal = goal
             self.preferredSessionDurationMinutes = preferredSessionDurationMinutes
             self.health = health
+            self.trainingDays = trainingDays
         }
     }
 
@@ -212,6 +229,7 @@ final class TrainingProfileStore {
                 next.preferredSessionDurationMinutes = duration
             }
             if let health = patch.health { next.health = health }
+            if let days = patch.trainingDays { next.trainingDays = days }
             profile = Self.sanitizeProfile(next.jsonTree)
         }
     }

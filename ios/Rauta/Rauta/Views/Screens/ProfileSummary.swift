@@ -21,8 +21,9 @@ struct ProfileIdentityCard: View {
             ProfileVocabulary.goalLabel(profile.goal),
             "\(Int(profile.preferredSessionDurationMinutes)) min",
         ]
-        let equipmentCount = store.filters.gymEquipment.count
-        parts.append(equipmentCount == 0 ? "No equipment" : Wording.countLabel(equipmentCount, "item"))
+        let equipmentCount = store.filters.gymEquipment.filter { $0 != "body weight" }.count
+            + store.filters.effectiveFixtures.count
+        parts.append(equipmentCount == 0 ? "Body weight only" : Wording.countLabel(equipmentCount, "item"))
         if !profile.priorityMuscles.isEmpty {
             let count = profile.priorityMuscles.count
             parts.append(count == 1 ? "1 priority" : "\(count) priorities")
