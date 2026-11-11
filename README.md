@@ -35,7 +35,7 @@ itself is the one-time download of the language model (1.75 GB, pinned to a comm
 data stays on the phone, with full backups as files you can see in the Files app and a compact copy of your
 settings and workout list in iCloud key-value storage.
 
-Native SwiftUI for iOS 27 and watchOS 27 · 58,000 lines of Swift in 240 files · 238 tests in 32 suites.
+Native SwiftUI for iOS 27 and watchOS 27.
 
 ## Demo
 
