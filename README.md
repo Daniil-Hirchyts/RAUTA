@@ -9,17 +9,14 @@ Training that fits your week.
 A strength-training app for iPhone and Apple Watch. A training engine writes the plan; RAUTA, an agent that
 runs on the phone, changes it when you ask.
 
-[Screens](#screens) · [What it shows](#what-this-project-shows) · [Planning](#how-a-plan-is-built) ·
+[Demo](#demo) · [What it shows](#what-this-project-shows) · [Planning](#how-a-plan-is-built) ·
 [The agent](#rauta-the-agent) · [Decisions](#engineering-decisions) · [Architecture](#architecture) ·
-[Build it](#build-it)
+[Build it](#build-it) · [Related](#related-projects)
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/hero-dark.jpg"/>
-  <img src="docs/screenshots/hero-light.jpg" alt="Four iPhone screens: the Summary, where RAUTA offers to build a first week; a plan RAUTA built in the chat, waiting for Apply; the muscles trained this month on a body map; and the equipment step of onboarding" width="960"/>
-</picture>
+<a href="docs/demo/hero.mp4"><img src="docs/demo/hero.webp" alt="Three iPhone screens recorded on the simulator: the warm-up handing over to the bench press player; logging a set, the rest timer, then the player shrinking into the bar above the tabs; and the month's workouts as a bar chart" width="960"/></a>
 
-<sub>The Summary, where RAUTA offers to build the first week · a plan RAUTA built from a typed request, saved only on
-Apply · sets per muscle this month · picking your equipment during onboarding.</sub>
+<sub>Recorded on the iOS simulator: the warm-up hands over to the first exercise · a set logged, the rest counts down,
+and the player folds into the bar above the tabs · the month's workouts. <a href="docs/demo/hero.mp4"><b>Watch as video</b></a>.</sub>
 
 </div>
 
@@ -38,28 +35,35 @@ itself is the one-time download of the language model (1.75 GB, pinned to a comm
 data stays on the phone, with full backups as files you can see in the Files app and a compact copy of your
 settings and workout list in iCloud key-value storage.
 
-Native SwiftUI for iOS 27 and watchOS 27 · 57,000 lines of Swift in 242 files · 239 tests in 32 suites.
+Native SwiftUI for iOS 27 and watchOS 27 · 58,000 lines of Swift in 240 files · 238 tests in 32 suites.
 
-## Screens
+## Demo
 
-| Small edits come with Undo | Answers and permissions | RAUTA's menu |
-| :---: | :---: | :---: |
-| [<img src="docs/screenshots/chat-undo.jpg" alt="Chat: the equipment change applied with an Undo button; the plan preview above it is marked out of date" width="240"/>](docs/screenshots/chat-undo.jpg) | [<img src="docs/screenshots/chat-answers.jpg" alt="Chat: exercises for rear delts with dumbbells, then a card asking for Health access to check sleep and heart trends" width="240"/>](docs/screenshots/chat-answers.jpg) | [<img src="docs/screenshots/rauta-menu.jpg" alt="RAUTA's menu on the tab bar: Ask me anything, Create training plan, Choose exercises" width="240"/>](docs/screenshots/rauta-menu.jpg) |
-| **Workouts this month** | **Records** | **Goal** |
-| [<img src="docs/screenshots/activity.jpg" alt="Workouts this month as a dot-matrix count and weekly bars, with the sessions listed below" width="240"/>](docs/screenshots/activity.jpg) | [<img src="docs/screenshots/records.jpg" alt="Personal bests per exercise with estimated one-rep maxes, and all-time totals" width="240"/>](docs/screenshots/records.jpg) | [<img src="docs/screenshots/onboarding-goal.jpg" alt="Onboarding: choosing a goal, with RAUTA confirming it" width="240"/>](docs/screenshots/onboarding-goal.jpg) |
+Every clip is a screen recording of the app on the iOS simulator, unedited apart from trimming. Tap one to open the
+video.
+
+| Launch | Warm-up | Logging a set | The player folds away |
+| :---: | :---: | :---: | :---: |
+| [<img src="docs/demo/launch.webp" alt="Launch: RAUTA's kettlebell appears over a dot-matrix glow with the line Training that fits your week, then the Summary slides in" width="200"/>](docs/demo/launch.mp4) | [<img src="docs/demo/warmup.webp" alt="Warm-up: a dot-matrix countdown over a bar of four steps, the body map lighting the muscles to warm up, Jumping jacks with a one-line instruction; Start training opens the first exercise" width="200"/>](docs/demo/warmup.mp4) | [<img src="docs/demo/player.webp" alt="The player: the load is stepped up, the warm-up set is logged and the rest timer starts in the corner" width="200"/>](docs/demo/player.mp4) | [<img src="docs/demo/mini-player.webp" alt="The player is swiped down into a bar above the tabs that keeps the rest timer; scrolling folds the tab bar around it and back" width="200"/>](docs/demo/mini-player.mp4) |
+| **Summary** | **The month in charts** | **Library** | **Asking RAUTA** |
+| [<img src="docs/demo/summary.webp" alt="Summary scrolling: the week's planned sessions as flames, workouts and training time this month, the muscles trained on a body map, all-time totals" width="200"/>](docs/demo/summary.mp4) | [<img src="docs/demo/charts.webp" alt="The Workouts card opens into the month's sessions per week as bars, with average and longest session, then the list of sessions" width="200"/>](docs/demo/charts.mp4) | [<img src="docs/demo/library.webp" alt="The library of 1,324 exercises scrolls, and one opens into its page with an animated demonstration and numbered steps" width="200"/>](docs/demo/library.mp4) | [<img src="docs/demo/chat.webp" alt="The chat with RAUTA opens on a typed request for rear delt exercises with dumbbells and answers with a list of them" width="200"/>](docs/demo/chat.mp4) |
+
+| Small edits come with Undo | Answers and permissions | Records | Goal |
+| :---: | :---: | :---: | :---: |
+| [<img src="docs/screenshots/chat-undo.jpg" alt="Chat: the equipment change applied with an Undo button; the plan preview above it is marked out of date" width="200"/>](docs/screenshots/chat-undo.jpg) | [<img src="docs/screenshots/chat-answers.jpg" alt="Chat: exercises for rear delts with dumbbells, then a card asking for Health access to check sleep and heart trends" width="200"/>](docs/screenshots/chat-answers.jpg) | [<img src="docs/screenshots/records.jpg" alt="Personal bests per exercise with estimated one-rep maxes, and all-time totals" width="200"/>](docs/screenshots/records.jpg) | [<img src="docs/screenshots/onboarding-goal.jpg" alt="Onboarding: choosing a goal, with RAUTA confirming it" width="200"/>](docs/screenshots/onboarding-goal.jpg) |
 
 RAUTA's face follows what is happening; on the watch it works through a set, breathes through a rest and looks
-pleased when a set counts. Numbers are set in dot-matrix type, equipment is shown as rendered images, and
-explanations sit behind ⓘ buttons instead of on the page. The sounds are sine tones and marimba, generated by a
-script and chosen by ear from nine candidate packs.
+pleased when a set counts. Numbers are set in dot-matrix type, equipment is shown as rendered images, and the copy
+stays to a few words. The sounds are sine tones and marimba, generated by a script and chosen by ear from nine
+candidate packs.
 
 ## What it does
 
 - Onboarding asks for a goal, experience, equipment and fixtures (bench, rack, pull-up bar), session length and
   training days, then builds a week. Plans extend week by week from what was logged. Exercises your kit can't
   support, or that are too technical for a beginner, are never picked automatically.
-- A workout starts with a warm-up, then shows each exercise with its prescription, the reason for any change in
-  load, rest timers, swaps and extra sets. It also runs on the Lock Screen, in the Dynamic Island and on the
+- A workout starts with a warm-up, then shows each exercise with its prescription, the suggested load, rest
+  timers, swaps and extra sets. It also runs on the Lock Screen, in the Dynamic Island and on the
   watch, where sets can be logged with the phone out of reach.
 - RAUTA takes typed or spoken requests. It moves, swaps, adds and removes exercises, rebuilds the week for less
   time or less kit, sets reminders, adds workouts to Calendar, and starts, pauses and logs a running workout.
@@ -253,7 +257,13 @@ demos, the generated files (catalogue, RAUTA's frames, sounds, licences) and Tes
 | [`ios/Rauta/Shared/`](ios/Rauta/Shared), [`WatchShared/`](ios/Rauta/WatchShared) | Code built into more than one target: activity attributes, the watch payload and sync rules |
 | [`ios/Rauta/RautaTests/`](ios/Rauta/RautaTests) | Swift Testing suites |
 | [`scripts/`](scripts) | Build, run and test; TestFlight; sound, frame and licence generation |
-| [`docs/`](docs) | [Development guide](docs/development.md), [architecture](docs/architecture.md), [research](docs/research), [product analysis](docs/product-analysis-2026-10-06) |
+| [`docs/`](docs) | [Development guide](docs/development.md), [architecture](docs/architecture.md), [model research](docs/research/agent-model-spike-2026-09-26.md), [demo clips](docs/demo) |
+
+## Related projects
+
+| Project | What it is |
+| --- | --- |
+| [kettlebell-bot](https://github.com/Daniil-Hirchyts/kettlebell-bot) | RAUTA the character: the Rive rig with its moods, reactions, gaze and 360° turn. The app's `rauta.riv`, the watch's sprite frames and the Lock Screen's timer fonts are built from it. |
 
 ## Credits
 

@@ -118,6 +118,19 @@ On the simulator the agent uses Apple's on-device model. On an iPhone it uses th
 scripts/ios-run.sh sim --name "Rauta Tests" --arg --demo-history --arg --summary --arg activity
 ```
 
+### Demo clips
+
+The clips in [`docs/demo`](demo) are simulator screen recordings, launched with `--demo-history` and
+`--demo-workout`, with the app's data container copied aside first and put back afterwards. Each one is kept as an
+MP4 and as an animated WebP for the README:
+
+```bash
+xcrun simctl io booted recordVideo --codec=h264 clip.mov          # Ctrl-C to stop
+ffmpeg -ss 1 -to 12 -i clip.mov -vf "fps=30,scale=590:-2" -c:v libx264 -crf 27 -pix_fmt yuv420p -an clip.mp4
+ffmpeg -ss 1 -to 12 -i clip.mov -vf "fps=20,scale=320:-1" frames/%04d.png
+img2webp -loop 0 -lossy -q 72 -d 50 frames/*.png -o clip.webp
+```
+
 ## 6. Generated files
 
 Four kinds of file in the repo are generated. Edit the source, then regenerate; never edit the output by hand.

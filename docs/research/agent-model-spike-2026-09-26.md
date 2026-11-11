@@ -11,8 +11,6 @@ scripts/ios-run.sh device --arg --agent-lab --arg --agent-lab-autorun [--arg --a
 
 Results are written to `Documents/agent-lab/<id>.json` in the app container.
 
-Companion research: [local agentic workflow](./local-agentic-workflow-ios.md), [model landscape](./mobile-local-model-landscape-2026.md).
-
 ## Decision
 
 - **Default and only shipped model: Qwen3.5-2B 4-bit** (`mlx-community/Qwen3.5-2B-4bit@674aaa7`, Apache-2.0, 1.75 GB).
