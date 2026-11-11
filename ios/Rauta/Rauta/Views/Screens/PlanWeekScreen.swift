@@ -77,7 +77,6 @@ struct PlanWeekScreen: View {
                             }
                         }
                     case .choosing:
-                        startChooser
                         picker
                         planningNotes
                     case .working:
@@ -242,7 +241,7 @@ struct PlanWeekScreen: View {
     // MARK: Work
 
     /// The first session today, then the person's usual days: nobody waits
-    /// a week for their first workout. "Start next week" is one tap away.
+    /// a week for their first workout. Extending a plan starts next week.
     private func selectDefaultDates() {
         guard selectedDates.isEmpty else { return }
         selectedDates = Set(dates(for: continuing ? .nextWeek : .today))
@@ -252,64 +251,20 @@ struct PlanWeekScreen: View {
         start.dates(trainingDays: store.trainingProfile.profile.effectiveTrainingDays)
     }
 
-    // MARK: Starting
-
-    private var startChooser: some View {
-        HStack(spacing: 8) {
-            ForEach(PlanStart.allCases) { start in
-                let options = dates(for: start)
-                let selected = Set(options) == selectedDates
-                Button {
-                    Haptics.trigger(.selection)
-                    selectedDates = Set(options)
-                } label: {
-                    VStack(spacing: 2) {
-                        Text(start.title(options))
-                            .font(Theme.sans(15, weight: .bold))
-                        Text(options.first.map { start == .today ? "today, " + CalendarDate.format($0, "EEEd") : "from " + CalendarDate.format($0, "EEEdMMM") } ?? "")
-                            .font(Theme.sans(12, weight: .medium))
-                            .opacity(0.85)
-                    }
-                    .foregroundStyle(selected ? Theme.primaryForeground : Theme.foreground)
-                    .frame(maxWidth: .infinity, minHeight: 54)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(selected ? Theme.primary : Theme.muted.opacity(0.4))
-                    )
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(start.title(options)): \(PlanStart.describe(options))")
-                .accessibilityAddTraits(selected ? .isSelected : [])
-            }
-        }
-    }
-
     /// What the chosen dates mean for what is already scheduled, and what a
     /// session's length means — before anything is built.
     @ViewBuilder private var planningNotes: some View {
         let notes = planningNoteLines
         if !notes.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
                 ForEach(notes, id: \.self) { note in
-                    Label {
-                        Text(note).fixedSize(horizontal: false, vertical: true)
-                    } icon: {
-                        Image(systemName: "info.circle").foregroundStyle(Theme.primary)
-                    }
-                    .font(Theme.sans(13, weight: .medium))
-                    .foregroundStyle(Theme.secondaryForeground)
-                }
-                HStack(spacing: 4) {
-                    Text("What does the session length mean?")
+                    Text(note)
                         .font(Theme.sans(13, weight: .semibold))
-                        .foregroundStyle(Theme.mutedForeground)
-                    TermInfoButton(term: .sessionLength)
+                        .foregroundStyle(Theme.secondaryForeground)
                 }
             }
-            .padding(14)
+            .padding(.horizontal, 4)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.primary, strength: 0.5) }
         }
     }
 
@@ -320,15 +275,14 @@ struct PlanWeekScreen: View {
         if let active = TrainingPlan.activeProgramRecord() {
             let replaced = PlanRevision.pendingSessions(active).filter { String($0.scheduledAt.prefix(10)) >= first }
             if !replaced.isEmpty {
-                lines.append("This plan takes over from \(CalendarDate.short(first)): it replaces \(Wording.countLabel(replaced.count, "upcoming session")) from your current plan. Anything you've already trained stays.")
+                lines.append("Replaces \(Wording.countLabel(replaced.count, "planned session"))")
             }
         }
         let own = store.workouts.workouts.filter { workout in
             workout.planned == nil && workout.completion == nil && chosen.contains(workout.date)
         }
         if !own.isEmpty {
-            let names = own.map { "\($0.name) on \(CalendarDate.short($0.date))" }
-            lines.append("You already have \(Wording.list(names)). \(own.count == 1 ? "It stays" : "They stay") on your list next to the plan.")
+            lines.append("\(Wording.countLabel(own.count, "workout")) of yours stay\(own.count == 1 ? "s" : "")")
         }
         return lines
     }

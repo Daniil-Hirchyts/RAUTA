@@ -138,12 +138,15 @@ struct GlassControlStyle: PrimitiveButtonStyle {
         .controlSize(.regular)
     }
 
+    /// A pill is at least its height and grows with a label that needs more
+    /// room — larger text, or a second line — rather than clipping it.
+    @ViewBuilder
     private func sized(_ label: Configuration.Label) -> some View {
         switch shape {
         case .circle(let diameter):
-            return label.frame(width: diameter, height: diameter)
+            label.frame(width: diameter, height: diameter)
         case .capsule(let height):
-            return label.frame(width: nil, height: height)
+            label.frame(minHeight: height)
         }
     }
 

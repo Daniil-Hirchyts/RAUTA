@@ -46,14 +46,16 @@ struct ProfileIdentityCard: View {
                         .kerning(-0.4)
                         .foregroundStyle(Theme.foreground)
                         .lineLimit(1)
+                    // Wraps rather than trails off: at large text sizes the
+                    // equipment is the part that would be cut.
                     Text(profileLine)
                         .font(Theme.sans(13, weight: .semibold))
                         .foregroundStyle(Theme.secondaryForeground)
-                        .lineLimit(1)
+                        .lineLimit(2)
                     Text(trainingLine)
                         .font(Theme.sans(12, weight: .medium))
                         .foregroundStyle(Theme.mutedForeground)
-                        .lineLimit(1)
+                        .lineLimit(3)
                         .minimumScaleFactor(0.8)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

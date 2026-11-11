@@ -25,7 +25,6 @@ struct WeeklyReview {
             case adjust
             case nextWeek
             case buildPlan
-            case recordEffort
             case none
         }
         var title: String
@@ -168,7 +167,7 @@ struct WeeklyReview {
             consistency: consistency,
             changes: Array(changes.prefix(5)),
             dataNotes: dataNotes,
-            next: nextAction(week: week, next: next, hasPlan: hasPlan, structured: structured, everTrained: everTrained,
+            next: nextAction(week: week, next: next, hasPlan: hasPlan, everTrained: everTrained,
                              isCurrentWeek: isCurrentWeek),
             isEmpty: !everTrained
         )
@@ -234,7 +233,6 @@ struct WeeklyReview {
         week: WeekProgress,
         next: NextWorkout,
         hasPlan: Bool,
-        structured: [CompletedSession],
         everTrained: Bool,
         isCurrentWeek: Bool
     ) -> NextAction {
@@ -246,15 +244,6 @@ struct WeeklyReview {
                 title: "Adjust the rest of your week",
                 detail: "You missed \(Wording.countLabel(week.missed.count, "session")). Move it, or fold its work into what's left.",
                 kind: .adjust
-            )
-        }
-        let sets = structured.flatMap(\.exercises).flatMap(\.sets).filter(Volume.isWorkingSet)
-        let withEffort = sets.filter { Strength.observedRir($0) != nil }.count
-        if sets.count >= 3, Double(withEffort) < Double(sets.count) * 0.5 {
-            return NextAction(
-                title: "Record reps left on your sets",
-                detail: "One tap after each set. It's how RAUTA knows when a load is ready to go up.",
-                kind: .recordEffort
             )
         }
         switch next.state {

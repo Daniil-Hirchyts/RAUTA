@@ -134,6 +134,7 @@ struct EquipmentGrid: View {
     var options: [String] = ExerciseCatalogue.equipmentOptions
     var selected: [String]
     var onToggle: (String) -> Void
+    var label: (String) -> String = { Wording.titleCase($0) }
 
     private let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -158,7 +159,7 @@ struct EquipmentGrid: View {
                                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                             }
 
-                        Text(Wording.titleCase(equipment))
+                        Text(label(equipment))
                             .font(Theme.sans(16, weight: .semibold))
                             .kerning(-0.16)
                             .foregroundStyle(Theme.foreground)
@@ -187,7 +188,7 @@ struct EquipmentGrid: View {
                     .contentShape(RoundedRectangle(cornerRadius: Theme.Metrics.cardRadius, style: .continuous))
                 }
                 .buttonStyle(EquipmentCardButtonStyle())
-                .accessibilityLabel(Wording.titleCase(equipment))
+                .accessibilityLabel(label(equipment))
                 .accessibilityAddTraits(checked ? [.isSelected] : [])
             }
         }

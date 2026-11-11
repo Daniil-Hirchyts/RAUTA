@@ -23,6 +23,11 @@ struct NextWorkout: Equatable {
     }
 
     var state: State
+
+    var isRunning: Bool {
+        if case .running = state { return true }
+        return false
+    }
     /// Planned workouts this week on days now past, not done.
     var missed: [Workout]
     var week: WeekProgress

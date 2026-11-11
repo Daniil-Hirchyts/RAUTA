@@ -1,9 +1,9 @@
 import SwiftUI
 
 /// The warm-up that opens every workout, over the whole app until it is done:
-/// the time left in large numerals, then the step to do now — the part of the
-/// body lit on the body map, and in a few words what to do with it — and the
-/// step after it underneath.
+/// the time left in large numerals over a bar of its steps, the part of the
+/// body the step works lit on the body map, and the movement with how to do it
+/// in a few words.
 ///
 /// It runs on the session's own deadline, so leaving the app or locking the
 /// phone loses nothing; the end is sounded by ``RestAlerts`` like a rest's.
@@ -45,12 +45,11 @@ struct WarmupScreen: View {
         TimelineView(.periodic(from: .now, by: 0.5)) { context in
             let elapsed = context.date.timeIntervalSince(start)
             let remaining = max(0, until.timeIntervalSince(context.date))
-            let total = max(1, until.timeIntervalSince(start))
             let current = WarmupRoutine.current(steps, elapsed: elapsed)
             let finalSeconds = FinalCountdown.isShowing(until: until, at: context.date)
 
             VStack(spacing: 0) {
-                header(remaining: remaining, progress: min(1, elapsed / total))
+                header(remaining: remaining, steps: steps, elapsed: elapsed)
                     .padding(.top, 12)
                     .frame(maxWidth: .infinity)
                     .overlay(alignment: .topLeading) {
@@ -60,16 +59,7 @@ struct WarmupScreen: View {
                 Spacer(minLength: 12)
 
                 if let current {
-                    step(current.step, index: current.index, count: steps.count, elapsed: elapsed, finalSeconds: finalSeconds)
-                    Group {
-                        if current.index + 1 < steps.count {
-                            upNext("NEXT", steps[current.index + 1].title)
-                        } else if let first = session.exerciseIds.first.flatMap({ ExerciseCatalogue.byId[$0] }) {
-                            upNext("THEN", WorkoutAgenda.name(first))
-                        }
-                    }
-                    .padding(.top, 18)
-                    .opacity(finalSeconds ? 0 : 1)
+                    step(current.step, finalSeconds: finalSeconds)
                 }
 
                 Spacer(minLength: 12)
@@ -106,7 +96,7 @@ struct WarmupScreen: View {
 
     // MARK: Pieces
 
-    private func header(remaining: TimeInterval, progress: Double) -> some View {
+    private func header(remaining: TimeInterval, steps: [WarmupRoutine.Step], elapsed: Double) -> some View {
         VStack(spacing: 8) {
             Text("WARM-UP")
                 .font(Theme.sans(12, weight: .black))
@@ -118,25 +108,38 @@ struct WarmupScreen: View {
                 .contentTransition(.numericText(countsDown: true))
                 .animation(.snappy(duration: 0.25), value: Int(remaining.rounded(.up)))
                 .accessibilityLabel("Warm-up left, \(WorkoutClock.spoken(Int(remaining.rounded(.up))))")
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.foreground.opacity(0.1))
-                    // Only the length animates: a page being pulled must not
-                    // leave the bar trailing behind it.
-                    Capsule()
-                        .fill(Theme.primary)
-                        .animation(.linear(duration: 0.5)) { $0.frame(width: proxy.size.width * progress) }
-                }
-            }
-            .frame(width: 180, height: 4)
+            stepBar(steps, elapsed: elapsed)
         }
     }
 
-    /// The step: the body map lighting what it works, its name, and what to
-    /// do. In the last seconds the map steps aside for the countdown.
-    private func step(_ step: WarmupRoutine.Step, index: Int, count: Int, elapsed: Double, finalSeconds: Bool) -> some View {
-        let left = max(0, Int((step.end - elapsed).rounded(.up)))
-        return VStack(spacing: 12) {
+    /// One segment per step, each filling while its step runs.
+    private func stepBar(_ steps: [WarmupRoutine.Step], elapsed: Double) -> some View {
+        let index = WarmupRoutine.current(steps, elapsed: elapsed)?.index ?? 0
+        return HStack(spacing: 4) {
+            ForEach(Array(steps.enumerated()), id: \.offset) { _, step in
+                let fill = min(1, max(0, (elapsed - step.start) / max(1, step.seconds)))
+                GeometryReader { proxy in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Theme.foreground.opacity(0.1))
+                        // Only the length animates: a page being pulled must
+                        // not leave the bar trailing behind it.
+                        Capsule()
+                            .fill(Theme.primary)
+                            .animation(.linear(duration: 0.5)) { $0.frame(width: proxy.size.width * fill) }
+                    }
+                }
+            }
+        }
+        .frame(width: 180, height: 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Step \(index + 1) of \(steps.count)")
+    }
+
+    /// The step: the body map lighting what it works and the movement's name,
+    /// which opens what to do. In the last seconds the map steps aside for
+    /// the countdown.
+    private func step(_ step: WarmupRoutine.Step, finalSeconds: Bool) -> some View {
+        VStack(spacing: 20) {
             WarmupBodyMap(muscles: step.muscles)
                 .frame(height: 250)
                 .opacity(finalSeconds ? 0 : 1)
@@ -147,43 +150,11 @@ struct WarmupScreen: View {
                             .transition(.opacity.combined(with: .scale(scale: 0.8)))
                     }
                 }
-            VStack(spacing: 8) {
-                Text(step.title)
-                    .font(Theme.sans(24, weight: .bold))
-                    .foregroundStyle(Theme.foreground)
-                    .multilineTextAlignment(.center)
-                Text(step.instruction)
-                    .font(Theme.sans(16, weight: .medium))
-                    .foregroundStyle(Theme.foreground.opacity(0.78))
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: 330)
-                Text("Step \(index + 1) of \(count) · \(WorkoutClock.format(left)) left")
-                    .font(Theme.sans(13, weight: .semibold))
-                    .foregroundStyle(Theme.mutedForeground)
-                    .contentTransition(.numericText(countsDown: true))
-                    .padding(.top, 2)
-            }
-            .id(step.id)
-            .transition(.opacity.combined(with: .offset(y: 8)))
+            WarmupMoveTitle(step: step)
+                .id(step.id)
+                .transition(.opacity.combined(with: .offset(y: 8)))
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.86), value: step.id)
-        .accessibilityElement(children: .combine)
-    }
-
-    private func upNext(_ label: String, _ title: String) -> some View {
-        HStack(spacing: 8) {
-            Text(label)
-                .font(Theme.sans(10, weight: .black))
-                .kerning(1.4)
-                .foregroundStyle(Theme.mutedForeground)
-            Text(title)
-                .font(Theme.sans(15, weight: .semibold))
-                .foregroundStyle(Theme.foreground.opacity(0.85))
-                .lineLimit(1)
-        }
-        .accessibilityElement(children: .combine)
     }
 
     private var controls: some View {
@@ -258,6 +229,29 @@ struct WarmupScreen: View {
         if early { WorkoutAudio.play(.warmupOver) }
         store.activeWorkout.endWarmup()
         onDone()
+    }
+}
+
+/// The movement's name, large, and how to do it in a few words under it.
+private struct WarmupMoveTitle: View {
+    let step: WarmupRoutine.Step
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text(step.move)
+                .font(Theme.sans(26, weight: .bold))
+                .foregroundStyle(Theme.foreground)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(step.instruction)
+                .font(Theme.sans(16, weight: .medium))
+                .foregroundStyle(Theme.foreground.opacity(0.7))
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: 330)
+        .accessibilityElement(children: .combine)
     }
 }
 

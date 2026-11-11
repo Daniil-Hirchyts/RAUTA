@@ -22,7 +22,7 @@ struct SummaryStreakScreen: View {
                 EmptyStatePlaceholder(
                     symbol: "flame",
                     title: "No streak yet",
-                    message: "Finish a workout and your first day lights up here."
+                    message: "Finish a workout to start one."
                 )
                 .padding(.vertical, 24)
             } else {

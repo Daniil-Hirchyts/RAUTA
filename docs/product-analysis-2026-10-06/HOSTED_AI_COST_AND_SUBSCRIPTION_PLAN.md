@@ -1,6 +1,6 @@
 **RAUTA — hosted AI costs and subscription plan**
 
-6 October 2026 · Analysis only · Companion to the [product and subscription plan](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/docs/product-analysis-2026-10-06/RAUTA_PRODUCT_AND_SUBSCRIPTION_PLAN.md)
+6 October 2026 · Analysis only · Companion to the [product and subscription plan](RAUTA_PRODUCT_AND_SUBSCRIPTION_PLAN.md)
 
 **Recommendation**
 
@@ -12,13 +12,13 @@ Start by comparing OpenAI GPT-6 Luna and Mistral Small 4 against the existing lo
 
 **What the current architecture makes possible**
 
-RAUTA already parses many recognizable requests in Swift and executes validated operations through its host. Planning, progression and adaptations have local engines. The model can interpret unfamiliar wording and explain computed results without taking over training decisions. [Agent flow](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/ios/Rauta/Rauta/Agent/Core/RautaAgent.swift:101).
+RAUTA already parses many recognizable requests in Swift and executes validated operations through its host. Planning, progression and adaptations have local engines. The model can interpret unfamiliar wording and explain computed results without taking over training decisions. [Agent flow](../../ios/Rauta/Rauta/Agent/Core/RautaAgent.swift#L101).
 
-The current assistant supplies a small profile summary, four upcoming workouts and three recent messages trimmed to 90 characters each. It chooses a limited set of relevant tools. This is a good starting point, but actual hosted token counts must include instructions, tool definitions, arguments and returned data. No hosted usage was measured during this analysis. [Context](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/ios/Rauta/Rauta/Agent/Core/AgentContext.swift:5), [tool routing](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/ios/Rauta/Rauta/Agent/Core/AgentTools.swift).
+The current assistant supplies a small profile summary, four upcoming workouts and three recent messages trimmed to 90 characters each. It chooses a limited set of relevant tools. This is a good starting point, but actual hosted token counts must include instructions, tool definitions, arguments and returned data. No hosted usage was measured during this analysis. [Context](../../ios/Rauta/Rauta/Agent/Core/AgentContext.swift#L5), [tool routing](../../ios/Rauta/Rauta/Agent/Core/AgentTools.swift).
 
-One limitation needs changing in a future implementation: `send` currently checks whether the local model is installed before it attempts deterministic interpretation. Standard commands should work without that download; subscribers choosing cloud mode should not need it either. [Readiness guard](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/ios/Rauta/Rauta/Agent/Core/RautaAgent.swift:75).
+One limitation needs changing in a future implementation: `send` currently checks whether the local model is installed before it attempts deterministic interpretation. Standard commands should work without that download; subscribers choosing cloud mode should not need it either. [Readiness guard](../../ios/Rauta/Rauta/Agent/Core/RautaAgent.swift#L75).
 
-Voice transcription and speech synthesis already use Apple APIs. Keep those local initially and send only the resulting text to the hosted model. This preserves voice interaction without introducing paid live audio sessions. [Voice implementation](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/ios/Rauta/Rauta/Native/VoiceIO.swift).
+Voice transcription and speech synthesis already use Apple APIs. Keep those local initially and send only the resulting text to the hosted model. This preserves voice interaction without introducing paid live audio sessions. [Voice implementation](../../ios/Rauta/Rauta/Native/VoiceIO.swift).
 
 **Cost scenarios**
 
@@ -130,7 +130,7 @@ RAUTA should retain responsibility for interpreting returned actions, checking c
 
 **Privacy and validation before committing**
 
-The current privacy screen promises that chats remain on the phone and that RAUTA has no servers. Cloud mode needs a clear opt-in identifying the provider and the information sent, with a local option retained. Send only task-relevant training summaries; avoid forwarding the whole workout database or unrelated Health data. [Current privacy copy](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/ios/Rauta/Rauta/Views/Screens/PoliciesScreen.swift:265).
+The current privacy screen promises that chats remain on the phone and that RAUTA has no servers. Cloud mode needs a clear opt-in identifying the provider and the information sent, with a local option retained. Send only task-relevant training summaries; avoid forwarding the whole workout database or unrelated Health data. [Current privacy copy](../../ios/Rauta/Rauta/Views/Screens/PoliciesScreen.swift#L265).
 
 OpenAI API content is not used for training by default, but this does not mean zero retention. Abuse-monitoring retention is generally up to 30 days, and endpoint storage settings require attention. Document the chosen configuration accurately. Google's pricing page also distinguishes data use in its free and paid tiers. [OpenAI data controls](https://developers.openai.com/api/docs/guides/your-data), [Gemini tier details](https://ai.google.dev/gemini-api/docs/pricing).
 

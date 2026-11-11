@@ -222,6 +222,30 @@ enum TrainingEdits {
         try editPlannedWorkout(workoutId) { _, _ in false }
     }
 
+    /// Adds exercises to a workout still open to them — the running one or one
+    /// coming up — after what it already has, skipping any it holds.
+    static func addExercises(_ exerciseIds: [String], to workoutId: String) throws {
+        guard let workout = WorkoutsStore.shared.workout(workoutId), workout.completion == nil
+        else { throw TrainingPersistenceError("This workout cannot be edited.") }
+        var seen = Set<String>()
+        let ids = (workout.exerciseIds + exerciseIds).filter { seen.insert($0).inserted }
+        if ActiveWorkoutStore.shared.session?.workoutId == workout.id {
+            WorkoutsStore.shared.updateWorkout(workout.id, .init(exerciseIds: ids))
+            ActiveWorkoutStore.shared.syncExercises(ids)
+        } else {
+            try updateScheduledWorkoutExercises(workout.id, ids)
+        }
+    }
+
+    /// Whether exercises can go into this workout without asking where.
+    static func takesExercises(_ workoutId: String) -> Bool {
+        WorkoutTimeline.destinations(
+            workouts: WorkoutsStore.shared.workouts,
+            records: TrainingRecordsStore.shared.data,
+            activeWorkoutId: ActiveWorkoutStore.shared.session?.workoutId
+        ).contains { $0.id == workoutId }
+    }
+
     static func updateScheduledWorkoutExercises(
         _ workoutId: String,
         _ exerciseIds: [String],
@@ -304,13 +328,16 @@ enum TrainingEdits {
         }
     }
 
+    /// `checked` is a list of replacements the caller has just searched for
+    /// this exercise and workout; one on it isn't searched for again.
     static func substituteScheduledPlannedExercise(
         _ workoutId: String,
         _ exerciseId: String,
-        _ replacementId: String
+        _ replacementId: String,
+        checked: [String]? = nil
     ) throws {
-        guard TrainingWorkflow.replacementIds(exerciseId, workoutId: workoutId)
-            .contains(replacementId)
+        guard checked?.contains(replacementId) == true
+            || TrainingWorkflow.replacementIds(exerciseId, workoutId: workoutId).contains(replacementId)
         else {
             throw TrainingPersistenceError(
                 "That alternative no longer fits this workout and your equipment."
@@ -364,7 +391,8 @@ enum PlannedSubstitution {
     static func substituteRunningPlannedExercise(
         _ workoutId: String,
         _ exerciseId: String,
-        _ replacementId: String
+        _ replacementId: String,
+        checked: [String]? = nil
     ) throws {
         let workoutsStore = WorkoutsStore.shared
         let records = TrainingRecordsStore.shared
@@ -391,8 +419,8 @@ enum PlannedSubstitution {
         if workout.exerciseIds.contains(replacementId) {
             throw TrainingPersistenceError("That exercise is already in this workout.")
         }
-        guard TrainingWorkflow.replacementIds(exerciseId, workoutId: workoutId)
-            .contains(replacementId)
+        guard checked?.contains(replacementId) == true
+            || TrainingWorkflow.replacementIds(exerciseId, workoutId: workoutId).contains(replacementId)
         else {
             throw TrainingPersistenceError(
                 "That alternative no longer fits this training session."

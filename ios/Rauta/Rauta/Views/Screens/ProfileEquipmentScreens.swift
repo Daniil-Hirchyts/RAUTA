@@ -110,12 +110,11 @@ struct EquipmentLoadScreen: View {
     var body: some View {
         RautaScreen(
             title: "Load steps",
-            subtitle: "The next weight your equipment actually offers",
             onBack: store.navigation.pop
         ) {
             Group {
                 if selected.isEmpty {
-                    Text("Nothing here to describe yet. Pick equipment that carries a weight and its steps show up here.")
+                    Text("No weighted equipment yet")
                         .font(Theme.sans(14))
                         .foregroundStyle(Theme.mutedForeground)
                         .multilineTextAlignment(.center)

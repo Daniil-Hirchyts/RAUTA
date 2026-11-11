@@ -28,19 +28,29 @@ struct SettingsScreen: View {
                             }
                         }
 
-                        section("Private conversations") {
-                            AgentDownloadCard(plain: true)
-                                .padding(16)
-                                .overlay(alignment: .bottom) {
-                                    if agentModel.installed {
-                                        Rectangle().fill(Theme.border).frame(height: 1)
-                                    }
+                        section("RAUTA's brain") {
+                            settingsRow(
+                                title: RautaModelCatalog.qwen35_2b.name,
+                                detail: agentModel.status,
+                                icon: "brain.head.profile",
+                                showsDivider: agentModel.installed
+                            ) {
+                                if agentModel.downloading {
+                                    ProgressView(value: agentModel.progress)
+                                        .frame(width: 64)
+                                } else if !agentModel.installed {
+                                    #if !targetEnvironment(simulator)
+                                    Button("Download") { agentModel.download() }
+                                        .font(Theme.sans(13, weight: .semibold))
+                                    #endif
+                                } else {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(Theme.success)
                                 }
+                            }
                             #if !targetEnvironment(simulator)
                             if agentModel.installed {
-                                settingsAction(title: "Remove downloaded model",
-                                               detail: "Frees \(AgentModelStore.gigabytes(agentModel.entry.downloadBytes)); conversations stay",
-                                               icon: "trash",
+                                settingsAction(title: "Remove downloaded model", icon: "trash",
                                                destructive: true, showsDivider: false) {
                                     removeModel()
                                 }
@@ -166,7 +176,7 @@ struct SettingsScreen: View {
 
                         section("About") {
                             settingsAction(title: "Policies & credits",
-                                           detail: "Privacy, the model, exercise data and licences",
+                                           detail: "Privacy and licences",
                                            icon: "doc.text", showsDivider: true) {
                                 store.navigation.push(.policies)
                             }

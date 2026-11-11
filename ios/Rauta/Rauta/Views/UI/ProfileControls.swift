@@ -134,7 +134,7 @@ struct ProfileHealthControl: View {
     private let store = AppStore.shared
     var body: some View {
         VStack(spacing: 12) {
-            Text("Plans are only built for you while none of these apply. Browsing and building your own workouts always works.")
+            Text("RAUTA doesn't plan while any of these apply.")
                 .font(Theme.sans(14)).foregroundStyle(Theme.mutedForeground).lineSpacing(4)
             VStack(spacing: 0) {
                 healthRow("Nothing to train around", checked: store.trainingProfile.profile.health.status == .healthy, action: store.trainingProfile.setHealthy)

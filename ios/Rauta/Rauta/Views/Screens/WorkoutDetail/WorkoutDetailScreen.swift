@@ -62,6 +62,15 @@ struct WorkoutDetailScreen: View {
         return byExercise
     }
     private var isPast: Bool { session == nil && workout?.completion != nil }
+    /// A planned exercise that needs kit the profile doesn't list — planned
+    /// before the equipment changed — says so on its row.
+    private func missingKit(_ exerciseId: String) -> String? {
+        guard workout?.planned != nil, !plannedUnavailable, !isPast else { return nil }
+        let filters = FiltersStore.shared
+        return TrainingEngineAdapter.missingRequirements(
+            exerciseId, equipment: filters.gymEquipment, fixtures: filters.effectiveFixtures
+        ).first
+    }
     private var hasAnotherActiveWorkout: Bool {
         guard let active = store.activeWorkout.session else { return false }
         return active.workoutId != workoutId
@@ -206,6 +215,7 @@ struct WorkoutDetailScreen: View {
                         exercise: exercise,
                         index: rows.firstIndex(of: exercise) ?? 0,
                         prescription: prescriptions[id],
+                        missingKit: missingKit(id),
                         status: ActiveWorkout.status(session, id),
                         canFindAlternative: canEditWorkout,
                         canRemove: canEditWorkout,
@@ -275,7 +285,7 @@ struct WorkoutDetailScreen: View {
                         }
 
                         if workout.exerciseIds.isEmpty {
-                            Text("This workout is empty. Add an exercise to start building it.")
+                            Text("No exercises yet")
                                 .font(Theme.sans(16))
                                 .foregroundStyle(Theme.mutedForeground)
                                 .multilineTextAlignment(.center)
@@ -296,7 +306,7 @@ struct WorkoutDetailScreen: View {
                                     }
                                 )
                             } else {
-                                Text("Every exercise in this workout is done.")
+                                Text("All exercises done")
                                     .font(Theme.sans(14))
                                     .foregroundStyle(Theme.mutedForeground)
                                     .multilineTextAlignment(.center)
@@ -310,6 +320,7 @@ struct WorkoutDetailScreen: View {
                                         exercise: exercise,
                                         index: rows.firstIndex(of: exercise) ?? 0,
                                         prescription: prescriptions[id],
+                                        missingKit: missingKit(id),
                                         status: session.map { ActiveWorkout.status($0, id) },
                                         canFindAlternative: canEditWorkout,
                                         canRemove: canEditWorkout,

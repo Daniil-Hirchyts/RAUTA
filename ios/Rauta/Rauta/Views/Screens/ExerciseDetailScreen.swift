@@ -61,6 +61,15 @@ struct ExerciseDetailScreen: View {
                 // replacement. So the page that shows one always offers it.
                 AppButton("Add to workout", size: .cta, expands: true) {
                     Haptics.trigger(.selection)
+                    // Looked up while picking for a workout: it goes into that one.
+                    if let workoutId = store.navigation.exerciseFlowWorkoutId,
+                       TrainingEdits.takesExercises(workoutId),
+                       (try? TrainingEdits.addExercises([exercise.id], to: workoutId)) != nil {
+                        store.navigation.selectedIds = []
+                        store.navigation.openWorkout(workoutId)
+                        Haptics.trigger(.success)
+                        return
+                    }
                     store.navigation.push(
                         .workoutDestination(
                             exerciseIds: [exercise.id],
@@ -92,9 +101,6 @@ struct EquipmentPresetScreen: View {
         ) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Save the current \(store.filters.selectedEquipment.count)-item equipment selection.")
-                        .font(Theme.sans(14))
-                        .foregroundStyle(Theme.mutedForeground)
                     AppTextField(placeholder: "Preset name", text: $name, onSubmit: save)
                     FlowLayout(items: store.filters.selectedEquipment)
                 }

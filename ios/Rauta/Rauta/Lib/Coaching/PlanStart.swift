@@ -6,11 +6,9 @@ import Foundation
 /// "Next week" begins on the first day of the week as the person's calendar
 /// counts it — Monday in most of Europe, Sunday in the US — while sessions
 /// still land only on their chosen weekdays.
-enum PlanStart: String, CaseIterable, Identifiable {
+enum PlanStart {
     case today
     case nextWeek
-
-    var id: String { rawValue }
 
     /// ISO weekday of `day`: Monday = 1 … Sunday = 7.
     static func isoWeekday(_ day: String) -> Int {
@@ -55,13 +53,6 @@ enum PlanStart: String, CaseIterable, Identifiable {
         let calendarToday = isoToday == 7 ? 1 : isoToday + 1
         let ahead = (firstWeekday - calendarToday + 7) % 7
         return CalendarDate.shift(today, by: ahead == 0 ? 7 : ahead)
-    }
-
-    func title(_ dates: [String]) -> String {
-        switch self {
-        case .today: return "Start today"
-        case .nextWeek: return "Start next week"
-        }
     }
 
     /// "Sat 10, Mon 12 and Wed 14 Oct".

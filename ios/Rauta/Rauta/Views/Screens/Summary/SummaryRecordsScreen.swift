@@ -20,7 +20,7 @@ struct SummaryRecordsScreen: View {
                 EmptyStatePlaceholder(
                     symbol: "trophy",
                     title: "No personal bests yet",
-                    message: "Log a set with a weight, and the best each exercise has seen shows up here."
+                    message: "Log a set with a weight."
                 )
                 .padding(.vertical, 24)
             } else {

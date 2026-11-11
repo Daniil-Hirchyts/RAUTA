@@ -405,10 +405,25 @@ enum TrainingPlan {
         ))
     }
 
+    /// Previews already kept, by their program's id, and the plan keeping
+    /// each one made — so keeping the same preview again, a second tap or a
+    /// retried request, keeps it once while that plan is still the one in use.
+    private static var kept: [String: (programId: String, sessions: [PlannedSessionView])] = [:]
+
     /// Keeps a previewed plan: saved as the active program, its sessions put on
     /// the workout list. Keeping the same preview twice changes nothing more.
     @discardableResult
     static func commit(_ preview: PlanPreview) throws -> [PlannedSessionView] {
+        if let previous = kept[preview.program.id],
+           TrainingRecordsStore.shared.data.activeProgramId == previous.programId {
+            return previous.sessions
+        }
+        let sessions = try keep(preview)
+        kept[preview.program.id] = (sessions.first?.programId ?? preview.program.id, sessions)
+        return sessions
+    }
+
+    private static func keep(_ preview: PlanPreview) throws -> [PlannedSessionView] {
         let store = TrainingRecordsStore.shared
         switch preview.kind {
         case .newPlan:

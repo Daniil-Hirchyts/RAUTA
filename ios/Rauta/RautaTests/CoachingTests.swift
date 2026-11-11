@@ -53,7 +53,7 @@ struct CoachingTests {
 
     // MARK: The next workout
 
-    @Test func theTodayCardPicksResumeStartRestPlanFinishedOrStarter() {
+    @Test func theNextWorkoutIsResumeStartRestPlanFinishedOrStarter() {
         let records = PersistedTrainingState.empty()
         let wednesday = "2026-10-14"
 
@@ -402,6 +402,8 @@ struct CoachingTests {
         #expect(AgentIntent.parse("The bench isn't available this week", today: today, running: false) == .equipmentUnavailable)
         // A permanent change is still a change to the equipment list.
         #expect(AgentIntent.parse("I don't have a barbell", today: today, running: false) == .equipment)
+        // "Only have" is about time only when a time is named.
+        #expect(AgentIntent.parse("I only have dumbbells", today: today, running: false) == .equipment)
         // Moving to next week is a move, not a new week.
         if case .reschedule? = AgentIntent.parse("Move Friday's workout to next week Monday", today: today, running: false) {} else {
             Issue.record("Expected a reschedule")

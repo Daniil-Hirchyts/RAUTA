@@ -3,7 +3,7 @@ import Foundation
 /// A change RAUTA proposes and nobody has kept yet: what it would do, why, and
 /// which workouts it touches.
 struct CoachingProposal: Identifiable {
-    enum Kind: Equatable { case nextWeek, moveMissed, foldMissed, shorter, equipment }
+    enum Kind: Equatable { case nextWeek, moveMissed, shorter, equipment }
 
     enum Action {
         /// Sessions the engine built, saved as a revision of `source` that
@@ -207,7 +207,8 @@ enum CoachingPlanner {
     static func previewMove(_ workout: Workout, to date: String) -> CoachingProposal {
         let line = PlanChangeLine(
             kind: .moved,
-            text: "\(workout.name): \(CalendarDate.short(workout.date)) → \(spoken(date)). Same exercises and targets."
+            text: "\(CalendarDate.short(workout.date)) → \(spoken(date))",
+            detail: "Same exercises and targets."
         )
         let minutes = workout.planned.flatMap {
             TrainingPlan.plannedSessionView($0.programId, $0.sessionId)?.minutes
@@ -225,14 +226,6 @@ enum CoachingPlanner {
             basis: PlanBasis.current(),
             completedThisWeek: WeekProgress.current().completed
         )
-    }
-
-    /// Folds a missed session's work into the rest of the week, where it fits.
-    static func previewFoldMissed(_ workout: Workout, now: String = ISOTime.now()) async throws -> CoachingProposal {
-        var proposal = try await previewRemainingWeek(.init(), kind: .foldMissed, now: now, alsoReplacing: workout.planned?.sessionId)
-        proposal.title = "Fit it into the rest of the week"
-        proposal.summary = "\(workout.name) comes off your list, and the sessions left this week pick up what they can of its work."
-        return proposal
     }
 
     static func previewShorter(minutes: Int, now: String = ISOTime.now()) async throws -> CoachingProposal {
@@ -272,7 +265,7 @@ enum CoachingPlanner {
         }
         let remaining = TrainingWorkflow.remainingTrainingSlots(active, now)
         guard !remaining.sessions.isEmpty else {
-            throw TrainingPersistenceError("No planned sessions are left this week to adjust. Use My next week to plan ahead instead.")
+            throw TrainingPersistenceError("No planned sessions are left this week to adjust. Plan next week instead.")
         }
         let basis = PlanBasis.current(now: now)
         let setup = TrainingEngineAdapter.buildEngineInputs(overrides: overrides)

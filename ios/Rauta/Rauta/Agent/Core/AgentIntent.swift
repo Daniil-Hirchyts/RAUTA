@@ -109,8 +109,11 @@ nonisolated enum AgentIntent: Equatable, Sendable {
             return .missedSession
         }
         let temporary = says("this week", "today", "right now", "at the moment", "for now")
-        if says("only have", "short on time", "less time", "not much time", "in a hurry", "pressed for time",
-                "quick session", "shorter session", "shorter workouts", "shorter sessions"),
+        // "I only have 30 minutes" is about time; "I only have dumbbells" is not.
+        let onlyTime = says("only have", "only got")
+            && (AgentWords.minutes(in: lower) != nil || has(["time", "minutes", "mins", "min", "hour", "hours"]))
+        if onlyTime || says("short on time", "less time", "not much time", "in a hurry", "pressed for time",
+                            "quick session", "shorter session", "shorter workouts", "shorter sessions"),
            !says("usually", "usual") || temporary {
             return .shortOnTime(minutes: AgentWords.minutes(in: lower))
         }

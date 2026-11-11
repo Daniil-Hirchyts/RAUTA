@@ -315,10 +315,9 @@ final class WatchConnectivityService: NSObject, WCSessionDelegate {
                 set: targetSet,
                 loadKg: Swift.max(0, action.loadKg)
             ),
-            // The watch doesn't ask how many reps were left, so the answer is
-            // unknown — never the target filled in. It can be added on the
-            // phone by tapping the set.
-            rir: nil,
+            // Neither the watch nor the phone asks how many reps were left:
+            // the set is logged at the plan's target.
+            rir: targetSet?.target?.rir,
             completed: true,
             timestamp: ISOTime.string(fromMillis: completedAt)
         )

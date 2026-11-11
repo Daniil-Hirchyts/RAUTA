@@ -7,19 +7,29 @@ struct ExerciseAlternativesScreen: View {
 
     @State private var equipment: String?
     @State private var issue: String?
+    /// Searched for once as the page opens, away from the main actor; nil
+    /// until then. The search walks the whole catalogue, and running it per
+    /// render made the page slow to open.
+    @State private var alternatives: [ExerciseSummary]?
+    /// The planned search's answer, handed to the swap so it isn't run twice.
+    @State private var checkedIds: [String]?
 
     private var source: ExerciseSummary? { ExerciseCatalogue.byId[exerciseId] }
     private var workout: Workout? { store.workouts.workout(workoutId) }
-    private var allAlternatives: [ExerciseSummary] {
-        guard let source else { return [] }
-        if workout?.planned != nil {
-            return TrainingWorkflow.replacementIds(exerciseId, workoutId: workoutId)
-                .compactMap { ExerciseCatalogue.byId[$0] }
+    private var allAlternatives: [ExerciseSummary] { alternatives ?? [] }
+
+    private func loadAlternatives() async {
+        guard let source else { return }
+        guard workout?.planned != nil else {
+            alternatives = ExerciseCatalogue.findAlternatives(to: source, excluding: workout?.exerciseIds ?? [])
+            return
         }
-        return ExerciseCatalogue.findAlternatives(
-            to: source,
-            excluding: workout?.exerciseIds ?? []
+        let ids = await TrainingWorkflow.searchReplacements(
+            TrainingWorkflow.replacementQuery(exerciseId, workoutId: workoutId)
         )
+        guard !Task.isCancelled else { return }
+        checkedIds = ids
+        alternatives = ids.compactMap { ExerciseCatalogue.byId[$0] }
     }
     private var visibleAlternatives: [ExerciseSummary] {
         allAlternatives.filter { equipment == nil || $0.equipment == equipment }
@@ -27,6 +37,18 @@ struct ExerciseAlternativesScreen: View {
     private var equipmentOptions: [String] {
         var seen = Set<String>()
         return allAlternatives.map(\.equipment).filter { seen.insert($0).inserted }
+    }
+
+    /// When the exercise being replaced needs kit the profile doesn't have:
+    /// why it's worth replacing.
+    private var headerNote: String? {
+        guard workout?.planned != nil else { return nil }
+        let filters = store.filters
+        let missing = TrainingEngineAdapter.missingRequirements(
+            exerciseId, equipment: filters.gymEquipment, fixtures: filters.effectiveFixtures
+        ).map { TrainingEngineAdapter.fixtureLabel($0).lowercased() }
+        guard !missing.isEmpty else { return nil }
+        return "Needs \(Wording.list(missing))"
     }
 
     var body: some View {
@@ -46,13 +68,11 @@ struct ExerciseAlternativesScreen: View {
                                     .font(Theme.sans(17, weight: .semibold))
                                     .foregroundStyle(Theme.foreground)
                                     .lineLimit(2)
-                                Text(
-                                    workout?.planned == nil
-                                        ? "Same muscles, different equipment."
-                                        : "Fits this workout and your current equipment."
-                                )
-                                    .font(Theme.sans(13))
-                                    .foregroundStyle(Theme.mutedForeground)
+                                if let headerNote {
+                                    Text(headerNote)
+                                        .font(Theme.sans(13, weight: .semibold))
+                                        .foregroundStyle(Theme.primary)
+                                }
                             }
                             Spacer(minLength: 0)
                         }
@@ -87,7 +107,11 @@ struct ExerciseAlternativesScreen: View {
                             .padding(.bottom, 1)
                         }
 
-                        if visibleAlternatives.isEmpty {
+                        if alternatives == nil {
+                            MatrixLoader(variant: .scan, label: "Finding alternatives", dot: 3, gap: 3)
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, 48)
+                        } else if visibleAlternatives.isEmpty {
                             Text(
                                 workout?.planned == nil
                                     ? "Nothing else works the same muscles on the equipment you have. Pick a different filter above, or keep the exercise you are on."
@@ -146,6 +170,7 @@ struct ExerciseAlternativesScreen: View {
                 }
                 .pageScroll()
             }
+            .task(id: exerciseId) { await loadAlternatives() }
         } else {
             Color.clear.onAppear(perform: store.navigation.pop)
         }
@@ -157,7 +182,7 @@ struct ExerciseAlternativesScreen: View {
             if store.activeWorkout.session?.workoutId == workout.id {
                 if workout.planned != nil {
                     try PlannedSubstitution.substituteRunningPlannedExercise(
-                        workout.id, exerciseId, replacement.id
+                        workout.id, exerciseId, replacement.id, checked: checkedIds
                     )
                 } else {
                     let entryId = try activeExerciseEntryId()
@@ -171,7 +196,7 @@ struct ExerciseAlternativesScreen: View {
                 }
             } else if workout.planned != nil {
                 try TrainingEdits.substituteScheduledPlannedExercise(
-                    workout.id, exerciseId, replacement.id
+                    workout.id, exerciseId, replacement.id, checked: checkedIds
                 )
             } else {
                 let ids = workout.exerciseIds.map { $0 == exerciseId ? replacement.id : $0 }

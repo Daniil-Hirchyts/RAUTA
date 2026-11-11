@@ -481,7 +481,7 @@ final class AgentToolHost {
             finish(.reply("Nothing planned this week was missed. Ask me to adjust your week if something else changed.")); return
         }
         guard let date = CoachingPlanner.moveTargets(for: missed).first else {
-            finish(.reply("Every day left this week already has a workout. Open Help me adjust on Summary to fit \(missed.name)'s work into them instead.")); return
+            finish(.reply("Every day left this week already has a workout, so there's nowhere to move \(missed.name).")); return
         }
         offer(CoachingPlanner.previewMove(missed, to: date), applyTitle: "Move it")
     }

@@ -155,12 +155,12 @@ struct WorkoutListContent: View {
 
     private var emptyMessage: String {
         switch filter {
-        case .all: return "Plan your week or choose exercises, and your workouts will show up here."
-        case .today: return "A rest day. Pick exercises from the Library if you want to train anyway."
-        case .planned: return "Create a training plan and its sessions will line up here."
-        case .past: return "Finished workouts stay here with their sets and times."
+        case .all: return "Plan a week or pick exercises."
+        case .today: return "Rest day."
+        case .planned: return "Create a training plan."
+        case .past: return "Finished workouts land here."
         case .fullBody, .upper, .lower, .push, .pull, .legs:
-            return "None of your workouts are \(filter.title.lowercased()) sessions yet."
+            return "Try another filter."
         }
     }
 

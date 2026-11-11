@@ -2,7 +2,7 @@
 
 6 October 2026 · Analysis only · Audience: beginners and regular gym users
 
-Follow-up: [Hosted AI costs and subscription plan](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/docs/product-analysis-2026-10-06/HOSTED_AI_COST_AND_SUBSCRIPTION_PLAN.md) covers optional cloud models, usage allowances, spending controls and the server scope they introduce.
+Follow-up: [Hosted AI costs and subscription plan](HOSTED_AI_COST_AND_SUBSCRIPTION_PLAN.md) covers optional cloud models, usage allowances, spending controls and the server scope they introduce.
 
 **Recommendation**
 
@@ -31,23 +31,23 @@ The installed simulator build was not rebuilt from the current checkout. Screen 
 | Export/import and compact iCloud backup | Backup source and settings | Manual export includes detailed training; automatic iCloud backup does not. |
 | Subscription infrastructure | No StoreKit, RevenueCat or paywall implementation found in app/watch source | Billing and entitlement behavior would be new work. |
 
-Dates spanning multiple weeks can already be grouped into weekly generation requests. That is different from a deliberate training block with an objective, milestones, evaluation and progression across the block. A polished six-week program would require additional product and planning work. [Current planning flow](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/ios/Rauta/Rauta/Lib/TrainingPlan.swift:326).
+Dates spanning multiple weeks can already be grouped into weekly generation requests. That is different from a deliberate training block with an objective, milestones, evaluation and progression across the block. A polished six-week program would require additional product and planning work. [Current planning flow](../../ios/Rauta/Rauta/Lib/TrainingPlan.swift#L326).
 
 **Fix these before monetizing planning**
 
-1. **Make equipment recommendations trustworthy.** With a Beginner / General fitness / No equipment profile, the generated plan included Monster Walk and Gironda Sternum Chin. Monster Walk's instructions require a resistance band; Gironda's require a high bar. Both catalogue entries and curated `requiredEquipment` list only body weight. This is an observed contradiction, not a hypothetical concern. Review required equipment separately from the resistance being lifted, and review beginner difficulty and practical substitutes. Check these combinations before selling “plans matched to your equipment.” Evidence: screenshots 1, 10–11, 13 and exercise IDs `0628`, `0466` in the [catalogue](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/ios/Rauta/Rauta/Resources/exercises.generated.json) and [curated metadata](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/ios/Rauta/Rauta/Resources/exercise-metadata.curated.complete.json).
+1. **Make equipment recommendations trustworthy.** With a Beginner / General fitness / No equipment profile, the generated plan included Monster Walk and Gironda Sternum Chin. Monster Walk's instructions require a resistance band; Gironda's require a high bar. Both catalogue entries and curated `requiredEquipment` list only body weight. This is an observed contradiction, not a hypothetical concern. Review required equipment separately from the resistance being lifted, and review beginner difficulty and practical substitutes. Check these combinations before selling “plans matched to your equipment.” Evidence: screenshots 1, 10–11, 13 and exercise IDs `0628`, `0466` in the [catalogue](../../ios/Rauta/Rauta/Resources/exercises.generated.json) and [curated metadata](../../ios/Rauta/Rauta/Resources/exercise-metadata.curated.complete.json).
 
-2. **Protect the history that drives progress.** `AppBackup.createBackup` defaults `includeLocalTraining` to false; iCloud uses that default, while manual export explicitly includes training. The automatic backup therefore omits structured sessions/programs/settings that underpin progression and records. Its current payload limit is 900,000 bytes. Define a complete backup/restore strategy and clear status before promising durable progress or cross-device coaching. The privacy copy currently describes a backup of “training data,” which needs to match the actual scope. This was established from source; I did not erase a device or run a destructive restore. [Backup scope](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/ios/Rauta/Rauta/Native/AppBackup.swift:12), [iCloud upload](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/ios/Rauta/Rauta/Native/ICloudSync.swift:112), [privacy wording](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/ios/Rauta/Rauta/Views/Screens/PoliciesScreen.swift:266).
+2. **Protect the history that drives progress.** `AppBackup.createBackup` defaults `includeLocalTraining` to false; iCloud uses that default, while manual export explicitly includes training. The automatic backup therefore omits structured sessions/programs/settings that underpin progression and records. Its current payload limit is 900,000 bytes. Define a complete backup/restore strategy and clear status before promising durable progress or cross-device coaching. The privacy copy currently describes a backup of “training data,” which needs to match the actual scope. This was established from source; I did not erase a device or run a destructive restore. [Backup scope](../../ios/Rauta/Rauta/Native/AppBackup.swift#L12), [iCloud upload](../../ios/Rauta/Rauta/Native/ICloudSync.swift#L112), [privacy wording](../../ios/Rauta/Rauta/Views/Screens/PoliciesScreen.swift#L266).
 
 3. **Make the next action visible.** Summary starts with identity and historical totals. Add a prominent “Today / Next workout” card with Start, Resume, or Build a starter plan. Keep existing history below it. Planning is available in RAUTA's Summary menu, while the Library menu presents different actions. Give the primary planning action a stable, labeled entry point. Evidence: screenshots 1, 5, 8.
 
-4. **Help the user start this week.** On Tuesday 6 October, the defaults selected Monday 12, Wednesday 14 and Friday 16 October. A new user could wait six days before their first planned session. Offer “Start today” and “Start next week,” with visible dates. This is a default improvement; the existing calendar already permits date changes. [Default selection](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/ios/Rauta/Rauta/Views/Screens/PlanWeekScreen.swift:243), screenshot 9.
+4. **Help the user start this week.** On Tuesday 6 October, the defaults selected Monday 12, Wednesday 14 and Friday 16 October. A new user could wait six days before their first planned session. Offer “Start today” and “Start next week,” with visible dates. This is a default improvement; the existing calendar already permits date changes. [Default selection](../../ios/Rauta/Rauta/Views/Screens/PlanWeekScreen.swift#L243), screenshot 9.
 
 5. **Translate training language for beginners.** RIR, calibration, effective sets and estimated 1RM need short explanations at the point of use. For example: “Reps left: how many more repetitions could you have done?” Preserve unknown effort as unknown; do not silently assume a number and treat it as a reliable observation. Use “try this load and tell RAUTA how it felt” when history is insufficient. Screenshots 11, 14 and progression source support this need.
 
 6. **Explain plan choices and time estimates.** The app promised to fit about 60 minutes per session, then produced estimates of 38, 28 and 26 minutes. Shorter sessions are not inherently wrong, but explain whether the preference is a maximum and why the session is shorter. Add a brief “Why this workout?” summary, required kit, and an easy replacement action. Evidence: screenshots 9–11.
 
-7. **Make assistance and downloads understandable.** Settings exposes the model name Qwen3.5 2B. The physical-device model is approximately 1.749 GB; the simulator uses Apple's system model and cannot validate the physical-device download or inference experience. Present the benefit, size, progress and recovery first: “Enable private conversations on this iPhone.” Keep standard actions usable while the model is unavailable; the deterministic intent path already supports this direction. [Model size](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/ios/Rauta/Rauta/Agent/Models/RautaModelCatalog.swift:36), [runtime paths](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/ios/Rauta/Rauta/Agent/Core/RautaAgent.swift:101).
+7. **Make assistance and downloads understandable.** Settings exposes the model name Qwen3.5 2B. The physical-device model is approximately 1.749 GB; the simulator uses Apple's system model and cannot validate the physical-device download or inference experience. Present the benefit, size, progress and recovery first: “Enable private conversations on this iPhone.” Keep standard actions usable while the model is unavailable; the deterministic intent path already supports this direction. [Model size](../../ios/Rauta/Rauta/Agent/Models/RautaModelCatalog.swift#L36), [runtime paths](../../ios/Rauta/Rauta/Agent/Core/RautaAgent.swift#L101).
 
 8. **Strengthen readable, inclusive feedback.** The visual style and character are memorable. Small muted labels, color-based muscle intensity, truncated guidance and dense set tables may be difficult under gym lighting or with larger text. Test VoiceOver, Dynamic Type, contrast and Reduce Motion on devices. A zero-day streak should not dominate the experience of someone training three days a week; add “2 of 3 planned sessions this week” and recognize planned rest days. These are visible risks and product recommendations, not a claim of accessibility failure or compliance.
 
@@ -159,59 +159,59 @@ Screenshots below are the exact accepted captures from this run. They are intent
 
 **1. Summary — functional; next-action gap.** Clear brand and useful totals. The visible emphasis is past activity rather than the next workout. The pre-existing Demo session creates a persistent bottom accessory; do not interpret its multi-hour timer as a real user's workout. Small muted metadata needs device testing.
 
-![1. Summary](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/docs/product-analysis-2026-10-06/screenshots/01-summary.jpg)
+![1. Summary](screenshots/01-summary.jpg)
 
 **2. Workouts — clear history; creation needs discovery.** Date grouping, completion status and muscle hints make history scannable. Filters are clear. At this state, creating or planning a workout is not an obvious in-page action. The active accessory takes space near the bottom.
 
-![2. Workouts](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/docs/product-analysis-2026-10-06/screenshots/02-workouts.jpg)
+![2. Workouts](screenshots/02-workouts.jpg)
 
 **3. Library — strong catalogue; broad for a beginner.** Demonstrations, filters and search are useful. A 1,324-item alphabetic starting point gives little guidance on what to choose first. Add a small recommended/foundational selection without reducing access to the full library.
 
-![3. Library](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/docs/product-analysis-2026-10-06/screenshots/03-library.jpg)
+![3. Library](screenshots/03-library.jpg)
 
 **4. Exercise detail — useful instructions; readability needs testing.** Demonstration and numbered instructions explain the exercise; Add to workout is prominent. Instruction text extends below the first viewport. Check that larger text and scrolling keep the final instructions reachable above the fixed action.
 
-![4. Exercise detail](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/docs/product-analysis-2026-10-06/screenshots/04-exercise-detail.jpg)
+![4. Exercise detail](screenshots/04-exercise-detail.jpg)
 
 **5. Library RAUTA menu — functional; capability discovery gap.** The menu offers Ask me anything and Choose exercises. It does not expose planning in this context. Preserve contextual shortcuts, but give the core plan a stable entry elsewhere.
 
-![5. Library actions](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/docs/product-analysis-2026-10-06/screenshots/05-rauta-menu.jpg)
+![5. Library actions](screenshots/05-rauta-menu.jpg)
 
 **6. Assistant entry — approachable; constrained capability should be clearer.** The empty state explains moving, swapping and rebuilding and offers contextual requests. The broad “Ask me anything” label could overstate the supported experience. Closing via a menu under RAUTA's name is less discoverable than a labeled close action.
 
-![6. Assistant entry](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/docs/product-analysis-2026-10-06/screenshots/06-assistant.jpg)
+![6. Assistant entry](screenshots/06-assistant.jpg)
 
 **7. Assistant schedule response — functional.** “Show my schedule” returned the existing Demo workout in a structured card. This verifies one deterministic read-only command, not arbitrary model reasoning, voice recognition or coaching quality. Structured cards are a good foundation for reviewable changes.
 
-![7. Assistant response](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/docs/product-analysis-2026-10-06/screenshots/07-assistant-response.jpg)
+![7. Assistant response](screenshots/07-assistant-response.jpg)
 
 **8. Summary RAUTA menu — useful actions; hidden primary entry.** Create training plan is available alongside Continue workout and Choose exercises. The label is clear once found. Surface it on Summary rather than relying entirely on the character menu.
 
-![8. Summary actions](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/docs/product-analysis-2026-10-06/screenshots/08-summary-actions.jpg)
+![8. Summary actions](screenshots/08-summary-actions.jpg)
 
 **9. Plan date selection — simple interaction; late default start.** One calendar and one action keep the task focused. Defaults begin next Monday rather than this Tuesday. Add a start-date choice and make the 60-minute preference's meaning clear.
 
-![9. Plan dates](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/docs/product-analysis-2026-10-06/screenshots/09-plan-dates.jpg)
+![9. Plan dates](screenshots/09-plan-dates.jpg)
 
 **10. Generated plan — generation works; recommendation trust issue.** Three full-body sessions were produced and saved. The output includes Monster Walk and Gironda Sternum Chin despite No equipment; estimates are 38/28/26 minutes after the earlier 60-minute statement. Explain choices and review metadata before selling this outcome.
 
-![10. Generated plan](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/docs/product-analysis-2026-10-06/screenshots/10-generated-plan.jpg)
+![10. Generated plan](screenshots/10-generated-plan.jpg)
 
 **11. Planned workout — clear prescriptions; jargon and kit mismatch.** Sets, reps, RIR and rest are visible. Monster Walk is labeled Body Weight although its own instructions require a band. Beginners need effort guidance and equipment requirements, not just numbers.
 
-![11. Planned workout](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/docs/product-analysis-2026-10-06/screenshots/11-planned-workout.jpg)
+![11. Planned workout](screenshots/11-planned-workout.jpg)
 
 **12. Settings — broad controls; model presentation is technical.** Profile, preferences and Health controls are grouped. Model naming exposes implementation details where benefit and setup guidance would help. Automatic backup scope was reviewed in source; it is not established by this screenshot.
 
-![12. Settings](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/docs/product-analysis-2026-10-06/screenshots/12-settings.jpg)
+![12. Settings](screenshots/12-settings.jpg)
 
 **13. Equipment selection — understandable groups; planning needs finer requirements.** Cards and Home kit / Full gym shortcuts make selection approachable. The selector should distinguish required fixtures for bodyweight exercises; band/bar dependencies cannot be inferred just from resistance type. No equipment selections were deliberately changed.
 
-![13. Equipment](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/docs/product-analysis-2026-10-06/screenshots/13-equipment.jpg)
+![13. Equipment](screenshots/13-equipment.jpg)
 
 **14. Set logging — useful foundation; dense guidance.** Large load/repetition controls and explicit warm-up logging support the task. RIR is compact and progression guidance is truncated. This screen demonstrates that progression guidance already exists; improve its explanation and accessibility. I did not log a set or complete/discard the existing Demo workout.
 
-![14. Set logging](/Users/hirchytsdaniil/Developer/Hobby/gym-lib/docs/product-analysis-2026-10-06/screenshots/14-set-logging.jpg)
+![14. Set logging](screenshots/14-set-logging.jpg)
 
 **Evidence limits**
 

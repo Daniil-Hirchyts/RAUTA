@@ -72,7 +72,7 @@ enum ProgressionNotes {
             switch reason {
             case .incompleteSets: return note("Not every set was finished last time, so keep the same load.")
             case .missingEffort:
-                return note("Reps left wasn't recorded last time, so RAUTA can't tell how hard it was and keeps the same load. Record reps left to progress.")
+                return note("Reps left wasn't recorded last time, so RAUTA keeps the same load.")
             case .incrementTooLarge: return note("A step down here is too big, so keep this load.")
             case .gridUnavailable: return note("RAUTA doesn't know this equipment's weight steps yet, so it keeps this load. Set them in Equipment › Load steps.")
             case .withinRange: return note("Keep this load until every set reaches the top of the range.")

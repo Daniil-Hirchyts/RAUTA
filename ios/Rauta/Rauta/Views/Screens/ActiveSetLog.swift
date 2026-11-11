@@ -100,18 +100,13 @@ struct ActiveSetLog: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .contentTransition(.opacity)
                         .animation(.easeInOut(duration: 0.2), value: selectedSet?.id)
-                    if isCalibrating(headerTarget.target) {
-                        TermInfoButton(term: .calibration, tint: Theme.primary)
-                    }
                 }
             }
-            // The engine's reason in full: recorded, suggested and unknown
-            // kept apart, never cut off.
-            if let progressionNote {
-                Text(progressionText(progressionNote))
-                    .font(Theme.sans(12, weight: .medium))
+            // The load RAUTA suggests today, worked out from last time.
+            if let progressionNote, let headline = progressionHeadline(progressionNote) {
+                Text(headline)
+                    .font(Theme.sans(12, weight: .semibold))
                     .foregroundStyle(Theme.secondaryForeground)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(.horizontal, 10)
@@ -204,9 +199,6 @@ struct ActiveSetLog: View {
                     reps = min(100, max(1, reps + Double(direction)))
                 }
 
-                if selectedSet?.setType != .warmup {
-                    RepsLeftPicker(value: $rir, target: selectedSet?.target?.rir ?? target?.rir)
-                }
             }
 
             HStack(spacing: 8) {
@@ -407,9 +399,14 @@ struct ActiveSetLog: View {
 
     private func targetSummary(_ target: PersistedSetTarget) -> String {
         let reps = target.reps.label
-        let load = Resistance.isMeasuredInKg(target.resistance.type) && target.resistance.kg != nil
-            ? " · \(Resistance.format(target.resistance))"
-            : ""
+        let load: String
+        if isCalibrating(target) {
+            load = " · pick a load"
+        } else if Resistance.isMeasuredInKg(target.resistance.type) {
+            load = " · \(Resistance.format(target.resistance))"
+        } else {
+            load = ""
+        }
         return "\(reps) reps · stop with \(Num.trimmed(target.rir)) left\(load)"
     }
 
@@ -442,10 +439,9 @@ struct ActiveSetLog: View {
             ? (targetLoad ?? defaults.kg ?? 0)
             : nil
         reps = set?.target?.reps.max ?? defaults.reps
-        // Effort is what the person says it was, never the target filled in
-        // for them: an unanswered set stays unknown, and progression treats
-        // it as unknown.
-        rir = nil
+        // Effort isn't asked during a workout: a set is logged at the plan's
+        // reps-left target unless RAUTA was told otherwise.
+        rir = set?.target?.rir ?? defaults.rir
         side = set?.side ?? defaults.side
     }
 
@@ -575,7 +571,7 @@ struct ActiveSetLog: View {
                 ?? engineLoad
                 ?? (Resistance.isMeasuredInKg(defaultMode) ? 0 : nil),
             reps: previous?.reps ?? engine?.targetReps.max ?? planned?.reps.max ?? 10,
-            rir: nil,
+            rir: previous?.rir ?? planned?.rir,
             side: .both
         )
     }
@@ -629,10 +625,10 @@ struct ActiveSetLog: View {
 
     /// A suggestion is labelled as one: the load is what RAUTA suggests for
     /// today, worked out from what was recorded last time.
-    private func progressionText(_ note: ProgressionNote) -> String {
-        guard let kg = note.kg else { return note.text }
+    private func progressionHeadline(_ note: ProgressionNote) -> String? {
+        guard let kg = note.kg else { return nil }
         let each = note.basis == .perImplement ? " each" : ""
-        return "Suggested today: \(Resistance.formatKg(kg)) kg\(each). \(note.text)"
+        return "Suggested today: \(Resistance.formatKg(kg)) kg\(each)"
     }
 
     private func closeEditor() {

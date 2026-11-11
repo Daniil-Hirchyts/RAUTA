@@ -264,8 +264,17 @@ enum TrainingWorkflow {
         )
     }
 
-    /// The alternatives that still fit this exercise's place in the workout.
-    static func replacementIds(_ exerciseId: String, workoutId: String? = nil) -> [String] {
+    /// What a replacement search needs, read from the stores on the main actor
+    /// so the search itself can run away from it.
+    struct ReplacementQuery: Sendable {
+        var exerciseId: String
+        var sourceExerciseId: String
+        var request: ProgramGenerationRequest
+        var index: ExerciseIndex
+        var selectedExerciseIds: [String]?
+    }
+
+    static func replacementQuery(_ exerciseId: String, workoutId: String? = nil) -> ReplacementQuery {
         let records = TrainingRecordsStore.shared
         let workouts = WorkoutsStore.shared.workouts
         let workout = workouts.first { item in
@@ -275,28 +284,46 @@ enum TrainingWorkflow {
         let activeExercise = records.data.activeWorkout?.exercises.first {
             $0.exerciseId == exerciseId
         }
-        let sourceExerciseId = activeExercise?.plannedExerciseId ?? exerciseId
         let sourceProgram = workout?.planned.flatMap { planned in
             records.data.programs.first { $0.id == planned.programId }
         }
-
         let overrides = TrainingEngineAdapter.PreferenceOverrides(
             goal: sourceProgram?.snapshot.goal
         )
-        let request = buildTrainingRequest(
-            TrainingEngineAdapter.buildEngineInputs(overrides: overrides),
-            now: ISOTime.now()
-        )
-
-        let substitutions = Substitutions.findExerciseSubstitutions(
-            sourceExerciseId,
-            request,
-            limit: 100,
+        return ReplacementQuery(
+            exerciseId: exerciseId,
+            sourceExerciseId: activeExercise?.plannedExerciseId ?? exerciseId,
+            request: buildTrainingRequest(
+                TrainingEngineAdapter.buildEngineInputs(overrides: overrides),
+                now: ISOTime.now()
+            ),
             index: trainingIndex(),
             selectedExerciseIds: workout?.exerciseIds
-        ).map(\.exerciseId)
+        )
+    }
 
-        return (sourceExerciseId != exerciseId ? [sourceExerciseId] : []) + substitutions
+    /// The alternatives that still fit an exercise's place in the workout.
+    nonisolated static func replacementIds(for query: ReplacementQuery) -> [String] {
+        let substitutions = Substitutions.findExerciseSubstitutions(
+            query.sourceExerciseId,
+            query.request,
+            limit: 100,
+            index: query.index,
+            selectedExerciseIds: query.selectedExerciseIds
+        ).map(\.exerciseId)
+        let original = query.sourceExerciseId != query.exerciseId ? [query.sourceExerciseId] : []
+        return original + substitutions
+    }
+
+    /// The same search, off the main actor, for a screen that waits on it.
+    @concurrent
+    static func searchReplacements(_ query: ReplacementQuery) async -> [String] {
+        replacementIds(for: query)
+    }
+
+    /// The alternatives that still fit this exercise's place in the workout.
+    static func replacementIds(_ exerciseId: String, workoutId: String? = nil) -> [String] {
+        replacementIds(for: replacementQuery(exerciseId, workoutId: workoutId))
     }
 
     /// What the engine would prescribe next for a live draft exercise.

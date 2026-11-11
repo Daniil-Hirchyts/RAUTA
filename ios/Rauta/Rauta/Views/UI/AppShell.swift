@@ -289,6 +289,10 @@ struct AppShellHeader<Left: View, Right: View, Above: View, Below: View>: View {
                 }
             }
             .frame(minHeight: 44)
+            // The subtitle hangs under the title by an offset, which takes no
+            // room of its own: the bar makes room for it, so whatever follows —
+            // filters, the page — starts clear of it.
+            .padding(.bottom, subtitle == nil ? 0 : 16)
             below()
         }
         .padding(.horizontal, Theme.Metrics.contentInset)

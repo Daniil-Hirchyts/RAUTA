@@ -407,8 +407,6 @@ struct AgentPermissionCard: View {
 /// technical name is there for whoever wants it, last and small.
 struct AgentDownloadCard: View {
     private let model = AgentModelStore.shared
-    /// Inside Settings the card sits on a grouped surface of its own.
-    var plain = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -418,26 +416,14 @@ struct AgentDownloadCard: View {
                     Text("Private conversations")
                         .font(Theme.sans(17, weight: .bold))
                         .foregroundStyle(Theme.foreground)
-                    Text("Ask RAUTA anything in your own words. It thinks on this iPhone, works offline once downloaded, and your training never leaves the device.")
+                    Text("On this iPhone · works offline")
                         .font(Theme.sans(13, weight: .medium))
                         .foregroundStyle(Theme.mutedForeground)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
-            Label {
-                Text("Planning, adjusting your week, your weekly review and common requests already work without it.")
-                    .fixedSize(horizontal: false, vertical: true)
-            } icon: {
-                Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.success)
-            }
-            .font(Theme.sans(13, weight: .medium))
-            .foregroundStyle(Theme.secondaryForeground)
-
             #if targetEnvironment(simulator)
-            Text(model.installed
-                 ? "The simulator is using Apple's on-device model. The download itself only runs on an iPhone."
-                 : "The simulator uses Apple's on-device model when this Mac has Apple Intelligence. The download only runs on an iPhone.")
+            Text("Simulator: Apple's on-device model. The download runs on an iPhone.")
                 .font(Theme.sans(13, weight: .medium))
                 .foregroundStyle(Theme.mutedForeground)
                 .fixedSize(horizontal: false, vertical: true)
@@ -461,7 +447,7 @@ struct AgentDownloadCard: View {
                     }
                     .font(Theme.sans(13, weight: .semibold))
                     .foregroundStyle(Theme.mutedForeground)
-                    Text("Keep RAUTA open until it finishes. If you leave, start again from here.")
+                    Text("Keep RAUTA open until it finishes.")
                         .font(Theme.sans(12, weight: .medium))
                         .foregroundStyle(Theme.mutedForeground)
                         .fixedSize(horizontal: false, vertical: true)
@@ -477,29 +463,23 @@ struct AgentDownloadCard: View {
                     .foregroundStyle(Theme.destructive)
                 }
                 if !model.meetsMemoryRequirement {
-                    Text("This iPhone has less memory than the model was tested with (6 GB, iPhone 14 Pro Max). It may not run here; everything else in RAUTA works the same.")
-                        .font(Theme.sans(12, weight: .medium))
+                    Text("May not run on this iPhone")
+                        .font(Theme.sans(12, weight: .semibold))
                         .foregroundStyle(Theme.mutedForeground)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
                 AppButton(
                     model.error == nil ? "Set up · \(AgentModelStore.gigabytes(model.entry.downloadBytes))" : "Try again",
                     expands: true
                 ) { model.download() }
-                Text("One-time download. Wi-Fi recommended; needs about \(AgentModelStore.gigabytes(model.entry.downloadBytes + 500_000_000)) free.")
+                Text("One-time · needs \(AgentModelStore.gigabytes(model.entry.downloadBytes + 500_000_000)) free")
                     .font(Theme.sans(12, weight: .medium))
                     .foregroundStyle(Theme.mutedForeground)
                     .fixedSize(horizontal: false, vertical: true)
             }
             #endif
 
-            Text("Model: \(model.entry.name), 4-bit · \(model.entry.license)")
-                .font(Theme.sans(11, weight: .medium))
-                .foregroundStyle(Theme.mutedForeground.opacity(0.8))
         }
-        .padding(plain ? 0 : 16)
-        .background {
-            if !plain { GradientCard(radius: Theme.Radius.xl, accent: Theme.primary, strength: 0.9) }
-        }
+        .padding(16)
+        .background { GradientCard(radius: Theme.Radius.xl, accent: Theme.primary, strength: 0.9) }
     }
 }

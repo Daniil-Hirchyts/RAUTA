@@ -34,11 +34,6 @@ enum AppPage: Hashable {
     case exerciseAlternatives(exerciseId: String, workoutId: String)
     case policies
     case backup
-    /// The three coaching features: the week ahead, adjusting this one, and
-    /// looking back on it.
-    case coachNextWeek
-    case coachAdjust
-    case coachReview
     /// Summary's detail pages, one behind each card. A month is "yyyy-MM".
     case summaryStreak
     case summaryActivity(month: String, metric: SummaryMetric)
@@ -66,9 +61,6 @@ enum AppPage: Hashable {
         case .exerciseAlternatives: return "exercise-alternatives"
         case .policies: return "policies"
         case .backup: return "backup"
-        case .coachNextWeek: return "coach-next-week"
-        case .coachAdjust: return "coach-adjust"
-        case .coachReview: return "coach-review"
         case .summaryStreak: return "summary-streak"
         case .summaryActivity: return "summary-activity"
         case .summaryMuscles: return "summary-muscles"
@@ -100,8 +92,7 @@ enum AppPage: Hashable {
     /// modal and is pushed within it.
     var opensAsModal: Bool {
         switch self {
-        case .settings, .planWeek, .addExercises, .exerciseDetail, .exerciseAlternatives,
-             .coachNextWeek, .coachAdjust, .coachReview:
+        case .settings, .planWeek, .addExercises, .exerciseDetail, .exerciseAlternatives:
             return true
         default:
             return false
@@ -178,9 +169,6 @@ enum AppPage: Hashable {
         case "settings": return .settings
         case "equipment-preset": return .equipmentPreset
         case "backup": return .backup
-        case "coach-next-week": return .coachNextWeek
-        case "coach-adjust": return .coachAdjust
-        case "coach-review": return .coachReview
         case "profile-basics": return .profileBasics
         case "profile-training": return .profileTraining
         case "profile-health": return .profileHealth
@@ -292,6 +280,7 @@ final class AppSessionStore {
         // History for an empty simulator to show, for screenshots — seeded
         // before the first page is chosen, so it counts as data already there.
         DemoHistory.seedIfRequested()
+        // `--onboarding-step <step>` alongside opens it at that step.
         if ProcessInfo.processInfo.arguments.contains("--onboarding") {
             return [.onboarding]
         }
@@ -412,6 +401,15 @@ final class AppSessionStore {
         } else {
             pages = [makeEntry(.workouts)]
         }
+    }
+
+    /// The workout an exercise-picking flow below this page was started from:
+    /// what is picked there goes straight into it.
+    var exerciseFlowWorkoutId: String? {
+        for entry in pages.reversed() {
+            if case .addExercises(let workoutId) = entry.page { return workoutId }
+        }
+        return nil
     }
 
 }

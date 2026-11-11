@@ -59,8 +59,9 @@ struct CurrentExerciseAccessory: View {
         .accessibilityLabel("\(exercise.name.capitalized), Current exercise")
         .accessibilityHint("Opens the current exercise")
         // A fixed-height bar accessory: text grows while it still fits.
+        // No animation of its own: the system morphs the bar between its two
+        // placements, and each placement is a separate copy of this view.
         .dynamicTypeSize(...DynamicTypeSize.xxLarge)
-        .animation(Theme.Motion.settle, value: compact)
     }
 
     private var setTimer: some View {
@@ -89,6 +90,10 @@ struct CurrentExerciseAccessory: View {
                     .minimumScaleFactor(0.7)
             }
             .frame(width: compact ? 42 : 52, alignment: .trailing)
+            // A tick that lands inside the bar's morph must not crossfade the
+            // old reading over the new one.
+            .contentTransition(.identity)
+            .transaction { $0.animation = nil }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(isResting ? "Rest timer, \(WorkoutClock.format(seconds))" : "Set timer, \(WorkoutClock.format(seconds))")
         }

@@ -322,11 +322,17 @@ struct ExerciseMediaView: View {
     private var plays: Bool { animated && !reduceMotion }
 
     var body: some View {
+        // A view built fresh — a list cell, or the bar's copy for its other
+        // placement — draws what is already cached on its first frame rather
+        // than a blank one while its task looks it up.
+        let style = ExerciseMediaStyle(tone: ExerciseMediaTone(colorScheme), hueShift: Theme.palette.hueShift)
+        let animation = animatedImage ?? (plays ? ExerciseMedia.cachedAnimation(for: exerciseId, style: style) : nil)
+        let still = poster ?? ExerciseMedia.cachedPoster(for: exerciseId, style: style)
         ZStack {
-            if plays, let animatedImage {
-                AnimatedImageView(image: animatedImage)
-            } else if let poster {
-                Image(uiImage: poster)
+            if plays, let animation {
+                AnimatedImageView(image: animation)
+            } else if let still {
+                Image(uiImage: still)
                     .resizable()
                     .scaledToFit()
             } else {
@@ -417,9 +423,10 @@ struct EquipmentImageView: View {
                 // greys have no hue to turn.
                 .hueRotation(.degrees(Theme.palette.hueShift))
         } else {
-            Image(systemName: "dumbbell")
-                .font(.system(size: 28))
-                .foregroundStyle(Theme.mutedForeground)
+            // No render yet (fixtures among them): the symbol that stands in.
+            KitArt(item: equipment)
+                .frame(width: 56, height: 56)
+                .opacity(0.9)
         }
     }
 }

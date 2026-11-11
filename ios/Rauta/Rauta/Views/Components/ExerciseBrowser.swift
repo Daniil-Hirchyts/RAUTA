@@ -402,12 +402,12 @@ struct ExerciseBrowseEmptyState: View {
 
     private var message: String {
         if !query.isEmpty {
-            return "Try another exercise name, or clear the search to browse everything again."
+            return "Try another name."
         }
         if state.favoritesOnly {
-            return "Open any exercise and tap the heart to keep it in your favorites."
+            return "Tap the heart on an exercise."
         }
-        return "Remove one of the selected muscles or equipment filters to widen the results."
+        return "Clear a filter to see more."
     }
 
     private var actionTitle: String? {

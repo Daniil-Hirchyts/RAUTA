@@ -15,8 +15,8 @@ struct PageSection<Content: View>: View {
                     .font(Theme.sans(12, weight: .bold))
                     .kerning(1.9)
                     .foregroundStyle(Theme.mutedForeground)
-                    .padding(.horizontal, 4)
                     .accessibilityAddTraits(.isHeader)
+                    .padding(.horizontal, 4)
             }
             VStack(alignment: .leading, spacing: 0) { content() }
                 .frame(maxWidth: .infinity, alignment: .leading)

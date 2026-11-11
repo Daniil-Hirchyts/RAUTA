@@ -7,9 +7,6 @@ import SwiftUI
 struct SummaryWorkoutsContent: View {
     /// The timeline's past, from the screen that already keeps it split.
     let past: [Workout]
-    var onStart: (Workout) -> Void = { _ in }
-    var onResume: () -> Void = {}
-    var onOpenWorkout: (String) -> Void = { _ in }
     private let trainingRecords = TrainingRecordsStore.shared
     private let workouts = WorkoutsStore.shared
     private let activeWorkout = ActiveWorkoutStore.shared
@@ -28,21 +25,13 @@ struct SummaryWorkoutsContent: View {
         )
         ScrollView {
             LazyVStack(spacing: 12) {
-                // What to train next comes first; history follows.
-                TodayCard(next: next, onStart: onStart, onResume: onResume, onOpen: onOpenWorkout)
-                    .appZoomSource("summary-today", cornerRadius: Theme.Radius.xl3)
-                    .pageArrival(0)
-
-                CoachingTiles(hasPlan: trainingRecords.data.activeProgramId != nil)
-                    .pageArrival(1)
-
                 ProfileIdentityCard()
-                    .pageArrival(2)
+                    .pageArrival(0)
 
                 SummaryCardLink(page: .summaryStreak, zoomID: "summary-streak", cornerRadius: Theme.Radius.xl3) {
                     StreakStrip(workouts: completedWorkouts, week: next.week)
                 }
-                .pageArrival(3)
+                .pageArrival(1)
 
                 MonthlySummaryDashboard(snapshot: month)
 
@@ -120,11 +109,16 @@ private struct StreakStrip: View {
                     VStack(spacing: 6) {
                         Group {
                             if status == .rest && day.workouts == 0 {
-                                // A planned rest day: rest, not an unlit flame.
-                                Image(systemName: "moon.zzz")
-                                    .font(.system(size: day.isToday ? 20 : 16, weight: .semibold))
-                                    .foregroundStyle(Theme.mutedForeground)
-                                    .frame(width: day.isToday ? 38.4 : 30.4, height: day.isToday ? 48 : 38)
+                                // A planned rest day: rest, not an unlit flame —
+                                // drawn in the unlit flame's own fill and edge.
+                                ZStack {
+                                    Image(systemName: "moon.fill")
+                                        .foregroundStyle(Theme.muted)
+                                    Image(systemName: "moon")
+                                        .foregroundStyle(Theme.border.opacity(0.55))
+                                }
+                                .font(.system(size: day.isToday ? 24 : 19, weight: .regular))
+                                .frame(width: day.isToday ? 38.4 : 30.4, height: day.isToday ? 48 : 38)
                             } else {
                                 Flame(lit: day.workouts > 0, alive: day.isToday || day.workouts > 0, phase: Double(index) * 1.7)
                                     .frame(width: day.isToday ? 38.4 : 30.4, height: day.isToday ? 48 : 38)

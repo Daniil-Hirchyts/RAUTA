@@ -11,10 +11,12 @@ import Foundation
 enum WarmupRoutine {
     enum Region: Equatable { case upper, lower, full }
 
-    /// A step as it is written: what it is called, what to do, and the muscles
-    /// it wakes up, which the body map lights.
+    /// A step as it is written: the part of the body, the movement in a word
+    /// or two, how to do it in a few words, and the muscles it wakes up, which
+    /// the body map lights.
     struct Plan: Hashable {
         var title: String
+        var move: String
         var instruction: String
         var muscles: [MuscleId]
     }
@@ -22,6 +24,7 @@ enum WarmupRoutine {
     /// A step on the clock.
     struct Step: Hashable, Identifiable {
         var title: String
+        var move: String
         var instruction: String
         var muscles: [MuscleId]
         /// When the step starts and ends, in seconds from the warm-up's start.
@@ -36,17 +39,20 @@ enum WarmupRoutine {
     static let pulse: [Plan] = [
         Plan(
             title: "Raise your pulse",
-            instruction: "Jog on the spot, lifting your knees a little higher as you go. Breathe steadily: you should still be able to talk.",
+            move: "Jog on the spot",
+            instruction: "Knees a little higher as you go.",
             muscles: [.quadriceps, .hamstring, .calves, .gluteal]
         ),
         Plan(
             title: "Raise your pulse",
-            instruction: "Easy jumping jacks, arms all the way up. Land softly and keep a rhythm you could hold for a while.",
+            move: "Jumping jacks",
+            instruction: "Arms all the way up. Land softly.",
             muscles: [.quadriceps, .calves, .deltoids, .gluteal]
         ),
         Plan(
             title: "Raise your pulse",
-            instruction: "March briskly on the spot and swing your arms. Speed up for the last half.",
+            move: "March on the spot",
+            instruction: "Swing your arms. Speed up halfway.",
             muscles: [.quadriceps, .hipFlexors, .calves, .deltoids]
         ),
     ]
@@ -54,22 +60,26 @@ enum WarmupRoutine {
     static let upper: [Plan] = [
         Plan(
             title: "Shoulders",
-            instruction: "Big arm circles: ten forwards, ten backwards. Then cross your arms in front of you and swing them wide.",
+            move: "Arm circles",
+            instruction: "Ten forwards, ten backwards.",
             muscles: [.deltoids, .trapezius]
         ),
         Plan(
             title: "Chest and upper back",
-            instruction: "Hug yourself, then open your arms wide and squeeze your shoulder blades together. Slowly, ten times.",
+            move: "Hug and open",
+            instruction: "Open wide, squeeze your shoulder blades.",
             muscles: [.chest, .upperBack, .serratus]
         ),
         Plan(
             title: "Arms and wrists",
-            instruction: "Bend and straighten your elbows ten times, then roll your wrists both ways and shake out your hands.",
+            move: "Elbows and wrists",
+            instruction: "Bend your elbows, then roll your wrists.",
             muscles: [.biceps, .triceps, .forearm]
         ),
         Plan(
             title: "Spine",
-            instruction: "Hands on your hips, turn your upper body side to side, ten each way. Keep your hips still.",
+            move: "Torso twists",
+            instruction: "Hands on hips. Keep your hips still.",
             muscles: [.obliques, .abs, .lowerBack]
         ),
     ]
@@ -77,22 +87,26 @@ enum WarmupRoutine {
     static let lower: [Plan] = [
         Plan(
             title: "Hips",
-            instruction: "Swing each leg forwards and back ten times, then side to side. Hold on to something for balance.",
+            move: "Leg swings",
+            instruction: "Forwards and back, then side to side.",
             muscles: [.hipFlexors, .gluteal, .adductors]
         ),
         Plan(
             title: "Legs",
-            instruction: "Slow bodyweight squats, ten to fifteen. Sit back, chest up, knees tracking over your toes.",
+            move: "Bodyweight squats",
+            instruction: "Slow. Chest up, knees over toes.",
             muscles: [.quadriceps, .gluteal, .hamstring]
         ),
         Plan(
             title: "Back of the legs",
-            instruction: "Walk your hands out to a plank and back to your feet, keeping your legs as straight as you can. Five times.",
+            move: "Walkouts",
+            instruction: "Walk out to a plank and back. Five times.",
             muscles: [.hamstring, .lowerBack, .calves]
         ),
         Plan(
             title: "Ankles and calves",
-            instruction: "Circle each ankle both ways, then rise onto your toes fifteen times.",
+            move: "Ankle circles",
+            instruction: "Both ways, then fifteen calf raises.",
             muscles: [.calves, .tibialis]
         ),
     ]
@@ -100,22 +114,26 @@ enum WarmupRoutine {
     static let full: [Plan] = [
         Plan(
             title: "Hips",
-            instruction: "Swing each leg forwards and back ten times, then side to side. Hold on to something for balance.",
+            move: "Leg swings",
+            instruction: "Forwards and back, then side to side.",
             muscles: [.hipFlexors, .gluteal, .adductors]
         ),
         Plan(
             title: "Shoulders",
-            instruction: "Big arm circles: ten forwards, ten backwards. Then cross your arms in front of you and swing them wide.",
+            move: "Arm circles",
+            instruction: "Ten forwards, ten backwards.",
             muscles: [.deltoids, .trapezius, .chest]
         ),
         Plan(
             title: "Legs",
-            instruction: "Slow bodyweight squats, ten to fifteen. Sit back, chest up, knees tracking over your toes.",
+            move: "Bodyweight squats",
+            instruction: "Slow. Chest up, knees over toes.",
             muscles: [.quadriceps, .gluteal, .hamstring]
         ),
         Plan(
             title: "Spine",
-            instruction: "Hands on your hips, turn your upper body side to side, ten each way. Keep your hips still.",
+            move: "Torso twists",
+            instruction: "Hands on hips. Keep your hips still.",
             muscles: [.obliques, .abs, .lowerBack]
         ),
     ]
@@ -163,6 +181,7 @@ enum WarmupRoutine {
         return plans.enumerated().map { index, plan in
             Step(
                 title: plan.title,
+                move: plan.move,
                 instruction: plan.instruction,
                 muscles: plan.muscles,
                 start: Double(index) * share,

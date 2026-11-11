@@ -188,7 +188,8 @@ struct WorkoutFlowTests {
     @Test func everyWarmupStepSaysWhatToDoAndWhere() {
         for plan in WarmupRoutine.pulse + WarmupRoutine.upper + WarmupRoutine.lower + WarmupRoutine.full {
             #expect(!plan.muscles.isEmpty, "\(plan.title) lights nothing")
-            #expect(plan.instruction.count > 20, "\(plan.title) says too little")
+            #expect((15...45).contains(plan.instruction.count), "\(plan.title): \(plan.instruction)")
+            #expect(!plan.move.isEmpty && plan.move.count <= 18, "\(plan.title): \(plan.move)")
         }
     }
 

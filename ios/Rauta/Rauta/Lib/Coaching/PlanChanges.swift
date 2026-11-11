@@ -6,7 +6,10 @@ struct PlanChangeLine: Hashable, Identifiable {
         case kept, progressed, swapped, added, removed, sets, moved, note
     }
     var kind: Kind
+    /// What changed, in a few words: "Monster Walk → Side Hip Abduction".
     var text: String
+    /// Why, for the ⓘ beside it.
+    var detail: String?
     var id: String { "\(kind)-\(text)" }
 
     var systemImage: String {
@@ -95,7 +98,7 @@ enum PlanChanges {
                     minutes: 0,
                     previousMinutes: minutes(session),
                     exerciseIds: [],
-                    lines: [PlanChangeLine(kind: .removed, text: "The session that was here is withdrawn.")]
+                    lines: [PlanChangeLine(kind: .removed, text: "Withdrawn")]
                 ))
             }
         }
@@ -113,9 +116,13 @@ enum PlanChanges {
         var lines: [PlanChangeLine] = []
 
         guard let previous else {
-            lines.append(PlanChangeLine(kind: .added, text: "A new session: \(Wording.countLabel(ordered.count, "exercise")), about \(minutes(session)) min."))
+            lines.append(PlanChangeLine(kind: .added, text: "New session"))
             for exercise in ordered where exercise.progression.action == .calibrate {
-                lines.append(PlanChangeLine(kind: .note, text: "\(name(exercise.exerciseId)): \(progressionReason(exercise.progression))"))
+                lines.append(PlanChangeLine(
+                    kind: .note,
+                    text: "\(name(exercise.exerciseId)): you pick the first load",
+                    detail: progressionReason(exercise.progression)
+                ))
             }
             return PlanSessionChange(
                 id: session.id, date: String(session.scheduledAt.prefix(10)), previousDate: nil,
@@ -147,19 +154,21 @@ enum PlanChanges {
             added.removeAll { $0.exerciseId == match.exerciseId }
             lines.append(PlanChangeLine(
                 kind: .swapped,
-                text: "\(name(old.exerciseId)) → \(name(match.exerciseId)): \(swapReason(old.exerciseId, context: context))"
+                text: "\(name(old.exerciseId)) → \(name(match.exerciseId))",
+                detail: swapReason(old.exerciseId, context: context).capitalizedFirst
             ))
         }
         for exercise in added {
             let muscles = exercise.targetMuscles.prefix(2).map { $0.label.lowercased() }
             lines.append(PlanChangeLine(
                 kind: .added,
-                text: "Added \(name(exercise.exerciseId)) (\(Wording.countLabel(exercise.workingSets.count, "set"))) for \(Wording.list(muscles))."
+                text: name(exercise.exerciseId),
+                detail: "\(Wording.countLabel(exercise.workingSets.count, "set")) for \(Wording.list(muscles))."
             ))
         }
         for exercise in removed {
             let reason = removalReason(exercise.exerciseId, context: context)
-            lines.append(PlanChangeLine(kind: .removed, text: "Dropped \(name(exercise.exerciseId)): \(reason)"))
+            lines.append(PlanChangeLine(kind: .removed, text: name(exercise.exerciseId), detail: reason.capitalizedFirst))
         }
 
         let previousDay = String(previous.scheduledAt.prefix(10))
@@ -191,18 +200,18 @@ enum PlanChanges {
         if sets != oldSets { changes.append("\(oldSets) → \(sets) sets") }
         if let newKg, let oldKg, newKg != oldKg {
             let each = exercise.workingSets.first?.resistance.basis == .perImplement ? " each" : ""
-            changes.append("\(Resistance.formatKg(oldKg)) → \(Resistance.formatKg(newKg)) kg\(each) suggested")
+            changes.append("\(Resistance.formatKg(oldKg)) → \(Resistance.formatKg(newKg)) kg\(each)")
         } else if let newKg, oldKg == nil {
             let each = exercise.workingSets.first?.resistance.basis == .perImplement ? " each" : ""
-            changes.append("\(Resistance.formatKg(newKg)) kg\(each) suggested from your last session")
+            changes.append("\(Resistance.formatKg(newKg)) kg\(each)")
         }
         if let newReps, let oldReps, newReps != oldReps { changes.append("\(oldReps.label) → \(newReps.label) reps") }
         let reason = progressionReason(exercise.progression)
         if changes.isEmpty {
-            return PlanChangeLine(kind: .kept, text: "\(label): same as before. \(reason)")
+            return PlanChangeLine(kind: .kept, text: label, detail: reason)
         }
         let kind: PlanChangeLine.Kind = sets != oldSets && newKg == oldKg ? .sets : .progressed
-        return PlanChangeLine(kind: kind, text: "\(label): \(changes.joined(separator: ", ")). \(reason)")
+        return PlanChangeLine(kind: kind, text: "\(label): \(changes.joined(separator: ", "))", detail: reason)
     }
 
     /// The progression rule's reason, in words.

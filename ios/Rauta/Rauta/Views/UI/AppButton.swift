@@ -78,9 +78,14 @@ struct AppButton<Label: View>: View {
         Button {
             press()
         } label: {
+            // Two lines before a label is cut short, and a little smaller
+            // before that: at the largest text sizes a button still says what
+            // it does.
             label()
                 .font(font)
-                .lineLimit(1)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.85)
                 .frame(maxWidth: expands ? .infinity : nil)
                 .padding(.horizontal, horizontalPadding)
                 .foregroundStyle(foreground)

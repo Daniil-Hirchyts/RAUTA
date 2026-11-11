@@ -238,6 +238,8 @@ struct WorkoutExerciseRow: View {
     let exercise: ExerciseSummary
     let index: Int
     let prescription: PlannedExercisePrescription?
+    /// Kit it needs that the profile doesn't list.
+    var missingKit: String? = nil
     let status: ExerciseStatus?
     let canFindAlternative: Bool
     let canRemove: Bool
@@ -321,11 +323,23 @@ struct WorkoutExerciseRow: View {
                         .font(Theme.sans(17, weight: .semibold))
                         .foregroundStyle(Theme.foreground)
                         .lineLimit(3)
-                    Text(Wording.titleCase(exercise.equipment))
-                        .font(Theme.sans(14, weight: .medium))
-                        .foregroundStyle(Theme.mutedForeground)
-                        .lineLimit(1)
-                        .padding(.top, 2)
+                    if let missingKit {
+                        // Planned before the kit was known: say what's missing
+                        // where the equipment would be.
+                        Label("Needs \(TrainingEngineAdapter.fixtureLabel(missingKit).lowercased())", systemImage: "exclamationmark.triangle.fill")
+                            .font(Theme.sans(13, weight: .semibold))
+                            .foregroundStyle(Theme.primary)
+                            .labelStyle(.titleAndIcon)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 2)
+                    } else {
+                        Text(Wording.titleCase(exercise.equipment))
+                            .font(Theme.sans(14, weight: .medium))
+                            .foregroundStyle(Theme.mutedForeground)
+                            .lineLimit(1)
+                            .padding(.top, 2)
+                    }
                 }
                 .padding(.leading, 14)
                 .padding(.trailing, 16)
@@ -361,7 +375,7 @@ private struct WorkoutPrescriptionStrip: View {
             HStack(spacing: 24) {
                 metric("Sets", String(prescription.sets), accent: true)
                 metric("Reps", reps)
-                metric("RIR", Num.trimmed(prescription.rir))
+                metric("Reps left", Num.trimmed(prescription.rir))
                 if let loadKg = prescription.loadKg {
                     let each = prescription.loadBasis == .perImplement ? " each" : ""
                     metric("Load", "\(Resistance.formatKg(loadKg)) kg\(each)")
@@ -372,6 +386,8 @@ private struct WorkoutPrescriptionStrip: View {
             .padding(.top, 12)
             .padding(.bottom, 15)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spokenSummary)
         .background {
             LinearGradient(
                 colors: [Theme.primary.opacity(0.09), .clear],
@@ -379,6 +395,17 @@ private struct WorkoutPrescriptionStrip: View {
                 endPoint: UnitPoint(x: 0.78, y: 0.5)
             )
         }
+    }
+
+    /// The strip read as one sentence, the way a coach would say it.
+    private var spokenSummary: String {
+        var parts = ["\(Wording.countLabel(prescription.sets, "set")) of \(reps) reps",
+                     "stop with \(Num.trimmed(prescription.rir)) reps left"]
+        if let loadKg = prescription.loadKg {
+            parts.append("\(Resistance.formatKg(loadKg)) kilograms\(prescription.loadBasis == .perImplement ? " each" : "")")
+        }
+        parts.append("rest \(Int(prescription.restSeconds.rounded())) seconds")
+        return parts.joined(separator: ", ")
     }
 
     private func metric(_ label: String, _ value: String, accent: Bool = false) -> some View {

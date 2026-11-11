@@ -11,8 +11,8 @@ import SwiftUI
 /// — a new workout, or an existing one — are the ones that spend it.
 struct AddExercisesScreen: View {
     private let store = AppStore.shared
-    /// The workout this was started from, offered first when the exercises are
-    /// finally filed somewhere.
+    /// The workout this was started from: the picked exercises go straight
+    /// into it while it can take them, and the choice of where is skipped.
     let preferredWorkoutId: String?
 
     @State private var browse = ExerciseBrowseState()
@@ -165,6 +165,14 @@ struct AddExercisesScreen: View {
             expands: true
         ) {
             Haptics.trigger(.selection)
+            // Started from a workout: that's where they go.
+            if let workoutId = preferredWorkoutId, TrainingEdits.takesExercises(workoutId),
+               (try? TrainingEdits.addExercises(selectedIds, to: workoutId)) != nil {
+                store.navigation.selectedIds = []
+                store.navigation.openWorkout(workoutId)
+                Haptics.trigger(.success)
+                return
+            }
             store.navigation.push(
                 .workoutDestination(
                     exerciseIds: selectedIds,

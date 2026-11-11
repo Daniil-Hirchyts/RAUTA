@@ -99,6 +99,8 @@ struct NativeWorkoutCompleteAccessory: View {
                         .font(Theme.sans(compact ? 11 : 13, weight: .bold))
                         .monospacedDigit()
                         .foregroundStyle(Theme.foreground)
+                        .contentTransition(.identity)
+                        .transaction { $0.animation = nil }
                 }
             }
             .padding(.horizontal, compact ? 10 : 12)
@@ -157,7 +159,7 @@ struct NativeWarmupAccessory: View {
                             .font(Theme.sans(compact ? 13 : 16, weight: .bold))
                             .foregroundStyle(Theme.foreground)
                             .lineLimit(1)
-                        Text(current?.step.title ?? "Nearly there")
+                        Text(current?.step.move ?? "Nearly there")
                             .font(Theme.sans(compact ? 10 : 11, weight: .medium))
                             .foregroundStyle(Theme.mutedForeground)
                             .lineLimit(1)
@@ -168,7 +170,8 @@ struct NativeWarmupAccessory: View {
                         .font(Theme.sans(compact ? 11 : 13, weight: .bold))
                         .monospacedDigit()
                         .foregroundStyle(Theme.foreground)
-                        .contentTransition(.numericText(countsDown: true))
+                        .contentTransition(.identity)
+                        .transaction { $0.animation = nil }
                 }
                 .padding(.horizontal, compact ? 10 : 12)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

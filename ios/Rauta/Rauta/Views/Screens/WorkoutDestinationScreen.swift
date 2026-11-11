@@ -5,7 +5,7 @@ import SwiftUI
 ///
 /// It answers two questions the same way — where the exercises just picked go,
 /// and where a workout being reused goes — so both read as one page: what is
-/// being filed at the top, a new day, then the workouts ahead.
+/// being filed at the top, the workouts ahead, and a new day at the bottom.
 ///
 /// A page rather than a menu: the list of open workouts is as long as it is,
 /// and a scrolling popover that closes on the wrong tap is a worse way to
@@ -68,15 +68,6 @@ struct WorkoutDestinationScreen: View {
         }
     }
 
-    private var intro: String {
-        switch mode {
-        case .exercises:
-            return "Start a new workout, or add them to one that's coming up."
-        case .reuse:
-            return "Give it a new day, or add its exercises to a workout that's coming up."
-        }
-    }
-
     var body: some View {
         ZStack {
             RautaScreen(
@@ -86,49 +77,46 @@ struct WorkoutDestinationScreen: View {
             ) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(intro)
-                            .font(Theme.sans(14))
-                            .foregroundStyle(Theme.mutedForeground)
-
                         filing
-                            .padding(.top, 16)
-
-                        NewWorkoutDestinationRow(
-                            subtitle: source == nil ? "Pick a day for it" : "Same exercises, a new day"
-                        ) {
-                            Haptics.trigger(.selection)
-                            choosingDate = true
-                        }
-                        .padding(.top, 12)
 
                         if let issue {
                             InlineNotice(message: issue, isError: true)
                                 .padding(.top, 12)
                         }
 
-                        sectionLabel("COMING UP")
-                        if workouts.isEmpty {
-                            Text("No upcoming workouts yet.")
-                                .font(Theme.sans(14))
-                                .foregroundStyle(Theme.mutedForeground)
-                                .padding(.horizontal, 4)
-                        } else {
-                            WorkoutAgenda(
-                                rows: workouts.map(AgentSessionRow.workout),
-                                onOpen: add(to:),
-                                highlightedId: currentId,
-                                accessory: .add
-                            )
-                            .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.primary, strength: 0.6) }
+                        if !workouts.isEmpty {
+                            sectionLabel("ADD TO")
+                            VStack(spacing: 8) {
+                                ForEach(workouts) { workout in
+                                    WorkoutDestinationRow(
+                                        row: .workout(workout),
+                                        isRunning: workout.id == store.activeWorkout.session?.workoutId,
+                                        isPreferred: workout.id == currentId,
+                                        action: { add(to: workout.id) }
+                                    )
+                                }
+                            }
                         }
                     }
                     .padding(.horizontal, Theme.Metrics.contentInset)
+                    .padding(.top, 4)
                     .padding(.bottom, 24)
                     .disabled(working)
                     .opacity(working ? 0.6 : 1)
                     .animation(.easeInOut(duration: 0.2), value: working)
                 }
                 .pageScroll()
+            } controls: {
+                AppButton(
+                    source == nil ? "New workout" : "Pick a new day",
+                    variant: workouts.isEmpty ? .primary : .secondary,
+                    size: .cta,
+                    expands: true
+                ) {
+                    Haptics.trigger(.selection)
+                    choosingDate = true
+                }
+                .disabled(working)
             }
 
             WorkoutDateCalendarModal(
@@ -143,47 +131,45 @@ struct WorkoutDestinationScreen: View {
         .onDisappear { creating?.cancel() }
     }
 
-    /// What is being filed: the workout being reused, or the exercises picked.
+    /// What is being filed: the workout being reused, or the exercises picked,
+    /// as the cards they were picked from.
     @ViewBuilder private var filing: some View {
         if let source {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text("REUSING")
-                    .font(Theme.sans(10, weight: .black))
-                    .kerning(1.4)
+                    .font(Theme.sans(12, weight: .bold))
+                    .kerning(1.55)
                     .foregroundStyle(Theme.mutedForeground)
-                    .padding(.horizontal, 14)
-                    .padding(.top, 14)
-                WorkoutAgenda(rows: [AgentSessionRow.workout(source)])
+                    .padding(.horizontal, 4)
+                WorkoutDestinationRow(row: .workout(source))
             }
-            .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.primary, strength: 0.45) }
         } else {
             let exercises = exerciseIds.compactMap { ExerciseCatalogue.byId[$0] }
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    ForEach(exercises.prefix(5), id: \.id) { exercise in
-                        ExerciseMediaView(exerciseId: exercise.id)
-                            .padding(3)
-                            .frame(width: 46, height: 46)
-                            .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous).fill(Theme.muted.opacity(0.7)))
-                    }
-                    if exercises.count > 5 {
-                        Text("+\(exercises.count - 5)")
-                            .font(Theme.sans(13, weight: .bold))
-                            .foregroundStyle(Theme.mutedForeground)
-                            .frame(width: 46, height: 46)
-                            .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous).fill(Theme.muted.opacity(0.7)))
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(exercises, id: \.id) { exercise in
+                        VStack(alignment: .leading, spacing: 8) {
+                            ExerciseMediaView(exerciseId: exercise.id)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 104)
+                                .accessibilityHidden(true)
+                            Text(WorkoutAgenda.name(exercise))
+                                .font(Theme.sans(14, weight: .semibold))
+                                .foregroundStyle(Theme.foreground)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+                                .frame(maxWidth: .infinity, minHeight: 36, alignment: .topLeading)
+                        }
+                        .padding(10)
+                        .frame(width: 136)
+                        .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.primary, strength: 0.5) }
+                        .accessibilityElement(children: .combine)
                     }
                 }
-                .accessibilityHidden(true)
-                Text(exercises.prefix(3).map { WorkoutAgenda.name($0) }.joined(separator: " · ")
-                     + (exercises.count > 3 ? " …" : ""))
-                    .font(Theme.sans(13, weight: .medium))
-                    .foregroundStyle(Theme.mutedForeground)
-                    .lineLimit(2)
+                .padding(.horizontal, Theme.Metrics.contentInset)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background { GradientCard(radius: Theme.Radius.xl2, accent: Theme.primary, strength: 0.45) }
+            .scrollClipDisabled()
+            .padding(.horizontal, -Theme.Metrics.contentInset)
         }
     }
 
@@ -230,18 +216,11 @@ struct WorkoutDestinationScreen: View {
     }
 
     private func add(to workoutId: String) {
-        guard !working, let workout = store.workouts.workout(workoutId) else { return }
-        var seen = Set<String>()
-        let ids = (workout.exerciseIds + exerciseIds).filter { seen.insert($0).inserted }
+        guard !working else { return }
         do {
-            if store.activeWorkout.session?.workoutId == workout.id {
-                store.workouts.updateWorkout(workout.id, .init(exerciseIds: ids))
-                store.activeWorkout.syncExercises(ids)
-            } else {
-                try TrainingEdits.updateScheduledWorkoutExercises(workout.id, ids)
-            }
+            try TrainingEdits.addExercises(exerciseIds, to: workoutId)
             store.navigation.selectedIds = []
-            store.navigation.openWorkout(workout.id)
+            store.navigation.openWorkout(workoutId)
             Haptics.trigger(.success)
         } catch { capture(error) }
     }
@@ -252,54 +231,72 @@ struct WorkoutDestinationScreen: View {
     }
 }
 
-private struct NewWorkoutDestinationRow: View {
-    var subtitle = "Pick a day for it"
-    let action: () -> Void
+/// A workout as somewhere to put exercises: its day in the app's numerals,
+/// its name and size, and "Add" when tapping it files them there.
+private struct WorkoutDestinationRow: View {
+    let row: AgentSessionRow
+    var isRunning = false
+    var isPreferred = false
+    var action: (() -> Void)?
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: "plus")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(Theme.primaryForeground)
-                    .frame(width: 44, height: 44)
-                    .glassSurface(
-                        .tinted(Theme.primary),
-                        in: Circle(),
-                        border: Theme.Glassware.brightEdge
-                    )
-                    .overlay {
-                        Circle()
-                            .fill(Theme.primaryGradient)
-                            .opacity(Theme.Glassware.primaryWash)
-                            .allowsHitTesting(false)
-                    }
-                    .clipShape(Circle())
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("New workout")
-                        .font(Theme.sans(16, weight: .bold))
-                        .foregroundStyle(Theme.foreground)
-                    Text(subtitle)
-                        .font(Theme.sans(14))
-                        .foregroundStyle(Theme.mutedForeground)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Theme.mutedForeground)
+        if let action {
+            Button {
+                Haptics.trigger(.selection)
+                action()
+            } label: {
+                card
             }
-            .padding(16)
-            .background(
-                Theme.mix(Theme.card, Theme.primary, 0.10),
-                in: RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous)
-                    .strokeBorder(Theme.primary.opacity(0.45), lineWidth: 1)
-            )
+            .buttonStyle(EquipmentCardButtonStyle())
+            .accessibilityHint("Adds the exercises to it")
+        } else {
+            card
         }
-        .buttonStyle(.plain)
+    }
+
+    private var card: some View {
+        HStack(spacing: 14) {
+            VStack(spacing: 1) {
+                Text(isRunning ? "NOW" : CalendarDate.weekdayShort(row.date).uppercased())
+                    .font(Theme.sans(10, weight: .black))
+                    .kerning(1.2)
+                    .foregroundStyle(Theme.primary)
+                Text(CalendarDate.format(row.date, "d"))
+                    .font(Theme.readout(26))
+                    .foregroundStyle(Theme.foreground)
+            }
+            .frame(width: 44)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(row.title)
+                    .font(Theme.sans(17, weight: .bold))
+                    .foregroundStyle(Theme.foreground)
+                    .lineLimit(1)
+                Text(meta)
+                    .font(Theme.sans(13, weight: .medium))
+                    .foregroundStyle(Theme.mutedForeground)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if action != nil {
+                Text("Add")
+                    .font(Theme.sans(15, weight: .bold))
+                    .foregroundStyle(Theme.primary)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background {
+            GradientCard(radius: Theme.Radius.xl2, accent: Theme.primary, strength: isPreferred ? 0.95 : 0.5)
+        }
+        .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.xl2, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var meta: String {
+        var parts = [Wording.countLabel(row.exerciseIds.count, "exercise")]
+        if row.minutes > 0 { parts.append("\(row.minutes) min") }
+        return parts.joined(separator: " · ")
     }
 }

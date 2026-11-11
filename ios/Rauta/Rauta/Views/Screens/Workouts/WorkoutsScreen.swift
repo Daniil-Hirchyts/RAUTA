@@ -632,17 +632,7 @@ struct WorkoutsScreen: View {
     }
 
     private var summaryContent: some View {
-        SummaryWorkoutsContent(
-            past: timeline.past,
-            onStart: { workout in startFromRauta(workout) },
-            onResume: {
-                withAnimation(Theme.Motion.smoothOut(0.28)) {
-                    liveWorkoutPresented = true
-                    selectMainTab(.workout)
-                }
-            },
-            onOpenWorkout: openRequestedWorkout
-        )
+        SummaryWorkoutsContent(past: timeline.past)
     }
 
     private func companionActions(for tab: MainTab) -> [CompanionAction] {
@@ -673,19 +663,6 @@ struct WorkoutsScreen: View {
                 }
             })
         }
-        if TrainingPlan.activeProgramRecord() != nil, activeWorkout.session == nil {
-            // Every change to the plan is shown before it is kept: RAUTA's
-            // menu opens the same reviewable pages Summary does.
-            actions.append(CompanionAction(title: "My next week", systemImage: "calendar.badge.plus", primary: actions.isEmpty) {
-                navigation.push(.coachNextWeek, from: RautaNativeTabControl.zoomSourceID)
-            })
-            actions.append(CompanionAction(title: "Help me adjust", systemImage: "arrow.triangle.2.circlepath") {
-                navigation.push(.coachAdjust, from: RautaNativeTabControl.zoomSourceID)
-            })
-        }
-        actions.append(CompanionAction(title: "Weekly review", systemImage: "chart.line.uptrend.xyaxis") {
-            navigation.push(.coachReview, from: RautaNativeTabControl.zoomSourceID)
-        })
         actions.append(CompanionAction(title: trainingRecords.data.activeProgramId == nil ? "Create training plan" : "New training plan", systemImage: "calendar.badge.plus", primary: actions.isEmpty) {
             navigation.push(.planWeek(sourceProgramId: nil), from: RautaNativeTabControl.zoomSourceID)
         })
@@ -785,10 +762,12 @@ struct WorkoutsScreen: View {
         })
         return actions
     }
+    /// With a workout running, picked exercises go straight into it.
     private func startExerciseFlow() {
         filters.reset(); filters.setEquipment(filters.gymEquipment)
         navigation.selectedIds = []
-        navigation.push(.addExercises(preferredWorkoutId: nil), from: RautaNativeTabControl.zoomSourceID)
+        let running = activeWorkout.session?.workoutId
+        navigation.push(.addExercises(preferredWorkoutId: running), from: RautaNativeTabControl.zoomSourceID)
     }
     private func selectMainTab(_ tab: MainTab) {
         mainTab = tab

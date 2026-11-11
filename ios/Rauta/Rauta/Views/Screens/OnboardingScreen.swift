@@ -33,6 +33,29 @@ enum ProfileStep: String {
     case ready = "Ready to train"
 }
 
+/// Where a step flow is. An observable object rather than plain `@State`: the
+/// shell around these pages runs its closures inside its own body, and only
+/// reads tracked there tell SwiftUI to redraw it — a `@State` value read
+/// through `self` changed without the header, page or button following.
+@Observable
+private final class StepFlowState {
+    var index = 0
+    var nameEntryFocused = false
+    var prioritySide: BodySide = .front
+}
+
+/// Redraws its content whenever the flow moves: reading the step in its own
+/// body is what registers it.
+private struct StepObserver<Content: View>: View {
+    let flow: StepFlowState
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        let _ = flow.index
+        content()
+    }
+}
+
 /// Mirrors ProfileStepFlow in profile-pages.tsx; settings reuses these steps.
 struct ProfileStepFlow: View {
     @Environment(\.appSafeAreaInsets) private var safeAreaInsets
@@ -41,9 +64,15 @@ struct ProfileStepFlow: View {
     let steps: [ProfileStep]
     var onboarding = false
     let onFinish: () -> Void
-    @State private var index = 0
-    @State private var nameEntryFocused = false
-    @State private var prioritySide: BodySide = .front
+    @State private var flow = StepFlowState()
+    private var index: Int {
+        get { flow.index }
+        nonmutating set { flow.index = newValue }
+    }
+    private var nameEntryFocused: Bool {
+        get { flow.nameEntryFocused }
+        nonmutating set { flow.nameEntryFocused = newValue }
+    }
     private var step: ProfileStep { steps[index] }
     private var isStoryStep: Bool { step == .welcome || step == .ready }
     private var isEnteringName: Bool { step == .about && nameEntryFocused }
@@ -73,24 +102,12 @@ struct ProfileStepFlow: View {
                                     if step == .about {
                                         ProfileNameControl { nameEntryFocused = $0 }
                                             .padding(.horizontal, 12)
-                                        if !nameEntryFocused {
-                                            Text("Your name is optional. Your age matters: RAUTA plans for adults 18 and over.")
-                                                .font(Theme.sans(13, weight: .medium))
-                                                .foregroundStyle(Theme.mutedForeground)
-                                                .multilineTextAlignment(.center)
-                                                .fixedSize(horizontal: false, vertical: true)
-                                                .padding(.horizontal, 24)
-                                                .padding(.top, 10)
-                                        }
                                         Spacer(minLength: 20)
                                     }
                                     if step == .duration {
-                                        Text("A target, with warm-up and rest included. RAUTA never plans more than 10 minutes over it — and when a session's work is done sooner, it stays shorter rather than being padded.")
+                                        Text("Warm-up and rest included")
                                             .font(Theme.sans(14, weight: .medium))
                                             .foregroundStyle(Theme.secondaryForeground)
-                                            .multilineTextAlignment(.center)
-                                            .fixedSize(horizontal: false, vertical: true)
-                                            .padding(.horizontal, 24)
                                         Spacer(minLength: 16)
                                     }
                                     if step == .duration || !nameEntryFocused {
@@ -102,7 +119,10 @@ struct ProfileStepFlow: View {
                                 // the name centres in what the keyboard leaves.
                                 .padding(.bottom, isEnteringName ? safeAreaInsets.bottom : 0)
                             } else if step == .priorities {
-                                ProfilePrioritiesMap(side: $prioritySide, showsFlipButton: true)
+                                ProfilePrioritiesMap(
+                                    side: Binding(get: { flow.prioritySide }, set: { flow.prioritySide = $0 }),
+                                    showsFlipButton: true
+                                )
                                     .padding(.horizontal, 12)
                                     .belowPageHeader()
                                     .padding(.bottom, 12)
@@ -132,17 +152,35 @@ struct ProfileStepFlow: View {
                 }
             }
         } controls: {
-            AppButton(actionTitle, size: .cta, expands: true) {
-                if index == steps.count - 1 { onFinish() }
-                else {
-                    withAnimation(Theme.Motion.pageEnter) { index += 1 }
-                    // A step further: a note that climbs with the pages.
-                    var rng = SystemRandomNumberGenerator()
-                    WorkoutAudio.play(RautaPhrase.progress(index, using: &rng), felt: 1)
-                }
-            }.id(index)
+            // Read inside a view of its own, so the button follows the step
+            // even when the shell around it isn't redrawn.
+            StepObserver(flow: flow) {
+                AppButton(actionTitle, size: .cta, expands: true) {
+                    if index == steps.count - 1 { onFinish() }
+                    else {
+                        withAnimation(Theme.Motion.pageEnter) { index += 1 }
+                        // A step further: a note that climbs with the pages.
+                        var rng = SystemRandomNumberGenerator()
+                        WorkoutAudio.play(RautaPhrase.progress(index, using: &rng), felt: 1)
+                    }
+                }.id(index)
+            }
         }
         .onChange(of: index) { _, _ in nameEntryFocused = false }
+        .onAppear(perform: openAtLaunchStep)
+    }
+
+    /// `--onboarding-step days` opens onboarding at that step, for screenshots
+    /// (alongside `--onboarding`; see `AppNavigation`).
+    private func openAtLaunchStep() {
+#if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        guard onboarding, index == 0,
+              let flag = arguments.firstIndex(of: "--onboarding-step"), arguments.indices.contains(flag + 1),
+              let target = steps.firstIndex(where: { String(describing: $0) == arguments[flag + 1] })
+        else { return }
+        index = target
+#endif
     }
 
     /// Where a scrolling step's content starts under a plain title bar.
@@ -302,7 +340,7 @@ private struct OnboardingReadyView: View {
                     .foregroundStyle(Theme.foreground)
                     .multilineTextAlignment(.center)
 
-                Text("Next, RAUTA builds your first week — starting today if you like. Muscle priorities, health and the rest are in Settings whenever you want them.")
+                Text("Next: your first week.")
                     .font(Theme.sans(14, weight: .medium))
                     .foregroundStyle(Theme.mutedForeground)
                     .multilineTextAlignment(.center)
@@ -397,10 +435,6 @@ struct TrainingDaysControl: View {
                 .foregroundStyle(Theme.foreground)
                 .fixedSize(horizontal: false, vertical: true)
             WeekdayPicker(days: days)
-            Text("RAUTA puts sessions on these days and treats the others as rest. Two or three days is plenty to start; you can move any workout later.")
-                .font(Theme.sans(14, weight: .medium))
-                .foregroundStyle(Theme.secondaryForeground)
-                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.top, 24)
     }

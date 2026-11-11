@@ -230,7 +230,7 @@ private struct MuscleHeatmapCard: View {
 
                 VStack(alignment: .leading, spacing: 13) {
                     if snapshot.leadingMuscles.isEmpty {
-                        Text("Finish a workout to light up your monthly map.")
+                        Text("Nothing trained yet")
                             .font(Theme.sans(12, weight: .medium))
                             .foregroundStyle(Theme.mutedForeground)
                             .fixedSize(horizontal: false, vertical: true)

@@ -262,30 +262,30 @@ enum PolicyFacts {
 
     static let privacy: [Point] = [
         .init(icon: "iphone", title: "Stays on your iPhone",
-              text: "RAUTA has no account and no servers. Your profile, plans, workouts and chats with RAUTA are stored on this iPhone and nowhere else of ours."),
+              text: "No account, no servers of ours. Your data lives on this iPhone."),
         .init(icon: "externaldrive.badge.checkmark", title: "Backups",
-              text: "RAUTA keeps complete backups — workouts, every logged set, plans, load settings, profile and preferences — as files on this iPhone. They are included in your iPhone's own iCloud or computer backup, and you can export one at any time. Nothing is sent to us."),
+              text: "Full backups are files on this iPhone, included in your iCloud or computer backup. Export one any time."),
         .init(icon: "icloud", title: "iCloud sync",
-              text: "When you're signed in to iCloud, your profile, preferences, favourites, equipment and workout list sync through your own iCloud account to your other devices. Set-by-set history and plans are not part of this sync; they are in the backups above. Only you can read either."),
+              text: "Profile, preferences, favourites, equipment and workout list sync through your own iCloud. Set history and plans stay in the backups."),
         .init(icon: "heart", title: "Apple Health",
-              text: "Only with your permission: RAUTA saves finished workouts and their energy, reads your body weight to estimate calories, and — if you allow it — reads sleep, resting heart rate, HRV, exercise time and active energy to plan around your readiness. Health data never leaves your iPhone."),
+              text: "Only with your permission: saves finished workouts, reads body weight for calories, and sleep, heart and activity data to plan around readiness. It stays on your iPhone."),
         .init(icon: "brain.head.profile", title: "Talking to RAUTA",
-              text: "RAUTA thinks with a model that runs on your iPhone. The only download is the model itself, fetched once from Hugging Face; your messages are never sent anywhere."),
+              text: "The model runs on your iPhone, downloaded once from Hugging Face. Messages never leave it."),
         .init(icon: "mic", title: "Microphone and speech",
-              text: "Dictation is transcribed on your iPhone. The recording is deleted as soon as it has been read."),
+              text: "Transcribed on your iPhone; the recording is deleted right after."),
         .init(icon: "calendar", title: "Calendar and notifications",
-              text: "Used only when you ask: RAUTA reads your calendar to find free times, adds an event after you tap Add, and schedules the reminders you ask for."),
+              text: "Only when you ask: free times, events you confirm, reminders you set."),
     ]
 
     static let modelAuthor = "Qwen team, Alibaba Cloud"
-    static let modelNote = "A 4-bit MLX conversion of Qwen3.5 2B, published by the MLX Community on Hugging Face and run with Apple's MLX. It is downloaded on request and can be removed in Settings."
+    static let modelNote = "4-bit MLX build by the MLX Community, run with Apple's MLX. Downloaded on request; remove it in Settings."
 
     // TODO(owner): confirm where the exercise catalogue, its demonstrations and
     // the body map come from, and under which licences, before release.
     static let exerciseLibrary: [Point] = [
         .init(icon: "figure.strengthtraining.traditional", title: "Exercises and demonstrations",
-              text: "Exercise names, instructions and demonstration images come from a third-party exercise dataset, reviewed and reclassified for RAUTA. Source and licence to be confirmed."),
+              text: "From a third-party exercise dataset, reviewed for RAUTA. Source and licence to be confirmed."),
         .init(icon: "figure.stand", title: "Body map",
-              text: "Muscle outlines for the body map. Source and licence to be confirmed."),
+              text: "Muscle outlines. Source and licence to be confirmed."),
     ]
 }
