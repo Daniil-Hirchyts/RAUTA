@@ -254,14 +254,11 @@ function sync() {
   if (document.activeElement !== note) note.value = state.note;
 }
 
-// ---- saving: on this device always, and where Claude can read it when the page is opened signed in
+// ---- saving: in this browser, as you go
 
-let db = null, writing = false, dirty = false, saveTimer = 0;
 const STATUS = {
-  ready: "Your marks are saved as you go.",
-  saving: "Saving…",
-  saved: "Saved. Tell Claude when you're done.",
-  local: "Saved on this device only. Copy the verdict and paste it to Claude.",
+  ready: "Your marks are saved in this browser as you go.",
+  saved: "Saved in this browser. Copy the verdict when you're done.",
 };
 function setStatus(name) { document.getElementById("status").textContent = STATUS[name]; }
 
@@ -269,23 +266,7 @@ function keepLocal() { try { localStorage.setItem(KEY, JSON.stringify(state)); }
 
 function save() {
   keepLocal();
-  if (!db) { setStatus("local"); return; }
-  setStatus("saving");
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(flush, 600);
-}
-
-async function flush() {
-  if (writing) { dirty = true; return; }
-  writing = true;
-  try {
-    await db.doc("audition/verdict").set({ packs: state.packs, clips: state.clips, note: state.note, summary: summary(), updatedAt: new Date().toISOString() });
-    setStatus("saved");
-  } catch (e) {
-    setStatus("local");
-  }
-  writing = false;
-  if (dirty) { dirty = false; flush(); }
+  setStatus("saved");
 }
 
 // ---- playing
@@ -432,16 +413,4 @@ function adopt(saved) {
 try { const raw = localStorage.getItem(KEY); if (raw) adopt(JSON.parse(raw)); } catch (e) {}
 render();
 setStatus("ready");
-
-(async () => {
-  try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch (e) { db = null; }
-  if (!db) { setStatus("local"); return; }
-  try {
-    const snap = await db.doc("audition/verdict").get();
-    if (snap.exists) { adopt(snap.data()); keepLocal(); sync(); }
-    else if (Object.keys(state.packs).length || Object.keys(state.clips).length || state.note) flush();
-  } catch (e) {
-    setStatus("local");
-  }
-})();
 </script>

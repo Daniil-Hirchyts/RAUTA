@@ -11,7 +11,7 @@ runs on the phone, changes it when you ask.
 
 [Demo](#demo) · [What it shows](#what-this-project-shows) · [Planning](#how-a-plan-is-built) ·
 [The agent](#rauta-the-agent) · [Decisions](#engineering-decisions) · [Architecture](#architecture) ·
-[Build it](#build-it) · [Related](#related-projects)
+[Build it](#build-it) · [Related](#related-projects) · [License](#license)
 
 <a href="docs/demo/hero.mp4"><img src="docs/demo/hero.webp" alt="Three iPhone screens recorded on the simulator: the warm-up handing over to the bench press player; logging a set, the rest timer, then the player shrinking into the bar above the tabs; and the month's workouts as a bar chart" width="960"/></a>
 
@@ -275,4 +275,8 @@ Exercise names, instructions and demonstration images come from a third-party ex
 reclassified for RAUTA; the muscle outlines in the body map also come from a third party. The sources and
 licences of both are still to be confirmed.
 
-© Daniil Hirchyts. No licence is granted for the code yet.
+## License
+
+[PolyForm Noncommercial 1.0.0](LICENSE.md): free to use, study, change and share for any noncommercial purpose,
+keeping the `Required Notice` lines, which credit **RAUTA by Daniil Hirchyts** with a link to this repository. For
+commercial use, contact the author. Third-party components keep their own licences.
